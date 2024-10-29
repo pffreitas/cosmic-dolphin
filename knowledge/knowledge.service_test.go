@@ -1,11 +1,9 @@
-package knowledge_test
+package knowledge
 
 import (
-	"context"
 	"cosmic-dolphin/config"
 	"cosmic-dolphin/db"
 	"cosmic-dolphin/job"
-	"cosmic-dolphin/knowledge"
 	"fmt"
 	"testing"
 	"time"
@@ -18,7 +16,7 @@ func TestAddDocument(t *testing.T) {
 	config.LoadEnv("../.dev.env")
 	db.Init()
 
-	job.AddWorker(&knowledge.InsertResourceJobWorker{})
+	job.AddWorker(&GetResourceContentJobWorker{})
 	err := job.Run()
 	if err != nil {
 		t.Fatal(err)
@@ -29,21 +27,19 @@ func TestAddDocument(t *testing.T) {
 		db.Close()
 	})
 
-	t.Run("Post Document", func(t *testing.T) {
-		_, err := job.RiverClient.Insert(context.Background(), knowledge.InsertResourceJobArgs{
-			Resource: knowledge.Resource{
-				ID:     "Test Title",
-				Type:   knowledge.ResourceTypeWebPage,
-				Source: "https://example.com",
-			},
-		}, nil)
+	t.Run("Insert Resource", func(t *testing.T) {
+		subscribeChan, subscribeCancel := job.RiverClient.Subscribe(river.EventKindJobCompleted)
+		defer subscribeCancel()
+
+		err := processResource(Resource{
+			Type:   ResourceTypeWebPage,
+			Source: "https://www.docker.com/blog/model-based-testing-testcontainers-jqwik/?ref=dailydev",
+			UserID: "Foo",
+		})
 
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		subscribeChan, subscribeCancel := job.RiverClient.Subscribe(river.EventKindJobCompleted)
-		defer subscribeCancel()
 
 		waitForNJobs(subscribeChan, 1)
 	})

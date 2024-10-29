@@ -1,16 +1,11 @@
 package main
 
 import (
-	"context"
-	"cosmic-dolphin/job"
-	"cosmic-dolphin/knowledge"
 	"cosmic-dolphin/model"
 	"cosmic-dolphin/service"
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/riverqueue/river"
 )
 
 type EmbeddingsResponse struct {
@@ -40,19 +35,6 @@ func draftHandler(w http.ResponseWriter, r *http.Request) {
 			Body:       requestBody.Text,
 			Embeddings: embedding.Embeddings,
 		})
-	}
-
-	fmt.Println("Inserting job", job.RiverClient)
-	_, err = job.RiverClient.Insert(context.Background(), knowledge.KnowledgeJobArgs{
-		Strings: []string{"whale", "tiger", "bear"},
-	}, &river.InsertOpts{
-		MaxAttempts: 3,
-	})
-
-	if err != nil {
-		fmt.Println("err >>>>>>>", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
