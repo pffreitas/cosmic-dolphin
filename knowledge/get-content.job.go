@@ -59,16 +59,14 @@ func (w *GetResourceContentJobWorker) Work(ctx context.Context, job *river.Job[G
 
 	c.Visit(job.Args.Resource.Source)
 
-	doc := Document{
+	processDocument(Document{
 		ResourceID: *job.Args.Resource.ID,
 		Title:      titles,
 		Content:    htmlContent,
 		Images:     imgs,
 		UserID:     job.Args.Resource.UserID,
 		CreatedAt:  time.Now(),
-	}
-
-	insertDocument(doc)
+	})
 
 	return nil
 }

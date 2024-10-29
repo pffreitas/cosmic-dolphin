@@ -17,6 +17,7 @@ func TestAddDocument(t *testing.T) {
 	db.Init()
 
 	job.AddWorker(&GetResourceContentJobWorker{})
+	job.AddWorker(&EmbedDocumentJobWorker{})
 	err := job.Run()
 	if err != nil {
 		t.Fatal(err)
@@ -41,7 +42,7 @@ func TestAddDocument(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		waitForNJobs(subscribeChan, 1)
+		waitForNJobs(subscribeChan, 2)
 	})
 
 }

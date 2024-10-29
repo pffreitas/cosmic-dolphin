@@ -54,3 +54,12 @@ func Stop() {
 		// handle error
 	}
 }
+
+func InsertJob(args river.JobArgs) error {
+	_, err := RiverClient.Insert(context.Background(), args, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

@@ -21,8 +21,6 @@ func Run() {
 		AllowedHeaders:   []string{"Content-Type", "Authorization"},
 	})
 
-	http.HandleFunc("/draft", draftHandler)
-	http.HandleFunc("/getDocs", getDocsHandler)
 	handler := c.Handler(http.DefaultServeMux)
 
 	err := http.ListenAndServe(":"+port, handler)

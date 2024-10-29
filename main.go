@@ -17,7 +17,8 @@ func main() {
 	db.Init()
 	defer db.Close()
 
-	job.AddWorker(&knowledge.InsertResourceJobWorker{})
+	job.AddWorker(&knowledge.GetResourceContentJobWorker{})
+	job.AddWorker(&knowledge.EmbedDocumentJobWorker{})
 	err := job.Run()
 	if err != nil {
 		panic(err)
