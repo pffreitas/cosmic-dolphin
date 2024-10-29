@@ -1,27 +1,28 @@
 package knowledge
 
 import (
-	"context"
-	"fmt"
-	"sort"
+	"cosmic-dolphin/db"
 
-	"github.com/riverqueue/river"
+	"github.com/sirupsen/logrus"
 )
 
-type KnowledgeJobArgs struct {
-	Strings []string `json:"strings"`
+var log = logrus.New()
+
+type ResourceType string
+
+const (
+	ResourceTypeWebPage ResourceType = "web_page"
+)
+
+type Resource struct {
+	ID     string       `json:"id"`
+	Type   ResourceType `json:"type"`
+	Source string       `json:"source"`
 }
 
-func (KnowledgeJobArgs) Kind() string { return "knowledge" }
+func insertResource(resource Resource) error {
+	log.WithFields(logrus.Fields{"resource.id": resource.ID}).Info("Inserting resource")
 
-type KnowledgeJobWorker struct {
-	// An embedded WorkerDefaults sets up default methods to fulfill the rest of
-	// the Worker interface:
-	river.WorkerDefaults[KnowledgeJobArgs]
-}
-
-func (w *KnowledgeJobWorker) Work(ctx context.Context, job *river.Job[KnowledgeJobArgs]) error {
-	sort.Strings(job.Args.Strings)
-	fmt.Printf("Sorted strings: %+v\n", job.Args.Strings)
+	log.WithFields(logrus.Fields{"db pool": db.DBPool}).Info("Inserting resource")
 	return nil
 }

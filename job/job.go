@@ -22,13 +22,13 @@ func AddWorker[T river.JobArgs](worker river.Worker[T]) {
 	river.AddWorker(workers, worker)
 }
 
-func Run() (*river.Client[pgx.Tx], error) {
+func Run() error {
 	ctx := context.Background()
 
 	var err error
 	dbPool, err = pgxpool.New(ctx, os.Getenv("PG_CONN"))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	RiverClient, err = river.NewClient(riverpgxv5.New(dbPool), &river.Config{
@@ -39,14 +39,14 @@ func Run() (*river.Client[pgx.Tx], error) {
 		TestOnly: true,
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := RiverClient.Start(ctx); err != nil {
-		return nil, err
+		return err
 	}
 
-	return RiverClient, nil
+	return nil
 }
 
 func Stop() {
