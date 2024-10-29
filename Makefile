@@ -40,3 +40,15 @@ clean:
 run: build
 	@echo "Running $(BINARY_NAME)"
 	./$(OUT_DIR)/$(BINARY_NAME)
+
+.PHONY: db-migrate-install
+db-migrate-install:
+	@echo "Installing river"
+	$(GO) install github.com/riverqueue/river/cmd/river@latest
+	$(GO) install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+.PHONY: db-migrate
+db-migrate:
+	@echo "Running database migrations"
+	river migrate-up --database-url "$(DATABASE_URL)"
+	migrate -path ./migrations -database "$(DATABASE_URL)" up
