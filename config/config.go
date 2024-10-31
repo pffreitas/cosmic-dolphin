@@ -15,6 +15,7 @@ const (
 	SupabaseURL  ConfigKey = "SUPABASE_URL"
 	SupabaseKey  ConfigKey = "SUPABASE_KEY"
 	PgConnString ConfigKey = "PG_CONN"
+	JWTSecret    ConfigKey = "JWT_SECRET"
 )
 
 func LoadEnv(path string) error {

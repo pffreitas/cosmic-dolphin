@@ -2,6 +2,7 @@ package http
 
 import (
 	"cosmic-dolphin/config"
+	"cosmic-dolphin/knowledge"
 	"fmt"
 	"net/http"
 
@@ -14,12 +15,16 @@ func Run() {
 		port = "8080"
 	}
 
+	jwtSecret := config.GetConfig(config.JWTSecret)
+
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3001"},
 		AllowCredentials: true,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "Authorization"},
 	})
+
+	http.Handle("/insert-resource", AuthMiddleware(jwtSecret)(http.HandlerFunc(knowledge.HandleInsertResource)))
 
 	handler := c.Handler(http.DefaultServeMux)
 
