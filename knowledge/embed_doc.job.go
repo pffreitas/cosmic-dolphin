@@ -2,6 +2,7 @@ package knowledge
 
 import (
 	"context"
+	"cosmic-dolphin/job"
 	"cosmic-dolphin/llm"
 
 	"github.com/riverqueue/river"
@@ -39,6 +40,24 @@ func (w *EmbedDocumentJobWorker) Work(ctx context.Context, job *river.Job[EmbedD
 		if err != nil {
 			return err
 		}
+	}
+
+	log.WithFields(logrus.Fields{"document.id": job.Args.DocumentID}).Info("Document embedded")
+
+	err = insertSummarizeJob(doc.ID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func insertSummarizeJob(docID *int64) error {
+	err := job.InsertJob(SummarizeJobArgs{
+		DocumentID: *docID,
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil

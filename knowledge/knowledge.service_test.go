@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/riverqueue/river"
-	"github.com/riverqueue/river/rivershared/riversharedtest"
 )
 
 func TestAddDocument(t *testing.T) {
@@ -18,6 +17,7 @@ func TestAddDocument(t *testing.T) {
 
 	job.AddWorker(&GetResourceContentJobWorker{})
 	job.AddWorker(&EmbedDocumentJobWorker{})
+	job.AddWorker(&SummarizeJobWorker{})
 	err := job.Run()
 	if err != nil {
 		t.Fatal(err)
@@ -43,13 +43,14 @@ func TestAddDocument(t *testing.T) {
 		}
 
 		waitForNJobs(subscribeChan, 2)
+		time.Sleep(50 * time.Second)
 	})
 
 }
 
 func waitForNJobs(subscribeChan <-chan *river.Event, numJobs int) {
 	var (
-		timeout  = riversharedtest.WaitTimeout()
+		timeout  = time.Duration(5 * time.Minute)
 		deadline = time.Now().Add(timeout)
 		events   = make([]*river.Event, 0, numJobs)
 	)
@@ -57,6 +58,7 @@ func waitForNJobs(subscribeChan <-chan *river.Event, numJobs int) {
 	for {
 		select {
 		case event := <-subscribeChan:
+			fmt.Println(">>>>> ", event)
 			events = append(events, event)
 
 			if len(events) >= numJobs {

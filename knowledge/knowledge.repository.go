@@ -25,6 +25,7 @@ func insertResource(resource Resource) (*Resource, error) {
 
 	resource.ID = &id
 
+	log.WithField("resource.id", id).Info("Resource inserted")
 	return &resource, nil
 }
 

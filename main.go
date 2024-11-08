@@ -19,6 +19,8 @@ func main() {
 
 	job.AddWorker(&knowledge.GetResourceContentJobWorker{})
 	job.AddWorker(&knowledge.EmbedDocumentJobWorker{})
+	job.AddWorker(&knowledge.SummarizeJobWorker{})
+
 	err := job.Run()
 	if err != nil {
 		panic(err)

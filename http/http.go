@@ -3,9 +3,11 @@ package http
 import (
 	"cosmic-dolphin/config"
 	"cosmic-dolphin/knowledge"
+	"cosmic-dolphin/llm/agents"
 	"fmt"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 )
 
@@ -24,12 +26,18 @@ func Run() {
 		AllowedHeaders:   []string{"Content-Type", "Authorization"},
 	})
 
-	http.Handle("/insert-resource", AuthMiddleware(jwtSecret)(http.HandlerFunc(knowledge.HandleInsertResource)))
+	router := mux.NewRouter()
 
-	handler := c.Handler(http.DefaultServeMux)
+	router.Handle("/insert-resource", AuthMiddleware(jwtSecret)(http.HandlerFunc(knowledge.HandleInsertResource))).Methods("POST")
+	router.HandleFunc("/prompt", agents.HandlePrompt).Methods("POST")
+	router.Handle("/notes", AuthMiddleware(jwtSecret)(http.HandlerFunc(knowledge.GetAllNotesHandler))).Methods("GET")
+	router.Handle("/notes/{id}", AuthMiddleware(jwtSecret)(http.HandlerFunc(knowledge.GetNoteHandler))).Methods("GET")
 
+	handler := c.Handler(router)
+
+	fmt.Printf("Server running on port %s\n", port)
 	err := http.ListenAndServe(":"+port, handler)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Println("Error starting server:", err)
 	}
 }

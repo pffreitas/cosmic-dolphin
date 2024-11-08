@@ -38,6 +38,7 @@ func processDocument(document Document) error {
 		DocumentID: *persistedDoc.ID,
 	})
 	if err != nil {
+		log.WithFields(logrus.Fields{"error": err}).Error("Failed to insert embed document job")
 		return err
 	}
 
