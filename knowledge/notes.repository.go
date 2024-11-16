@@ -12,7 +12,7 @@ import (
 )
 
 func insertNote(note Note) (*Note, error) {
-	log.WithFields(logrus.Fields{"note.title": note.Title}).Info("Inserting note")
+	log.WithFields(logrus.Fields{"note.title": note.Title, "documentId": note.DocumentID}).Info("Inserting note")
 
 	query := `
         INSERT INTO notes (document_id, title, summary, tags, sections, user_id)
@@ -56,7 +56,7 @@ func getAllNotes(userID string) ([]Note, error) {
 		SELECT id, document_id, title, summary, tags, sections, user_id
 		FROM notes
 		WHERE user_id = $1
-		LIMIT 10
+		LIMIT 20
 	`
 
 	rows, err := db.DBPool.Query(context.Background(), query, userID)
@@ -102,7 +102,7 @@ func getAllNotes(userID string) ([]Note, error) {
 	return notes, nil
 }
 
-func getNoteByID(id int64, userID string) (*Note, error) {
+func GetNoteByID(id int64, userID string) (*Note, error) {
 	log.WithFields(logrus.Fields{"note.id": id}).Info("Fetching note by ID")
 
 	query := `

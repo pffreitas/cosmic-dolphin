@@ -45,7 +45,7 @@ func (s *SummaryAgent) Run(ctx context.Context, input string) (Summary, error) {
 	jsonschemaReflector := &jsonschema.Reflector{}
 	jsonschemaReflector.ExpandedStruct = true
 
-	s.BaseAgent.ResponseFormat = client.ResponseFormat{
+	s.BaseAgent.ResponseFormat = &client.ResponseFormat{
 		Schema: jsonschemaReflector.Reflect(&Summary{}),
 	}
 

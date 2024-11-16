@@ -11,14 +11,21 @@ import (
 	"github.com/rs/cors"
 )
 
-func Run() {
-	port := config.GetConfig(config.Port)
-	if port == "" {
-		port = "8080"
-	}
-
+func SetupRouter() *mux.Router {
 	jwtSecret := config.GetConfig(config.JWTSecret)
 
+	router := mux.NewRouter()
+
+	router.Handle("/insert-resource", AuthMiddleware(jwtSecret)(http.HandlerFunc(knowledge.HandleInsertResource))).Methods("POST")
+	router.HandleFunc("/prompt", agents.HandlePrompt).Methods("POST")
+	router.Handle("/notes", AuthMiddleware(jwtSecret)(http.HandlerFunc(knowledge.GetAllNotesHandler))).Methods("GET")
+	router.Handle("/notes", AuthMiddleware(jwtSecret)(http.HandlerFunc(knowledge.CreateNoteHandler))).Methods("POST")
+	router.Handle("/notes/{id}", AuthMiddleware(jwtSecret)(http.HandlerFunc(knowledge.GetNoteHandler))).Methods("GET")
+
+	return router
+}
+
+func SetupHandler() http.Handler {
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3001"},
 		AllowCredentials: true,
@@ -26,14 +33,17 @@ func Run() {
 		AllowedHeaders:   []string{"Content-Type", "Authorization"},
 	})
 
-	router := mux.NewRouter()
+	router := SetupRouter()
+	return c.Handler(router)
+}
 
-	router.Handle("/insert-resource", AuthMiddleware(jwtSecret)(http.HandlerFunc(knowledge.HandleInsertResource))).Methods("POST")
-	router.HandleFunc("/prompt", agents.HandlePrompt).Methods("POST")
-	router.Handle("/notes", AuthMiddleware(jwtSecret)(http.HandlerFunc(knowledge.GetAllNotesHandler))).Methods("GET")
-	router.Handle("/notes/{id}", AuthMiddleware(jwtSecret)(http.HandlerFunc(knowledge.GetNoteHandler))).Methods("GET")
+func Run() {
+	port := config.GetConfig(config.Port)
+	if port == "" {
+		port = "8080"
+	}
 
-	handler := c.Handler(router)
+	handler := SetupHandler()
 
 	fmt.Printf("Server running on port %s\n", port)
 	err := http.ListenAndServe(":"+port, handler)

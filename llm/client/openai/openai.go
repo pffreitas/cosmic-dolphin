@@ -54,13 +54,15 @@ func (cl *Client) CreateChatCompletion(ctx context.Context, request client.ChatC
 		return cl.createChatCompletionStream(ctx, req, request.Stream)
 	}
 
-	req.ResponseFormat = &openai.ChatCompletionResponseFormat{
-		Type: openai.ChatCompletionResponseFormatTypeJSONSchema,
-		JSONSchema: &openai.ChatCompletionResponseFormatJSONSchema{
-			Name:   "chat_completion_response_format",
-			Schema: request.ResponseFormat.Schema,
-			Strict: true,
-		},
+	if request.ResponseFormat != nil {
+		req.ResponseFormat = &openai.ChatCompletionResponseFormat{
+			Type: openai.ChatCompletionResponseFormatTypeJSONSchema,
+			JSONSchema: &openai.ChatCompletionResponseFormatJSONSchema{
+				Name:   "chat_completion_response_format",
+				Schema: request.ResponseFormat.Schema,
+				Strict: true,
+			},
+		}
 	}
 
 	resp, err := cl.client.CreateChatCompletion(ctx, req)

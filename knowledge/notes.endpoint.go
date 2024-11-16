@@ -50,3 +50,32 @@ func GetNoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to encode notes", http.StatusInternalServerError)
 	}
 }
+
+type CreateNoteRequest struct {
+	Body string `json:"body"`
+	Type string `json:"type"`
+}
+
+func CreateNoteHandler(w http.ResponseWriter, r *http.Request) {
+	user := utils.GetUserFromContext(r.Context())
+
+	var req CreateNoteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	note, err := createNote(req.Body, req.Type, user.ID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to create note")
+		http.Error(w, "Failed to create note", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(note); err != nil {
+		logrus.WithError(err).Error("Failed to encode note")
+		http.Error(w, "Failed to encode note", http.StatusInternalServerError)
+	}
+}

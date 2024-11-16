@@ -14,7 +14,7 @@ type BaseAgent struct {
 	Tools          []Tool
 	Tasks          []string
 	Input          string
-	ResponseFormat client.ResponseFormat
+	ResponseFormat *client.ResponseFormat
 	client         client.Client
 }
 
@@ -81,15 +81,20 @@ func (a *BaseAgent) Run(ctx context.Context, input string) (message string, err 
 
 	tasks += fmt.Sprintf("## Goal\n%s", a.Goal)
 
-	resp, err := a.client.CreateChatCompletion(ctx, client.ChatCompletionRequest{
+	chatCompletionRequest := client.ChatCompletionRequest{
 		Model: client.GPT4O,
 		Messages: []llm.Message{
 			{Role: llm.System, Content: context},
 			{Role: llm.System, Content: tools},
 			{Role: llm.User, Content: tasks},
 		},
-		ResponseFormat: a.ResponseFormat,
-	})
+	}
+
+	if a.ResponseFormat != nil {
+		chatCompletionRequest.ResponseFormat = a.ResponseFormat
+	}
+
+	resp, err := a.client.CreateChatCompletion(ctx, chatCompletionRequest)
 
 	if err != nil {
 		return "", err

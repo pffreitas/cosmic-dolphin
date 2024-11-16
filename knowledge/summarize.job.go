@@ -43,7 +43,7 @@ func (w *SummarizeJobWorker) Work(ctx context.Context, job *river.Job[SummarizeJ
 	sections = append(sections, NewTextSection("Applications", strings.Join(summary.Applications, "\n")))
 
 	_, err = insertNote(Note{
-		DocumentID: job.Args.DocumentID,
+		DocumentID: &job.Args.DocumentID,
 		Title:      summary.Title,
 		Summary:    summary.Summary,
 		Tags:       summary.Tags,

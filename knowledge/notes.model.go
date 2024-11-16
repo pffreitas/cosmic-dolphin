@@ -2,9 +2,17 @@ package knowledge
 
 import "time"
 
+type NoteType string
+
+const (
+	NoteTypeFUP     NoteType = "fup"
+	NoteTypeChatter NoteType = "chatter"
+)
+
 type Note struct {
 	ID         *int64        `json:"id"`
-	DocumentID int64         `json:"document_id"`
+	DocumentID *int64        `json:"document_id"`
+	Type       NoteType      `json:"type"`
 	Title      string        `json:"title"`
 	Summary    string        `json:"summary"`
 	Tags       string        `json:"tags"`

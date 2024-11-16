@@ -60,7 +60,7 @@ type ChatCompletionRequest struct {
 	// wire to Stream, and then still return the whole message.
 	Stream io.Writer `json:"-"` // This should not be used when hashing.
 
-	ResponseFormat ResponseFormat `json:"response_format"`
+	ResponseFormat *ResponseFormat `json:"response_format"`
 }
 
 type ChatCompletionResponse struct {
