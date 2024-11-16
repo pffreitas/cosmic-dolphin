@@ -4,6 +4,7 @@ import (
 	"cosmic-dolphin/config"
 	"cosmic-dolphin/knowledge"
 	"cosmic-dolphin/llm/agents"
+	"cosmic-dolphin/notes"
 	"fmt"
 	"net/http"
 
@@ -18,9 +19,9 @@ func SetupRouter() *mux.Router {
 
 	router.Handle("/insert-resource", AuthMiddleware(jwtSecret)(http.HandlerFunc(knowledge.HandleInsertResource))).Methods("POST")
 	router.HandleFunc("/prompt", agents.HandlePrompt).Methods("POST")
-	router.Handle("/notes", AuthMiddleware(jwtSecret)(http.HandlerFunc(knowledge.GetAllNotesHandler))).Methods("GET")
-	router.Handle("/notes", AuthMiddleware(jwtSecret)(http.HandlerFunc(knowledge.CreateNoteHandler))).Methods("POST")
-	router.Handle("/notes/{id}", AuthMiddleware(jwtSecret)(http.HandlerFunc(knowledge.GetNoteHandler))).Methods("GET")
+	router.Handle("/notes", AuthMiddleware(jwtSecret)(http.HandlerFunc(notes.GetAllNotesHandler))).Methods("GET")
+	router.Handle("/notes", AuthMiddleware(jwtSecret)(http.HandlerFunc(notes.CreateNoteHandler))).Methods("POST")
+	router.Handle("/notes/{id}", AuthMiddleware(jwtSecret)(http.HandlerFunc(notes.GetNoteHandler))).Methods("GET")
 
 	return router
 }

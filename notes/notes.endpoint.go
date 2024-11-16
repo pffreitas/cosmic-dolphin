@@ -1,4 +1,4 @@
-package knowledge
+package notes
 
 import (
 	"cosmic-dolphin/utils"
@@ -37,7 +37,7 @@ func GetNoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	notes, err := getNoteByID(noteID, user.ID)
+	notes, err := GetNoteByID(noteID, user.ID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to fetch notes")
 		http.Error(w, "Failed to fetch notes", http.StatusInternalServerError)

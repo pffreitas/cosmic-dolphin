@@ -1,14 +1,13 @@
-package knowledge
+package notes
 
 import (
-	"cosmic-dolphin/chatter"
 	"cosmic-dolphin/job"
 
 	"github.com/sirupsen/logrus"
 )
 
 func createNote(body string, noteType string, userID string) (*Note, error) {
-	note, err := insertNote(Note{
+	note, err := InsertNote(Note{
 		Type:     NoteType(noteType),
 		Title:    "",
 		Summary:  "",
@@ -22,8 +21,10 @@ func createNote(body string, noteType string, userID string) (*Note, error) {
 	}
 
 	if noteType == "chatter" {
-		err = job.InsertJob(chatter.ChatterJobArgs{
+		err := job.InsertJob(job.ChatterJobArgs{
 			NoteID: *note.ID,
+			UserID: userID,
+			Input:  body,
 		})
 		if err != nil {
 			logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to insert chatter job")

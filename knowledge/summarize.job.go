@@ -5,6 +5,7 @@ import (
 	"cosmic-dolphin/config"
 	"cosmic-dolphin/llm/agents"
 	"cosmic-dolphin/llm/client/openai"
+	"cosmic-dolphin/notes"
 	"strings"
 
 	"github.com/riverqueue/river"
@@ -37,12 +38,12 @@ func (w *SummarizeJobWorker) Work(ctx context.Context, job *river.Job[SummarizeJ
 		return err
 	}
 
-	sections := []NoteSection{}
-	sections = append(sections, NewTextSection("Key Points", strings.Join(summary.KeyPoints, "\n")))
-	sections = append(sections, NewTextSection("Take Aways", strings.Join(summary.TakeAways, "\n")))
-	sections = append(sections, NewTextSection("Applications", strings.Join(summary.Applications, "\n")))
+	sections := []notes.NoteSection{}
+	sections = append(sections, notes.NewTextSection("Key Points", strings.Join(summary.KeyPoints, "\n")))
+	sections = append(sections, notes.NewTextSection("Take Aways", strings.Join(summary.TakeAways, "\n")))
+	sections = append(sections, notes.NewTextSection("Applications", strings.Join(summary.Applications, "\n")))
 
-	_, err = insertNote(Note{
+	_, err = notes.InsertNote(notes.Note{
 		DocumentID: &job.Args.DocumentID,
 		Title:      summary.Title,
 		Summary:    summary.Summary,

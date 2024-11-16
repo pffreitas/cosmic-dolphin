@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cosmic-dolphin/chatter"
 	"cosmic-dolphin/config"
 	"cosmic-dolphin/db"
 	"cosmic-dolphin/http"
@@ -20,6 +21,7 @@ func main() {
 	job.AddWorker(&knowledge.GetResourceContentJobWorker{})
 	job.AddWorker(&knowledge.EmbedDocumentJobWorker{})
 	job.AddWorker(&knowledge.SummarizeJobWorker{})
+	job.AddWorker(&chatter.ChatterJobWorker{})
 
 	err := job.Run()
 	if err != nil {
