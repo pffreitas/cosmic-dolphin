@@ -23,6 +23,5 @@ func TestChatterAgent(t *testing.T) {
 		text, err := agent.Run(ctx, input)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, text)
-		t.Log(">>>>>", text)
 	})
 }

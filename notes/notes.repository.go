@@ -106,7 +106,7 @@ func GetNoteByID(id int64, userID string) (*Note, error) {
 	logrus.WithFields(logrus.Fields{"note.id": id}).Info("Fetching note by ID")
 
 	query := `
-		SELECT id, document_id, title, summary, tags, sections
+		SELECT id, document_id, title, summary, tags, sections, user_id, created_at
 		FROM notes
 		WHERE id = $1 and user_id = $2
 	`
@@ -121,6 +121,8 @@ func GetNoteByID(id int64, userID string) (*Note, error) {
 		&note.Summary,
 		&note.Tags,
 		&sectionsJSON,
+		&note.UserID,
+		&note.CreatedAt,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {

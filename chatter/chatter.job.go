@@ -27,12 +27,13 @@ func (w *ChatterJobWorker) Work(ctx context.Context, job *river.Job[job.ChatterJ
 		return err
 	}
 
-	text, err := chatterAgent.Run(ctx, job.Args.Input)
+	chatterResponse, err := chatterAgent.Run(ctx, job.Args.Input)
 	if err != nil {
 		return err
 	}
 
-	note.Sections = append(note.Sections, notes.NewTextSection("chatter", text))
+	note.Sections = append(note.Sections, notes.NewTextSection("Revised Text", chatterResponse.Text))
+	note.Title = chatterResponse.Title
 	notes.UpdateNote(*note)
 
 	return nil
