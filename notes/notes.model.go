@@ -1,12 +1,16 @@
 package notes
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type NoteType string
 
 const (
-	NoteTypeFUP     NoteType = "fup"
-	NoteTypeChatter NoteType = "chatter"
+	NoteTypeFUP       NoteType = "fup"
+	NoteTypeChatter   NoteType = "chatter"
+	NoteTypeKnowledge NoteType = "knowledge"
 )
 
 type Note struct {
@@ -19,6 +23,16 @@ type Note struct {
 	Sections   []NoteSection `json:"sections" sql:"type:jsonb"`
 	UserID     string        `json:"user_id"`
 	CreatedAt  time.Time     `json:"created_at"`
+}
+
+func (n Note) GetBody() (string, error) {
+	body, err := json.Marshal(n.Sections)
+	if err != nil {
+		return "", err
+
+	}
+
+	return string(body), nil
 }
 
 type NoteSectionType string

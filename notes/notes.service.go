@@ -1,12 +1,21 @@
 package notes
 
 import (
-	"cosmic-dolphin/job"
-
 	"github.com/sirupsen/logrus"
 )
 
-func createNote(body string, noteType string, userID string) (*Note, error) {
+type NotesProcessor interface {
+	ProcessNote(note Note) error
+	Accepts(note Note) bool
+}
+
+var notesProcessors []NotesProcessor = []NotesProcessor{}
+
+func AddNotesProcessor(processor NotesProcessor) {
+	notesProcessors = append(notesProcessors, processor)
+}
+
+func CreateNote(body string, noteType NoteType, userID string) (*Note, error) {
 	note, err := InsertNote(Note{
 		Type:     NoteType(noteType),
 		Title:    "",
@@ -20,15 +29,12 @@ func createNote(body string, noteType string, userID string) (*Note, error) {
 		return nil, err
 	}
 
-	if noteType == "chatter" {
-		err := job.InsertJob(job.ChatterJobArgs{
-			NoteID: *note.ID,
-			UserID: userID,
-			Input:  body,
-		})
-		if err != nil {
-			logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to insert chatter job")
-			return nil, err
+	for _, processor := range notesProcessors {
+		if processor.Accepts(*note) {
+			err := processor.ProcessNote(*note)
+			if err != nil {
+				logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to process note")
+			}
 		}
 	}
 

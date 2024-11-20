@@ -2,14 +2,34 @@ package knowledge
 
 import (
 	"cosmic-dolphin/job"
+	"cosmic-dolphin/notes"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
 
 var log = logrus.New()
 
-func processResource(resource Resource) error {
-	log.WithFields(logrus.Fields{"resource.source": resource.Source}).Info("Processing resource")
+func Init() {
+	notes.AddNotesProcessor(KnowledgeNotesProcessor{})
+}
+
+type KnowledgeNotesProcessor struct{}
+
+func (knp KnowledgeNotesProcessor) ProcessNote(note notes.Note) error {
+	log.WithFields(logrus.Fields{"note.id": note.ID}).Info("[Knowledge] Processing note")
+
+	body, err := note.GetBody()
+	if err != nil {
+		return err
+	}
+
+	resource := Resource{
+		Type:      ResourceTypeWebPage,
+		Source:    body,
+		CreatedAt: time.Now(),
+		UserID:    note.UserID,
+	}
 
 	persistedResource, err := insertResource(resource)
 	if err != nil {
@@ -24,6 +44,10 @@ func processResource(resource Resource) error {
 	}
 
 	return nil
+}
+
+func (knp KnowledgeNotesProcessor) Accepts(note notes.Note) bool {
+	return note.Type == notes.NoteTypeKnowledge
 }
 
 func processDocument(document Document) error {

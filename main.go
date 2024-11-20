@@ -18,6 +18,9 @@ func main() {
 	db.Init()
 	defer db.Close()
 
+	chatter.Init()
+	knowledge.Init()
+
 	job.AddWorker(&knowledge.GetResourceContentJobWorker{})
 	job.AddWorker(&knowledge.EmbedDocumentJobWorker{})
 	job.AddWorker(&knowledge.SummarizeJobWorker{})

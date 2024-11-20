@@ -65,7 +65,7 @@ func CreateNoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	note, err := createNote(req.Body, req.Type, user.ID)
+	note, err := CreateNote(req.Body, NoteType(req.Type), user.ID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create note")
 		http.Error(w, "Failed to create note", http.StatusInternalServerError)
