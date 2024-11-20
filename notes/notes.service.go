@@ -17,12 +17,9 @@ func AddNotesProcessor(processor NotesProcessor) {
 
 func CreateNote(body string, noteType NoteType, userID string) (*Note, error) {
 	note, err := InsertNote(Note{
-		Type:     NoteType(noteType),
-		Title:    "",
-		Summary:  "",
-		Tags:     "",
-		Sections: []NoteSection{NewTextSection("", body)},
-		UserID:   userID,
+		Type:    NoteType(noteType),
+		RawBody: body,
+		UserID:  userID,
 	})
 
 	if err != nil {

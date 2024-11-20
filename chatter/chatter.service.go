@@ -15,15 +15,10 @@ type ChatterNoteProcessor struct {
 }
 
 func (p ChatterNoteProcessor) ProcessNote(note notes.Note) error {
-	body, err := note.GetBody()
-	if err != nil {
-		return err
-	}
-
-	err = job.InsertJob(job.ChatterJobArgs{
+	err := job.InsertJob(job.ChatterJobArgs{
 		NoteID: *note.ID,
 		UserID: note.UserID,
-		Input:  body,
+		Input:  note.RawBody,
 	})
 	if err != nil {
 		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to insert chatter job")

@@ -13,16 +13,24 @@ const (
 	NoteTypeKnowledge NoteType = "knowledge"
 )
 
+type NoteMetadataKey string
+
+const (
+	NoteMetadataSource NoteMetadataKey = "source"
+)
+
 type Note struct {
-	ID         *int64        `json:"id"`
-	DocumentID *int64        `json:"document_id"`
-	Type       NoteType      `json:"type"`
-	Title      string        `json:"title"`
-	Summary    string        `json:"summary"`
-	Tags       string        `json:"tags"`
-	Sections   []NoteSection `json:"sections" sql:"type:jsonb"`
-	UserID     string        `json:"user_id"`
-	CreatedAt  time.Time     `json:"created_at"`
+	ID         *int64                          `json:"id"`
+	DocumentID *int64                          `json:"document_id"`
+	Type       NoteType                        `json:"type"`
+	Title      string                          `json:"title"`
+	Summary    string                          `json:"summary"`
+	Tags       string                          `json:"tags"`
+	RawBody    string                          `json:"raw_body"`
+	Sections   []NoteSection                   `json:"sections" sql:"type:jsonb"`
+	Metadata   map[NoteMetadataKey]interface{} `json:"metadata" sql:"type:jsonb"`
+	UserID     string                          `json:"user_id"`
+	CreatedAt  time.Time                       `json:"created_at"`
 }
 
 func (n Note) GetBody() (string, error) {
@@ -33,6 +41,14 @@ func (n Note) GetBody() (string, error) {
 	}
 
 	return string(body), nil
+}
+
+func (n Note) AddMetadata(key NoteMetadataKey, value interface{}) {
+	n.Metadata[key] = value
+}
+
+func (n Note) GetMetadata(key NoteMetadataKey) interface{} {
+	return n.Metadata[key]
 }
 
 type NoteSectionType string

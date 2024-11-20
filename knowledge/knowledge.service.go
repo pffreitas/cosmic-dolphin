@@ -19,14 +19,9 @@ type KnowledgeNotesProcessor struct{}
 func (knp KnowledgeNotesProcessor) ProcessNote(note notes.Note) error {
 	log.WithFields(logrus.Fields{"note.id": note.ID}).Info("[Knowledge] Processing note")
 
-	body, err := note.GetBody()
-	if err != nil {
-		return err
-	}
-
 	resource := Resource{
 		Type:      ResourceTypeWebPage,
-		Source:    body,
+		Source:    note.RawBody,
 		CreatedAt: time.Now(),
 		UserID:    note.UserID,
 	}
