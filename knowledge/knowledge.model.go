@@ -10,6 +10,7 @@ const (
 
 type Resource struct {
 	ID        *int64       `json:"id"`
+	NoteID    int64        `json:"note_id"`
 	Type      ResourceType `json:"type"`
 	Source    string       `json:"source"`
 	CreatedAt time.Time    `json:"created_at"`

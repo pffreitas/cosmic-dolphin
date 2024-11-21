@@ -1,6 +1,8 @@
 package notes
 
 import (
+	"reflect"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -17,9 +19,10 @@ func AddNotesProcessor(processor NotesProcessor) {
 
 func CreateNote(body string, noteType NoteType, userID string) (*Note, error) {
 	note, err := InsertNote(Note{
-		Type:    NoteType(noteType),
-		RawBody: body,
-		UserID:  userID,
+		Type:     NoteType(noteType),
+		RawBody:  body,
+		Sections: []NoteSection{},
+		UserID:   userID,
 	})
 
 	if err != nil {
@@ -27,6 +30,7 @@ func CreateNote(body string, noteType NoteType, userID string) (*Note, error) {
 	}
 
 	for _, processor := range notesProcessors {
+		logrus.WithField("processor", reflect.TypeOf(processor)).Info("Processing note")
 		if processor.Accepts(*note) {
 			err := processor.ProcessNote(*note)
 			if err != nil {

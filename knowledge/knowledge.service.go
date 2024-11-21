@@ -12,14 +12,18 @@ var log = logrus.New()
 
 func Init() {
 	notes.AddNotesProcessor(KnowledgeNotesProcessor{})
+	job.AddWorker(&GetResourceContentJobWorker{})
+	job.AddWorker(&EmbedDocumentJobWorker{})
+	job.AddWorker(&SummarizeJobWorker{})
 }
 
 type KnowledgeNotesProcessor struct{}
 
 func (knp KnowledgeNotesProcessor) ProcessNote(note notes.Note) error {
-	log.WithFields(logrus.Fields{"note.id": note.ID}).Info("[Knowledge] Processing note")
+	log.WithFields(logrus.Fields{"note.id": *note.ID}).Info("[Knowledge] Processing note")
 
 	resource := Resource{
+		NoteID:    *note.ID,
 		Type:      ResourceTypeWebPage,
 		Source:    note.RawBody,
 		CreatedAt: time.Now(),

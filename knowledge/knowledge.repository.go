@@ -15,9 +15,17 @@ import (
 func insertResource(resource Resource) (*Resource, error) {
 	log.WithFields(logrus.Fields{"resource.source": resource.Source}).Info("Inserting resource")
 
-	query := `INSERT INTO resources (type, source, created_at, user_id) VALUES ($1, $2, $3, $4) RETURNING id`
+	query := `INSERT INTO resources (note_id, type, source, created_at, user_id) VALUES ($1, $2, $3, $4, $5) RETURNING id`
 	var id int64
-	err := db.DBPool.QueryRow(context.Background(), query, resource.Type, resource.Source, resource.CreatedAt, resource.UserID).Scan(&id)
+	err := db.DBPool.QueryRow(
+		context.Background(),
+		query,
+		resource.NoteID,
+		resource.Type,
+		resource.Source,
+		resource.CreatedAt,
+		resource.UserID).Scan(&id)
+
 	if err != nil {
 		log.WithFields(logrus.Fields{"error": err}).Error("Failed to insert resource")
 		return nil, fmt.Errorf("failed to insert resource: %w", err)
@@ -26,6 +34,34 @@ func insertResource(resource Resource) (*Resource, error) {
 	resource.ID = &id
 
 	log.WithField("resource.id", id).Info("Resource inserted")
+	return &resource, nil
+}
+
+func fetchResourceByDocumentID(documentID int64) (*Resource, error) {
+	query := `
+		SELECT r.id, r.note_id, r.type, r.source, r.created_at, r.user_id
+		FROM resources r
+		JOIN documents d ON r.id = d.resource_id
+		WHERE d.id = $1
+	`
+
+	var resource Resource
+	err := db.DBPool.QueryRow(context.Background(), query, documentID).Scan(
+		&resource.ID,
+		&resource.NoteID,
+		&resource.Type,
+		&resource.Source,
+		&resource.CreatedAt,
+		&resource.UserID,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("resource for document with ID %d not found", documentID)
+		}
+		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to fetch resource")
+		return nil, fmt.Errorf("failed to fetch resource: %w", err)
+	}
+
 	return &resource, nil
 }
 
