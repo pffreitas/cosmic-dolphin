@@ -58,7 +58,7 @@ func fetchResourceByDocumentID(documentID int64) (*Resource, error) {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("resource for document with ID %d not found", documentID)
 		}
-		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to fetch resource")
+		logrus.WithFields(logrus.Fields{"documentID": documentID, "error": err}).Error("Failed to fetch resource")
 		return nil, fmt.Errorf("failed to fetch resource: %w", err)
 	}
 

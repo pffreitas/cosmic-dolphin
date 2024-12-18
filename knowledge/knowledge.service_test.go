@@ -20,6 +20,7 @@ func TestAddDocument(t *testing.T) {
 
 	knowledge.Init()
 
+	job.AddWorker(&notes.ProcessNotePipelineJobWorker{})
 	err := job.Run()
 	if err != nil {
 		t.Fatal(err)

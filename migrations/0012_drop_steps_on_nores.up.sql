@@ -1,0 +1,1 @@
+ALTER TABLE notes drop COLUMN steps;

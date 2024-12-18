@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"cosmic-dolphin/config"
 	"cosmic-dolphin/db"
+	"cosmic-dolphin/job"
+	"cosmic-dolphin/notes"
+	"cosmic-dolphin/pipeline"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -43,14 +47,24 @@ func TestCreateNoteHandler(t *testing.T) {
 		config.LoadEnv("../.dev.env")
 
 		db.Init()
-		defer db.Close()
+
+		job.AddWorker(&notes.ProcessNotePipelineJobWorker{})
+		err := job.Run()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		t.Cleanup(func() {
+			db.Close()
+			job.Stop()
+		})
 
 		token, err := generateJWT(config.GetConfig(config.JWTSecret))
 		if err != nil {
 			t.Error(err)
 		}
 
-		createNoteRequest := *cosmicdolphinapi.NewCreateNoteRequest("Body_example", cosmicdolphinapi.NoteType("fup"))
+		createNoteRequest := *cosmicdolphinapi.NewCreateNoteRequest("Body_example", cosmicdolphinapi.KNOWLEDGE)
 		reqBody, err := createNoteRequest.MarshalJSON()
 		assert.NoError(t, err)
 
@@ -63,6 +77,33 @@ func TestCreateNoteHandler(t *testing.T) {
 		router.ServeHTTP(rr, req)
 
 		assert.Equal(t, http.StatusCreated, rr.Code)
+
+		b := rr.Body.Bytes()
+		fmt.Printf("Body: %s\n", b)
+		var createdNote map[string]interface{}
+		err = json.Unmarshal(b, &createdNote)
+		assert.NoError(t, err)
+		noteId := int64(createdNote["id"].(float64))
+
+		completed := false
+		for {
+			pipesByRef, err := pipeline.GetPipelinesByReferenceID[notes.ProcessNotePipelineArgs](noteId)
+			assert.NoError(t, err)
+			assert.Greater(t, len(pipesByRef), 0)
+
+			pipe := pipesByRef[0]
+			for _, s := range pipe.Stages {
+				if s.Status == pipeline.StageStatusPending {
+					completed = false
+					break
+				}
+			}
+
+			if !completed {
+				time.Sleep(1 * time.Second)
+			}
+		}
+
 	})
 
 }

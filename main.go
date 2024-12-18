@@ -8,6 +8,7 @@ import (
 	"cosmic-dolphin/job"
 	"cosmic-dolphin/knowledge"
 	"cosmic-dolphin/log"
+	"cosmic-dolphin/notes"
 )
 
 func main() {
@@ -21,10 +22,7 @@ func main() {
 	chatter.Init()
 	knowledge.Init()
 
-	job.AddWorker(&knowledge.GetResourceContentJobWorker{})
-	job.AddWorker(&knowledge.EmbedDocumentJobWorker{})
-	job.AddWorker(&knowledge.SummarizeJobWorker{})
-	job.AddWorker(&chatter.ChatterJobWorker{})
+	job.AddWorker(&notes.ProcessNotePipelineJobWorker{})
 
 	err := job.Run()
 	if err != nil {

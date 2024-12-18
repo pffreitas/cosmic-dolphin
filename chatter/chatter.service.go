@@ -1,7 +1,10 @@
 package chatter
 
 import (
-	"cosmic-dolphin/job"
+	"context"
+	"cosmic-dolphin/config"
+	"cosmic-dolphin/llm/agents"
+	"cosmic-dolphin/llm/client/openai"
 	"cosmic-dolphin/notes"
 
 	"github.com/sirupsen/logrus"
@@ -11,15 +14,19 @@ func Init() {
 	notes.AddNotesProcessor(ChatterNoteProcessor{})
 }
 
-type ChatterNoteProcessor struct {
-}
+type ChatterNoteProcessor struct{}
 
-func (p ChatterNoteProcessor) ProcessNote(note notes.Note) error {
-	err := job.InsertJob(job.ChatterJobArgs{
-		NoteID: *note.ID,
-		UserID: note.UserID,
-		Input:  note.RawBody,
-	})
+func (p ChatterNoteProcessor) ProcessNote(noteID int64, userID string) error {
+	note, err := notes.GetNoteByID(noteID, userID)
+	if err != nil {
+		return err
+	}
+
+	if note.Type != notes.NoteTypeChatter {
+		return nil
+	}
+
+	err = foo(note)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to insert chatter job")
 		return err
@@ -28,6 +35,18 @@ func (p ChatterNoteProcessor) ProcessNote(note notes.Note) error {
 	return nil
 }
 
-func (p ChatterNoteProcessor) Accepts(note notes.Note) bool {
-	return note.Type == notes.NoteTypeChatter
+func foo(note *notes.Note) error {
+	client := openai.New(config.GetConfig(config.OpenAIKey))
+	chatterAgent := agents.NewChatterAgent(client)
+
+	chatterResponse, err := chatterAgent.Run(context.Background(), note.RawBody)
+	if err != nil {
+		return err
+	}
+
+	note.Sections = append(note.Sections, notes.NewTextSection("Revised Text", chatterResponse.Text))
+	note.Title = chatterResponse.Title
+	notes.UpdateNote(*note)
+
+	return nil
 }

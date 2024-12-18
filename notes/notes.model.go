@@ -21,16 +21,17 @@ const (
 
 type Note struct {
 	ID         *int64                          `json:"id"`
-	DocumentID *int64                          `json:"document_id"`
+	DocumentID *int64                          `json:"documentId"`
 	Type       NoteType                        `json:"type"`
 	Title      string                          `json:"title"`
 	Summary    string                          `json:"summary"`
 	Tags       string                          `json:"tags"`
-	RawBody    string                          `json:"raw_body"`
+	RawBody    string                          `json:"rawBody"`
 	Sections   []NoteSection                   `json:"sections" sql:"type:jsonb"`
 	Metadata   map[NoteMetadataKey]interface{} `json:"metadata" sql:"type:jsonb"`
-	UserID     string                          `json:"user_id"`
-	CreatedAt  time.Time                       `json:"created_at"`
+	UserID     string                          `json:"userId"`
+	CreatedAt  time.Time                       `json:"createdAt"`
+	Steps      []CosmicJobStep                 `json:"steps" sql:"type:jsonb"`
 }
 
 func (n Note) GetBody() (string, error) {
@@ -77,4 +78,25 @@ func NewTextSection(title, body string) NoteSection {
 			string(TextSectionBody):  body,
 		},
 	}
+}
+
+type CosmicJob struct {
+	Key   string          `json:"key"`
+	Title string          `json:"title"`
+	Steps []CosmicJobStep `json:"steps"`
+}
+
+type CosmicJobStepStatus string
+
+const (
+	CosmicJobStepStatusPending  CosmicJobStepStatus = "pending"
+	CosmicJobStepStatusRunning  CosmicJobStepStatus = "running"
+	CosmicJobStepStatusComplete CosmicJobStepStatus = "complete"
+	CosmicJobStepStatusFailed   CosmicJobStepStatus = "failed"
+)
+
+type CosmicJobStep struct {
+	Key       string              `json:"key"`
+	CreatedAt string              `json:"created_at"`
+	Status    CosmicJobStepStatus `json:"status"`
 }

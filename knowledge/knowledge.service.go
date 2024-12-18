@@ -19,8 +19,17 @@ func Init() {
 
 type KnowledgeNotesProcessor struct{}
 
-func (knp KnowledgeNotesProcessor) ProcessNote(note notes.Note) error {
-	log.WithFields(logrus.Fields{"note.id": *note.ID}).Info("[Knowledge] Processing note")
+func (knp KnowledgeNotesProcessor) ProcessNote(noteID int64, userID string) error {
+	log.WithFields(logrus.Fields{"note.id": noteID}).Info("[Knowledge] Processing note")
+
+	note, err := notes.GetNoteByID(noteID, userID)
+	if err != nil {
+		return err
+	}
+
+	if note.Type != notes.NoteTypeKnowledge {
+		return nil
+	}
 
 	resource := Resource{
 		NoteID:    *note.ID,
@@ -43,10 +52,6 @@ func (knp KnowledgeNotesProcessor) ProcessNote(note notes.Note) error {
 	}
 
 	return nil
-}
-
-func (knp KnowledgeNotesProcessor) Accepts(note notes.Note) bool {
-	return note.Type == notes.NoteTypeKnowledge
 }
 
 func processDocument(document Document) error {
