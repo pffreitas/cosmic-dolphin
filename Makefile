@@ -31,6 +31,10 @@ test:
 	@echo "Running tests"
 	$(GO) test $(TEST_DIR) -v
 
+.PHONY: testp
+testp: 
+	go test -json ./... | tparse -all 
+
 # Clean up build artifacts
 .PHONY: clean
 clean:
@@ -54,3 +58,8 @@ db-migrate:
 	@echo "Running database migrations"
 	river migrate-up --database-url "$(DATABASE_URL)"
 	migrate -path ./migrations -database "$(DATABASE_URL)" up
+
+.PHONY: db-cleanup
+db-cleanup:
+	@echo "Running database cleanup script"
+	psql $(DATABASE_URL) -f db-scripts/cleanup.sql

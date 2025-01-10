@@ -67,7 +67,6 @@ func NewArgs[T any](params T) (Args[T], error) {
 func NewArgsFromBytes[T any](data []byte) (Args[T], error) {
 	args := Args[T]{paramsBytes: data}
 	args.UnmarshalArgs()
-	fmt.Println(">>> unmarshelled args", args.Params)
 	return args, nil
 }
 
@@ -95,6 +94,8 @@ func (ps *PipelineSpec[T]) Run(pipe *Pipeline[T]) error {
 	args := pipe.Args
 	args.UserID = pipe.UserID
 
+	// insert pipeline
+
 	for stageHandlerKey, handler := range ps.StageHandlers {
 		logrus.WithFields(logrus.Fields{"key": stageHandlerKey}).Info("Running stage")
 
@@ -117,6 +118,8 @@ func (ps *PipelineSpec[T]) Run(pipe *Pipeline[T]) error {
 		// UpdatePipelineArgs(pipe.ID, args)
 		UpdateStageStatus(pipe.ID, stage.ID, StageStatusComplete)
 	}
+
+	// update pipeline status
 
 	return nil
 }

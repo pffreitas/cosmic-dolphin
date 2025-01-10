@@ -22,7 +22,7 @@ func main() {
 	chatter.Init()
 	knowledge.Init()
 
-	job.AddWorker(&notes.ProcessNotePipelineJobWorker{})
+	job.AddWorker(&notes.ProcessNoteJobWorker{})
 
 	err := job.Run()
 	if err != nil {

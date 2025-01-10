@@ -1,8 +1,8 @@
 package knowledge
 
 import (
-	"cosmic-dolphin/job"
 	"cosmic-dolphin/notes"
+	"cosmic-dolphin/pipeline"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -11,42 +11,31 @@ import (
 var log = logrus.New()
 
 func Init() {
-	notes.AddNotesProcessor(KnowledgeNotesProcessor{})
-	job.AddWorker(&GetResourceContentJobWorker{})
-	job.AddWorker(&EmbedDocumentJobWorker{})
-	job.AddWorker(&SummarizeJobWorker{})
+	notes.AddNotesPipelines(KnowledgePipeline{})
 }
 
-type KnowledgeNotesProcessor struct{}
+type KnowledgePipeline struct{}
 
-func (knp KnowledgeNotesProcessor) ProcessNote(noteID int64, userID string) error {
+func (kp KnowledgePipeline) Run(noteID int64, userID string) error {
 	log.WithFields(logrus.Fields{"note.id": noteID}).Info("[Knowledge] Processing note")
 
-	note, err := notes.GetNoteByID(noteID, userID)
+	pipeSpec, err := NewKnowledgePipelineSpec()
 	if err != nil {
 		return err
 	}
 
-	if note.Type != notes.NoteTypeKnowledge {
-		return nil
-	}
-
-	resource := Resource{
-		NoteID:    *note.ID,
-		Type:      ResourceTypeWebPage,
-		Source:    note.RawBody,
-		CreatedAt: time.Now(),
-		UserID:    note.UserID,
-	}
-
-	persistedResource, err := insertResource(resource)
+	args, err := pipeline.NewArgs(KnowledgePipelineArgs{NoteID: noteID, UserID: userID})
 	if err != nil {
 		return err
 	}
 
-	err = job.InsertJob(GetResourceContentJobArgs{
-		Resource: *persistedResource,
-	})
+	pipe := pipeline.NewPipeline[KnowledgePipelineArgs](args, userID, &noteID)
+	_, err = pipeline.InsertPipeline(pipe)
+	if err != nil {
+		return err
+	}
+
+	err = pipeSpec.Run(pipe)
 	if err != nil {
 		return err
 	}
@@ -54,21 +43,85 @@ func (knp KnowledgeNotesProcessor) ProcessNote(noteID int64, userID string) erro
 	return nil
 }
 
-func processDocument(document Document) error {
-	log.WithFields(logrus.Fields{"document.title": document.Title}).Info("Processing document")
+type KnowledgePipelineArgs struct {
+	NoteID     int64
+	UserID     string
+	ResourceID *int64
+	DocumentID *int64
+}
 
-	persistedDoc, err := insertDocument(document)
-	if err != nil {
-		return err
-	}
+func NewKnowledgePipelineSpec() (*pipeline.PipelineSpec[KnowledgePipelineArgs], error) {
+	pipeSpec := pipeline.NewPipelineSpec[KnowledgePipelineArgs]("knowledge_pipeline")
 
-	err = job.InsertJob(EmbedDocumentJobArgs{
-		DocumentID: *persistedDoc.ID,
+	pipeSpec.AddStageHandler(pipeline.StageKey("Insert Resource"), func(input pipeline.Args[KnowledgePipelineArgs]) (pipeline.Args[KnowledgePipelineArgs], error) {
+		noteID := input.Params.NoteID
+		userID := input.Params.UserID
+
+		note, err := notes.GetNoteByID(noteID, userID)
+		if err != nil {
+			return input, err
+		}
+
+		persistedResource, err := insertResource(Resource{
+			NoteID:    *note.ID,
+			Type:      ResourceTypeWebPage,
+			Source:    note.RawBody,
+			CreatedAt: time.Now(), // FIXME: don't use time.NOW()
+			UserID:    note.UserID,
+		})
+		if err != nil {
+			return input, err
+		}
+
+		input.Params.ResourceID = persistedResource.ID
+
+		return input, nil
 	})
-	if err != nil {
-		log.WithFields(logrus.Fields{"error": err}).Error("Failed to insert embed document job")
-		return err
-	}
 
-	return nil
+	pipeSpec.AddStageHandler(pipeline.StageKey("Get Resource Contents"), func(input pipeline.Args[KnowledgePipelineArgs]) (pipeline.Args[KnowledgePipelineArgs], error) {
+		persistedResource, err := fetchResourceByNoteID(input.Params.NoteID)
+		if err != nil {
+			return input, err
+		}
+
+		document, err := getResourceContents(*persistedResource)
+		if err != nil {
+			return input, err
+		}
+
+		persistedDoc, err := insertDocument(document)
+		if err != nil {
+			return input, err
+		}
+
+		input.Params.DocumentID = persistedDoc.ID
+
+		return input, nil
+	})
+
+	pipeSpec.AddStageHandler(pipeline.StageKey("Embed Document"), func(input pipeline.Args[KnowledgePipelineArgs]) (pipeline.Args[KnowledgePipelineArgs], error) {
+		doc, err := fetchDocumentByID(*input.Params.DocumentID)
+		if err != nil {
+			return input, err
+		}
+
+		err = embedDocument(*doc)
+		if err != nil {
+			return input, err
+		}
+
+		return input, nil
+	})
+
+	pipeSpec.AddStageHandler(pipeline.StageKey("Summarize"), func(input pipeline.Args[KnowledgePipelineArgs]) (pipeline.Args[KnowledgePipelineArgs], error) {
+		err := sumarize(*input.Params.DocumentID)
+		if err != nil {
+			return input, err
+		}
+
+		return input, nil
+	})
+
+	return pipeSpec, nil
+
 }

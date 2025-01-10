@@ -65,6 +65,6 @@ func TestPipeline(t *testing.T) {
 			assert.Equal(t, pipeline.StageStatusComplete, stage.Status)
 		}
 
-		assert.Equal(t, 3, len(pipe.Stages))
+		assert.Equal(t, 2, len(pipe.Stages))
 	})
 }

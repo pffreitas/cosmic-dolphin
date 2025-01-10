@@ -1,27 +1,15 @@
 package knowledge
 
 import (
-	"context"
 	"cosmic-dolphin/utils"
 	"time"
 
 	"github.com/gocolly/colly"
-	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 )
 
-type GetResourceContentJobArgs struct {
-	Resource Resource `json:"resource"`
-}
-
-func (GetResourceContentJobArgs) Kind() string { return "GetResourceContent" }
-
-type GetResourceContentJobWorker struct {
-	river.WorkerDefaults[GetResourceContentJobArgs]
-}
-
-func (w *GetResourceContentJobWorker) Work(ctx context.Context, job *river.Job[GetResourceContentJobArgs]) error {
-	log.WithFields(logrus.Fields{"resource.id": job.Args.Resource.ID}).Info("Getting content for resource")
+func getResourceContents(resource Resource) (Document, error) {
+	log.WithFields(logrus.Fields{"resource.id": resource.ID}).Info("Getting content for resource")
 
 	var htmlContent string
 	var imgs []Image = make([]Image, 0)
@@ -57,16 +45,16 @@ func (w *GetResourceContentJobWorker) Work(ctx context.Context, job *river.Job[G
 		})
 	})
 
-	c.Visit(job.Args.Resource.Source)
+	c.Visit(resource.Source)
 
-	processDocument(Document{
-		ResourceID: *job.Args.Resource.ID,
+	doc := Document{
+		ResourceID: *resource.ID,
 		Title:      titles,
 		Content:    htmlContent,
 		Images:     imgs,
-		UserID:     job.Args.Resource.UserID,
+		UserID:     resource.UserID,
 		CreatedAt:  time.Now(),
-	})
+	}
 
-	return nil
+	return doc, nil
 }

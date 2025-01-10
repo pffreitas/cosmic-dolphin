@@ -6,6 +6,7 @@ import (
 	"cosmic-dolphin/job"
 	"cosmic-dolphin/knowledge"
 	"cosmic-dolphin/notes"
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -14,13 +15,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAddDocument(t *testing.T) {
+func TestCreateKnowledgeNote(t *testing.T) {
 	config.LoadEnv("../.dev.env")
 	db.Init()
 
 	knowledge.Init()
 
-	job.AddWorker(&notes.ProcessNotePipelineJobWorker{})
+	job.AddWorker(&notes.ProcessNoteJobWorker{})
 	err := job.Run()
 	if err != nil {
 		t.Fatal(err)
@@ -31,7 +32,7 @@ func TestAddDocument(t *testing.T) {
 		db.Close()
 	})
 
-	t.Run("Insert Resource", func(t *testing.T) {
+	t.Run("Create Knowledge Note", func(t *testing.T) {
 		rawBody := "https://www.docker.com/blog/model-based-testing-testcontainers-jqwik/?ref=dailydev"
 		createdNote, err := notes.CreateNote(rawBody, notes.NoteTypeKnowledge, "user-id")
 		assert.NoError(t, err)
@@ -56,6 +57,10 @@ func TestAddDocument(t *testing.T) {
 		updatedNote, err := notes.GetNoteByID(*createdNote.ID, createdNote.UserID)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, updatedNote.Title)
+
+		b, _ := json.Marshal(updatedNote)
+		t.Log(string(b))
+		assert.Equal(t, notes.NoteTypeKnowledge, updatedNote.Type)
 	})
 
 }

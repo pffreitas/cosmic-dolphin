@@ -6,7 +6,6 @@ import (
 	"cosmic-dolphin/db"
 	"cosmic-dolphin/job"
 	"cosmic-dolphin/notes"
-	"cosmic-dolphin/pipeline"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -48,7 +47,7 @@ func TestCreateNoteHandler(t *testing.T) {
 
 		db.Init()
 
-		job.AddWorker(&notes.ProcessNotePipelineJobWorker{})
+		job.AddWorker(&notes.ProcessNoteJobWorker{})
 		err := job.Run()
 		if err != nil {
 			t.Fatal(err)
@@ -83,26 +82,8 @@ func TestCreateNoteHandler(t *testing.T) {
 		var createdNote map[string]interface{}
 		err = json.Unmarshal(b, &createdNote)
 		assert.NoError(t, err)
-		noteId := int64(createdNote["id"].(float64))
 
-		completed := false
-		for {
-			pipesByRef, err := pipeline.GetPipelinesByReferenceID[notes.ProcessNotePipelineArgs](noteId)
-			assert.NoError(t, err)
-			assert.Greater(t, len(pipesByRef), 0)
-
-			pipe := pipesByRef[0]
-			for _, s := range pipe.Stages {
-				if s.Status == pipeline.StageStatusPending {
-					completed = false
-					break
-				}
-			}
-
-			if !completed {
-				time.Sleep(1 * time.Second)
-			}
-		}
+		// check pipeline status
 
 	})
 

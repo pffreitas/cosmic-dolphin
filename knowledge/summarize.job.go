@@ -8,24 +8,13 @@ import (
 	"cosmic-dolphin/notes"
 	"strings"
 
-	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 )
 
-type SummarizeJobArgs struct {
-	DocumentID int64
-}
+func sumarize(documentID int64) error {
+	log.WithFields(logrus.Fields{"document.id": documentID}).Info("Summarizing document")
 
-func (SummarizeJobArgs) Kind() string { return "Summarize" }
-
-type SummarizeJobWorker struct {
-	river.WorkerDefaults[SummarizeJobArgs]
-}
-
-func (w *SummarizeJobWorker) Work(ctx context.Context, job *river.Job[SummarizeJobArgs]) error {
-	log.WithFields(logrus.Fields{"document.id": job.Args.DocumentID}).Info("Summarizing document")
-
-	doc, err := fetchDocumentByID(job.Args.DocumentID)
+	doc, err := fetchDocumentByID(documentID)
 	if err != nil {
 		return err
 	}
@@ -40,7 +29,7 @@ func (w *SummarizeJobWorker) Work(ctx context.Context, job *river.Job[SummarizeJ
 		return err
 	}
 
-	summary, err := summarize(ctx, *doc)
+	summary, err := summarizeDocument(context.Background(), *doc)
 	if err != nil {
 		return err
 	}
@@ -50,7 +39,7 @@ func (w *SummarizeJobWorker) Work(ctx context.Context, job *river.Job[SummarizeJ
 	sections = append(sections, notes.NewTextSection("Take Aways", strings.Join(summary.TakeAways, "\n")))
 	sections = append(sections, notes.NewTextSection("Applications", strings.Join(summary.Applications, "\n")))
 
-	note.DocumentID = &job.Args.DocumentID
+	note.DocumentID = &documentID
 	note.Title = summary.Title
 	note.Summary = summary.Summary
 	note.Tags = summary.Tags
@@ -64,7 +53,7 @@ func (w *SummarizeJobWorker) Work(ctx context.Context, job *river.Job[SummarizeJ
 	return nil
 }
 
-func summarize(ctx context.Context, doc Document) (*agents.Summary, error) {
+func summarizeDocument(ctx context.Context, doc Document) (*agents.Summary, error) {
 	client := openai.New(config.GetConfig(config.OpenAIKey))
 	summaryAgent := agents.NewSummaryAgent(client)
 

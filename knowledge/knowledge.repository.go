@@ -37,6 +37,31 @@ func insertResource(resource Resource) (*Resource, error) {
 	return &resource, nil
 }
 
+func fetchResourceByNoteID(noteID int64) (*Resource, error) {
+	query := `
+        SELECT id, note_id, type, source, created_at, user_id
+        FROM resources
+        WHERE note_id = $1
+    `
+
+	var resource Resource
+	err := db.DBPool.QueryRow(context.Background(), query, noteID).Scan(
+		&resource.ID,
+		&resource.NoteID,
+		&resource.Type,
+		&resource.Source,
+		&resource.CreatedAt,
+		&resource.UserID,
+	)
+	if err != nil {
+		log.WithFields(logrus.Fields{"error": err}).Error("Failed to fetch resource by NoteID")
+		return nil, fmt.Errorf("failed to fetch resource by NoteID: %w", err)
+	}
+
+	log.WithField("resource.id", resource.ID).Info("Resource fetched by NoteID")
+	return &resource, nil
+}
+
 func fetchResourceByDocumentID(documentID int64) (*Resource, error) {
 	query := `
 		SELECT r.id, r.note_id, r.type, r.source, r.created_at, r.user_id
