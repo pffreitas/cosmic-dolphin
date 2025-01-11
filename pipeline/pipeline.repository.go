@@ -113,6 +113,25 @@ func UpdatePipelineArgs(pipelineID *int64, newArgs Args[any]) error {
 	return nil
 }
 
+func UpdatePipelineStatus(pipelineID int64, status StageStatus) error {
+	query := `
+		UPDATE pipelines
+		SET status = $1
+		WHERE id = $2
+	`
+
+	_, err := db.DBPool.Exec(
+		context.Background(),
+		query,
+		status,
+		pipelineID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update pipeline status: %w", err)
+	}
+	return nil
+}
+
 func UpdateStageStatus(pipelineID *int64, stageID *int64, status StageStatus) error {
 	query := `
 		UPDATE pipeline_stages
@@ -185,7 +204,7 @@ func UnmarshalArgs[T any](data []byte) (*T, error) {
 
 func getPipelineStages(pipelineID int64) ([]Stage, error) {
 	query := `
-		SELECT id, pipeline_id, key, status, created_at, updated_at
+		SELECT id, pipeline_id, name, key, status, created_at, updated_at
 		FROM pipeline_stages
 		WHERE pipeline_id = $1
 	`
@@ -202,6 +221,7 @@ func getPipelineStages(pipelineID int64) ([]Stage, error) {
 		err := rows.Scan(
 			&stage.ID,
 			&stage.PipelineID,
+			&stage.Name,
 			&stage.Key,
 			&stage.Status,
 			&stage.CreatedAt,

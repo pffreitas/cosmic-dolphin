@@ -36,12 +36,13 @@ const (
 )
 
 type Stage struct {
-	ID         *int64 `json:"id"`
-	PipelineID *int64
+	ID         *int64      `json:"id"`
+	PipelineID *int64      `json:"-"`
+	Name       string      `json:"name"`
 	Key        StageKey    `json:"key"`
 	Status     StageStatus `json:"status"`
-	CreatedAt  time.Time   `json:"created_at"`
-	UpdatedAt  time.Time   `json:"updated_at"`
+	CreatedAt  time.Time   `json:"createdAt"`
+	UpdatedAt  time.Time   `json:"updatedAt"`
 }
 
 type StageHandler[T any] func(Args[T]) (Args[T], error)
@@ -73,6 +74,7 @@ func NewArgsFromBytes[T any](data []byte) (Args[T], error) {
 
 func NewPipeline[T any](args Args[T], UserID string, ReferenceID *int64) *Pipeline[T] {
 	return &Pipeline[T]{
+		Name:        "",
 		Args:        args,
 		UserID:      UserID,
 		ReferenceID: ReferenceID,
@@ -98,6 +100,8 @@ func (ps *PipelineSpec[T]) Run(pipe *Pipeline[T]) error {
 
 	// insert pipeline
 
+	var stageErr error
+
 	for stageHandlerKey, handler := range ps.StageHandlers {
 		logrus.WithFields(logrus.Fields{"key": stageHandlerKey}).Info("Running stage")
 
@@ -107,21 +111,32 @@ func (ps *PipelineSpec[T]) Run(pipe *Pipeline[T]) error {
 			Status:     StageStatusPending,
 		})
 		if err != nil {
-			return err
+			stageErr = err
+
 		}
 
 		resArgs, err := handler(args)
 		if err != nil {
-			return err
+			stageErr = err
 		}
 
 		args = resArgs
 
 		// UpdatePipelineArgs(pipe.ID, args)
-		UpdateStageStatus(pipe.ID, stage.ID, StageStatusComplete)
+
+		if stageErr != nil {
+			UpdateStageStatus(pipe.ID, stage.ID, StageStatusFailed)
+			break
+		} else {
+			UpdateStageStatus(pipe.ID, stage.ID, StageStatusComplete)
+		}
 	}
 
-	// update pipeline status
+	if stageErr != nil {
+		UpdatePipelineStatus(*pipe.ID, StageStatusFailed)
+	} else {
+		UpdatePipelineStatus(*pipe.ID, StageStatusComplete)
+	}
 
 	return nil
 }
