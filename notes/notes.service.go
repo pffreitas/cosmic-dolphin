@@ -18,9 +18,10 @@ func AddNotesProcessor(processor NotesProcessor) {
 
 func CreateNote(body string, noteType NoteType, userID string) (*Note, error) {
 	note, err := InsertNote(Note{
-		Type:    noteType,
-		RawBody: body,
-		UserID:  userID,
+		Type:     noteType,
+		RawBody:  body,
+		Sections: []NoteSection{},
+		UserID:   userID,
 	})
 
 	if err != nil {

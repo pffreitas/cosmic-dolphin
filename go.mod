@@ -45,7 +45,7 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/kennygrant/sanitize v1.2.4 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20241218201648-84d9513b05db // indirect
+	github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20250111020915-f98c63107b73 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/riverqueue/river/riverdriver v0.13.0 // indirect
 	github.com/riverqueue/river/rivershared v0.13.0 // indirect

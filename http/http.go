@@ -4,6 +4,7 @@ import (
 	"cosmic-dolphin/config"
 	"cosmic-dolphin/llm/agents"
 	"cosmic-dolphin/notes"
+	"cosmic-dolphin/pipeline"
 	"fmt"
 	"net/http"
 
@@ -21,13 +22,14 @@ func SetupRouter() *mux.Router {
 	router.Handle("/notes", AuthMiddleware(jwtSecret)(http.HandlerFunc(notes.CreateNoteHandler))).Methods("POST")
 	router.Handle("/notes/{id}", AuthMiddleware(jwtSecret)(http.HandlerFunc(notes.GetNoteHandler))).Methods("GET")
 	router.HandleFunc("/notes/{id}/stream", notes.StreamNoteHandler).Methods("GET")
+	router.Handle("/pipelines/{refId}", AuthMiddleware(jwtSecret)(http.HandlerFunc(pipeline.FindPipelinesByRefId))).Methods("GET")
 
 	return router
 }
 
 func SetupHandler() http.Handler {
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3001"},
+		AllowedOrigins:   []string{"http://localhost:3000"},
 		AllowCredentials: true,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "Authorization"},

@@ -1,8 +1,11 @@
 package cosmictesting
 
 import (
+	"cosmic-dolphin/config"
 	"fmt"
 	"time"
+
+	jwt "github.com/golang-jwt/jwt/v5"
 
 	"github.com/riverqueue/river"
 )
@@ -28,4 +31,25 @@ func WaitForNJobs(subscribeChan <-chan *river.Event, numJobs int) {
 				timeout, len(events), numJobs))
 		}
 	}
+}
+
+func GenerateJWT() (string, error) {
+	secret := config.GetConfig(config.JWTSecret)
+
+	claims := jwt.MapClaims{
+		"authorized": true,
+		"user_id":    1,
+		"sub":        "test-user-id",
+		"email":      "test-user-id@mail.com",
+		"exp":        time.Now().Add(time.Hour * 1).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	tokenString, err := token.SignedString([]byte(secret))
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("Bearer %s", tokenString), nil
 }

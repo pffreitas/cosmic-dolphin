@@ -14,13 +14,14 @@ type PipelineSpec[T any] struct {
 }
 
 type Pipeline[T any] struct {
-	ID          *int64
-	Name        string
-	Args        Args[T]
-	Stages      []Stage
-	UserID      string    `json:"user_id"`
-	ReferenceID *int64    `json:"reference_id"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          *int64      `json:"id"`
+	Name        string      `json:"-"`
+	Args        Args[T]     `json:"-"`
+	Status      StageStatus `json:"status"`
+	Stages      []Stage     `json:"stages"`
+	UserID      string      `json:"-"`
+	ReferenceID *int64      `json:"refId"`
+	CreatedAt   time.Time   `json:"createdAt"`
 }
 
 type StageKey string
@@ -35,12 +36,12 @@ const (
 )
 
 type Stage struct {
-	ID         *int64
+	ID         *int64 `json:"id"`
 	PipelineID *int64
-	Key        StageKey
-	Status     StageStatus
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	Key        StageKey    `json:"key"`
+	Status     StageStatus `json:"status"`
+	CreatedAt  time.Time   `json:"created_at"`
+	UpdatedAt  time.Time   `json:"updated_at"`
 }
 
 type StageHandler[T any] func(Args[T]) (Args[T], error)
@@ -75,6 +76,7 @@ func NewPipeline[T any](args Args[T], UserID string, ReferenceID *int64) *Pipeli
 		Args:        args,
 		UserID:      UserID,
 		ReferenceID: ReferenceID,
+		Status:      StageStatusPending,
 	}
 }
 

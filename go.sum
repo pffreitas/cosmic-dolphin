@@ -109,6 +109,10 @@ github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20241116145633-8e7b19b3508a h1
 github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20241116145633-8e7b19b3508a/go.mod h1:C/nDQDrmio3+baOG1d4gqOC7PrpwOPZ+S0wRJkNGKv0=
 github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20241218201648-84d9513b05db h1:Xx5HiPgTIhZaDzhwvUwUs5T+Dfc749co1cJz1e9HU84=
 github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20241218201648-84d9513b05db/go.mod h1:TW6N5b9ao+E1U9ReIgte7xuJBbDeb/kNVVqY1RmXxNI=
+github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20250110220243-bda16322a8d4 h1:220JbMixRlX7QxPh5rNuCKt2Xejk8p4ErxOSM6wEi4E=
+github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20250110220243-bda16322a8d4/go.mod h1:TW6N5b9ao+E1U9ReIgte7xuJBbDeb/kNVVqY1RmXxNI=
+github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20250111020915-f98c63107b73 h1:zCnW5mcezQF2f0BY0jpHBtTWEcgLKAN8TfEaRgs+LTk=
+github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20250111020915-f98c63107b73/go.mod h1:TW6N5b9ao+E1U9ReIgte7xuJBbDeb/kNVVqY1RmXxNI=
 github.com/pgvector/pgvector-go v0.2.2 h1:Q/oArmzgbEcio88q0tWQksv/u9Gnb1c3F1K2TnalxR0=
 github.com/pgvector/pgvector-go v0.2.2/go.mod h1:u5sg3z9bnqVEdpe1pkTij8/rFhTaMCMNyQagPDLK8gQ=
 github.com/pkoukk/tiktoken-go v0.1.7 h1:qOBHXX4PHtvIvmOtyg1EeKlwFRiMKAcoMp4Q+bLQDmw=

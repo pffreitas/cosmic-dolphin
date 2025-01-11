@@ -14,8 +14,8 @@ func InsertPipeline[T any](pipeline *Pipeline[T]) (*Pipeline[T], error) {
 	logrus.WithFields(logrus.Fields{"name": pipeline.Name}).Info("Inserting pipeline")
 
 	query := `
-        INSERT INTO pipelines (name, args, user_id, reference_id)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO pipelines (name, args, user_id, reference_id, status)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING id, created_at
     `
 
@@ -33,6 +33,7 @@ func InsertPipeline[T any](pipeline *Pipeline[T]) (*Pipeline[T], error) {
 		argsJSON,
 		pipeline.UserID,
 		pipeline.ReferenceID,
+		pipeline.Status,
 	).Scan(&pipelineID, &createdAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert pipeline: %w", err)
@@ -220,8 +221,25 @@ func getPipelineStages(pipelineID int64) ([]Stage, error) {
 }
 
 func GetPipelinesByReferenceID[T any](referenceID int64) ([]Pipeline[T], error) {
+	pipelines, err := fetchPipelineByReferenceID[T](referenceID)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range pipelines {
+		stages, err := fetchPipelineStagesByPipelineID(pipelines[i].ID)
+		if err != nil {
+			return nil, err
+		}
+		pipelines[i].Stages = stages
+	}
+
+	return pipelines, nil
+}
+
+func fetchPipelineByReferenceID[T any](referenceID int64) ([]Pipeline[T], error) {
 	query := `
-		SELECT id, name, args, user_id, reference_id, created_at
+		SELECT id, name, args, user_id, reference_id, status, created_at
 		FROM pipelines
 		WHERE reference_id = $1
 		ORDER BY created_at DESC
@@ -244,6 +262,7 @@ func GetPipelinesByReferenceID[T any](referenceID int64) ([]Pipeline[T], error) 
 			&argsJSON,
 			&pipeline.UserID,
 			&pipeline.ReferenceID,
+			&pipeline.Status,
 			&pipeline.CreatedAt,
 		)
 		if err != nil {
@@ -256,11 +275,6 @@ func GetPipelinesByReferenceID[T any](referenceID int64) ([]Pipeline[T], error) 
 		}
 		pipeline.Args = args
 
-		pipeline.Stages, err = getPipelineStages(*pipeline.ID)
-		if err != nil {
-			return nil, err
-		}
-
 		pipelines = append(pipelines, pipeline)
 	}
 
@@ -269,4 +283,55 @@ func GetPipelinesByReferenceID[T any](referenceID int64) ([]Pipeline[T], error) 
 	}
 
 	return pipelines, nil
+}
+
+func fetchPipelineStagesByPipelineID(pipelineID *int64) ([]Stage, error) {
+	query := `
+		SELECT id, pipeline_id, key, status, created_at, updated_at
+		FROM pipeline_stages
+		WHERE pipeline_id = $1
+	`
+
+	rows, err := db.DBPool.Query(context.Background(), query, pipelineID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve pipeline stages: %w", err)
+	}
+	defer rows.Close()
+
+	var stages []Stage
+	for rows.Next() {
+		var stage Stage
+		err := rows.Scan(
+			&stage.ID,
+			&stage.PipelineID,
+			&stage.Key,
+			&stage.Status,
+			&stage.CreatedAt,
+			&stage.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan pipeline stage: %w", err)
+		}
+		stages = append(stages, stage)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating over pipeline stages: %w", err)
+	}
+
+	return stages, nil
+}
+
+func DeletePipelinesByReferenceID(referenceID int64) error {
+	query := `
+		DELETE FROM pipelines
+		WHERE reference_id = $1
+	`
+
+	_, err := db.DBPool.Exec(context.Background(), query, referenceID)
+	if err != nil {
+		return fmt.Errorf("failed to delete pipelines: %w", err)
+	}
+
+	return nil
 }
