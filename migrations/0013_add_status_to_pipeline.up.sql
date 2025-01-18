@@ -1,1 +1,1 @@
-ALTER TABLE pipelines add COLUMN status VARCHAR(50) NOT NULL DEFAULT 'pending';
+ALTER TABLE pipelines add COLUMN status VARCHAR(50) NOT NULL DEFAULT '';

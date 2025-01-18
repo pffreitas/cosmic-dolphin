@@ -54,7 +54,7 @@ func fetchResourceByNoteID(noteID int64) (*Resource, error) {
 		&resource.UserID,
 	)
 	if err != nil {
-		log.WithFields(logrus.Fields{"error": err}).Error("Failed to fetch resource by NoteID")
+		log.WithFields(logrus.Fields{"noteID": noteID, "error": err}).Error("Failed to fetch resource by NoteID")
 		return nil, fmt.Errorf("failed to fetch resource by NoteID: %w", err)
 	}
 

@@ -15,8 +15,8 @@ func InsertNote(note Note) (*Note, error) {
 	logrus.WithFields(logrus.Fields{"note.title": note.Title, "documentId": note.DocumentID}).Info("Inserting note")
 
 	query := `
-        INSERT INTO notes (document_id, title, summary, tags, sections, note_type, user_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO notes (document_id, title, raw_body, summary, tags, sections, note_type, user_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id, created_at
     `
 
@@ -33,6 +33,7 @@ func InsertNote(note Note) (*Note, error) {
 		query,
 		note.DocumentID,
 		note.Title,
+		note.RawBody,
 		note.Summary,
 		note.Tags,
 		sectionsJSON,
@@ -54,7 +55,7 @@ func FetchAllNotes(userID string) ([]Note, error) {
 	logrus.Info("Fetching all notes")
 
 	query := `
-		SELECT id, document_id, title, summary, tags, sections, note_type, user_id
+		SELECT id, document_id, title, raw_body, summary, tags, sections, note_type, user_id
 		FROM notes
 		WHERE user_id = $1
 		LIMIT 20
@@ -76,6 +77,7 @@ func FetchAllNotes(userID string) ([]Note, error) {
 			&note.ID,
 			&note.DocumentID,
 			&note.Title,
+			&note.RawBody,
 			&note.Summary,
 			&note.Tags,
 			&sectionsJSON,
@@ -108,7 +110,7 @@ func GetNoteByID(id int64, userID string) (*Note, error) {
 	logrus.WithFields(logrus.Fields{"note.id": id}).Info("Fetching note by ID")
 
 	query := `
-		SELECT id, document_id, title, summary, tags, sections, note_type, user_id, created_at
+		SELECT id, document_id, title, raw_body, summary, tags, sections, note_type, user_id, created_at
 		FROM notes
 		WHERE id = $1 and user_id = $2
 	`
@@ -120,6 +122,7 @@ func GetNoteByID(id int64, userID string) (*Note, error) {
 		&note.ID,
 		&note.DocumentID,
 		&note.Title,
+		&note.RawBody,
 		&note.Summary,
 		&note.Tags,
 		&sectionsJSON,

@@ -45,7 +45,11 @@ func getResourceContents(resource Resource) (Document, error) {
 		})
 	})
 
-	c.Visit(resource.Source)
+	err := c.Visit(resource.Source)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to visit resource")
+		return Document{}, err
+	}
 
 	doc := Document{
 		ResourceID: *resource.ID,

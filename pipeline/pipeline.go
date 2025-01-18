@@ -103,7 +103,7 @@ func (ps *PipelineSpec[T]) Run(pipe *Pipeline[T]) error {
 	var stageErr error
 
 	for stageHandlerKey, handler := range ps.StageHandlers {
-		logrus.WithFields(logrus.Fields{"key": stageHandlerKey}).Info("Running stage")
+		logrus.WithFields(logrus.Fields{"key": stageHandlerKey}).Info(">>> Running stage")
 
 		stage, err := InsertStage(&Stage{
 			PipelineID: pipe.ID,
@@ -130,6 +130,8 @@ func (ps *PipelineSpec[T]) Run(pipe *Pipeline[T]) error {
 		} else {
 			UpdateStageStatus(pipe.ID, stage.ID, StageStatusComplete)
 		}
+
+		logrus.WithFields(logrus.Fields{"key": stageHandlerKey}).Info(">>> Stage finished")
 	}
 
 	if stageErr != nil {

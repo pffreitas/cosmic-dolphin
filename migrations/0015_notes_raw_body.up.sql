@@ -1,0 +1,1 @@
+ALTER TABLE notes add COLUMN raw_body text NOT NULL DEFAULT 'pending';

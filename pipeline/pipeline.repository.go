@@ -65,7 +65,6 @@ func insertPipelineStages(stages *[]Stage) ([]Stage, error) {
 }
 
 func InsertStage(stage *Stage) (*Stage, error) {
-	logrus.Info("Inserting stage")
 	stageQuery := `
         INSERT INTO pipeline_stages (pipeline_id, key, name, status, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, $6)
