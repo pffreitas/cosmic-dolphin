@@ -21,7 +21,6 @@ func SetupRouter() *mux.Router {
 	router.Handle("/notes", AuthMiddleware(jwtSecret)(http.HandlerFunc(notes.GetAllNotesHandler))).Methods("GET")
 	router.Handle("/notes", AuthMiddleware(jwtSecret)(http.HandlerFunc(notes.CreateNoteHandler))).Methods("POST")
 	router.Handle("/notes/{id}", AuthMiddleware(jwtSecret)(http.HandlerFunc(notes.GetNoteHandler))).Methods("GET")
-	router.HandleFunc("/notes/{id}/stream", notes.StreamNoteHandler).Methods("GET")
 	router.Handle("/pipelines/{refId}", AuthMiddleware(jwtSecret)(http.HandlerFunc(pipeline.FindPipelinesByRefId))).Methods("GET")
 
 	return router

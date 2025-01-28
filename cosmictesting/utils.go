@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	cosmicdolphinapi "github.com/pffreitas/cosmic-dolphin-api-go"
+
 	jwt "github.com/golang-jwt/jwt/v5"
 
 	"github.com/riverqueue/river"
@@ -52,4 +54,21 @@ func GenerateJWT() (string, error) {
 	}
 
 	return fmt.Sprintf("Bearer %s", tokenString), nil
+}
+
+func NewCosmicAPIClient(serverUrl string) (*cosmicdolphinapi.APIClient, error) {
+	token, err := GenerateJWT()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := cosmicdolphinapi.NewConfiguration()
+	cfg.Servers = []cosmicdolphinapi.ServerConfiguration{
+		{
+			URL: serverUrl,
+		},
+	}
+	cfg.AddDefaultHeader("Authorization", token)
+
+	return cosmicdolphinapi.NewAPIClient(cfg), nil
 }

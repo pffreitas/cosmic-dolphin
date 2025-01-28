@@ -3,15 +3,18 @@ module cosmic-dolphin
 go 1.22
 
 require (
+	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/gocolly/colly v1.2.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/gorilla/mux v1.8.1
+	github.com/gorilla/websocket v1.5.3
 	github.com/invopop/jsonschema v0.12.0
 	github.com/jackc/pgx/v5 v5.7.1
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/openai/openai-go v0.1.0-alpha.30
+	github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20250118142253-3ef536cd03f7
 	github.com/pgvector/pgvector-go v0.2.2
 	github.com/pkoukk/tiktoken-go v0.1.7
 	github.com/riverqueue/river v0.13.0
@@ -28,7 +31,6 @@ require (
 	github.com/antchfx/htmlquery v1.2.3 // indirect
 	github.com/antchfx/xmlquery v1.2.4 // indirect
 	github.com/antchfx/xpath v1.1.8 // indirect
-	github.com/avast/retry-go v3.0.0+incompatible // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
@@ -39,13 +41,11 @@ require (
 	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
-	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/kennygrant/sanitize v1.2.4 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20250111020915-f98c63107b73 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/riverqueue/river/riverdriver v0.13.0 // indirect
 	github.com/riverqueue/river/rivershared v0.13.0 // indirect

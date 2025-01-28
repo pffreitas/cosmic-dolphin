@@ -18,7 +18,7 @@ func Init() error {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 		return err
 	}
-
+	
 	return nil
 }
 

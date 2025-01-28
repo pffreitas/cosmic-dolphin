@@ -240,6 +240,7 @@ func getPipelineStages(pipelineID int64) ([]Stage, error) {
 }
 
 func GetPipelinesByReferenceID[T any](referenceID int64) ([]Pipeline[T], error) {
+	logrus.WithFields(logrus.Fields{"reference_id": referenceID}).Info("Fetching pipelines by reference ID")
 	pipelines, err := fetchPipelineByReferenceID[T](referenceID)
 	if err != nil {
 		return nil, err

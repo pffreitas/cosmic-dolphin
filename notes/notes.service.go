@@ -2,6 +2,7 @@ package notes
 
 import (
 	"cosmic-dolphin/job"
+	"cosmic-dolphin/pipeline"
 
 	"github.com/sirupsen/logrus"
 )
@@ -36,6 +37,13 @@ func CreateNote(body string, noteType NoteType, userID string) (*Note, error) {
 		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to insert process note job")
 		return nil, err
 	}
+
+	pipelines, err := pipeline.GetPipelinesByReferenceID[any](*note.ID)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to fetch pipelines for note")
+		return nil, err
+	}
+	note.Pipelines = pipelines
 
 	return note, nil
 }

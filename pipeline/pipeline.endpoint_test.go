@@ -16,23 +16,6 @@ import (
 	cosmicdolphinapi "github.com/pffreitas/cosmic-dolphin-api-go"
 )
 
-func NewCosmicAPIClient(serverUrl string) (*cosmicdolphinapi.APIClient, error) {
-	token, err := cosmictesting.GenerateJWT()
-	if err != nil {
-		return nil, err
-	}
-
-	cfg := cosmicdolphinapi.NewConfiguration()
-	cfg.Servers = cosmicdolphinapi.ServerConfigurations{
-		{
-			URL: serverUrl,
-		},
-	}
-	cfg.AddDefaultHeader("Authorization", token)
-
-	return cosmicdolphinapi.NewAPIClient(cfg), nil
-}
-
 type PipelineTestArgs struct {
 }
 
@@ -68,7 +51,7 @@ func TestPipelineEndpoints(t *testing.T) {
 	router := cdhttp.SetupRouter()
 	testServer := httptest.NewServer(router)
 
-	apiClient, err := NewCosmicAPIClient(testServer.URL)
+	apiClient, err := cosmictesting.NewCosmicAPIClient(testServer.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +79,7 @@ func TestPipelineEndpoints(t *testing.T) {
 		err = spec.Run(pipe)
 		assert.NoError(t, err)
 
-		pipes, res, err := apiClient.PipelinesAPI.PipelinesFindPipelinesByRefId(context.Background(), int32(refId)).Execute()
+		pipes, res, err := apiClient.PipelinesAPI.PipelinesFindByRefId(context.Background(), int32(refId)).Execute()
 		assert.NoError(t, err)
 		assert.Equal(t, 200, res.StatusCode)
 		assert.Equal(t, 1, len(pipes))
@@ -123,7 +106,7 @@ func TestPipelineEndpoints(t *testing.T) {
 		err = spec.Run(pipe)
 		assert.NoError(t, err)
 
-		pipes, res, err := apiClient.PipelinesAPI.PipelinesFindPipelinesByRefId(context.Background(), int32(refId)).Execute()
+		pipes, res, err := apiClient.PipelinesAPI.PipelinesFindByRefId(context.Background(), int32(refId)).Execute()
 		assert.NoError(t, err)
 		assert.Equal(t, 200, res.StatusCode)
 		assert.Equal(t, 1, len(pipes))

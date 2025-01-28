@@ -3,6 +3,7 @@ package notes
 import (
 	"context"
 	"cosmic-dolphin/db"
+	"cosmic-dolphin/pipeline"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -12,7 +13,7 @@ import (
 )
 
 func InsertNote(note Note) (*Note, error) {
-	logrus.WithFields(logrus.Fields{"note.title": note.Title, "documentId": note.DocumentID}).Info("Inserting note")
+	logrus.WithFields(logrus.Fields{"note.title": note.Title, "documentId": note.RawBody}).Info("Inserting note")
 
 	query := `
         INSERT INTO notes (document_id, title, raw_body, summary, tags, sections, note_type, user_id)
@@ -58,6 +59,7 @@ func FetchAllNotes(userID string) ([]Note, error) {
 		SELECT id, document_id, title, raw_body, summary, tags, sections, note_type, user_id
 		FROM notes
 		WHERE user_id = $1
+		order by created_at desc
 		LIMIT 20
 	`
 
@@ -94,6 +96,13 @@ func FetchAllNotes(userID string) ([]Note, error) {
 			logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to unmarshal sections")
 			return nil, fmt.Errorf("failed to unmarshal sections: %w", err)
 		}
+
+		pipelines, err := pipeline.GetPipelinesByReferenceID[any](*note.ID)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to fetch pipelines for note; returning note without pipelines")
+		}
+		logrus.WithFields(logrus.Fields{"pipelines": pipelines}).Info("Pipelines")
+		note.Pipelines = pipelines
 
 		notes = append(notes, note)
 	}
@@ -144,6 +153,13 @@ func GetNoteByID(id int64, userID string) (*Note, error) {
 		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to unmarshal sections")
 		return nil, fmt.Errorf("failed to unmarshal sections: %w", err)
 	}
+
+	pipelines, err := pipeline.GetPipelinesByReferenceID[any](*note.ID)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to fetch pipelines for note; returning note without pipelines")
+		return &note, nil
+	}
+	note.Pipelines = pipelines
 
 	return &note, nil
 }

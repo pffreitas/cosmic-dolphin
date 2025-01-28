@@ -1,6 +1,7 @@
 package notes
 
 import (
+	"cosmic-dolphin/pipeline"
 	"encoding/json"
 	"time"
 )
@@ -12,6 +13,18 @@ const (
 	NoteTypeChatter   NoteType = "chatter"
 	NoteTypeKnowledge NoteType = "knowledge"
 )
+
+var validNoteTypes = map[NoteType]struct{}{
+	NoteTypeFUP:       {},
+	NoteTypeChatter:   {},
+	NoteTypeKnowledge: {},
+}
+
+// Add IsValid method to use the map
+func (t NoteType) IsValid() bool {
+	_, exists := validNoteTypes[t]
+	return exists
+}
 
 type NoteMetadataKey string
 
@@ -26,12 +39,13 @@ type Note struct {
 	Title      string                          `json:"title"`
 	Summary    string                          `json:"summary"`
 	Tags       string                          `json:"tags"`
-	RawBody    string                          `json:"rawBody"`
+	RawBody    string                          `json:"-"`
 	Sections   []NoteSection                   `json:"sections" sql:"type:jsonb"`
-	Metadata   map[NoteMetadataKey]interface{} `json:"metadata" sql:"type:jsonb"`
+	Metadata   map[NoteMetadataKey]interface{} `json:"-" sql:"type:jsonb"`
 	UserID     string                          `json:"userId"`
 	CreatedAt  time.Time                       `json:"createdAt"`
-	Steps      []CosmicJobStep                 `json:"steps" sql:"type:jsonb"`
+	Steps      []CosmicJobStep                 `json:"-" sql:"type:jsonb"`
+	Pipelines  []pipeline.Pipeline[any]        `json:"pipelines"`
 }
 
 func (n Note) GetBody() (string, error) {
