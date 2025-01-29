@@ -8,7 +8,7 @@ on:
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  PG_CONN: user=postgres password=postgres host=127.0.0.1 port=54322 dbname=postgres
+  PG_CONN: user=postgres password=postgres host=127.0.0.1 port=5432 dbname=postgres
   JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
 
 jobs:
