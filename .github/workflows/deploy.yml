@@ -7,10 +7,9 @@ on:
     branches: [ main ]
 
 env:
-  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-  SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  PG_CONN: user=postgres password=postgres host=127.0.0.1 port=54322 dbname=postgres
+  JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
 
 jobs:
   test:
@@ -61,7 +60,7 @@ jobs:
 
     - name: Run Database Migrations
       run: make db-migrate
-      
+
     - name: Run tests
       run: go test -v ./...
 
