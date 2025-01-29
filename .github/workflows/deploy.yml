@@ -56,10 +56,11 @@ jobs:
       run: |
         PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c 'CREATE EXTENSION IF NOT EXISTS vector;' || exit 1
 
-    - name: Install River CLI
+    - name: Install DB Migration tool
       run: |
-        go install github.com/riverqueue/river/cmd/river@latest
+        make db-migrate-install
         which river || echo "River installation failed"
+        which migrate || echo "River installation failed"
 
     - name: Install dependencies
       run: go mod download
