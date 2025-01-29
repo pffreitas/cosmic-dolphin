@@ -1,4 +1,4 @@
-name: CI/CD
+name: Go Microservice CI/CD
 
 on:
   push:
@@ -39,21 +39,52 @@ jobs:
       with:
         go-version: '1.21'
 
-    - name: Install pgvector
+    - name: Install pgvector dependencies
       run: |
         docker exec ${{ job.services.postgres.id }} bash -c \
-        "apt-get update && apt-get install -y postgresql-server-dev-15 build-essential git && \
+        "apt-get update && \
+        apt-get install -y postgresql-common && \
+        yes '' | /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh && \
+        apt-get update && \
+        apt-get install -y postgresql-server-dev-15 build-essential git gcc make && \
         git clone https://github.com/pgvector/pgvector.git && \
         cd pgvector && \
         make && \
-        make install"
+        make install" || echo "Installation failed with exit code $?"
 
     - name: Enable pgvector extension
       run: |
-        PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c 'CREATE EXTENSION IF NOT EXISTS vector;'
+        PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c 'CREATE EXTENSION IF NOT EXISTS vector;' || exit 1
 
     - name: Install dependencies
       run: go mod download
 
     - name: Run tests
       run: go test -v ./...
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Build
+      run: go build -v ./...
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - uses: actions/checkout@v3
+    
+    # Add your deployment steps here
+    # Example for deploying to a cloud platform:
+    # - name: Deploy to Cloud Platform
+    #   run: |
+    #     # Add deployment commands
