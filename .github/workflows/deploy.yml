@@ -11,6 +11,8 @@ env:
   PG_CONN: user=postgres password=postgres host=127.0.0.1 port=5432 dbname=postgres
   DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable
   JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
+  DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+  APP_ID: ${{ secrets.DIGITALOCEAN_APP_ID }}
 
 jobs:
   test:
@@ -116,11 +118,22 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    steps:
-    - uses: actions/checkout@v3
     
-    # Add your deployment steps here
-    # Example for deploying to a cloud platform:
-    # - name: Deploy to Cloud Platform
-    #   run: |
-    #     # Add deployment commands
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install doctl
+      uses: digitalocean/action-doctl@v2
+      with:
+        token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+    - name: Log in to DigitalOcean Container Registry
+      run: doctl registry login --expiry-seconds 600
+
+    - name: Deploy to DigitalOcean App Platform
+      uses: digitalocean/app_action@main
+      with:
+        app_name: ${{ secrets.APP_NAME }}
+        token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        branch: main
