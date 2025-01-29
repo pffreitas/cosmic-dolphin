@@ -123,6 +123,25 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'      
+
+    - name: Install DB Migration tool
+      run: |
+        make db-migrate-install
+        which river || echo "River installation failed"
+        which migrate || echo "River installation failed"
+
+    - name: Install dependencies
+      run: go mod download
+
+    - name: Run Database Migrations
+      env:
+        DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+      run: make db-migrate
+
     - name: Install doctl
       uses: digitalocean/action-doctl@v2
       with:
