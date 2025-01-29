@@ -130,4 +130,4 @@ jobs:
 
     - name: Trigger App Platform Deployment
       run: |
-        doctl apps create-deployment ${{ secrets.DIGITALOCEAN_APP_ID }} --force --wait
+        doctl apps create-deployment ${{ secrets.DIGITALOCEAN_APP_ID }} --force-rebuild --wait
