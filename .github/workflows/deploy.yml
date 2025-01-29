@@ -11,8 +11,6 @@ env:
   PG_CONN: user=postgres password=postgres host=127.0.0.1 port=5432 dbname=postgres
   DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable
   JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
-  DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-  APP_ID: ${{ secrets.DIGITALOCEAN_APP_ID }}
 
 jobs:
   test:
