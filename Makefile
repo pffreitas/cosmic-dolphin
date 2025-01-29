@@ -13,8 +13,6 @@ OUT_DIR := bin
 # Define the test directory
 TEST_DIR := ./...
 
-DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable
-
 # Default target: build the project
 .PHONY: all
 all: build
