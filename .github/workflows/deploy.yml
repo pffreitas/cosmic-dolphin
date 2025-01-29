@@ -39,6 +39,9 @@ jobs:
       with:
         go-version: '1.21'
 
+    - name: Install gotestsum
+      run: go install gotest.tools/gotestsum@latest
+
     - name: Install pgvector dependencies
       run: |
         docker exec ${{ job.services.postgres.id }} bash -c \
@@ -68,8 +71,32 @@ jobs:
     - name: Run Database Migrations
       run: make db-migrate
 
-    - name: Run tests
-      run: go test -v ./...
+    - name: Run tests with coverage
+      run: |
+        mkdir -p test-results
+        gotestsum --format pkgname \
+          --junitfile test-results/unit-tests.xml \
+          --jsonfile test-results/unit-tests.json \
+          -- -coverprofile=coverage.out ./...
+
+    - name: Generate coverage report
+      run: |
+        go tool cover -html=coverage.out -o coverage.html
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: |
+          test-results/
+          coverage.html
+
+    - name: Report test coverage
+      run: |
+        total_coverage=$(go tool cover -func=coverage.out | grep total | awk '{print $3}')
+        echo "Total test coverage: $total_coverage"
+
 
   build:
     needs: test
