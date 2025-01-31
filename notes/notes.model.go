@@ -38,7 +38,7 @@ type Note struct {
 	Type       NoteType                        `json:"type"`
 	Title      string                          `json:"title"`
 	Summary    string                          `json:"summary"`
-	Tags       string                          `json:"tags"`
+	Tags       []string                        `json:"tags"`
 	RawBody    string                          `json:"-"`
 	Sections   []NoteSection                   `json:"sections" sql:"type:jsonb"`
 	Metadata   map[NoteMetadataKey]interface{} `json:"-" sql:"type:jsonb"`

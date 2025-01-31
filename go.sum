@@ -107,6 +107,8 @@ github.com/openai/openai-go v0.1.0-alpha.30 h1:lhQyCwK0Be0lGyLiCv4yV3pRaOrn8KlF0
 github.com/openai/openai-go v0.1.0-alpha.30/go.mod h1:3SdE6BffOX9HPEQv8IL/fi3LYZ5TUpRYaqGQZbyk11A=
 github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20250118142253-3ef536cd03f7 h1:XNdWZBPk+uglGpA2Grc/l9DVz8DYmvm0L0101lzqAbA=
 github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20250118142253-3ef536cd03f7/go.mod h1:TW6N5b9ao+E1U9ReIgte7xuJBbDeb/kNVVqY1RmXxNI=
+github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20250131191447-95663510c328 h1:RSzwKU+FOIaursQpNiIWAc4GVEaJHm+g7bnPSNH2Aic=
+github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20250131191447-95663510c328/go.mod h1:TW6N5b9ao+E1U9ReIgte7xuJBbDeb/kNVVqY1RmXxNI=
 github.com/pgvector/pgvector-go v0.2.2 h1:Q/oArmzgbEcio88q0tWQksv/u9Gnb1c3F1K2TnalxR0=
 github.com/pgvector/pgvector-go v0.2.2/go.mod h1:u5sg3z9bnqVEdpe1pkTij8/rFhTaMCMNyQagPDLK8gQ=
 github.com/pkoukk/tiktoken-go v0.1.7 h1:qOBHXX4PHtvIvmOtyg1EeKlwFRiMKAcoMp4Q+bLQDmw=

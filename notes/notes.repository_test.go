@@ -18,7 +18,7 @@ func TestNotesRepository(t *testing.T) {
 		note := notes.Note{
 			Title:   "Test Note",
 			Summary: "This is a test note",
-			Tags:    "test",
+			Tags:    []string{"test"},
 			Type:    notes.NoteTypeFUP,
 			UserID:  "test-user-id",
 		}
@@ -26,6 +26,10 @@ func TestNotesRepository(t *testing.T) {
 		insertedNote, err := notes.InsertNote(note)
 		if err != nil {
 			t.Fatalf("Failed to insert test note: %v", err)
+		}
+
+		if insertedNote == nil || insertedNote.ID == nil {
+			t.Fatalf("Inserted note or note ID is nil")
 		}
 
 		fetchedNote, err := notes.GetNoteByID(*insertedNote.ID, insertedNote.UserID)
@@ -37,7 +41,7 @@ func TestNotesRepository(t *testing.T) {
 		note := notes.Note{
 			Title:   "Test Note Fetch",
 			Summary: "This is a test note for fetching",
-			Tags:    "fetch",
+			Tags:    []string{"fetch"},
 			Type:    notes.NoteTypeFUP,
 			UserID:  "test-user-id-fetch",
 		}
@@ -45,6 +49,10 @@ func TestNotesRepository(t *testing.T) {
 		insertedNote, err := notes.InsertNote(note)
 		if err != nil {
 			t.Fatalf("Failed to insert test note: %v", err)
+		}
+
+		if insertedNote == nil || insertedNote.ID == nil {
+			t.Fatalf("Inserted note or note ID is nil")
 		}
 
 		fetchedNote, err := notes.GetNoteByID(*insertedNote.ID, insertedNote.UserID)
@@ -57,14 +65,14 @@ func TestNotesRepository(t *testing.T) {
 		note1 := notes.Note{
 			Title:   "Test Note 1",
 			Summary: "This is the first test note",
-			Tags:    "fetch-all",
+			Tags:    []string{"fetch-all"},
 			Type:    notes.NoteTypeFUP,
 			UserID:  userID,
 		}
 		note2 := notes.Note{
 			Title:   "Test Note 2",
 			Summary: "This is the second test note",
-			Tags:    "fetch-all",
+			Tags:    []string{"fetch-all"},
 			Type:    notes.NoteTypeFUP,
 			UserID:  userID,
 		}
@@ -87,7 +95,7 @@ func TestNotesRepository(t *testing.T) {
 		note := notes.Note{
 			Title:   "Test Note Update",
 			Summary: "This is a test note for updating",
-			Tags:    "update",
+			Tags:    []string{"update"},
 			Type:    notes.NoteTypeFUP,
 			UserID:  "test-user-id-update",
 		}

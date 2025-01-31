@@ -71,17 +71,9 @@ jobs:
     - name: Run Database Migrations
       run: make db-migrate
 
-    - name: Run tests with coverage
+    - name: Run tests
       run: |
-        mkdir -p test-results
-        gotestsum --format pkgname \
-          --junitfile test-results/unit-tests.xml \
-          --jsonfile test-results/unit-tests.json \
-          -- -coverprofile=coverage.out ./...
-
-    - name: Generate coverage report
-      run: |
-        go tool cover -html=coverage.out -o coverage.html
+        make testp
 
     - name: Upload test results
       if: always()
@@ -90,12 +82,6 @@ jobs:
         name: test-results
         path: |
           test-results/
-          coverage.html
-
-    - name: Report test coverage
-      run: |
-        total_coverage=$(go tool cover -func=coverage.out | grep total | awk '{print $3}')
-        echo "Total test coverage: $total_coverage"
 
 
   build:

@@ -12,6 +12,52 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+func marshalSections(sections []NoteSection) ([]byte, error) {
+	sectionsJSON, err := json.Marshal(sections)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to marshal sections")
+		return nil, fmt.Errorf("failed to marshal sections: %w", err)
+	}
+	return sectionsJSON, nil
+}
+
+func marshalTags(tags []string) ([]byte, error) {
+	if tags == nil {
+		tags = []string{}
+	}
+
+	tagsJSON, err := json.Marshal(tags)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to marshal tags")
+		return nil, fmt.Errorf("failed to marshal tags: %w", err)
+	}
+	return tagsJSON, nil
+}
+
+func unmarshalSections(data []byte) ([]NoteSection, error) {
+	var sections []NoteSection
+	err := json.Unmarshal(data, &sections)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to unmarshal sections")
+		return nil, fmt.Errorf("failed to unmarshal sections: %w", err)
+	}
+	return sections, nil
+}
+
+func unmarshalTags(data []byte) ([]string, error) {
+	if len(data) == 0 {
+		return []string{}, nil
+	}
+
+	var tags []string
+	err := json.Unmarshal(data, &tags)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{"error": err, "tags": fmt.Sprintf("%s", data)}).Error("Failed to unmarshal tags")
+		return nil, fmt.Errorf("failed to unmarshal tags: %w", err)
+	}
+	return tags, nil
+}
+
 func InsertNote(note Note) (*Note, error) {
 	logrus.WithFields(logrus.Fields{"note.title": note.Title, "documentId": note.RawBody}).Info("Inserting note")
 
@@ -21,10 +67,14 @@ func InsertNote(note Note) (*Note, error) {
         RETURNING id, created_at
     `
 
-	sectionsJSON, err := json.Marshal(note.Sections)
+	sectionsJSON, err := marshalSections(note.Sections)
 	if err != nil {
-		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to marshal sections")
-		return nil, fmt.Errorf("failed to marshal sections: %w", err)
+		return nil, err
+	}
+
+	tagsJSON, err := marshalTags(note.Tags)
+	if err != nil {
+		return nil, err
 	}
 
 	var id int64
@@ -36,7 +86,7 @@ func InsertNote(note Note) (*Note, error) {
 		note.Title,
 		note.RawBody,
 		note.Summary,
-		note.Tags,
+		tagsJSON,
 		sectionsJSON,
 		note.Type,
 		note.UserID,
@@ -74,6 +124,7 @@ func FetchAllNotes(userID string) ([]Note, error) {
 	for rows.Next() {
 		var note Note
 		var sectionsJSON []byte
+		var tagsJSON []byte
 
 		err := rows.Scan(
 			&note.ID,
@@ -81,7 +132,7 @@ func FetchAllNotes(userID string) ([]Note, error) {
 			&note.Title,
 			&note.RawBody,
 			&note.Summary,
-			&note.Tags,
+			&tagsJSON,
 			&sectionsJSON,
 			&note.Type,
 			&note.UserID,
@@ -91,11 +142,17 @@ func FetchAllNotes(userID string) ([]Note, error) {
 			return nil, fmt.Errorf("failed to scan note: %w", err)
 		}
 
-		err = json.Unmarshal(sectionsJSON, &note.Sections)
+		sections, err := unmarshalSections(sectionsJSON)
 		if err != nil {
-			logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to unmarshal sections")
-			return nil, fmt.Errorf("failed to unmarshal sections: %w", err)
+			return nil, err
 		}
+		note.Sections = sections
+
+		tags, err := unmarshalTags(tagsJSON)
+		if err != nil {
+			return nil, err
+		}
+		note.Tags = tags
 
 		pipelines, err := pipeline.GetPipelinesByReferenceID[any](*note.ID)
 		if err != nil {
@@ -126,6 +183,7 @@ func GetNoteByID(id int64, userID string) (*Note, error) {
 
 	var note Note
 	var sectionsJSON []byte
+	var tagsJSON []byte
 
 	err := db.DBPool.QueryRow(context.Background(), query, id, userID).Scan(
 		&note.ID,
@@ -133,7 +191,7 @@ func GetNoteByID(id int64, userID string) (*Note, error) {
 		&note.Title,
 		&note.RawBody,
 		&note.Summary,
-		&note.Tags,
+		&tagsJSON,
 		&sectionsJSON,
 		&note.Type,
 		&note.UserID,
@@ -148,11 +206,17 @@ func GetNoteByID(id int64, userID string) (*Note, error) {
 		return nil, fmt.Errorf("failed to fetch note by ID: %w", err)
 	}
 
-	err = json.Unmarshal(sectionsJSON, &note.Sections)
+	sections, err := unmarshalSections(sectionsJSON)
 	if err != nil {
-		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to unmarshal sections")
-		return nil, fmt.Errorf("failed to unmarshal sections: %w", err)
+		return nil, err
 	}
+	note.Sections = sections
+
+	tags, err := unmarshalTags(tagsJSON)
+	if err != nil {
+		return nil, err
+	}
+	note.Tags = tags
 
 	pipelines, err := pipeline.GetPipelinesByReferenceID[any](*note.ID)
 	if err != nil {
@@ -173,10 +237,14 @@ func UpdateNote(note Note) error {
 		WHERE id = $5
 	`
 
-	sectionsJSON, err := json.Marshal(note.Sections)
+	sectionsJSON, err := marshalSections(note.Sections)
 	if err != nil {
-		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to marshal sections")
-		return fmt.Errorf("failed to marshal sections: %w", err)
+		return err
+	}
+
+	tagsJSON, err := marshalTags(note.Tags)
+	if err != nil {
+		return err
 	}
 
 	_, err = db.DBPool.Exec(
@@ -184,7 +252,7 @@ func UpdateNote(note Note) error {
 		query,
 		note.Title,
 		note.Summary,
-		note.Tags,
+		tagsJSON,
 		sectionsJSON,
 		note.ID,
 	)

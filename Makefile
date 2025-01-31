@@ -31,7 +31,12 @@ test:
 
 .PHONY: testp
 testp: 
-	go test -json ./... | tparse -all 
+	go install gotest.tools/gotestsum@latest
+	mkdir -p test-results
+	gotestsum --format pkgname \
+        --junitfile test-results/unit-tests.xml \
+        --jsonfile test-results/unit-tests.json \
+    	-- -coverprofile=test-results/coverage.out ./...
 
 # Clean up build artifacts
 .PHONY: clean
@@ -61,3 +66,8 @@ db-migrate:
 db-cleanup:
 	@echo "Running database cleanup script"
 	psql $(DATABASE_URL) -f db-scripts/cleanup.sql
+
+.PHONY: db-migrate-local
+db-migrate-local:
+	@echo "Running database migrations"
+	$(MAKE) DATABASE_URL="postgres://postgres:postgres@localhost:54322/postgres?sslmode=disable" db-migrate

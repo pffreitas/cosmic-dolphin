@@ -15,7 +15,7 @@ type Summary struct {
 	Applications []string `json:"applications"`
 	Title        string   `json:"title"`
 	Summary      string   `json:"summary"`
-	Tags         string   `json:"tags"`
+	Tags         []string `json:"tags"`
 	Images       []struct {
 		Alt        string `json:"alt"`
 		Descrption string `json:"description"`
@@ -56,7 +56,7 @@ func (s *SummaryAgent) Run(ctx context.Context, input string) (Summary, error) {
 		- 3 practical applications of this knowledge 
 		- a title
 		- a one paragraph summary
-		- tags 
+		- tags (array of strings)
 
 		for the images, when you find a <img> tag:
 		- extract the 'alt' attribute
@@ -70,7 +70,7 @@ func (s *SummaryAgent) Run(ctx context.Context, input string) (Summary, error) {
 			"applications": [""], 
 			"title": "", 
 			"summary": "", 
-			"tags": "",
+			"tags": [""],
 			"images": [
 				{ "alt": "", "description": "" }
 			]

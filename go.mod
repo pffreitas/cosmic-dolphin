@@ -14,7 +14,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/openai/openai-go v0.1.0-alpha.30
-	github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20250118142253-3ef536cd03f7
+	github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20250131191447-95663510c328
 	github.com/pgvector/pgvector-go v0.2.2
 	github.com/pkoukk/tiktoken-go v0.1.7
 	github.com/riverqueue/river v0.13.0
