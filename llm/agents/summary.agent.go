@@ -2,12 +2,49 @@ package agents
 
 import (
 	"context"
-	"cosmic-dolphin/llm/client"
-	"encoding/json"
+	"cosmic-dolphin/config"
+	"cosmic-dolphin/llm"
 	"fmt"
 
-	"github.com/invopop/jsonschema"
+	"github.com/allurisravanth/swarmgo"
+	swarmLlm "github.com/allurisravanth/swarmgo/llm"
+	"github.com/sirupsen/logrus"
 )
+
+type CustomStreamHandler struct {
+	responseChan chan<- llm.LLMToken
+}
+
+func (h *CustomStreamHandler) OnStart() {
+	// No action needed on start
+}
+
+func (h *CustomStreamHandler) OnToken(token string) {
+	h.responseChan <- llm.LLMToken{
+		Data: token,
+		Done: false,
+	}
+}
+
+func (h *CustomStreamHandler) OnError(err error) {
+	h.responseChan <- llm.LLMToken{
+		Data: err.Error(),
+		Done: true,
+	}
+}
+
+func (h *CustomStreamHandler) OnComplete(message swarmLlm.Message) {
+	h.responseChan <- llm.LLMToken{
+		Done: true,
+	}
+}
+
+func (h *CustomStreamHandler) OnToolCall(toolCall swarmLlm.ToolCall) {
+	h.responseChan <- llm.LLMToken{
+		Data: "",
+		Done: false,
+	}
+}
 
 type Summary struct {
 	KeyPoints    []string `json:"key-points"`
@@ -22,34 +59,21 @@ type Summary struct {
 	} `json:"images"`
 }
 
-type SummaryAgent struct {
-	BaseAgent
-}
+func RunSummaryAgent(input string, responseChan chan<- llm.LLMToken) (Summary, error) {
 
-func NewSummaryAgent(client client.Client) *SummaryAgent {
-	role := `Techinical Writer - Software Enginnering; Enterprise Applications; Modern App Development`
-	background := "In an increasingly information-rich environment, individuals and organizations need quick, efficient ways to process and comprehend vast amounts of written content. From research papers to industry articles and internal documentation, valuable insights can easily be lost in the sheer volume of material. Traditional methods of skimming or summarizing are time-intensive and often overlook critical points or key themes. To address this challenge, an AI-driven Content Summarization Agent can provide an intelligent solution by autonomously analyzing and distilling complex texts. By identifying key takeaways, essential points, concise summaries, and relevant tags, this Agent enables users to access and organize information more effectively, making it possible to stay informed and make faster, more data-driven decisions."
-	goal := "The goal of the AI Content Summarization Agent is to empower users with rapid access to essential information by providing accurate, concise, and contextually relevant summaries. By automating the extraction of key takeaways, main points, and appropriate tags from a variety of content formats, the Agent enhances information accessibility, streamlines content discovery, and supports data-informed decision-making. Ultimately, this tool aims to reduce time spent on content analysis, improve organizational efficiency, and facilitate knowledge sharing across teams and domains."
+	// jsonschemaReflector := &jsonschema.Reflector{}
+	// jsonschemaReflector.ExpandedStruct = true
 
-	baseAgent := NewBaseAgent(client, role, background, goal)
+	// s.BaseAgent.ResponseFormat = &client.ResponseFormat{
+	// 	Schema: jsonschemaReflector.Reflect(&Summary{}),
+	// }
 
-	summaryAgent := SummaryAgent{
-		BaseAgent: baseAgent,
-	}
+	systemMessage := `Techinical Writer - Software Enginnering; Enterprise Applications; Modern App Development.
+	In an increasingly information-rich environment, individuals and organizations need quick, efficient ways to process and comprehend vast amounts of written content. From research papers to industry articles and internal documentation, valuable insights can easily be lost in the sheer volume of material. Traditional methods of skimming or summarizing are time-intensive and often overlook critical points or key themes. To address this challenge, an AI-driven Content Summarization Agent can provide an intelligent solution by autonomously analyzing and distilling complex texts. By identifying key takeaways, essential points, concise summaries, and relevant tags, this Agent enables users to access and organize information more effectively, making it possible to stay informed and make faster, more data-driven decisions."
+	The goal of the AI Content Summarization Agent is to empower users with rapid access to essential information by providing accurate, concise, and contextually relevant summaries. By automating the extraction of key takeaways, main points, and appropriate tags from a variety of content formats, the Agent enhances information accessibility, streamlines content discovery, and supports data-informed decision-making. Ultimately, this tool aims to reduce time spent on content analysis, improve organizational efficiency, and facilitate knowledge sharing across teams and domains."
+`
 
-	return &summaryAgent
-}
-
-func (s *SummaryAgent) Run(ctx context.Context, input string) (Summary, error) {
-
-	jsonschemaReflector := &jsonschema.Reflector{}
-	jsonschemaReflector.ExpandedStruct = true
-
-	s.BaseAgent.ResponseFormat = &client.ResponseFormat{
-		Schema: jsonschemaReflector.Reflect(&Summary{}),
-	}
-
-	s.AddTask(fmt.Sprintf(`
+	message := fmt.Sprintf(`
 		given content enclosed by <content></content> tags, help me extract:
 		- key points
 		- take aways
@@ -80,18 +104,44 @@ func (s *SummaryAgent) Run(ctx context.Context, input string) (Summary, error) {
 		<content>
 		%s
 		</content>
-		`, input))
+		`, input)
 
-	res, err := s.BaseAgent.Run(ctx, input)
+	logrus.Info(">>>>>>>> Running summary agent")
+
+	swarmClient := swarmgo.NewSwarm(config.GetConfig(config.OpenAIKey), swarmLlm.OpenAI)
+	agent := &swarmgo.Agent{
+		Name:         "Agent",
+		Instructions: systemMessage,
+		Model:        "gpt-4.1-mini-2025-04-14",
+	}
+
+	messages := []swarmLlm.Message{
+		{Role: "user", Content: message},
+	}
+
+	handler := &CustomStreamHandler{
+		responseChan: responseChan,
+	}
+
+	err := swarmClient.StreamingResponse(
+		context.Background(),
+		agent,
+		messages,
+		nil,
+		"",
+		handler,
+		true,
+	)
+
 	if err != nil {
 		return Summary{}, err
 	}
 
-	var summary Summary
-	err = json.Unmarshal([]byte(res), &summary)
-	if err != nil {
-		return Summary{}, err
-	}
+	// var summary Summary
+	// err = json.Unmarshal([]byte(res), &summary)
+	// if err != nil {
+	// 	return Summary{}, err
+	// }
 
-	return summary, nil
+	return Summary{}, nil
 }

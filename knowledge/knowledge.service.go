@@ -3,7 +3,6 @@ package knowledge
 import (
 	"cosmic-dolphin/notes"
 	"cosmic-dolphin/pipeline"
-	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -52,75 +51,6 @@ type KnowledgePipelineArgs struct {
 
 func NewKnowledgePipelineSpec() (*pipeline.PipelineSpec[KnowledgePipelineArgs], error) {
 	pipeSpec := pipeline.NewPipelineSpec[KnowledgePipelineArgs]("knowledge_pipeline")
-
-	pipeSpec.AddStageHandler(pipeline.StageKey("Insert Resource"), func(input pipeline.Args[KnowledgePipelineArgs]) (pipeline.Args[KnowledgePipelineArgs], error) {
-		noteID := input.Params.NoteID
-		userID := input.Params.UserID
-
-		note, err := notes.GetNoteByID(noteID, userID)
-		if err != nil {
-			return input, err
-		}
-
-		persistedResource, err := insertResource(Resource{
-			NoteID:    *note.ID,
-			Type:      ResourceTypeWebPage,
-			Source:    note.RawBody,
-			CreatedAt: time.Now(), // FIXME: don't use time.NOW()
-			UserID:    note.UserID,
-		})
-		if err != nil {
-			return input, err
-		}
-
-		input.Params.ResourceID = persistedResource.ID
-
-		return input, nil
-	})
-
-	pipeSpec.AddStageHandler(pipeline.StageKey("Get Resource Contents"), func(input pipeline.Args[KnowledgePipelineArgs]) (pipeline.Args[KnowledgePipelineArgs], error) {
-		persistedResource, err := fetchResourceByNoteID(input.Params.NoteID)
-		if err != nil {
-			return input, err
-		}
-
-		document, err := getResourceContents(*persistedResource)
-		if err != nil {
-			return input, err
-		}
-
-		persistedDoc, err := insertDocument(document)
-		if err != nil {
-			return input, err
-		}
-
-		input.Params.DocumentID = persistedDoc.ID
-
-		return input, nil
-	})
-
-	pipeSpec.AddStageHandler(pipeline.StageKey("Embed Document"), func(input pipeline.Args[KnowledgePipelineArgs]) (pipeline.Args[KnowledgePipelineArgs], error) {
-		doc, err := fetchDocumentByID(*input.Params.DocumentID)
-		if err != nil {
-			return input, err
-		}
-
-		err = embedDocument(*doc)
-		if err != nil {
-			return input, err
-		}
-
-		return input, nil
-	})
-
-	pipeSpec.AddStageHandler(pipeline.StageKey("Summarize"), func(input pipeline.Args[KnowledgePipelineArgs]) (pipeline.Args[KnowledgePipelineArgs], error) {
-		err := sumarize(*input.Params.DocumentID)
-		if err != nil {
-			return input, err
-		}
-
-		return input, nil
-	})
 
 	return pipeSpec, nil
 

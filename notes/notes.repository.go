@@ -62,8 +62,8 @@ func InsertNote(note Note) (*Note, error) {
 	logrus.WithFields(logrus.Fields{"note.title": note.Title, "documentId": note.RawBody}).Info("Inserting note")
 
 	query := `
-        INSERT INTO notes (document_id, title, raw_body, summary, tags, sections, note_type, user_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO notes (document_id, title, raw_body, body, summary, tags, sections, note_type, user_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING id, created_at
     `
 
@@ -85,6 +85,7 @@ func InsertNote(note Note) (*Note, error) {
 		note.DocumentID,
 		note.Title,
 		note.RawBody,
+		note.Body,
 		note.Summary,
 		tagsJSON,
 		sectionsJSON,
@@ -106,7 +107,7 @@ func FetchAllNotes(userID string) ([]Note, error) {
 	logrus.Info("Fetching all notes")
 
 	query := `
-		SELECT id, document_id, title, raw_body, summary, tags, sections, note_type, user_id
+		SELECT id, document_id, title, raw_body, body, summary, tags, sections, note_type, user_id
 		FROM notes
 		WHERE user_id = $1
 		order by created_at desc
@@ -131,6 +132,7 @@ func FetchAllNotes(userID string) ([]Note, error) {
 			&note.DocumentID,
 			&note.Title,
 			&note.RawBody,
+			&note.Body,
 			&note.Summary,
 			&tagsJSON,
 			&sectionsJSON,
@@ -176,7 +178,7 @@ func GetNoteByID(id int64, userID string) (*Note, error) {
 	logrus.WithFields(logrus.Fields{"note.id": id}).Info("Fetching note by ID")
 
 	query := `
-		SELECT id, document_id, title, raw_body, summary, tags, sections, note_type, user_id, created_at
+		SELECT id, document_id, title, raw_body, body, summary, tags, sections, note_type, user_id, created_at
 		FROM notes
 		WHERE id = $1 and user_id = $2
 	`
@@ -190,6 +192,7 @@ func GetNoteByID(id int64, userID string) (*Note, error) {
 		&note.DocumentID,
 		&note.Title,
 		&note.RawBody,
+		&note.Body,
 		&note.Summary,
 		&tagsJSON,
 		&sectionsJSON,
@@ -223,6 +226,9 @@ func GetNoteByID(id int64, userID string) (*Note, error) {
 		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to fetch pipelines for note; returning note without pipelines")
 		return &note, nil
 	}
+	if pipelines == nil {
+		pipelines = []pipeline.Pipeline[any]{}
+	}
 	note.Pipelines = pipelines
 
 	return &note, nil
@@ -233,8 +239,8 @@ func UpdateNote(note Note) error {
 
 	query := `
 		UPDATE notes
-		SET title = $1, summary = $2, tags = $3, sections = $4
-		WHERE id = $5
+		SET title = $1, body = $2, summary = $3, tags = $4, sections = $5
+		WHERE id = $6
 	`
 
 	sectionsJSON, err := marshalSections(note.Sections)
@@ -251,6 +257,7 @@ func UpdateNote(note Note) error {
 		context.Background(),
 		query,
 		note.Title,
+		note.Body,
 		note.Summary,
 		tagsJSON,
 		sectionsJSON,

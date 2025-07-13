@@ -2,7 +2,7 @@ package http
 
 import (
 	"cosmic-dolphin/config"
-	"cosmic-dolphin/llm/agents"
+	"cosmic-dolphin/knowledge"
 	"cosmic-dolphin/notes"
 	"cosmic-dolphin/pipeline"
 	"fmt"
@@ -17,11 +17,12 @@ func SetupRouter() *mux.Router {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/prompt", agents.HandlePrompt).Methods("POST")
 	router.Handle("/notes", AuthMiddleware(jwtSecret)(http.HandlerFunc(notes.GetAllNotesHandler))).Methods("GET")
 	router.Handle("/notes", AuthMiddleware(jwtSecret)(http.HandlerFunc(notes.CreateNoteHandler))).Methods("POST")
 	router.Handle("/notes/{id}", AuthMiddleware(jwtSecret)(http.HandlerFunc(notes.GetNoteHandler))).Methods("GET")
 	router.Handle("/pipelines/{refId}", AuthMiddleware(jwtSecret)(http.HandlerFunc(pipeline.FindPipelinesByRefId))).Methods("GET")
+
+	router.Handle("/knowledge", AuthMiddleware(jwtSecret)(http.HandlerFunc(knowledge.AddToKnowledge))).Methods("GET")
 
 	return router
 }

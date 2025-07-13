@@ -1,17 +1,15 @@
 package knowledge
 
 import (
-	"context"
-	"cosmic-dolphin/config"
+	"cosmic-dolphin/llm"
 	"cosmic-dolphin/llm/agents"
-	"cosmic-dolphin/llm/client/openai"
 	"cosmic-dolphin/notes"
 	"strings"
 
 	"github.com/sirupsen/logrus"
 )
 
-func sumarize(documentID int64) error {
+func sumarize(documentID int64, responseChan chan<- llm.LLMToken) error {
 	log.WithFields(logrus.Fields{"document.id": documentID}).Info("Summarizing document")
 
 	doc, err := fetchDocumentByID(documentID)
@@ -29,7 +27,7 @@ func sumarize(documentID int64) error {
 		return err
 	}
 
-	summary, err := summarizeDocument(context.Background(), *doc)
+	summary, err := summarizeDocument(*doc, responseChan)
 	if err != nil {
 		return err
 	}
@@ -53,11 +51,9 @@ func sumarize(documentID int64) error {
 	return nil
 }
 
-func summarizeDocument(ctx context.Context, doc Document) (*agents.Summary, error) {
-	client := openai.New(config.GetConfig(config.OpenAIKey))
-	summaryAgent := agents.NewSummaryAgent(client)
+func summarizeDocument(doc Document, responseChan chan<- llm.LLMToken) (*agents.Summary, error) {
 
-	summary, err := summaryAgent.Run(ctx, doc.Content)
+	summary, err := agents.RunSummaryAgent(doc.Content, responseChan)
 	if err != nil {
 		return nil, err
 	}

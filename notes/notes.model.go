@@ -12,12 +12,14 @@ const (
 	NoteTypeFUP       NoteType = "fup"
 	NoteTypeChatter   NoteType = "chatter"
 	NoteTypeKnowledge NoteType = "knowledge"
+	NoteTypeNote      NoteType = "note"
 )
 
 var validNoteTypes = map[NoteType]struct{}{
 	NoteTypeFUP:       {},
 	NoteTypeChatter:   {},
 	NoteTypeKnowledge: {},
+	NoteTypeNote:      {},
 }
 
 // Add IsValid method to use the map
@@ -40,6 +42,7 @@ type Note struct {
 	Summary    string                          `json:"summary"`
 	Tags       []string                        `json:"tags"`
 	RawBody    string                          `json:"-"`
+	Body       string                          `json:"body"`
 	Sections   []NoteSection                   `json:"sections" sql:"type:jsonb"`
 	Metadata   map[NoteMetadataKey]interface{} `json:"-" sql:"type:jsonb"`
 	UserID     string                          `json:"userId"`

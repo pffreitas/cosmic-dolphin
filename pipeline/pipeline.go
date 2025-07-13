@@ -11,6 +11,7 @@ import (
 type PipelineSpec[T any] struct {
 	Name          string
 	StageHandlers map[StageKey]StageHandler[T]
+	StageOrder    []StageKey
 }
 
 type Pipeline[T any] struct {
@@ -86,10 +87,14 @@ func NewPipelineSpec[T any](name string) *PipelineSpec[T] {
 	return &PipelineSpec[T]{
 		Name:          name,
 		StageHandlers: make(map[StageKey]StageHandler[T]),
+		StageOrder:    []StageKey{},
 	}
 }
 
 func (p *PipelineSpec[T]) AddStageHandler(stageKey StageKey, handler StageHandler[T]) *PipelineSpec[T] {
+	if _, exists := p.StageHandlers[stageKey]; !exists {
+		p.StageOrder = append(p.StageOrder, stageKey)
+	}
 	p.StageHandlers[stageKey] = handler
 	return p
 }
@@ -102,7 +107,8 @@ func (ps *PipelineSpec[T]) Run(pipe *Pipeline[T]) error {
 
 	var stageErr error
 
-	for stageHandlerKey, handler := range ps.StageHandlers {
+	for _, stageHandlerKey := range ps.StageOrder {
+		handler := ps.StageHandlers[stageHandlerKey]
 		logrus.WithFields(logrus.Fields{"key": stageHandlerKey}).Info(">>> Running stage")
 
 		stage, err := InsertStage(&Stage{

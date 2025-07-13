@@ -1,6 +1,7 @@
 package notes
 
 import (
+	"cosmic-dolphin/pipeline"
 	"cosmic-dolphin/utils"
 	"encoding/json"
 	"net/http"
@@ -53,7 +54,6 @@ func GetNoteHandler(w http.ResponseWriter, r *http.Request) {
 
 type CreateNoteRequest struct {
 	Body string `json:"body"`
-	Type string `json:"type"`
 }
 
 func CreateNoteHandler(w http.ResponseWriter, r *http.Request) {
@@ -66,23 +66,17 @@ func CreateNoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Body == "" {
-		http.Error(w, "Note body cannot be empty", http.StatusBadRequest)
-		return
+		req.Body = ""
 	}
 
-	// Validate note type
-	noteType := NoteType(req.Type)
-	if !noteType.IsValid() {
-		http.Error(w, "Invalid note type", http.StatusBadRequest)
-		return
-	}
-
-	note, err := CreateNote(req.Body, noteType, user.ID)
+	note, err := CreateNote(req.Body, NoteTypeNote, user.ID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create note")
 		http.Error(w, "Failed to create note", http.StatusInternalServerError)
 		return
 	}
+
+	note.Pipelines = []pipeline.Pipeline[any]{}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)

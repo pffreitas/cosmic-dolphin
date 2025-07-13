@@ -18,6 +18,7 @@ const (
 	GPT3Dot5Turbo0301       = "gpt-3.5-turbo-0301"
 	GPT3Dot5Turbo           = "gpt-3.5-turbo"
 	GPT4O                   = "gpt-4o-2024-08-06"
+	GPT41Mini               = "gpt-4.1-mini-2025-04-14"
 )
 
 // RetryableError is an error from the API that can be retried.

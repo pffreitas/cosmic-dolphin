@@ -82,7 +82,7 @@ func (a *BaseAgent) Run(ctx context.Context, input string) (message string, err 
 	tasks += fmt.Sprintf("## Goal\n%s", a.Goal)
 
 	chatCompletionRequest := client.ChatCompletionRequest{
-		Model: client.GPT4O,
+		Model: client.GPT41Mini,
 		Messages: []llm.Message{
 			{Role: llm.System, Content: context},
 			{Role: llm.System, Content: tools},

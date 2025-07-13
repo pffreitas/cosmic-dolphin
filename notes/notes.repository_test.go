@@ -17,6 +17,7 @@ func TestNotesRepository(t *testing.T) {
 	t.Run("Successfully insert note", func(t *testing.T) {
 		note := notes.Note{
 			Title:   "Test Note",
+			Body:    "Test note body content",
 			Summary: "This is a test note",
 			Tags:    []string{"test"},
 			Type:    notes.NoteTypeFUP,
@@ -35,6 +36,7 @@ func TestNotesRepository(t *testing.T) {
 		fetchedNote, err := notes.GetNoteByID(*insertedNote.ID, insertedNote.UserID)
 		assert.NoError(t, err, "GetNoteByID should not return an error")
 		assert.Equal(t, notes.NoteTypeFUP, fetchedNote.Type, "Fetched note should have the correct type")
+		assert.Equal(t, "Test note body content", fetchedNote.Body, "Fetched note should have the correct body")
 	})
 
 	t.Run("Successfully fetch note by ID", func(t *testing.T) {
@@ -107,6 +109,7 @@ func TestNotesRepository(t *testing.T) {
 
 		insertedNote.Title = "Updated Test Note"
 		insertedNote.Summary = "This is an updated test note"
+		insertedNote.Body = "Updated test body content"
 
 		err = notes.UpdateNote(*insertedNote)
 		assert.NoError(t, err, "UpdateNote should not return an error")
@@ -115,5 +118,6 @@ func TestNotesRepository(t *testing.T) {
 		assert.NoError(t, err, "GetNoteByID should not return an error")
 		assert.Equal(t, "Updated Test Note", updatedNote.Title, "Updated note should have the correct title")
 		assert.Equal(t, "This is an updated test note", updatedNote.Summary, "Updated note should have the correct summary")
+		assert.Equal(t, "Updated test body content", updatedNote.Body, "Updated note should have the correct body")
 	})
 }
