@@ -3,7 +3,6 @@ package notes
 import (
 	"context"
 	"cosmic-dolphin/db"
-	"cosmic-dolphin/pipeline"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -156,13 +155,6 @@ func FetchAllNotes(userID string) ([]Note, error) {
 		}
 		note.Tags = tags
 
-		pipelines, err := pipeline.GetPipelinesByReferenceID[any](*note.ID)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to fetch pipelines for note; returning note without pipelines")
-		}
-		logrus.WithFields(logrus.Fields{"pipelines": pipelines}).Info("Pipelines")
-		note.Pipelines = pipelines
-
 		notes = append(notes, note)
 	}
 
@@ -220,16 +212,6 @@ func GetNoteByID(id int64, userID string) (*Note, error) {
 		return nil, err
 	}
 	note.Tags = tags
-
-	pipelines, err := pipeline.GetPipelinesByReferenceID[any](*note.ID)
-	if err != nil {
-		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to fetch pipelines for note; returning note without pipelines")
-		return &note, nil
-	}
-	if pipelines == nil {
-		pipelines = []pipeline.Pipeline[any]{}
-	}
-	note.Pipelines = pipelines
 
 	return &note, nil
 }

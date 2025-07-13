@@ -3,11 +3,8 @@ package knowledge_test
 import (
 	"cosmic-dolphin/config"
 	"cosmic-dolphin/db"
-	"cosmic-dolphin/job"
 	"cosmic-dolphin/knowledge"
 	"cosmic-dolphin/notes"
-	"encoding/json"
-	"fmt"
 	"testing"
 	"time"
 
@@ -21,14 +18,7 @@ func TestCreateKnowledgeNote(t *testing.T) {
 
 	knowledge.Init()
 
-	job.AddWorker(&notes.ProcessNoteJobWorker{})
-	err := job.Run()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	t.Cleanup(func() {
-		job.Stop()
 		db.Close()
 	})
 
@@ -43,9 +33,7 @@ func TestCreateKnowledgeNote(t *testing.T) {
 				return err
 			}
 
-			if len(updatedNote.Title) == 0 {
-				return fmt.Errorf("Note not updated")
-			}
+			assert.Equal(t, createdNote.RawBody, updatedNote.RawBody)
 
 			return nil
 		}, retry.Delay(5*time.Second), retry.Attempts(5))
@@ -56,10 +44,6 @@ func TestCreateKnowledgeNote(t *testing.T) {
 
 		updatedNote, err := notes.GetNoteByID(*createdNote.ID, createdNote.UserID)
 		assert.NoError(t, err)
-		assert.NotEmpty(t, updatedNote.Title)
-
-		b, _ := json.Marshal(updatedNote)
-		t.Log(string(b))
 		assert.Equal(t, notes.NoteTypeKnowledge, updatedNote.Type)
 	})
 

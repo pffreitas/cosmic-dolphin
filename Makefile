@@ -70,4 +70,15 @@ db-cleanup:
 .PHONY: db-migrate-local
 db-migrate-local:
 	@echo "Running database migrations"
-	$(MAKE) DATABASE_URL="postgres://postgres:postgres@localhost:54322/postgres?sslmode=disable" db-migrate
+	@set -a; source .dev.env; set +a; \
+	$(MAKE) db-migrate
+
+
+.PHONY: run-tests-local
+run-tests-local:
+	@echo "Starting PostgreSQL database in Docker"
+	@set -a; source .dev.env; set +a; \
+	echo $$PG_CONN; \
+	$(MAKE) testp
+	
+

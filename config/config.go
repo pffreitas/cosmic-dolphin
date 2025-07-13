@@ -12,8 +12,6 @@ const (
 	Environment  ConfigKey = "ENV"
 	Port         ConfigKey = "PORT"
 	OpenAIKey    ConfigKey = "OPENAI_API_KEY"
-	SupabaseURL  ConfigKey = "SUPABASE_URL"
-	SupabaseKey  ConfigKey = "SUPABASE_KEY"
 	PgConnString ConfigKey = "PG_CONN"
 	JWTSecret    ConfigKey = "JWT_SECRET"
 )
