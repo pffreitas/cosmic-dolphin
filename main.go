@@ -5,10 +5,8 @@ import (
 	"cosmic-dolphin/config"
 	"cosmic-dolphin/db"
 	"cosmic-dolphin/http"
-	"cosmic-dolphin/job"
 	"cosmic-dolphin/knowledge"
 	"cosmic-dolphin/log"
-	"cosmic-dolphin/notes"
 )
 
 func main() {
@@ -22,13 +20,13 @@ func main() {
 	chatter.Init()
 	knowledge.Init()
 
-	job.AddWorker(&notes.ProcessNoteJobWorker{})
+	// job.AddWorker(&notes.ProcessNoteJobWorker{})
 
-	err := job.Run()
-	if err != nil {
-		panic(err)
-	}
-	defer job.Stop()
+	// err := job.Run()
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer job.Stop()
 
 	http.Run()
 }

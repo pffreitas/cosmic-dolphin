@@ -3,6 +3,7 @@ package knowledge
 import (
 	"context"
 	"cosmic-dolphin/llm"
+	"cosmic-dolphin/llm/agents"
 	"cosmic-dolphin/notes"
 	"strings"
 	"time"
@@ -17,6 +18,10 @@ type KnowledgeResponse struct {
 
 func runKnowledgePipelineAndStream(ctx context.Context, userID string, rawURL string, noteID int64, responseChan chan<- llm.LLMToken) error {
 	defer close(responseChan)
+
+	// Add timeout to prevent long-running operations
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
 
 	// Create note
 	note, err := notes.GetNoteByID(noteID, userID)
@@ -92,11 +97,49 @@ func runKnowledgePipelineAndStream(ctx context.Context, userID string, rawURL st
 	default:
 	}
 
-	// Summarize document
-	summary, err := summarizeDocument(*persistedDoc, responseChan)
+	// Create a capture channel and buffer to collect streamed response
+	captureChan := make(chan llm.LLMToken, 100)
+	var capturedContent strings.Builder
+	captureDone := make(chan bool, 1)
+
+	// Start goroutine to capture content and forward to original channel
+	go func() {
+		defer func() {
+			captureDone <- true
+		}()
+
+		for token := range captureChan {
+			// Forward token to original channel
+			responseChan <- token
+
+			// Capture content tokens for persistence
+			if token.Event == "content" && token.Data != "" {
+				capturedContent.WriteString(token.Data)
+			}
+		}
+	}()
+
+	err = agents.RunSummaryAgent(persistedDoc.Content, captureChan)
+
+	// Close capture channel to signal end of streaming
+	close(captureChan)
+
+	// Wait for capture goroutine to finish processing all tokens
+	<-captureDone
+
 	if err != nil {
 		responseChan <- llm.LLMToken{Event: "error", Data: err.Error(), Done: true}
 		return err
+	}
+
+	// Update note with captured summary
+	if capturedContent.Len() > 0 {
+		note.Body = capturedContent.String()
+		err = notes.UpdateNote(*note)
+		if err != nil {
+			responseChan <- llm.LLMToken{Event: "error", Data: err.Error(), Done: true}
+			return err
+		}
 	}
 
 	responseChan <- llm.LLMToken{Event: "progress", Data: "Document summarized."}
@@ -107,18 +150,6 @@ func runKnowledgePipelineAndStream(ctx context.Context, userID string, rawURL st
 		return ctx.Err()
 	default:
 	}
-
-	// Update note with summary
-	sections := []notes.NoteSection{}
-	sections = append(sections, notes.NewTextSection("Key Points", strings.Join(summary.KeyPoints, "\n")))
-	sections = append(sections, notes.NewTextSection("Take Aways", strings.Join(summary.TakeAways, "\n")))
-	sections = append(sections, notes.NewTextSection("Applications", strings.Join(summary.Applications, "\n")))
-
-	note.DocumentID = persistedDoc.ID
-	note.Title = summary.Title
-	note.Summary = summary.Summary
-	note.Tags = summary.Tags
-	note.Sections = sections
 
 	err = notes.UpdateNote(*note)
 	if err != nil {

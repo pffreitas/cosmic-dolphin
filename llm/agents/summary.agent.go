@@ -8,7 +8,6 @@ import (
 
 	"github.com/allurisravanth/swarmgo"
 	swarmLlm "github.com/allurisravanth/swarmgo/llm"
-	"github.com/sirupsen/logrus"
 )
 
 type CustomStreamHandler struct {
@@ -21,8 +20,9 @@ func (h *CustomStreamHandler) OnStart() {
 
 func (h *CustomStreamHandler) OnToken(token string) {
 	h.responseChan <- llm.LLMToken{
-		Data: token,
-		Done: false,
+		Event: "content",
+		Data:  token,
+		Done:  false,
 	}
 }
 
@@ -35,7 +35,8 @@ func (h *CustomStreamHandler) OnError(err error) {
 
 func (h *CustomStreamHandler) OnComplete(message swarmLlm.Message) {
 	h.responseChan <- llm.LLMToken{
-		Done: true,
+		Event: "content",
+		Done:  true,
 	}
 }
 
@@ -59,14 +60,7 @@ type Summary struct {
 	} `json:"images"`
 }
 
-func RunSummaryAgent(input string, responseChan chan<- llm.LLMToken) (Summary, error) {
-
-	// jsonschemaReflector := &jsonschema.Reflector{}
-	// jsonschemaReflector.ExpandedStruct = true
-
-	// s.BaseAgent.ResponseFormat = &client.ResponseFormat{
-	// 	Schema: jsonschemaReflector.Reflect(&Summary{}),
-	// }
+func RunSummaryAgent(input string, responseChan chan<- llm.LLMToken) error {
 
 	systemMessage := `Techinical Writer - Software Enginnering; Enterprise Applications; Modern App Development.
 	In an increasingly information-rich environment, individuals and organizations need quick, efficient ways to process and comprehend vast amounts of written content. From research papers to industry articles and internal documentation, valuable insights can easily be lost in the sheer volume of material. Traditional methods of skimming or summarizing are time-intensive and often overlook critical points or key themes. To address this challenge, an AI-driven Content Summarization Agent can provide an intelligent solution by autonomously analyzing and distilling complex texts. By identifying key takeaways, essential points, concise summaries, and relevant tags, this Agent enables users to access and organize information more effectively, making it possible to stay informed and make faster, more data-driven decisions."
@@ -74,39 +68,32 @@ func RunSummaryAgent(input string, responseChan chan<- llm.LLMToken) (Summary, e
 `
 
 	message := fmt.Sprintf(`
-		given content enclosed by <content></content> tags, help me extract:
+		### Instructions
+		Given content enclosed by <content></content> tags, help me extract:
+		- a title
+		- a one paragraph summary
 		- key points
 		- take aways
 		- 3 practical applications of this knowledge 
-		- a title
-		- a one paragraph summary
 		- tags (array of strings)
+		- images (array of objects with 'alt' and 'description' properties)
 
 		for the images, when you find a <img> tag:
 		- extract the 'alt' attribute
 		- describe the image in a sentence
 		- incorporate the description of the image in the analisys of the text
 
-		output in parseable json format folowing the structure:
-		{
-			"key-points": [""], 
-			"take-aways": [""], 
-			"applications": [""], 
-			"title": "", 
-			"summary": "", 
-			"tags": [""],
-			"images": [
-				{ "alt": "", "description": "" }
-			]
-		}
+		### Requirements
+		- You must generate the output in markdown format.
+		- Do not include any other text than the markdown output.
+		- Do not enclose the output in '''markdown''' block.
+		
 
 		### Article
 		<content>
 		%s
 		</content>
 		`, input)
-
-	logrus.Info(">>>>>>>> Running summary agent")
 
 	swarmClient := swarmgo.NewSwarm(config.GetConfig(config.OpenAIKey), swarmLlm.OpenAI)
 	agent := &swarmgo.Agent{
@@ -134,14 +121,8 @@ func RunSummaryAgent(input string, responseChan chan<- llm.LLMToken) (Summary, e
 	)
 
 	if err != nil {
-		return Summary{}, err
+		return err
 	}
 
-	// var summary Summary
-	// err = json.Unmarshal([]byte(res), &summary)
-	// if err != nil {
-	// 	return Summary{}, err
-	// }
-
-	return Summary{}, nil
+	return nil
 }
