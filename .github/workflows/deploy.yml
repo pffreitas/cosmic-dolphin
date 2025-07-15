@@ -150,9 +150,3 @@ jobs:
         run: |
           docker push registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME:$GITHUB_SHA
           docker push registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME:latest
-
-      - name: Deploy to DigitalOcean App Platform
-        run: |
-          doctl apps create-deployment ${{ secrets.DIGITALOCEAN_APP_ID }} \
-            --image registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME:$GITHUB_SHA \
-            --wait
