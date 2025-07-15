@@ -2,9 +2,9 @@ name: Go Microservice CI/CD
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -15,7 +15,7 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: supabase/postgres:15.1.0.117
@@ -32,105 +32,127 @@ jobs:
           --health-retries 5
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.21'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
 
-    - name: Install gotestsum
-      run: go install gotest.tools/gotestsum@latest
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@latest
 
-    - name: Install pgvector dependencies
-      run: |
-        docker exec ${{ job.services.postgres.id }} bash -c \
-        "apt-get update && \
-        apt-get install -y postgresql-common && \
-        yes '' | /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh && \
-        apt-get update && \
-        apt-get install -y postgresql-server-dev-15 build-essential git gcc make && \
-        git clone https://github.com/pgvector/pgvector.git && \
-        cd pgvector && \
-        make && \
-        make install" || echo "Installation failed with exit code $?"
+      - name: Install pgvector dependencies
+        run: |
+          docker exec ${{ job.services.postgres.id }} bash -c \
+          "apt-get update && \
+          apt-get install -y postgresql-common && \
+          yes '' | /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh && \
+          apt-get update && \
+          apt-get install -y postgresql-server-dev-15 build-essential git gcc make && \
+          git clone https://github.com/pgvector/pgvector.git && \
+          cd pgvector && \
+          make && \
+          make install" || echo "Installation failed with exit code $?"
 
-    - name: Enable pgvector extension
-      run: |
-        PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c 'CREATE EXTENSION IF NOT EXISTS vector;' || exit 1
+      - name: Enable pgvector extension
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c 'CREATE EXTENSION IF NOT EXISTS vector;' || exit 1
 
-    - name: Install DB Migration tool
-      run: |
-        make db-migrate-install
-        which river || echo "River installation failed"
-        which migrate || echo "River installation failed"
+      - name: Install DB Migration tool
+        run: |
+          make db-migrate-install
+          which river || echo "River installation failed"
+          which migrate || echo "River installation failed"
 
-    - name: Install dependencies
-      run: go mod download
+      - name: Install dependencies
+        run: go mod download
 
-    - name: Run Database Migrations
-      run: make db-migrate
+      - name: Run Database Migrations
+        run: make db-migrate
 
-    - name: Run tests
-      run: |
-        make testp
+      - name: Run tests
+        run: |
+          make testp
 
-    - name: Upload test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-results
-        path: |
-          test-results/
-
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            test-results/
 
   build:
     needs: test
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.21'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
 
-    - name: Build
-      run: go build -v ./...
+      - name: Build
+        run: go build -v ./...
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    
+
+    env:
+      IMAGE_NAME: cosmic-dolphin
+      REGISTRY_NAME: ${{ secrets.DIGITALOCEAN_REGISTRY_NAME }}
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.21'      
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
 
-    - name: Install DB Migration tool
-      run: |
-        make db-migrate-install
-        which river || echo "River installation failed"
-        which migrate || echo "River installation failed"
+      - name: Install DB Migration tool
+        run: |
+          make db-migrate-install
+          which river || echo "River installation failed"
+          which migrate || echo "River installation failed"
 
-    - name: Install dependencies
-      run: go mod download
+      - name: Install dependencies
+        run: go mod download
 
-    - name: Run Database Migrations
-      env:
-        DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
-      run: make db-migrate
+      - name: Run Database Migrations
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: make db-migrate
 
-    - name: Install doctl
-      uses: digitalocean/action-doctl@v2
-      with:
-        token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 
-    - name: Trigger App Platform Deployment
-      run: |
-        doctl apps create-deployment ${{ secrets.DIGITALOCEAN_APP_ID }} --force-rebuild --wait
+      - name: Log in to DigitalOcean Container Registry
+        run: doctl registry login
+
+      - name: Build Docker image
+        run: |
+          docker build -t $IMAGE_NAME .
+
+      - name: Tag Docker image
+        run: |
+          docker tag $IMAGE_NAME registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME:$GITHUB_SHA
+          docker tag $IMAGE_NAME registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME:latest
+
+      - name: Push Docker image
+        run: |
+          docker push registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME:$GITHUB_SHA
+          docker push registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME:latest
+
+      - name: Deploy to DigitalOcean App Platform
+        run: |
+          doctl apps create-deployment ${{ secrets.DIGITALOCEAN_APP_ID }} \
+            --image registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME:$GITHUB_SHA \
+            --wait
