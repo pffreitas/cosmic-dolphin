@@ -17,6 +17,7 @@ func SetupRouter() *mux.Router {
 
 	router := mux.NewRouter()
 
+	router.Handle("/cosmic-heap", AuthMiddleware(jwtSecret)(http.HandlerFunc(notes.AddToCosmicHeapHandler))).Methods("POST")
 	router.Handle("/notes", AuthMiddleware(jwtSecret)(http.HandlerFunc(notes.GetAllNotesHandler))).Methods("GET")
 	router.Handle("/notes", AuthMiddleware(jwtSecret)(http.HandlerFunc(notes.CreateNoteHandler))).Methods("POST")
 	router.Handle("/notes/{id}", AuthMiddleware(jwtSecret)(http.HandlerFunc(notes.GetNoteHandler))).Methods("GET")

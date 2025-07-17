@@ -22,8 +22,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o cosmic-dolphin .
 # Final stage
 FROM alpine:latest
 
-# Install ca-certificates for HTTPS requests
-RUN apk --no-cache add ca-certificates
+# Install ca-certificates, Python, and pip
+RUN apk --no-cache add ca-certificates python3 py3-pip
 
 # Create a non-root user
 RUN addgroup -g 1001 appgroup && \
@@ -36,6 +36,14 @@ COPY --from=builder /app/cosmic-dolphin .
 
 # Copy migrations directory
 COPY --from=builder /app/migrations ./migrations
+
+# Create scripts directory and copy Python script
+RUN mkdir -p ./scripts
+COPY --from=builder /app/scripts/extract_content.py ./scripts/
+RUN chmod +x ./scripts/extract_content.py
+
+# Install docling and dependencies as root before switching user
+RUN pip3 install --no-cache-dir docling
 
 # Change ownership to the non-root user
 RUN chown -R appuser:appgroup /root

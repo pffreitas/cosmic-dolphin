@@ -7,7 +7,7 @@ import (
 )
 
 func embedDocument(document Document) error {
-	log.WithFields(logrus.Fields{"document.id": document.ID}).Info("Embedding document")
+	logrus.WithFields(logrus.Fields{"document.id": document.ID}).Info("Embedding document")
 
 	embeddings, err := llm.GenerateEmbeddings(document.Content)
 	if err != nil {
@@ -24,7 +24,7 @@ func embedDocument(document Document) error {
 		}
 	}
 
-	log.WithFields(logrus.Fields{"document.id": document.ID}).Info("Document embedded")
+	logrus.WithFields(logrus.Fields{"document.id": document.ID}).Info("Document embedded")
 
 	return nil
 }

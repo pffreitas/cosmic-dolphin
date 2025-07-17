@@ -13,7 +13,7 @@ import (
 )
 
 func insertResource(resource Resource) (*Resource, error) {
-	log.WithFields(logrus.Fields{"resource.source": resource.Source}).Info("Inserting resource")
+	logrus.WithFields(logrus.Fields{"resource.source": resource.Source}).Info("Inserting resource")
 
 	query := `INSERT INTO resources (note_id, type, source, created_at, user_id) VALUES ($1, $2, $3, $4, $5) RETURNING id`
 	var id int64
@@ -27,13 +27,13 @@ func insertResource(resource Resource) (*Resource, error) {
 		resource.UserID).Scan(&id)
 
 	if err != nil {
-		log.WithFields(logrus.Fields{"error": err}).Error("Failed to insert resource")
+		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to insert resource")
 		return nil, fmt.Errorf("failed to insert resource: %w", err)
 	}
 
 	resource.ID = &id
 
-	log.WithField("resource.id", id).Info("Resource inserted")
+	logrus.WithField("resource.id", id).Info("Resource inserted")
 	return &resource, nil
 }
 
@@ -54,11 +54,11 @@ func fetchResourceByNoteID(noteID int64) (*Resource, error) {
 		&resource.UserID,
 	)
 	if err != nil {
-		log.WithFields(logrus.Fields{"noteID": noteID, "error": err}).Error("Failed to fetch resource by NoteID")
+		logrus.WithFields(logrus.Fields{"noteID": noteID, "error": err}).Error("Failed to fetch resource by NoteID")
 		return nil, fmt.Errorf("failed to fetch resource by NoteID: %w", err)
 	}
 
-	log.WithField("resource.id", resource.ID).Info("Resource fetched by NoteID")
+	logrus.WithField("resource.id", resource.ID).Info("Resource fetched by NoteID")
 	return &resource, nil
 }
 
@@ -91,7 +91,7 @@ func fetchResourceByDocumentID(documentID int64) (*Resource, error) {
 }
 
 func insertDocument(document Document) (*Document, error) {
-	log.WithFields(logrus.Fields{"document.title": document.Title}).Info("Inserting document")
+	logrus.WithFields(logrus.Fields{"document.title": document.Title}).Info("Inserting document")
 
 	query := `
         INSERT INTO documents (resource_id, title, content, images, user_id, created_at)
@@ -102,7 +102,7 @@ func insertDocument(document Document) (*Document, error) {
 	var createdAt time.Time
 	imagesJSON, err := json.Marshal(document.Images)
 	if err != nil {
-		log.WithFields(logrus.Fields{"error": err}).Error("Failed to marshal images")
+		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to marshal images")
 		return nil, fmt.Errorf("failed to marshal images: %w", err)
 	}
 
@@ -117,7 +117,7 @@ func insertDocument(document Document) (*Document, error) {
 		document.CreatedAt,
 	).Scan(&id, &createdAt)
 	if err != nil {
-		log.WithFields(logrus.Fields{"error": err}).Error("Failed to insert document")
+		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to insert document")
 		return nil, fmt.Errorf("failed to insert document: %w", err)
 	}
 

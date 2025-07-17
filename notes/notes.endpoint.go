@@ -1,6 +1,7 @@
 package notes
 
 import (
+	"cosmic-dolphin/llm"
 	"cosmic-dolphin/pipeline"
 	"cosmic-dolphin/utils"
 	"encoding/json"
@@ -83,5 +84,61 @@ func CreateNoteHandler(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(note); err != nil {
 		logrus.WithError(err).Error("Failed to encode note")
 		http.Error(w, "Failed to encode note", http.StatusInternalServerError)
+	}
+}
+
+type AddToCosmicHeapRequest struct {
+	Body string `json:"body"`
+}
+
+func AddToCosmicHeapHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	cosmicStreamHandler := llm.NewCosmicStreamHandler(make(chan llm.LLMToken))
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
+		return
+	}
+
+	// _ = r.Context()
+
+	//user := utils.GetUserFromContext(r.Context())
+
+	var req AddToCosmicHeapRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	go func() {
+		// if err := agents.RunCosmicAgent(ctx, user.ID, req.Body, cosmicStreamHandler); err != nil {
+		// 	logrus.WithError(err).Error("Error in knowledge pipeline stream")
+		// 	return
+		// }
+	}()
+
+	for response := range cosmicStreamHandler.ResponseChan {
+		data, err := json.Marshal(response)
+		if err != nil {
+			logrus.WithError(err).Error("Error marshaling response")
+			continue
+		}
+
+		_, err = w.Write([]byte("data: " + string(data) + "\n\n"))
+		if err != nil {
+			logrus.WithError(err).Error("Error writing SSE message")
+			return
+		}
+
+		flusher.Flush()
+
+		if response.Done {
+			break
+		}
 	}
 }

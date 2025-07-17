@@ -217,7 +217,7 @@ func GetNoteByID(id int64, userID string) (*Note, error) {
 }
 
 func UpdateNote(note Note) error {
-	logrus.WithFields(logrus.Fields{"note.id": note.ID}).Info("Updating note")
+	logrus.WithFields(logrus.Fields{"note.id": *note.ID}).Info("Updating note")
 
 	query := `
 		UPDATE notes
