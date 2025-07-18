@@ -1,4 +1,4 @@
-package knowledge
+package agents
 
 import (
 	"cosmic-dolphin/utils"
@@ -6,10 +6,14 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
-	"time"
 
 	"github.com/sirupsen/logrus"
 )
+
+type Image struct {
+	Src string `json:"src"`
+	Alt string `json:"alt"`
+}
 
 // DoclingResponse represents the JSON response from the Python docling script
 type DoclingResponse struct {
@@ -22,34 +26,17 @@ type DoclingResponse struct {
 	Error           string   `json:"error,omitempty"`
 }
 
-func getResourceContents(resource Resource) (Document, error) {
-	logrus.WithFields(logrus.Fields{"resource.id": resource.ID}).Info("Getting content for resource using docling")
+func GetResourceContents(URL string) (*DoclingResponse, error) {
+	logrus.WithFields(logrus.Fields{"url": URL}).Info("Getting content for resource using docling")
 
 	// Call the Python docling script
-	content, err := extractContentWithDocling(resource.Source)
+	content, err := extractContentWithDocling(URL)
 	if err != nil {
-		logrus.WithFields(logrus.Fields{"error": err, "url": resource.Source}).Error("Failed to extract content with docling")
-		return Document{}, err
+		logrus.WithFields(logrus.Fields{"error": err, "url": URL}).Error("Failed to extract content with docling")
+		return nil, err
 	}
 
-	// Create document from extracted content
-	doc := Document{
-		ResourceID: *resource.ID,
-		Title:      content.Titles,
-		Content:    content.HTMLContent,
-		Images:     content.Images,
-		UserID:     resource.UserID,
-		CreatedAt:  time.Now(),
-	}
-
-	logrus.WithFields(logrus.Fields{
-		"resource.id":    resource.ID,
-		"titles_count":   len(content.Titles),
-		"images_count":   len(content.Images),
-		"content_length": len(content.HTMLContent),
-	}).Info("Successfully extracted content using docling")
-
-	return doc, nil
+	return content, nil
 }
 
 // extractContentWithDocling calls the Python docling script to extract content from URL
@@ -86,10 +73,6 @@ func extractContentWithDocling(url string) (*DoclingResponse, error) {
 	if response.Error != "" {
 		return nil, fmt.Errorf("docling extraction failed: %s", response.Error)
 	}
-
-	logrus.WithFields(logrus.Fields{
-		"response": response,
-	}).Info(">>>>>>> Docling response")
 
 	// Sanitize the HTML content
 	if response.HTMLContent != "" {

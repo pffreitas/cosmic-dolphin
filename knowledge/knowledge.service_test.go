@@ -3,7 +3,6 @@ package knowledge_test
 import (
 	"cosmic-dolphin/config"
 	"cosmic-dolphin/db"
-	"cosmic-dolphin/knowledge"
 	"cosmic-dolphin/notes"
 	"testing"
 	"time"
@@ -15,8 +14,6 @@ import (
 func TestCreateKnowledgeNote(t *testing.T) {
 	config.LoadEnv("../.dev.env")
 	db.Init()
-
-	knowledge.Init()
 
 	t.Cleanup(func() {
 		db.Close()

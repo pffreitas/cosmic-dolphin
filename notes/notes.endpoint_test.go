@@ -1,11 +1,9 @@
 package notes_test
 
 import (
-	"cosmic-dolphin/chatter"
 	"cosmic-dolphin/config"
 	"cosmic-dolphin/cosmictesting"
 	"cosmic-dolphin/db"
-	"cosmic-dolphin/knowledge"
 	"net/http/httptest"
 	"testing"
 
@@ -24,8 +22,6 @@ func TestCreateNoteHandler(t *testing.T) {
 
 	config.LoadEnv("../.dev.env")
 
-	chatter.Init()
-	knowledge.Init()
 	db.Init()
 
 	t.Cleanup(func() {

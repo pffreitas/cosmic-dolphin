@@ -7,7 +7,8 @@ import (
 	"cosmic-dolphin/notes"
 	"time"
 
-	swarmLlm "github.com/allurisravanth/swarmgo/llm"
+	swarmLlm "github.com/pffreitas/swarmgo/llm"
+	"github.com/sirupsen/logrus"
 )
 
 type KnowledgeResponse struct {
@@ -18,7 +19,6 @@ type KnowledgeResponse struct {
 }
 
 func runKnowledgePipelineAndStream(ctx context.Context, userID string, rawURL string, noteID int64, cosmicStreamHandler *llm.CosmicStreamHandler) error {
-	defer close(cosmicStreamHandler.ResponseChan)
 
 	// Add timeout to prevent long-running operations
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
@@ -30,81 +30,25 @@ func runKnowledgePipelineAndStream(ctx context.Context, userID string, rawURL st
 		return err
 	}
 
-	// Check for cancellation
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
+	// Send initial progress message
+	cosmicStreamHandler.OnToken("Starting document processing...")
 
-	// Create resource
-	persistedResource, err := insertResource(Resource{
-		NoteID:    *note.ID,
-		Type:      ResourceTypeWebPage,
-		Source:    rawURL,
-		CreatedAt: time.Now(), // FIXME: don't use time.NOW()
-		UserID:    note.UserID,
-	})
-	if err != nil {
-		cosmicStreamHandler.OnError(err)
-		return err
-	}
-	cosmicStreamHandler.OnToken("Resource created.") // FIXME: add OnProgress method
-
-	// Check for cancellation
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
-
-	// Get resource contents
-	resourceContents, err := getResourceContents(*persistedResource)
-	if err != nil {
-		cosmicStreamHandler.OnError(err)
-		return err
-	}
-
-	cosmicStreamHandler.OnToken("Resource contents fetched.") // FIXME: add OnProgress method
-
-	// Check for cancellation
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
-
-	// Create document
-	persistedDoc, err := insertDocument(Document{
-		ResourceID: *persistedResource.ID,
-		Title:      resourceContents.Title,
-		Content:    resourceContents.Content,
-		Images:     resourceContents.Images,
-		UserID:     note.UserID,
-		CreatedAt:  time.Now(), // FIXME: don't use time.NOW()
-	})
-	if err != nil {
-		cosmicStreamHandler.OnError(err)
-		return err
-	}
-
-	cosmicStreamHandler.OnToken("Document created.") // FIXME: add OnProgress method
-
-	// Check for cancellation
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
-
-	err = agents.RunSummaryAgent(noteID, note.UserID, persistedDoc.Content, cosmicStreamHandler)
+	cosmicAgent := agents.NewCosmicAgent()
+	err = cosmicAgent.Run(ctx, rawURL, map[string]interface{}{
+		"note_id": noteID,
+		"user_id": note.UserID,
+	}, cosmicStreamHandler)
 
 	if err != nil {
 		cosmicStreamHandler.OnError(err)
 		return err
 	}
 
-	cosmicStreamHandler.OnToken("Document summarized.") // FIXME: add OnProgress method
+	logrus.Info("Cosmic agent completed, sending progress messages...")
+
+	// Send progress messages after the agent completes
+	cosmicStreamHandler.OnToken("Document summarized.")
+	logrus.Info("Sent: Document summarized.")
 
 	// Check for cancellation
 	select {
@@ -113,11 +57,18 @@ func runKnowledgePipelineAndStream(ctx context.Context, userID string, rawURL st
 	default:
 	}
 
-	cosmicStreamHandler.OnToken("Note updated.") // FIXME: add OnProgress method
+	cosmicStreamHandler.OnToken("Note updated.")
+	logrus.Info("Sent: Note updated.")
+
+	cosmicStreamHandler.OnToken("Knowledge pipeline completed successfully.")
+	logrus.Info("Sent: Knowledge pipeline completed successfully.")
+
+	// Send final completion
 	cosmicStreamHandler.OnComplete(swarmLlm.Message{
 		Role:    swarmLlm.RoleAssistant,
 		Content: "Knowledge pipeline completed successfully.",
-	}) // FIXME: rethink this; mayber we don't need to call OnComplete here
+	})
+	logrus.Info("Sent final completion.")
 
 	return nil
 }

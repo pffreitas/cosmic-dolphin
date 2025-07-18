@@ -51,6 +51,7 @@ func AddToKnowledge(w http.ResponseWriter, r *http.Request) {
 	}
 
 	go func() {
+		defer close(cosmicStreamHandler.ResponseChan)
 		if err := runKnowledgePipelineAndStream(ctx, user.ID, url, noteID, cosmicStreamHandler); err != nil {
 			logrus.WithError(err).Error("Error in knowledge pipeline stream")
 			return
