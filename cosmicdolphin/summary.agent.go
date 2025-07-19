@@ -1,8 +1,6 @@
-package agents
+package cosmicdolphin
 
 import (
-	"cosmic-dolphin/notes"
-
 	"github.com/pffreitas/swarmgo"
 	"github.com/sirupsen/logrus"
 )
@@ -97,7 +95,7 @@ func NewSummaryAgent() SummaryAgent {
 
 					noteId := contextVariables["note_id"].(int64)
 					userID := contextVariables["user_id"].(string)
-					note, err := notes.GetNoteByID(noteId, userID)
+					note, err := GetNoteByID(noteId, userID)
 					if err != nil {
 						return swarmgo.Result{
 							Success: false,
@@ -129,7 +127,7 @@ func NewSummaryAgent() SummaryAgent {
 						note.Title = args["title"].(string)
 					}
 
-					err = notes.UpdateNote(*note)
+					err = UpdateNote(*note)
 					if err != nil {
 						return swarmgo.Result{
 							Success: false,

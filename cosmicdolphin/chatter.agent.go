@@ -1,10 +1,6 @@
-package agents
+package cosmicdolphin
 
-import (
-	"cosmic-dolphin/llm/client"
-)
-
-func NewChatterAgent(client client.Client) {
+func NewChatterAgent() {
 
 	// role := `Expert in Communication`
 	// background := `A highly skilled professional dedicated to ensuring communication is grammatically precise, assertive, clear,

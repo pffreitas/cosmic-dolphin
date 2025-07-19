@@ -1,4 +1,4 @@
-package agents
+package cosmicdolphin
 
 import (
 	"fmt"

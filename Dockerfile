@@ -22,7 +22,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o cosmic-dolphin .
 # Final stage
 FROM alpine:latest
 
-# Install ca-certificates, Python, and pip
+# Install ca-certificates, Python 3.11, and pip
 RUN apk --no-cache add ca-certificates python3 py3-pip
 
 # Create a non-root user
@@ -42,8 +42,8 @@ RUN mkdir -p ./scripts
 COPY --from=builder /app/scripts/extract_content.py ./scripts/
 RUN chmod +x ./scripts/extract_content.py
 
-# Install docling and dependencies as root before switching user
-RUN pip3 install --no-cache-dir docling
+# Install markitdown for document processing
+RUN pip3 install --no-cache-dir --break-system-packages markitdown
 
 # Change ownership to the non-root user
 RUN chown -R appuser:appgroup /root

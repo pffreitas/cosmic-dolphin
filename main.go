@@ -15,13 +15,5 @@ func main() {
 	db.Init()
 	defer db.Close()
 
-	// job.AddWorker(&notes.ProcessNoteJobWorker{})
-
-	// err := job.Run()
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// defer job.Stop()
-
 	http.Run()
 }

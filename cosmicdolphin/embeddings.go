@@ -1,4 +1,4 @@
-package service
+package cosmicdolphin
 
 import (
 	"context"
@@ -12,15 +12,11 @@ import (
 const MaxTokens = 8192
 const ExpectedDimensions = 3072
 
-type GenerateEmbeddingsRequest struct {
-	Content string
-}
-
 type GenerateEmbeddingsResponse struct {
 	Embeddings []float32
 }
 
-func GenerateEmbeddings(request GenerateEmbeddingsRequest) ([]GenerateEmbeddingsResponse, error) {
+func GenerateEmbeddings(content string) ([]GenerateEmbeddingsResponse, error) {
 	var openaiClient = openai.NewClient()
 
 	encoding := "cl100k_base"
@@ -31,7 +27,7 @@ func GenerateEmbeddings(request GenerateEmbeddingsRequest) ([]GenerateEmbeddings
 		return nil, err
 	}
 
-	tokens := tke.Encode(request.Content, nil, nil)
+	tokens := tke.Encode(content, nil, nil)
 
 	var chunks [][]int
 	for i := 0; i < len(tokens); i += MaxTokens {

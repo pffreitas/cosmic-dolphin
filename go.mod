@@ -5,13 +5,11 @@ go 1.24.0
 toolchain go1.24.4
 
 require (
-	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/jackc/pgx/v5 v5.7.1
 	github.com/joho/godotenv v1.5.1
-	github.com/lib/pq v1.10.9
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/openai/openai-go v0.1.0-alpha.30
 	github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20250131191447-95663510c328
@@ -21,9 +19,7 @@ require (
 	github.com/riverqueue/river v0.13.0
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.13.0
 	github.com/rs/cors v1.11.1
-	github.com/sashabaranov/go-openai v1.40.5
 	github.com/sirupsen/logrus v1.9.3
-	github.com/stretchr/testify v1.10.0
 )
 
 require (
@@ -57,6 +53,8 @@ require (
 	github.com/riverqueue/river/riverdriver v0.13.0 // indirect
 	github.com/riverqueue/river/rivershared v0.13.0 // indirect
 	github.com/riverqueue/river/rivertype v0.13.0 // indirect
+	github.com/sashabaranov/go-openai v1.40.5 // indirect
+	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect

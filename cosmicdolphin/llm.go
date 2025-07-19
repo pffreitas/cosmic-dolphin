@@ -1,4 +1,4 @@
-package llm
+package cosmicdolphin
 
 type Role string
 

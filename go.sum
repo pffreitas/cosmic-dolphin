@@ -14,8 +14,6 @@ entgo.io/ent v0.13.1 h1:uD8QwN1h6SNphdCCzmkMN3feSUzNnVvV/WIkHKMbzOE=
 entgo.io/ent v0.13.1/go.mod h1:qCEmo+biw3ccBn9OyL4ZK5dfpwg++l1Gxwac5B1206A=
 github.com/anthropics/anthropic-sdk-go v1.6.1 h1:vhODpy0PBtqJkQIGo8R10P1xWPb32pSKAHygw7KVoAI=
 github.com/anthropics/anthropic-sdk-go v1.6.1/go.mod h1:3qSNQ5NrAmjC8A2ykuruSQttfqfdEYNZY5o8c0XSHB8=
-github.com/avast/retry-go v3.0.0+incompatible h1:4SOWQ7Qs+oroOTQOYnAHqelpCO0biHSxpiH9JdtuBj0=
-github.com/avast/retry-go v3.0.0+incompatible/go.mod h1:XtSnn+n/sHqQIpZ10K1qAevBhOOCWBLXXy3hyiqqBrY=
 github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuPk=
 github.com/aymerick/douceur v0.2.0/go.mod h1:wlT5vV2O3h55X9m7iVYN0TBM0NH/MmbLnd30/FjWUq4=
 github.com/bahlo/generic-list-go v0.2.0 h1:5sz/EEAK+ls5wF+NeqDpk5+iNdMDXrh3z3nPnH1Wvgk=
@@ -94,8 +92,6 @@ github.com/openai/openai-go v0.1.0-alpha.30 h1:lhQyCwK0Be0lGyLiCv4yV3pRaOrn8KlF0
 github.com/openai/openai-go v0.1.0-alpha.30/go.mod h1:3SdE6BffOX9HPEQv8IL/fi3LYZ5TUpRYaqGQZbyk11A=
 github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20250131191447-95663510c328 h1:RSzwKU+FOIaursQpNiIWAc4GVEaJHm+g7bnPSNH2Aic=
 github.com/pffreitas/cosmic-dolphin-api-go v0.0.0-20250131191447-95663510c328/go.mod h1:TW6N5b9ao+E1U9ReIgte7xuJBbDeb/kNVVqY1RmXxNI=
-github.com/pffreitas/swarmgo v1.2.1 h1:aHzt5fN+UwuPEjbdtAHAPWsf/65vQmkXcFnDKeSmNUA=
-github.com/pffreitas/swarmgo v1.2.1/go.mod h1:IlXvzRNASbbkoCYNwZVKpVyQarHxgAKGyhyiG/aYHig=
 github.com/pgvector/pgvector-go v0.2.2 h1:Q/oArmzgbEcio88q0tWQksv/u9Gnb1c3F1K2TnalxR0=
 github.com/pgvector/pgvector-go v0.2.2/go.mod h1:u5sg3z9bnqVEdpe1pkTij8/rFhTaMCMNyQagPDLK8gQ=
 github.com/pkoukk/tiktoken-go v0.1.7 h1:qOBHXX4PHtvIvmOtyg1EeKlwFRiMKAcoMp4Q+bLQDmw=

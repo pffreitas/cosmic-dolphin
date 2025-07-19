@@ -1,4 +1,4 @@
-package llm
+package cosmicdolphin
 
 import (
 	"github.com/sirupsen/logrus"

@@ -1,10 +1,8 @@
-package agents
+package cosmicdolphin
 
 import (
 	"context"
 	"cosmic-dolphin/config"
-	"cosmic-dolphin/llm"
-	"encoding/json"
 	"fmt"
 
 	"github.com/pffreitas/swarmgo"
@@ -41,7 +39,7 @@ You can route tasks to the following agents:
 
 `
 
-func (c *CosmicAgent) Run(context context.Context, prompt string, contextVariables map[string]interface{}, cosmicStreamHandler *llm.CosmicStreamHandler) error {
+func (c *CosmicAgent) Run(context context.Context, prompt string, contextVariables map[string]interface{}, cosmicStreamHandler *CosmicStreamHandler) error {
 
 	agent := &swarmgo.Agent{
 		Name:         "CosmicAgent",
@@ -62,23 +60,18 @@ func (c *CosmicAgent) Run(context context.Context, prompt string, contextVariabl
 				},
 				Function: func(args map[string]interface{}, contextVariables map[string]interface{}) swarmgo.Result {
 					url := args["url"].(string)
+					noteID := contextVariables["note_id"].(int64)
+					userID := contextVariables["user_id"].(string)
+
+					_, textContent, err := ProcessResource(noteID, userID, url)
+					if err != nil {
+						return swarmgo.Result{
+							Success: false,
+							Data:    err.Error(),
+						}
+					}
+
 					summaryAgent := NewSummaryAgent()
-					resourceContents, err := GetResourceContents(url)
-					if err != nil {
-						return swarmgo.Result{
-							Success: false,
-							Data:    err.Error(),
-						}
-					}
-
-					textContent, err := json.Marshal(resourceContents)
-					if err != nil {
-						return swarmgo.Result{
-							Success: false,
-							Data:    err.Error(),
-						}
-					}
-
 					return swarmgo.Result{
 						Success: true,
 						Agent:   &summaryAgent.Agent,
