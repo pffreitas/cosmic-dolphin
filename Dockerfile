@@ -43,7 +43,7 @@ COPY --from=builder /app/scripts/extract_content.py ./scripts/
 RUN chmod +x ./scripts/extract_content.py
 
 # Install markitdown for document processing
-RUN pip3 install --no-cache-dir --break-system-packages markitdown
+RUN pip3 install --no-cache-dir --break-system-packages 'markitdown>=0.1.0'
 
 # Change ownership to the non-root user
 RUN chown -R appuser:appgroup /root

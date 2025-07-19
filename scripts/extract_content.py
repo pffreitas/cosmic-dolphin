@@ -201,8 +201,12 @@ def extract_content_from_url(url: str) -> Dict[str, Any]:
         metadata = extract_metadata(soup, url)
 
         # Initialize MarkItDown converter
-        # Enable plugins if available for better format support
-        md_converter = MarkItDown(enable_plugins=True)
+        # Try with plugins enabled, fall back to basic initialization for older versions
+        try:
+            md_converter = MarkItDown(enable_plugins=True)
+        except TypeError:
+            # Fallback for older versions that don't support enable_plugins parameter
+            md_converter = MarkItDown()
 
         # Convert the HTML content to markdown
         html_bytes = BytesIO(html_content.encode("utf-8"))
