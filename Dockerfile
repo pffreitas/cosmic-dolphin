@@ -19,15 +19,17 @@ COPY . .
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o cosmic-dolphin .
 
-# Final stage
-FROM alpine:latest
+# Final stage - Switch to Debian slim for better Python package compatibility
+FROM python:3.11-slim
 
-# Install ca-certificates, Python 3.11, and pip
-RUN apk --no-cache add ca-certificates python3 py3-pip
+# Install ca-certificates and update packages
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user
-RUN addgroup -g 1001 appgroup && \
-    adduser -D -s /bin/sh -u 1001 -G appgroup appuser
+RUN groupadd -g 1001 appgroup && \
+    useradd -r -u 1001 -g appgroup appuser
 
 WORKDIR /root/
 
@@ -43,7 +45,7 @@ COPY --from=builder /app/scripts/extract_content.py ./scripts/
 RUN chmod +x ./scripts/extract_content.py
 
 # Install markitdown for document processing
-RUN pip3 install --no-cache-dir --break-system-packages 'markitdown>=0.1.0'
+RUN pip3 install --no-cache-dir 'markitdown>=0.1.0'
 
 # Change ownership to the non-root user
 RUN chown -R appuser:appgroup /root
