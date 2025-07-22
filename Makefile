@@ -31,9 +31,10 @@ test:
 
 .PHONY: testp
 testp: 
+	rm -rf test-results
 	go install gotest.tools/gotestsum@latest
 	mkdir -p test-results
-	gotestsum --format pkgname \
+	gotestsum --format standard-verbose \
         --junitfile test-results/unit-tests.xml \
         --jsonfile test-results/unit-tests.json \
     	-- -coverprofile=test-results/coverage.out ./...

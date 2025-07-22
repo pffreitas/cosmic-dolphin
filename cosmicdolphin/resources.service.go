@@ -88,8 +88,6 @@ func extractResourceContent(url string) (*ProcessedContentResponse, error) {
 		return nil, fmt.Errorf("docling extraction failed: %s", response.Error)
 	}
 
-	logrus.WithFields(logrus.Fields{"response": response.Images}).Info(">>>> Docling response")
-
 	return &response, nil
 }
 

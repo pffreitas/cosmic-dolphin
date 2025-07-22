@@ -104,6 +104,46 @@ def extract_images_from_soup(soup: Any, base_url: str) -> List[Dict[str, Any]]:
     return images
 
 
+def extract_links_from_soup(soup: Any, base_url: str) -> List[Dict[str, Any]]:
+    """
+    Extract links from HTML using Beautiful Soup.
+
+    Args:
+        soup: BeautifulSoup object of the HTML
+        base_url: Base URL for resolving relative link URLs
+
+    Returns:
+        List of link dictionaries with 'href', 'text', and 'title' keys
+    """
+    links = []
+
+    # Find all anchor tags with href attribute using Beautiful Soup
+    anchor_tags = soup.find_all("a", href=True)
+
+    for anchor_tag in anchor_tags:
+        href = anchor_tag.get("href")
+        text = anchor_tag.get_text(strip=True)
+        title = anchor_tag.get("title", "")
+
+        if href:
+            # Skip empty anchors and javascript/mailto links
+            if href.startswith(("#", "javascript:", "mailto:")):
+                continue
+
+            # Convert relative URLs to absolute
+            full_url = urljoin(base_url, href)
+
+            links.append(
+                {
+                    "href": full_url,
+                    "text": text if text else href,
+                    "title": title,
+                }
+            )
+
+    return links
+
+
 def fetch_html_content(url: str) -> Tuple[str, Any]:
     """
     Fetch HTML content from URL using requests and parse with BeautifulSoup.
@@ -236,6 +276,10 @@ def extract_content_from_url(url: str) -> Dict[str, Any]:
         # Extract images from the HTML content using Beautiful Soup with base64 encoding
         images = extract_images_from_soup(soup, url)
         content_data["images"] = images
+
+        # Extract links from the HTML content using Beautiful Soup
+        # links = extract_links_from_soup(soup, url)
+        # content_data["links"] = links
 
         return content_data
 

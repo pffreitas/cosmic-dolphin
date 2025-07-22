@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	swarmLlm "github.com/pffreitas/swarmgo/llm"
 	"github.com/sirupsen/logrus"
 )
 
@@ -18,10 +17,10 @@ import (
 func runKnowledgePipelineAndStream(ctx context.Context, userID string, rawURL string, noteID int64, cosmicStreamHandler *CosmicStreamHandler) error {
 
 	// Add timeout to prevent long-running operations
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Minute)
 	defer cancel()
 
-	note, err := GetNoteByID(noteID, userID)
+	_, err := GetNoteByID(noteID, userID)
 	if err != nil {
 		cosmicStreamHandler.OnError(err)
 		return err
@@ -30,11 +29,7 @@ func runKnowledgePipelineAndStream(ctx context.Context, userID string, rawURL st
 	// Send initial progress message
 	cosmicStreamHandler.OnToken("Starting document processing...")
 
-	cosmicAgent := NewCosmicAgent()
-	err = cosmicAgent.Run(ctx, rawURL, map[string]interface{}{
-		"note_id": noteID,
-		"user_id": note.UserID,
-	}, cosmicStreamHandler)
+	err = RunSummaryAgent(ctx, rawURL, noteID, userID, cosmicStreamHandler)
 
 	if err != nil {
 		cosmicStreamHandler.OnError(err)
@@ -61,10 +56,7 @@ func runKnowledgePipelineAndStream(ctx context.Context, userID string, rawURL st
 	logrus.Info("Sent: Knowledge pipeline completed successfully.")
 
 	// Send final completion
-	cosmicStreamHandler.OnComplete(swarmLlm.Message{
-		Role:    swarmLlm.RoleAssistant,
-		Content: "Knowledge pipeline completed successfully.",
-	})
+
 	logrus.Info("Sent final completion.")
 
 	return nil
@@ -235,56 +227,4 @@ func CreateNoteHandler(w http.ResponseWriter, r *http.Request) {
 
 type AddToCosmicHeapRequest struct {
 	Body string `json:"body"`
-}
-
-func AddToCosmicHeapHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-
-	cosmicStreamHandler := NewCosmicStreamHandler(make(chan LLMToken))
-
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
-		return
-	}
-
-	// _ = r.Context()
-
-	//user := utils.GetUserFromContext(r.Context())
-
-	var req AddToCosmicHeapRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
-		return
-	}
-
-	go func() {
-		// if err := agents.RunCosmicAgent(ctx, user.ID, req.Body, cosmicStreamHandler); err != nil {
-		// 	logrus.WithError(err).Error("Error in knowledge pipeline stream")
-		// 	return
-		// }
-	}()
-
-	for response := range cosmicStreamHandler.ResponseChan {
-		data, err := json.Marshal(response)
-		if err != nil {
-			logrus.WithError(err).Error("Error marshaling response")
-			continue
-		}
-
-		_, err = w.Write([]byte("data: " + string(data) + "\n\n"))
-		if err != nil {
-			logrus.WithError(err).Error("Error writing SSE message")
-			return
-		}
-
-		flusher.Flush()
-
-		if response.Done {
-			break
-		}
-	}
 }

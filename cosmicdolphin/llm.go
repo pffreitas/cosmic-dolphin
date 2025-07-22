@@ -14,7 +14,7 @@ type Message struct {
 }
 
 type LLMToken struct {
-	Event string `json:"event"`
-	Data  string `json:"data"`
-	Done  bool   `json:"done"`
+	Event string      `json:"event"`
+	Data  interface{} `json:"data"`
+	Done  bool        `json:"done"`
 }

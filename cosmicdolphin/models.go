@@ -7,6 +7,7 @@ type ResourceType string
 
 const (
 	ResourceTypeWebPage ResourceType = "web_page"
+	ResourceTypeImage   ResourceType = "image"
 )
 
 type ResourceMetadataKey string
