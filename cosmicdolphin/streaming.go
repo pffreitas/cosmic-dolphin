@@ -58,7 +58,16 @@ func (h *CosmicStreamHandler) OnToolCallArguments(toolCallID string, arguments s
 }
 
 func (h *CosmicStreamHandler) OnLLMStart(messages []cosmicswarmLLM.Message) {
-	messagesJson, _ := json.Marshal(messages)
+
+	truncatedMessages := make([]cosmicswarmLLM.Message, len(messages))
+	for _, message := range messages {
+		truncatedMessages = append(truncatedMessages, cosmicswarmLLM.Message{
+			Role:    message.Role,
+			Content: message.Content[0:min(len(message.Content), 10000)],
+		})
+	}
+
+	messagesJson, _ := json.Marshal(truncatedMessages)
 	data := map[string]interface{}{
 		"request": string(messagesJson),
 	}
