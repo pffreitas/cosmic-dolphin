@@ -14,6 +14,7 @@ env:
   REGISTRY_NAME: ${{ secrets.DIGITALOCEAN_REGISTRY_NAME }}
   IMAGE_NAME_API: cosmic-dolphin-api
   IMAGE_NAME_WORKER: cosmic-dolphin-worker
+  SUPABASE_PROJECT_REF: svoivlwoxpxfgkeopyvr
 
 jobs:
   deploy:
@@ -53,7 +54,7 @@ jobs:
       env:
         SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       run: |
-        supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+        supabase link --project-ref ${{ env.SUPABASE_PROJECT_REF }}
         supabase db push
 
     - name: Install doctl
