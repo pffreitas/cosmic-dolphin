@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TasksModule } from './tasks/tasks.module';
+import { QueueModule } from './queue/queue.module';
 
 @Module({
   imports: [
@@ -10,6 +11,7 @@ import { TasksModule } from './tasks/tasks.module';
       isGlobal: true,
     }),
     TasksModule,
+    QueueModule,
   ],
   controllers: [AppController],
   providers: [AppService],

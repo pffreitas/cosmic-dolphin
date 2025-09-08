@@ -81,5 +81,14 @@ run-tests-local:
 	@set -a; source .dev.env; set +a; \
 	echo $$PG_CONN; \
 	$(MAKE) testp
-	
+
+.PHONY: docker-up
+docker-up:
+	@echo "Starting Docker Compose with environment variables from .env.example"
+	docker-compose --env-file .env.dev up -d
+
+.PHONY: docker-down
+docker-down:
+	@echo "Stopping Docker Compose"
+	docker-compose down
 
