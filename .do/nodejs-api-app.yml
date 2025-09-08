@@ -21,9 +21,6 @@ envs:
   scope: RUN_AND_BUILD_TIME
   value: ${JWT_SECRET}
 
-features:
-- buildpack-stack=ubuntu-22
-
 ingress:
   rules:
   - component:
@@ -36,18 +33,11 @@ name: cosmic-dolphin-api-nodejs
 region: nyc
 
 services:
-- environment_slug: node-js
-  github:
-    branch: main
-    deploy_on_push: true
-    repo: pffreitas/cosmic-dolphin
+- name: cosmic-dolphin-api-nodejs
+  image:
+    registry_type: DOCR
+    repository: cosmic-dolphin-api
+    tag: ${IMAGE_TAG}
   http_port: 3000
   instance_count: 1
   instance_size_slug: apps-s-1vcpu-0.5gb
-  name: cosmic-dolphin-api-nodejs
-  build_command: |
-    npm ci
-    npm run build --workspace=packages/shared
-    npm run build --workspace=packages/api
-  run_command: npm run start --workspace=packages/api
-  source_dir: /

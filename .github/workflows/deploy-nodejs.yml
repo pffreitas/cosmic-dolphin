@@ -11,6 +11,9 @@ on:
 
 env:
   NODE_VERSION: '18'
+  REGISTRY_NAME: ${{ secrets.DIGITALOCEAN_REGISTRY_NAME }}
+  IMAGE_NAME_API: cosmic-dolphin-api
+  IMAGE_NAME_WORKER: cosmic-dolphin-worker
 
 jobs:
   deploy:
@@ -41,14 +44,54 @@ jobs:
     - name: Run tests
       run: npm run test --workspaces --if-present
 
+    - name: Install doctl
+      uses: digitalocean/action-doctl@v2
+      with:
+        token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+    - name: Log in to DigitalOcean Container Registry
+      run: doctl registry login
+
+    - name: Build API Docker image
+      run: |
+        docker build -t $IMAGE_NAME_API -f packages/api/Dockerfile .
+
+    - name: Tag API Docker image
+      run: |
+        docker tag $IMAGE_NAME_API registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME_API:$GITHUB_SHA
+        docker tag $IMAGE_NAME_API registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME_API:latest
+
+    - name: Push API Docker image
+      run: |
+        docker push registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME_API:$GITHUB_SHA
+        docker push registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME_API:latest
+
+    - name: Build Worker Docker image
+      run: |
+        docker build -t $IMAGE_NAME_WORKER -f packages/worker/Dockerfile .
+
+    - name: Tag Worker Docker image
+      run: |
+        docker tag $IMAGE_NAME_WORKER registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME_WORKER:$GITHUB_SHA
+        docker tag $IMAGE_NAME_WORKER registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME_WORKER:latest
+
+    - name: Push Worker Docker image
+      run: |
+        docker push registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME_WORKER:$GITHUB_SHA
+        docker push registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME_WORKER:latest
+
     - name: Deploy API to DigitalOcean App Platform
       uses: digitalocean/app_action/deploy@v2
+      env:
+        IMAGE_TAG: ${{ github.sha }}
       with:
         token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
         app_spec_location: .do/nodejs-api-app.yml
 
     - name: Deploy Worker to DigitalOcean App Platform
       uses: digitalocean/app_action/deploy@v2
+      env:
+        IMAGE_TAG: ${{ github.sha }}
       with:
         token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
         app_spec_location: .do/nodejs-worker-app.yml
