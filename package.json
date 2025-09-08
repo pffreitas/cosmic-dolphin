@@ -1,0 +1,28 @@
+{
+  "name": "cosmic-dolphin-workspace",
+  "version": "1.0.0",
+  "description": "Cosmic Dolphin Monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "dev": "concurrently \"npm run dev --workspace=packages/api\" \"npm run start:dev --workspace=packages/worker\"",
+    "start": "concurrently \"npm run start --workspace=packages/api\" \"npm run start:prod --workspace=packages/worker\"",
+    "clean": "npm run clean --workspaces",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspaces",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "install:all": "npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

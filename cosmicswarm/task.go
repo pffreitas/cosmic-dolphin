@@ -48,32 +48,6 @@ func (tm *TaskManager) IsEmpty() bool {
 	return len(tm.Tasks) == 0
 }
 
-// // PlanTask plans the task and returns the execution context
-// func (tm *TaskManager) PlanTask(ctx context.Context, task *Task, parentExecutionContext *TaskExecutionContext) *TaskExecutionContext {
-// planInstructions := []llm.Message{
-// 	{Role: llm.RoleAssistant, Content: `
-// 		You are a task planner. Your job is to plan the execution of the task based on the provided instructions.
-// 		The provided instructions are enclosed in <task_instructions> tags.
-// 		You must return a step by step plan of the task. Make sure the plan is pragmatic and realistic.
-// 		Do not include any steps that are not necessary to complete the task.
-// 		Do not include any steps that are not possible to complete.
-// 		You are creating a plan for yourself, so make sure the plan is realistic and achievable given the tools available to you.
-// 		`,
-// 	},
-// 	{
-// 		Role:    llm.RoleUser,
-// 		Content: fmt.Sprintf("Plan the task: <task_instructions>%s</task_instructions>", task.Instructions),
-// 	},
-// }
-
-// instructionsMessage, err := tm.client.RunChatCompletionStream(ctx, planInstructions, nil, tm.streamHandler)
-// if err != nil {
-// 	tm.streamHandler.OnTaskError(task, err)
-// 	return TaskResult{
-// 		Error: err,
-// 	}
-// }
-// }
 
 func (tm *TaskManager) ExecuteTask(ctx context.Context, task *Task, parentExecutionContext *TaskExecutionContext) TaskResult {
 	tm.streamHandler.OnTaskStart(task)

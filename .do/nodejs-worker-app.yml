@@ -1,0 +1,41 @@
+alerts:
+- rule: DEPLOYMENT_FAILED
+
+envs:
+- key: NODE_ENV
+  scope: RUN_AND_BUILD_TIME
+  value: production
+- key: DATABASE_URL
+  scope: RUN_AND_BUILD_TIME
+  value: ${DATABASE_URL}
+- key: REDIS_HOST
+  scope: RUN_AND_BUILD_TIME
+  value: ${REDIS_HOST}
+- key: REDIS_PORT
+  scope: RUN_AND_BUILD_TIME
+  value: ${REDIS_PORT}
+- key: REDIS_PASSWORD
+  scope: RUN_AND_BUILD_TIME
+  value: ${REDIS_PASSWORD}
+
+features:
+- buildpack-stack=ubuntu-22
+
+name: cosmic-dolphin-worker-nodejs
+region: nyc
+
+workers:
+- environment_slug: node-js
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: pffreitas/cosmic-dolphin
+  instance_count: 1
+  instance_size_slug: apps-s-1vcpu-0.5gb
+  name: cosmic-dolphin-worker-nodejs
+  build_command: |
+    npm ci
+    npm run build --workspace=packages/shared
+    npm run build --workspace=packages/worker
+  run_command: npm run start:prod --workspace=packages/worker
+  source_dir: /

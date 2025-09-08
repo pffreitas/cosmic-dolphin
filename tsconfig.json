@@ -1,0 +1,15 @@
+{
+  "extends": "./packages/shared/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@cosmic-dolphin/shared": ["./packages/shared/src"]
+    }
+  },
+  "references": [
+    { "path": "./packages/shared" },
+    { "path": "./packages/api" },
+    { "path": "./packages/worker" }
+  ],
+  "files": []
+}
