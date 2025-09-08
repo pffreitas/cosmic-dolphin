@@ -42,17 +42,13 @@ jobs:
       run: npm run test --workspaces --if-present
 
     - name: Deploy API to DigitalOcean App Platform
-      uses: digitalocean/app_action@v2
+      uses: digitalocean/app_action/deploy@v2
       with:
-        app_name: cosmic-dolphin-api-nodejs
         token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
         app_spec_location: .do/nodejs-api-app.yml
-        is_pr_deploy: false
 
     - name: Deploy Worker to DigitalOcean App Platform
-      uses: digitalocean/app_action@v2
+      uses: digitalocean/app_action/deploy@v2
       with:
-        app_name: cosmic-dolphin-worker-nodejs
         token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
         app_spec_location: .do/nodejs-worker-app.yml
-        is_pr_deploy: false
