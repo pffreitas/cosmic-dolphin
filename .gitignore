@@ -3,3 +3,5 @@
 /vendor
 /test-results
 /node_modules
+dist/
+*/dist/
