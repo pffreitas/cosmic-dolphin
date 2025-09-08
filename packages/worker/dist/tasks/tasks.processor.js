@@ -7,17 +7,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TasksProcessor = void 0;
-const bullmq_1 = require("@nestjs/bullmq");
-let TasksProcessor = class TasksProcessor extends bullmq_1.WorkerHost {
-    async process(job) {
-        switch (job.name) {
-            case 'example-task':
-                return this.handleExampleTask(job.data);
-            default:
-                throw new Error(`Unknown job type: ${job.name}`);
-        }
-    }
-    async handleExampleTask(data) {
+const common_1 = require("@nestjs/common");
+let TasksProcessor = class TasksProcessor {
+    async processExampleTask(data) {
         console.log('Processing example task:', data);
         await new Promise(resolve => setTimeout(resolve, 1000));
         console.log('Example task completed');
@@ -26,6 +18,6 @@ let TasksProcessor = class TasksProcessor extends bullmq_1.WorkerHost {
 };
 exports.TasksProcessor = TasksProcessor;
 exports.TasksProcessor = TasksProcessor = __decorate([
-    (0, bullmq_1.Processor)('tasks')
+    (0, common_1.Injectable)()
 ], TasksProcessor);
 //# sourceMappingURL=tasks.processor.js.map

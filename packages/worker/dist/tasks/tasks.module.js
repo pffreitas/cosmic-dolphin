@@ -8,7 +8,6 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TasksModule = void 0;
 const common_1 = require("@nestjs/common");
-const bullmq_1 = require("@nestjs/bullmq");
 const tasks_service_1 = require("./tasks.service");
 const tasks_processor_1 = require("./tasks.processor");
 let TasksModule = class TasksModule {
@@ -16,11 +15,6 @@ let TasksModule = class TasksModule {
 exports.TasksModule = TasksModule;
 exports.TasksModule = TasksModule = __decorate([
     (0, common_1.Module)({
-        imports: [
-            bullmq_1.BullModule.registerQueue({
-                name: 'tasks',
-            }),
-        ],
         providers: [tasks_service_1.TasksService, tasks_processor_1.TasksProcessor],
         exports: [tasks_service_1.TasksService],
     })
