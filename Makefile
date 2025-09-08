@@ -92,3 +92,15 @@ docker-down:
 	@echo "Stopping Docker Compose"
 	docker-compose down
 
+.PHONY: docker-logs
+docker-logs:
+	@echo "Viewing Docker Compose logs"
+	docker-compose logs -f
+
+.PHONY: docker-restart
+drs:
+	@echo "Restarting Docker Compose"
+	docker-compose down
+	docker-compose up -d
+	docker-compose logs -f
+
