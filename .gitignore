@@ -3,7 +3,7 @@
 /bin
 /vendor
 /test-results
-/node_modules
+node_modules/
 dist/
 */dist/
 *.tsbuildinfo
