@@ -1,4 +1,5 @@
 import { OpenGraphMetadata, BookmarkMetadata, FetchUrlResult } from "../types";
+import * as cheerio from "cheerio";
 
 export interface WebScrapingService {
   isValidUrl(url: string): boolean;
@@ -12,8 +13,6 @@ export interface WebScrapingService {
 }
 
 export class WebScrapingServiceImpl implements WebScrapingService {
-  private readonly userAgent =
-    "Cosmic-Dolphin-Bot/1.0 (+https://cosmic-dolphin.app/bot)";
   private readonly requestTimeout = 10000; // 10 seconds
 
   isValidUrl(url: string): boolean {
@@ -68,13 +67,6 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   }
 
   extractOpenGraphMetadata(html: string): OpenGraphMetadata {
-    let cheerio: any;
-    try {
-      cheerio = require("cheerio");
-    } catch {
-      throw new Error("cheerio dependency not found. Please install cheerio.");
-    }
-
     const $ = cheerio.load(html);
     const ogData: OpenGraphMetadata = {};
 
@@ -142,13 +134,6 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     contentType: string,
     html: string
   ): BookmarkMetadata {
-    let cheerio: any;
-    try {
-      cheerio = require("cheerio");
-    } catch {
-      throw new Error("cheerio dependency not found. Please install cheerio.");
-    }
-
     const $ = cheerio.load(html);
 
     const textContent = $.root().text();

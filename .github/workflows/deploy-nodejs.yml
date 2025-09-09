@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  NODE_VERSION: "18"
+  NODE_VERSION: "22"
   REGISTRY_NAME: ${{ secrets.DIGITALOCEAN_REGISTRY_NAME }}
   IMAGE_NAME_API: cosmic-dolphin-api
   IMAGE_NAME_WORKER: cosmic-dolphin-worker
