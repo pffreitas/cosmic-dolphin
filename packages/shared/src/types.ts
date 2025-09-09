@@ -100,7 +100,6 @@ export interface BookmarkQueuePayload extends QueueTaskPayload {
 export interface CreateBookmarkRequest {
   source_url: string;
   collection_id?: string;
-  user_id: string;
 }
 
 export interface CreateBookmarkResponse {
@@ -109,7 +108,6 @@ export interface CreateBookmarkResponse {
 }
 
 export interface GetBookmarksQuery {
-  user_id: string;
   collection_id?: string;
   limit?: number;
   offset?: number;

@@ -9,6 +9,7 @@ import {
 } from "@cosmic-dolphin/shared";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "../config/environment";
+import { authMiddleware } from "../middleware/auth";
 
 export default async function bookmarkRoutes(fastify: FastifyInstance) {
   const supabase = createClient(
@@ -19,17 +20,19 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
   const services: ServiceContainer = createServiceContainer(supabase);
 
   fastify.post<{
-    Body: CreateBookmarkRequest;
+    Body: Omit<CreateBookmarkRequest, 'user_id'>;
     Reply: CreateBookmarkResponse | { error: string };
   }>(
     "/bookmarks",
+    { preHandler: authMiddleware },
     async (
-      request: FastifyRequest<{ Body: CreateBookmarkRequest }>,
+      request: FastifyRequest<{ Body: Omit<CreateBookmarkRequest, 'user_id'> }>,
       reply: FastifyReply
     ) => {
       try {
-        const { source_url, collection_id, user_id } =
-          request.body as CreateBookmarkRequest;
+        const { source_url, collection_id } =
+          request.body as Omit<CreateBookmarkRequest, 'user_id'>;
+        const user_id = request.userId!;
 
         fastify.log.info(
           { source_url, collection_id, user_id },
@@ -38,10 +41,6 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
 
         if (!source_url) {
           return reply.status(400).send({ error: "source_url is required" });
-        }
-
-        if (!user_id) {
-          return reply.status(400).send({ error: "user_id is required" });
         }
 
         if (!services.webScraping.isValidUrl(source_url)) {
@@ -135,20 +134,16 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
   );
 
   fastify.get<{
-    Querystring: GetBookmarksQuery;
+    Querystring: Omit<GetBookmarksQuery, 'user_id'>;
     Reply: GetBookmarksResponse | { error: string };
-  }>("/bookmarks", async (request, reply) => {
+  }>("/bookmarks", { preHandler: authMiddleware }, async (request, reply) => {
     try {
       const {
-        user_id,
         collection_id,
         limit = 50,
         offset = 0,
-      } = request.query as GetBookmarksQuery;
-
-      if (!user_id) {
-        return reply.status(400).send({ error: "user_id is required" });
-      }
+      } = request.query as Omit<GetBookmarksQuery, 'user_id'>;
+      const user_id = request.userId!;
 
       const bookmarks = await services.bookmark.findByUser(user_id, {
         collectionId: collection_id,
