@@ -1,30 +1,32 @@
-# Use Node.js 18 Alpine
-FROM node:18-alpine
+# Use Node.js 20 Alpine
+FROM node:20-alpine
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy root package.json and package-lock.json
 COPY package*.json ./
+
+# Copy workspace package.json files
 COPY packages/shared/package*.json ./packages/shared/
 COPY packages/api/package*.json ./packages/api/
 
-# Install dependencies
+# Install all dependencies including workspace dependencies
 RUN npm ci
 
-# Copy source code
+# Copy shared package source and build it first
 COPY packages/shared ./packages/shared
-COPY packages/api ./packages/api
 COPY tsconfig.json ./
-
-# Build shared package first
 RUN npm run build --workspace=packages/shared
 
-# Build API
+# Copy API package source
+COPY packages/api ./packages/api
+
+# Build API package
 RUN npm run build --workspace=packages/api
 
 # Expose port
 EXPOSE 3000
 
-# Start the application
-CMD ["npm", "run", "start", "--workspace=packages/api"]
+# Start the application in development mode for hot reload
+CMD ["npm", "run", "dev", "--workspace=packages/api"]

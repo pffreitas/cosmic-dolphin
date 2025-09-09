@@ -17,6 +17,12 @@ envs:
 - key: REDIS_PASSWORD
   scope: RUN_AND_BUILD_TIME
   value: ${REDIS_PASSWORD}
+- key: SUPABASE_URL
+  scope: RUN_AND_BUILD_TIME
+  value: ${SUPABASE_URL}
+- key: SUPABASE_SERVICE_ROLE_KEY
+  scope: RUN_AND_BUILD_TIME
+  value: ${SUPABASE_SERVICE_ROLE_KEY}
 
 name: cosmic-dolphin-worker-nodejs
 region: nyc

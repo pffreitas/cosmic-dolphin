@@ -20,11 +20,14 @@
     "@fastify/env": "^4.2.0",
     "@fastify/helmet": "^11.1.1",
     "@fastify/jwt": "^7.2.4",
+    "@supabase/supabase-js": "^2.57.2",
+    "@types/cheerio": "^0.22.35",
+    "@types/node": "^20.10.4",
+    "cheerio": "^1.1.2",
     "dotenv": "^16.3.1",
     "fastify": "^4.24.3",
     "pg": "^8.11.3",
-    "typescript": "^5.3.3",
-    "@types/node": "^20.10.4"
+    "typescript": "^5.3.3"
   },
   "devDependencies": {
     "@types/jest": "^29.5.8",

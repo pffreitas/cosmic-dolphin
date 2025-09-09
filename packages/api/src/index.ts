@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import { config } from './config/environment';
+import bookmarkRoutes from './routes/bookmarks';
 
 const server = Fastify({
   logger: config.NODE_ENV === 'development' ? {
@@ -41,6 +42,9 @@ server.register(async function (fastify) {
   fastify.get('/api/v1/status', async () => {
     return { message: 'Cosmic Dolphin API is running', version: '1.0.0' };
   });
+  
+  // Register bookmark routes with /api/v1 prefix
+  await fastify.register(bookmarkRoutes, { prefix: '/api/v1' });
 });
 
 // Start server
