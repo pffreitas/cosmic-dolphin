@@ -4,7 +4,8 @@ import {
   CreateBookmarkResponse, 
   GetBookmarksQuery,
   GetBookmarksResponse,
-  ServiceContainer 
+  ServiceContainer,
+  createServiceContainer
 } from "@cosmic-dolphin/shared";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "../config/environment";
@@ -15,7 +16,6 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     config.SUPABASE_SERVICE_ROLE_KEY
   );
 
-  const { createServiceContainer } = await import("@cosmic-dolphin/shared");
   const services: ServiceContainer = createServiceContainer(supabase);
 
   fastify.post<{
@@ -28,7 +28,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
       reply: FastifyReply
     ) => {
       try {
-        const { source_url, collection_id, user_id } = request.body;
+        const { source_url, collection_id, user_id } = request.body as CreateBookmarkRequest;
 
         if (!source_url) {
           return reply.status(400).send({ error: "source_url is required" });
@@ -123,7 +123,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     Reply: GetBookmarksResponse | { error: string };
   }>("/bookmarks", async (request, reply) => {
     try {
-      const { user_id, collection_id, limit = 50, offset = 0 } = request.query;
+      const { user_id, collection_id, limit = 50, offset = 0 } = request.query as GetBookmarksQuery;
 
       if (!user_id) {
         return reply.status(400).send({ error: "user_id is required" });

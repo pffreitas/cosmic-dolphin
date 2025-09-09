@@ -68,6 +68,13 @@ db-cleanup:
 	@echo "Running database cleanup script"
 	psql $(DATABASE_URL) -f db-scripts/cleanup.sql
 
+.PHONY: db-push
+db-push:
+	@echo "Pushing database schema to Supabase"
+	@set -a; source .env.dev; set +a; \
+	npx supabase link --project-ref $${SUPABASE_PROJECT_REF}
+	npx supabase db push
+
 .PHONY: db-migrate-local
 db-migrate-local:
 	@echo "Running database migrations"

@@ -1,14 +1,19 @@
-import { Bookmark, CreateBookmarkRequest } from '../types';
+import { Bookmark, CreateBookmarkRequest } from "../types";
 
 export interface BookmarkService {
   findByUserAndUrl(userId: string, sourceUrl: string): Promise<Bookmark | null>;
-  create(data: Omit<Bookmark, 'id' | 'createdAt' | 'updatedAt'>): Promise<Bookmark>;
-  findByUser(userId: string, options?: {
-    collectionId?: string;
-    limit?: number;
-    offset?: number;
-    includeArchived?: boolean;
-  }): Promise<Bookmark[]>;
+  create(
+    data: Omit<Bookmark, "id" | "createdAt" | "updatedAt">
+  ): Promise<Bookmark>;
+  findByUser(
+    userId: string,
+    options?: {
+      collectionId?: string;
+      limit?: number;
+      offset?: number;
+      includeArchived?: boolean;
+    }
+  ): Promise<Bookmark[]>;
   update(id: string, data: Partial<Bookmark>): Promise<Bookmark>;
   delete(id: string): Promise<void>;
 }
@@ -16,16 +21,20 @@ export interface BookmarkService {
 export class BookmarkServiceImpl implements BookmarkService {
   constructor(private supabaseClient: any) {}
 
-  async findByUserAndUrl(userId: string, sourceUrl: string): Promise<Bookmark | null> {
+  async findByUserAndUrl(
+    userId: string,
+    sourceUrl: string
+  ): Promise<Bookmark | null> {
     const { data, error } = await this.supabaseClient
-      .from('bookmarks')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('source_url', sourceUrl)
+      .from("bookmarks")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("source_url", sourceUrl)
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') {
+      if (error.code === "PGRST116") {
+        console.log("Bookmark not found", error);
         return null;
       }
       throw new Error(`Failed to find bookmark: ${error.message}`);
@@ -34,7 +43,9 @@ export class BookmarkServiceImpl implements BookmarkService {
     return this.mapDatabaseToBookmark(data);
   }
 
-  async create(data: Omit<Bookmark, 'id' | 'createdAt' | 'updatedAt'>): Promise<Bookmark> {
+  async create(
+    data: Omit<Bookmark, "id" | "createdAt" | "updatedAt">
+  ): Promise<Bookmark> {
     const insertData = {
       source_url: data.sourceUrl,
       title: data.title,
@@ -50,7 +61,7 @@ export class BookmarkServiceImpl implements BookmarkService {
     };
 
     const { data: bookmark, error } = await this.supabaseClient
-      .from('bookmarks')
+      .from("bookmarks")
       .insert(insertData)
       .select()
       .single();
@@ -62,12 +73,15 @@ export class BookmarkServiceImpl implements BookmarkService {
     return this.mapDatabaseToBookmark(bookmark);
   }
 
-  async findByUser(userId: string, options: {
-    collectionId?: string;
-    limit?: number;
-    offset?: number;
-    includeArchived?: boolean;
-  } = {}): Promise<Bookmark[]> {
+  async findByUser(
+    userId: string,
+    options: {
+      collectionId?: string;
+      limit?: number;
+      offset?: number;
+      includeArchived?: boolean;
+    } = {}
+  ): Promise<Bookmark[]> {
     const {
       collectionId,
       limit = 50,
@@ -76,18 +90,18 @@ export class BookmarkServiceImpl implements BookmarkService {
     } = options;
 
     let query = this.supabaseClient
-      .from('bookmarks')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
+      .from("bookmarks")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (!includeArchived) {
-      query = query.eq('is_archived', false);
+      query = query.eq("is_archived", false);
     }
 
     if (collectionId) {
-      query = query.eq('collection_id', collectionId);
+      query = query.eq("collection_id", collectionId);
     }
 
     const { data, error } = await query;
@@ -104,9 +118,11 @@ export class BookmarkServiceImpl implements BookmarkService {
 
     if (data.sourceUrl !== undefined) updateData.source_url = data.sourceUrl;
     if (data.title !== undefined) updateData.title = data.title;
-    if (data.description !== undefined) updateData.description = data.description;
+    if (data.description !== undefined)
+      updateData.description = data.description;
     if (data.metadata !== undefined) updateData.metadata = data.metadata;
-    if (data.collectionId !== undefined) updateData.collection_id = data.collectionId;
+    if (data.collectionId !== undefined)
+      updateData.collection_id = data.collectionId;
     if (data.userId !== undefined) updateData.user_id = data.userId;
     if (data.isArchived !== undefined) updateData.is_archived = data.isArchived;
     if (data.isFavorite !== undefined) updateData.is_favorite = data.isFavorite;
@@ -115,9 +131,9 @@ export class BookmarkServiceImpl implements BookmarkService {
     if (data.summary !== undefined) updateData.summary = data.summary;
 
     const { data: bookmark, error } = await this.supabaseClient
-      .from('bookmarks')
+      .from("bookmarks")
       .update(updateData)
-      .eq('id', id)
+      .eq("id", id)
       .select()
       .single();
 
@@ -130,9 +146,9 @@ export class BookmarkServiceImpl implements BookmarkService {
 
   async delete(id: string): Promise<void> {
     const { error } = await this.supabaseClient
-      .from('bookmarks')
+      .from("bookmarks")
       .delete()
-      .eq('id', id);
+      .eq("id", id);
 
     if (error) {
       throw new Error(`Failed to delete bookmark: ${error.message}`);
