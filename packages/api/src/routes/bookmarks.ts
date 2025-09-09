@@ -1,11 +1,11 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { 
-  CreateBookmarkRequest, 
-  CreateBookmarkResponse, 
+import {
+  CreateBookmarkRequest,
+  CreateBookmarkResponse,
   GetBookmarksQuery,
   GetBookmarksResponse,
   ServiceContainer,
-  createServiceContainer
+  createServiceContainer,
 } from "@cosmic-dolphin/shared";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "../config/environment";
@@ -28,7 +28,13 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
       reply: FastifyReply
     ) => {
       try {
-        const { source_url, collection_id, user_id } = request.body as CreateBookmarkRequest;
+        const { source_url, collection_id, user_id } =
+          request.body as CreateBookmarkRequest;
+
+        fastify.log.info(
+          { source_url, collection_id, user_id },
+          "Create bookmark request"
+        );
 
         if (!source_url) {
           return reply.status(400).send({ error: "source_url is required" });
@@ -42,7 +48,10 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           return reply.status(400).send({ error: "Invalid URL format" });
         }
 
-        const existingBookmark = await services.bookmark.findByUserAndUrl(user_id, source_url);
+        const existingBookmark = await services.bookmark.findByUserAndUrl(
+          user_id,
+          source_url
+        );
         if (existingBookmark) {
           return reply
             .status(409)
@@ -50,19 +59,26 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         }
 
         if (collection_id) {
-          const collection = await services.collection.findByIdAndUser(collection_id, user_id);
+          const collection = await services.collection.findByIdAndUser(
+            collection_id,
+            user_id
+          );
           if (!collection) {
-            return reply
-              .status(400)
-              .send({
-                error: "Invalid collection_id or collection does not belong to user",
-              });
+            return reply.status(400).send({
+              error:
+                "Invalid collection_id or collection does not belong to user",
+            });
           }
         }
 
-        const { content, contentType } = await services.webScraping.validateAndFetchUrl(source_url);
+        const { content, contentType } =
+          await services.webScraping.validateAndFetchUrl(source_url);
         const ogData = services.webScraping.extractOpenGraphMetadata(content);
-        const metadata = services.webScraping.createBookmarkMetadata(ogData, contentType, content);
+        const metadata = services.webScraping.createBookmarkMetadata(
+          ogData,
+          contentType,
+          content
+        );
 
         const bookmark = await services.bookmark.create({
           sourceUrl: source_url,
@@ -123,7 +139,12 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     Reply: GetBookmarksResponse | { error: string };
   }>("/bookmarks", async (request, reply) => {
     try {
-      const { user_id, collection_id, limit = 50, offset = 0 } = request.query as GetBookmarksQuery;
+      const {
+        user_id,
+        collection_id,
+        limit = 50,
+        offset = 0,
+      } = request.query as GetBookmarksQuery;
 
       if (!user_id) {
         return reply.status(400).send({ error: "user_id is required" });
