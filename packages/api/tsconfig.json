@@ -11,16 +11,8 @@
     "forceConsistentCasingInFileNames": true,
     "declaration": false,
     "sourceMap": true,
-    "resolveJsonModule": true,
-    "baseUrl": ".",
-    "paths": {
-      "@cosmic-dolphin/shared": ["../shared/src/index.ts"],
-      "@cosmic-dolphin/shared/*": ["../shared/src/*"]
-    }
+    "resolveJsonModule": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"],
-  "references": [
-    { "path": "../shared" }
-  ]
+  "exclude": ["node_modules", "dist"]
 }
