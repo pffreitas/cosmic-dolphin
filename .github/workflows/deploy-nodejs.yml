@@ -103,6 +103,8 @@ jobs:
         uses: digitalocean/app_action/deploy@v2
         env:
           IMAGE_TAG: ${{ github.sha }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
           app_spec_location: .do/nodejs-api-app.yml
@@ -111,6 +113,8 @@ jobs:
         uses: digitalocean/app_action/deploy@v2
         env:
           IMAGE_TAG: ${{ github.sha }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
           app_spec_location: .do/nodejs-worker-app.yml

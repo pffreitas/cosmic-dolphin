@@ -20,6 +20,12 @@ envs:
 - key: JWT_SECRET
   scope: RUN_AND_BUILD_TIME
   value: ${JWT_SECRET}
+- key: SUPABASE_URL
+  scope: RUN_AND_BUILD_TIME
+  value: ${SUPABASE_URL}
+- key: SUPABASE_SERVICE_ROLE_KEY
+  scope: RUN_AND_BUILD_TIME
+  value: ${SUPABASE_SERVICE_ROLE_KEY}
 
 ingress:
   rules:
