@@ -2,6 +2,7 @@ import { Bookmark, CreateBookmarkRequest } from "../types";
 
 export interface BookmarkService {
   findByUserAndUrl(userId: string, sourceUrl: string): Promise<Bookmark | null>;
+  findByIdAndUser(id: string, userId: string): Promise<Bookmark | null>;
   create(
     data: Omit<Bookmark, "id" | "createdAt" | "updatedAt">
   ): Promise<Bookmark>;
@@ -35,6 +36,27 @@ export class BookmarkServiceImpl implements BookmarkService {
     if (error) {
       if (error.code === "PGRST116") {
         console.log("Bookmark not found", error);
+        return null;
+      }
+      throw new Error(`Failed to find bookmark: ${error.message}`);
+    }
+
+    return this.mapDatabaseToBookmark(data);
+  }
+
+  async findByIdAndUser(
+    id: string,
+    userId: string
+  ): Promise<Bookmark | null> {
+    const { data, error } = await this.supabaseClient
+      .from("bookmarks")
+      .select("*")
+      .eq("id", id)
+      .eq("user_id", userId)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") {
         return null;
       }
       throw new Error(`Failed to find bookmark: ${error.message}`);

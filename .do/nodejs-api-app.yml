@@ -3,7 +3,7 @@ alerts:
 - rule: DOMAIN_FAILED
 
 domains:
-- domain: api-nodejs.cosmic-dolphin.com
+- domain: api.cosmic-dolphin.com
   type: PRIMARY
   zone: cosmic-dolphin.com
 

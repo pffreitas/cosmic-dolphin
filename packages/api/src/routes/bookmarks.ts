@@ -6,6 +6,7 @@ import {
   GetBookmarksResponse,
   ServiceContainer,
   createServiceContainer,
+  Bookmark,
 } from "@cosmic-dolphin/shared";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "../config/environment";
@@ -20,18 +21,20 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
   const services: ServiceContainer = createServiceContainer(supabase);
 
   fastify.post<{
-    Body: Omit<CreateBookmarkRequest, 'user_id'>;
+    Body: Omit<CreateBookmarkRequest, "user_id">;
     Reply: CreateBookmarkResponse | { error: string };
   }>(
     "/bookmarks",
     { preHandler: authMiddleware },
     async (
-      request: FastifyRequest<{ Body: Omit<CreateBookmarkRequest, 'user_id'> }>,
+      request: FastifyRequest<{ Body: Omit<CreateBookmarkRequest, "user_id"> }>,
       reply: FastifyReply
     ) => {
       try {
-        const { source_url, collection_id } =
-          request.body as Omit<CreateBookmarkRequest, 'user_id'>;
+        const { source_url, collection_id } = request.body as Omit<
+          CreateBookmarkRequest,
+          "user_id"
+        >;
         const user_id = request.userId!;
 
         fastify.log.info(
@@ -134,7 +137,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
   );
 
   fastify.get<{
-    Querystring: Omit<GetBookmarksQuery, 'user_id'>;
+    Querystring: Omit<GetBookmarksQuery, "user_id">;
     Reply: GetBookmarksResponse | { error: string };
   }>("/bookmarks", { preHandler: authMiddleware }, async (request, reply) => {
     try {
@@ -142,8 +145,13 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         collection_id,
         limit = 50,
         offset = 0,
-      } = request.query as Omit<GetBookmarksQuery, 'user_id'>;
+      } = request.query as Omit<GetBookmarksQuery, "user_id">;
       const user_id = request.userId!;
+
+      fastify.log.info(
+        { collection_id, limit, offset, user_id },
+        "Get bookmarks request"
+      );
 
       const bookmarks = await services.bookmark.findByUser(user_id, {
         collectionId: collection_id,
@@ -158,4 +166,29 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ error: "Internal server error" });
     }
   });
+
+  fastify.get<{
+    Params: { id: string };
+    Reply: Bookmark | { error: string };
+  }>(
+    "/bookmarks/:id",
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const user_id = request.userId!;
+
+        const bookmark = await services.bookmark.findByIdAndUser(id, user_id);
+
+        if (!bookmark) {
+          return reply.status(404).send({ error: "Bookmark not found" });
+        }
+
+        return reply.send(bookmark);
+      } catch (error) {
+        fastify.log.error({ error }, "Get bookmark by ID error");
+        return reply.status(500).send({ error: "Internal server error" });
+      }
+    }
+  );
 }
