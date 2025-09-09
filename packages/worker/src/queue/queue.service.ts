@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { SupabaseClientService } from './supabase-client.service';
-import { QueueMessage } from '../types/queue.types';
+import { Injectable, Logger } from "@nestjs/common";
+import { SupabaseClientService } from "./supabase-client.service";
+import { QueueMessage } from "../types/queue.types";
 
 @Injectable()
 export class QueueService {
@@ -12,11 +12,14 @@ export class QueueService {
     try {
       const { data, error } = await this.supabaseClient
         .getClient()
-        .schema('pgmq_public')
-        .rpc('pop', { queue_name: queueName });
+        .schema("pgmq_public")
+        .rpc("pop", { queue_name: queueName });
 
       if (error) {
-        this.logger.error(`Failed to pop message from queue ${queueName}`, error);
+        this.logger.error(
+          `Failed to pop message from queue ${queueName}`,
+          error
+        );
         throw new Error(`Queue pop failed: ${error.message}`);
       }
 
@@ -42,14 +45,16 @@ export class QueueService {
     try {
       const { data, error } = await this.supabaseClient
         .getClient()
-        .schema('pgmq_public')
-        .rpc('pop', { 
+        .schema("pgmq_public")
+        .rpc("pop", {
           queue_name: queueName,
-          qty: count 
         });
 
       if (error) {
-        this.logger.error(`Failed to pop messages from queue ${queueName}`, error);
+        this.logger.error(
+          `Failed to pop messages from queue ${queueName}`,
+          error
+        );
         throw new Error(`Queue pop failed: ${error.message}`);
       }
 
@@ -65,7 +70,10 @@ export class QueueService {
         message: msg.message,
       }));
     } catch (error) {
-      this.logger.error(`Error popping messages from queue ${queueName}`, error);
+      this.logger.error(
+        `Error popping messages from queue ${queueName}`,
+        error
+      );
       throw error;
     }
   }
@@ -74,20 +82,26 @@ export class QueueService {
     try {
       const { error } = await this.supabaseClient
         .getClient()
-        .schema('pgmq_public')
-        .rpc('archive', {
+        .schema("pgmq_public")
+        .rpc("archive", {
           queue_name: queueName,
           msg_id: msgId,
         });
 
       if (error) {
-        this.logger.error(`Failed to archive message ${msgId} from queue ${queueName}`, error);
+        this.logger.error(
+          `Failed to archive message ${msgId} from queue ${queueName}`,
+          error
+        );
         throw new Error(`Message archive failed: ${error.message}`);
       }
 
       this.logger.debug(`Archived message ${msgId} from queue ${queueName}`);
     } catch (error) {
-      this.logger.error(`Error archiving message ${msgId} from queue ${queueName}`, error);
+      this.logger.error(
+        `Error archiving message ${msgId} from queue ${queueName}`,
+        error
+      );
       throw error;
     }
   }
@@ -96,37 +110,50 @@ export class QueueService {
     try {
       const { error } = await this.supabaseClient
         .getClient()
-        .schema('pgmq_public')
-        .rpc('delete', {
+        .schema("pgmq_public")
+        .rpc("delete", {
+          message_id: msgId,
           queue_name: queueName,
-          msg_id: msgId,
         });
 
       if (error) {
-        this.logger.error(`Failed to delete message ${msgId} from queue ${queueName}`, error);
+        this.logger.error(
+          `Failed to delete message ${msgId} from queue ${queueName}`,
+          error
+        );
         throw new Error(`Message delete failed: ${error.message}`);
       }
 
       this.logger.debug(`Deleted message ${msgId} from queue ${queueName}`);
     } catch (error) {
-      this.logger.error(`Error deleting message ${msgId} from queue ${queueName}`, error);
+      this.logger.error(
+        `Error deleting message ${msgId} from queue ${queueName}`,
+        error
+      );
       throw error;
     }
   }
 
-  async sendMessage(queueName: string, message: any, delaySeconds?: number): Promise<number> {
+  async sendMessage(
+    queueName: string,
+    message: any,
+    delaySeconds?: number
+  ): Promise<number> {
     try {
       const { data, error } = await this.supabaseClient
         .getClient()
-        .schema('pgmq_public')
-        .rpc('send', {
+        .schema("pgmq_public")
+        .rpc("send", {
           queue_name: queueName,
           message: message,
           sleep_seconds: delaySeconds || 0,
         });
 
       if (error) {
-        this.logger.error(`Failed to send message to queue ${queueName}`, error);
+        this.logger.error(
+          `Failed to send message to queue ${queueName}`,
+          error
+        );
         throw new Error(`Message send failed: ${error.message}`);
       }
 
