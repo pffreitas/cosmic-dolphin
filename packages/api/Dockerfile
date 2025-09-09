@@ -19,10 +19,10 @@ COPY packages/shared ./packages/shared
 COPY tsconfig.json ./
 RUN npm run build --workspace=packages/shared
 
-# Copy API package source
+# Copy API package source  
 COPY packages/api ./packages/api
 
-# Build API package
+# Build API package (with reference to built shared package)
 RUN npm run build --workspace=packages/api
 
 # Expose port
