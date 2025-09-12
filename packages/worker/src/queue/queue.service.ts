@@ -145,7 +145,7 @@ export class QueueService {
         .schema("pgmq_public")
         .rpc("send", {
           queue_name: queueName,
-          message: message,
+          message: JSON.stringify(message),
           sleep_seconds: delaySeconds || 0,
         });
 

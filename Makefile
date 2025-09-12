@@ -111,3 +111,20 @@ drs:
 	docker-compose up -d
 	docker-compose logs -f
 
+.PHONY: docker-purge
+docker-purge:
+	@echo "Purging all Docker containers, images, volumes, and networks"
+	@echo "Stopping all running containers..."
+	-docker stop $$(docker ps -aq) 2>/dev/null || true
+	@echo "Removing all containers..."
+	-docker rm $$(docker ps -aq) 2>/dev/null || true
+	@echo "Removing all images..."
+	-docker rmi $$(docker images -q) 2>/dev/null || true
+	@echo "Removing all volumes..."
+	-docker volume rm $$(docker volume ls -q) 2>/dev/null || true
+	@echo "Removing all networks..."
+	-docker network rm $$(docker network ls -q) 2>/dev/null || true
+	@echo "Running system prune..."
+	docker system prune -af --volumes
+	@echo "Docker purge complete!"
+

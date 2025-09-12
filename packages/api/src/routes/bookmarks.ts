@@ -54,7 +54,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           user_id,
           source_url
         );
-        if (existingBookmark) {
+        if (existingBookmark && false) {
           return reply
             .status(409)
             .send({ error: "Bookmark already exists for this URL" });
@@ -102,6 +102,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
             collection_id
           );
         } catch (queueError) {
+          console.log("queueError", queueError);
           fastify.log.error({ queueError }, "Queue post error");
         }
 
