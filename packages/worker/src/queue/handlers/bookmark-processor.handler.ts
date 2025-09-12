@@ -3,6 +3,7 @@ import { MessageHandler } from "../interfaces/message-handler.interface";
 import { QueueMessage } from "../../types/queue.types";
 import { SupabaseClientService } from "../supabase-client.service";
 import { BookmarkQueuePayload } from "@cosmic-dolphin/shared";
+import { SummaryAgent } from "@cosmic-dolphin/shared";
 
 const TurndownService = require("turndown");
 
@@ -96,6 +97,10 @@ export class BookmarkProcessorHandler implements MessageHandler {
         bookmarkId,
         `Successfully processed Bookmark ${bookmarkId}: ${sourceUrl}`
       );
+
+      const summary = await SummaryAgent.generateSummary(bookmark);
+
+      await this.sendBookmarkUpdate(bookmarkId, summary);
     } catch (error) {
       await this.sendBookmarkUpdate(
         bookmarkId,

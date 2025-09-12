@@ -4,7 +4,7 @@ dotenv.config();
 
 export const config = {
   NODE_ENV: process.env.NODE_ENV || "development",
-  PORT: parseInt(process.env.PORT || "3030", 10),
+  PORT: parseInt(process.env.API_PORT || "3001", 10),
   HOST: process.env.HOST || "0.0.0.0",
   LOG_LEVEL: process.env.LOG_LEVEL || "info",
 
