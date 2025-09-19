@@ -24,9 +24,12 @@ describe('Auth Middleware', () => {
       headers: {}
     };
 
+    const statusMock = mock(() => mockReply);
+    const sendMock = mock(() => mockReply);
+
     mockReply = {
-      status: mock(() => mockReply),
-      send: mock(() => mockReply)
+      status: statusMock as any,
+      send: sendMock as any
     };
 
     mockSupabase = {
