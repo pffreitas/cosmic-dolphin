@@ -17,7 +17,4 @@ export const config = {
 
   // JWT
   JWT_SECRET: process.env.JWT_SECRET || "your-secret-key",
-
-  // Redis
-  REDIS_URL: process.env.REDIS_URL || "redis://localhost:6379",
 };

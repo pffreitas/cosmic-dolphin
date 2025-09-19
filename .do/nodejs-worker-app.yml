@@ -8,15 +8,6 @@ envs:
 - key: DATABASE_URL
   scope: RUN_AND_BUILD_TIME
   value: ${DATABASE_URL}
-- key: REDIS_HOST
-  scope: RUN_AND_BUILD_TIME
-  value: ${REDIS_HOST}
-- key: REDIS_PORT
-  scope: RUN_AND_BUILD_TIME
-  value: ${REDIS_PORT}
-- key: REDIS_PASSWORD
-  scope: RUN_AND_BUILD_TIME
-  value: ${REDIS_PASSWORD}
 - key: SUPABASE_URL
   scope: RUN_AND_BUILD_TIME
   value: ${SUPABASE_URL}
