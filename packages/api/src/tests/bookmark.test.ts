@@ -1,4 +1,4 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect } from 'bun:test';
 import { WebScrapingServiceImpl } from '@cosmic-dolphin/shared';
 
 describe('Bookmark Feature Validation', () => {

@@ -1,9 +1,13 @@
+import { describe, it, expect, beforeEach, mock } from 'bun:test';
 import { authMiddleware } from '../middleware/auth';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { createClient } from '@supabase/supabase-js';
 
-jest.mock('@supabase/supabase-js');
-jest.mock('../config/environment', () => ({
+mock.module('@supabase/supabase-js', () => ({
+  createClient: mock(() => ({}))
+}));
+
+mock.module('../config/environment', () => ({
   config: {
     SUPABASE_URL: 'https://test.supabase.co',
     SUPABASE_SERVICE_ROLE_KEY: 'test-key'
@@ -19,19 +23,19 @@ describe('Auth Middleware', () => {
     mockRequest = {
       headers: {}
     };
-    
+
     mockReply = {
-      status: jest.fn().mockReturnThis(),
-      send: jest.fn().mockReturnThis()
+      status: mock(() => mockReply),
+      send: mock(() => mockReply)
     };
 
     mockSupabase = {
       auth: {
-        getUser: jest.fn()
+        getUser: mock()
       }
     };
 
-    (createClient as jest.Mock).mockReturnValue(mockSupabase);
+    (createClient as any).mockReturnValue(mockSupabase);
   });
 
   it('should return 401 when no authorization header', async () => {
@@ -56,29 +60,29 @@ describe('Auth Middleware', () => {
 
   it('should return 401 when token is invalid', async () => {
     mockRequest.headers!.authorization = 'Bearer invalid-token';
-    mockSupabase.auth.getUser.mockResolvedValue({ 
-      data: null, 
-      error: { message: 'Invalid token' } 
+    mockSupabase.auth.getUser.mockResolvedValue({
+      data: null,
+      error: { message: 'Invalid token' }
     });
-    
+
     await authMiddleware(mockRequest as FastifyRequest, mockReply as FastifyReply);
-    
+
     expect(mockReply.status).toHaveBeenCalledWith(401);
-    expect(mockReply.send).toHaveBeenCalledWith({ 
-      error: 'Invalid or expired token' 
+    expect(mockReply.send).toHaveBeenCalledWith({
+      error: 'Invalid or expired token'
     });
   });
 
   it('should set userId when token is valid', async () => {
     const userId = 'user-123';
     mockRequest.headers!.authorization = 'Bearer valid-token';
-    mockSupabase.auth.getUser.mockResolvedValue({ 
-      data: { user: { id: userId } }, 
-      error: null 
+    mockSupabase.auth.getUser.mockResolvedValue({
+      data: { user: { id: userId } },
+      error: null
     });
-    
+
     await authMiddleware(mockRequest as FastifyRequest, mockReply as FastifyReply);
-    
+
     expect(mockRequest.userId).toBe(userId);
     expect(mockReply.status).not.toHaveBeenCalled();
     expect(mockReply.send).not.toHaveBeenCalled();
