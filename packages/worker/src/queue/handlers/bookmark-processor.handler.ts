@@ -1,9 +1,9 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, Inject } from "@nestjs/common";
 import { MessageHandler } from "../interfaces/message-handler.interface";
 import { QueueMessage } from "../../types/queue.types";
 import { SupabaseClientService } from "../supabase-client.service";
-import { BookmarkQueuePayload } from "@cosmic-dolphin/shared";
-import { SummaryAgent } from "@cosmic-dolphin/shared";
+import { BookmarkQueuePayload, BookmarkProcessorService } from "@cosmic-dolphin/shared";
+import { BOOKMARK_PROCESSOR_SERVICE } from "../tokens";
 
 const TurndownService = require("turndown");
 
@@ -17,7 +17,10 @@ export class BookmarkProcessorHandler implements MessageHandler {
   private readonly logger = new Logger(BookmarkProcessorHandler.name);
   private readonly turndownService: any;
 
-  constructor(private readonly supabaseClient: SupabaseClientService) {
+  constructor(
+    private readonly supabaseClient: SupabaseClientService,
+    @Inject(BOOKMARK_PROCESSOR_SERVICE) private readonly bookmarkProcessorService: BookmarkProcessorService
+  ) {
     this.turndownService = new TurndownService({
       headingStyle: "atx",
       codeBlockStyle: "fenced",
@@ -62,89 +65,17 @@ export class BookmarkProcessorHandler implements MessageHandler {
   }
 
   private async processBookmark(payload: BookmarkQueuePayload): Promise<void> {
-    const { bookmarkId, sourceUrl, userId, collectionId } = payload.data;
-
-    await this.sendBookmarkUpdate(
-      bookmarkId,
-      `Starting to process Bookmark ${bookmarkId}: ${sourceUrl}`
-    );
-
-    this.logger.debug("Processing bookmark payload", {
-      bookmarkId,
-      sourceUrl,
-      userId,
-      collectionId,
-    });
-
-    const bookmark = await this.fetchBookmarkFromDatabase(bookmarkId);
-
-    await this.sendBookmarkUpdate(
-      bookmarkId,
-      `Fetching content for Bookmark ${bookmarkId}: ${sourceUrl}`
-    );
+    const { bookmarkId, sourceUrl, userId } = payload.data;
 
     try {
+      // TODO: move this to bookmark processor service
       const content = await this.fetchAndConvertContent(sourceUrl);
-
-      await this.sendBookmarkUpdate(
-        bookmarkId,
-        `Content converted, updating Bookmark ${bookmarkId}: ${sourceUrl}`
-      );
-
       await this.updateBookmarkContent(bookmarkId, content);
 
-      await this.sendBookmarkUpdate(
-        bookmarkId,
-        `Successfully processed Bookmark ${bookmarkId}: ${sourceUrl}`
-      );
-
-      const summary = await SummaryAgent.generateSummary(bookmark);
-
-      await this.sendBookmarkUpdate(bookmarkId, summary);
+      await this.bookmarkProcessorService.process(bookmarkId, userId);
     } catch (error) {
-      await this.sendBookmarkUpdate(
-        bookmarkId,
-        `Failed to process content for Bookmark ${bookmarkId}: ${error.message}`
-      );
       throw error;
     }
-  }
-
-  private async sendBookmarkUpdate(
-    bookmarkId: string,
-    message: string
-  ): Promise<void> {
-    await this.supabaseClient
-      .getClient()
-      .channel("bookmarks")
-      .send({
-        type: "broadcast",
-        event: "update",
-        payload: {
-          id: bookmarkId,
-          updated_at: new Date().toISOString(),
-          message,
-        },
-      });
-  }
-
-  private async fetchBookmarkFromDatabase(bookmarkId: string): Promise<any> {
-    const { data: bookmark, error: fetchError } = await this.supabaseClient
-      .getClient()
-      .from("bookmarks")
-      .select("*")
-      .eq("id", bookmarkId)
-      .single();
-
-    if (fetchError) {
-      throw new Error(`Failed to fetch bookmark: ${fetchError.message}`);
-    }
-
-    if (!bookmark) {
-      throw new Error(`Bookmark not found: ${bookmarkId}`);
-    }
-
-    return bookmark;
   }
 
   private async fetchAndConvertContent(

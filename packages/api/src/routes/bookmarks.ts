@@ -85,13 +85,11 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         const bookmark = await services.bookmark.create({
           sourceUrl: source_url,
           title: metadata.title,
-          description: metadata.description,
           metadata,
           collectionId: collection_id,
           userId: user_id,
           isArchived: false,
           isFavorite: false,
-          tags: [],
         });
 
         try {

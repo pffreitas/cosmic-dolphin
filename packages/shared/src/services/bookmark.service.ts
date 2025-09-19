@@ -44,10 +44,7 @@ export class BookmarkServiceImpl implements BookmarkService {
     return this.mapDatabaseToBookmark(data);
   }
 
-  async findByIdAndUser(
-    id: string,
-    userId: string
-  ): Promise<Bookmark | null> {
+  async findByIdAndUser(id: string, userId: string): Promise<Bookmark | null> {
     const { data, error } = await this.supabaseClient
       .from("bookmarks")
       .select("*")
@@ -71,13 +68,11 @@ export class BookmarkServiceImpl implements BookmarkService {
     const insertData = {
       source_url: data.sourceUrl,
       title: data.title,
-      description: data.description,
       metadata: data.metadata,
       collection_id: data.collectionId,
       user_id: data.userId,
       is_archived: data.isArchived || false,
       is_favorite: data.isFavorite || false,
-      tags: data.tags || [],
       content: data.content,
       summary: data.summary,
     };
@@ -135,20 +130,21 @@ export class BookmarkServiceImpl implements BookmarkService {
     return data.map(this.mapDatabaseToBookmark);
   }
 
-  async update(id: string, data: Partial<Bookmark>): Promise<Bookmark> {
+  async update(
+    id: string,
+    data: Omit<
+      Bookmark,
+      "id" | "createdAt" | "updatedAt" | "sourceUrl" | "userId"
+    >
+  ): Promise<Bookmark> {
     const updateData: any = {};
 
-    if (data.sourceUrl !== undefined) updateData.source_url = data.sourceUrl;
     if (data.title !== undefined) updateData.title = data.title;
-    if (data.description !== undefined)
-      updateData.description = data.description;
     if (data.metadata !== undefined) updateData.metadata = data.metadata;
     if (data.collectionId !== undefined)
       updateData.collection_id = data.collectionId;
-    if (data.userId !== undefined) updateData.user_id = data.userId;
     if (data.isArchived !== undefined) updateData.is_archived = data.isArchived;
     if (data.isFavorite !== undefined) updateData.is_favorite = data.isFavorite;
-    if (data.tags !== undefined) updateData.tags = data.tags;
     if (data.content !== undefined) updateData.content = data.content;
     if (data.summary !== undefined) updateData.summary = data.summary;
 
@@ -182,13 +178,11 @@ export class BookmarkServiceImpl implements BookmarkService {
       id: data.id,
       sourceUrl: data.source_url,
       title: data.title,
-      description: data.description,
       metadata: data.metadata,
       collectionId: data.collection_id,
       userId: data.user_id,
       isArchived: data.is_archived,
       isFavorite: data.is_favorite,
-      tags: data.tags,
       content: data.content,
       summary: data.summary,
       createdAt: new Date(data.created_at),
