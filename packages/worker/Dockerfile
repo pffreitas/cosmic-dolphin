@@ -10,7 +10,7 @@ COPY packages/shared/package.json ./packages/shared/
 COPY packages/worker/package.json ./packages/worker/
 
 # Install dependencies
-RUN bun install --frozen-lockfile
+RUN bun install 
 
 # Copy source code
 COPY packages/shared ./packages/shared
