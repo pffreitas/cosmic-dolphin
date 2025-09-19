@@ -4,8 +4,8 @@ FROM oven/bun:1.2-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy root package.json and bun.lockb
-COPY package.json bun.lockb ./
+# Copy root package.json and bun.lock
+COPY package.json bun.lock ./
 
 # Copy workspace package.json files
 COPY packages/shared/package.json ./packages/shared/
