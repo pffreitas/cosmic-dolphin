@@ -23,6 +23,9 @@ envs:
 - key: SUPABASE_SERVICE_ROLE_KEY
   scope: RUN_AND_BUILD_TIME
   value: ${SUPABASE_SERVICE_ROLE_KEY}
+- key: WORKER_PORT
+  scope: RUN_AND_BUILD_TIME
+  value: 3000
 
 name: cosmic-dolphin-worker-nodejs
 region: nyc

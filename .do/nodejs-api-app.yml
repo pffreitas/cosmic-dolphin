@@ -14,9 +14,6 @@ envs:
 - key: DATABASE_URL
   scope: RUN_AND_BUILD_TIME
   value: ${DATABASE_URL}
-- key: REDIS_URL
-  scope: RUN_AND_BUILD_TIME
-  value: ${REDIS_URL}
 - key: JWT_SECRET
   scope: RUN_AND_BUILD_TIME
   value: ${JWT_SECRET}
@@ -26,6 +23,9 @@ envs:
 - key: SUPABASE_SERVICE_ROLE_KEY
   scope: RUN_AND_BUILD_TIME
   value: ${SUPABASE_SERVICE_ROLE_KEY}
+- key: API_PORT
+  scope: RUN_AND_BUILD_TIME
+  value: 3000
 
 ingress:
   rules:
