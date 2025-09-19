@@ -6,11 +6,45 @@ import { QueueProcessor } from "./queue.processor";
 import { DefaultMessageHandler } from "./handlers/default-message.handler";
 import { BookmarkProcessorHandler } from "./handlers/bookmark-processor.handler";
 import { MessageHandler } from "./interfaces/message-handler.interface";
+import {
+  AI,
+  EventBus,
+  BookmarkProcessorServiceImpl,
+  BookmarkServiceImpl,
+  BookmarkService,
+} from "@cosmic-dolphin/shared";
+import { BOOKMARK_SERVICE, BOOKMARK_PROCESSOR_SERVICE } from "./tokens";
 
 @Module({
   imports: [ConfigModule],
   providers: [
     SupabaseClientService,
+    {
+      provide: EventBus,
+      useFactory: (supabaseClient: SupabaseClientService) =>
+        new EventBus(supabaseClient.getClient()),
+      inject: [SupabaseClientService],
+    },
+    {
+      provide: AI,
+      useFactory: (eventBus: EventBus) => new AI(eventBus),
+      inject: [EventBus],
+    },
+    {
+      provide: BOOKMARK_SERVICE,
+      useFactory: (supabaseClient: SupabaseClientService) =>
+        new BookmarkServiceImpl(supabaseClient.getClient()),
+      inject: [SupabaseClientService],
+    },
+    {
+      provide: BOOKMARK_PROCESSOR_SERVICE,
+      useFactory: (
+        bookmarkService: BookmarkService,
+        ai: AI,
+        eventBus: EventBus
+      ) => new BookmarkProcessorServiceImpl(bookmarkService, ai, eventBus),
+      inject: [BOOKMARK_SERVICE, AI, EventBus],
+    },
     QueueService,
     QueueProcessor,
     DefaultMessageHandler,

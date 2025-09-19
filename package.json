@@ -7,22 +7,33 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces",
-    "dev": "concurrently \"npm run dev --workspace=packages/api\" \"npm run start:dev --workspace=packages/worker\"",
-    "start": "concurrently \"npm run start --workspace=packages/api\" \"npm run start:prod --workspace=packages/worker\"",
-    "clean": "npm run clean --workspaces",
-    "lint": "npm run lint --workspaces",
-    "test": "npm run test --workspaces",
+    "build": "bun run --cwd packages/shared build && bun run --cwd packages/api build && bun run --cwd packages/worker build",
+    "dev": "bun run  build && concurrently \"bun --env-file=../../.env.dev run --cwd packages/api dev\" \"bun --env-file=../../.env.dev run --cwd packages/worker start:dev\"",
+    "start": "concurrently \"bun run --cwd packages/api start\" \"bun run --cwd packages/worker start:prod\"",
+    "clean": "bun run --cwd packages/shared clean && bun run --cwd packages/api clean",
+    "lint": "bun run --cwd packages/api lint && bun run --cwd packages/worker lint",
+    "test": "bun run --cwd packages/shared test && bun run --cwd packages/api test && bun run --cwd packages/worker test",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
-    "install:all": "npm install"
+    "install:all": "bun install"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
   },
   "engines": {
     "node": ">=22.0.0",
-    "npm": ">=10.0.0"
-  }
+    "bun": ">=1.0.0"
+  },
+  "dependencies": {
+    "@ai-sdk/azure": "^2.0.30",
+    "@ai-sdk/openai": "^2.0.28",
+    "@openrouter/ai-sdk-provider": "^1.2.0",
+    "ai": "^5.0.41",
+    "ollama-ai-provider-v2": "^1.3.1",
+    "zod-to-json-schema": "^3.24.6"
+  },
+  "trustedDependencies": [
+    "@nestjs/core"
+  ]
 }

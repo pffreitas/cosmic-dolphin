@@ -20,7 +20,7 @@ export interface QueueTaskPayload {
   data?: any;
   metadata?: {
     source?: string;
-    priority?: 'low' | 'medium' | 'high';
+    priority?: "low" | "medium" | "high";
     retry_count?: number;
   };
 }
@@ -43,13 +43,22 @@ export interface OpenGraphMetadata {
 
 // Bookmark metadata interface
 export interface BookmarkMetadata {
-  openGraph?: OpenGraphMetadata;
   title?: string;
   description?: string;
+  openGraph?: OpenGraphMetadata;
   favicon?: string;
   contentType?: string;
   wordCount?: number;
   readingTime?: number;
+  images?: {
+    url: string;
+    description: string;
+  }[];
+  links?: {
+    url: string;
+    relevance: string;
+  }[];
+  tags?: string[];
 }
 
 // Collection interface
@@ -67,15 +76,14 @@ export interface Collection extends BaseEntity {
 export interface Bookmark extends BaseEntity {
   sourceUrl: string;
   title?: string;
-  description?: string;
   metadata?: BookmarkMetadata;
   collectionId?: string;
-  userId: string;
   isArchived?: boolean;
   isFavorite?: boolean;
-  tags?: string[];
   content?: string;
+  rawContent?: string;
   summary?: string;
+  userId: string;
 }
 
 // Bookmark tag interface (for many-to-many relationship)
@@ -87,7 +95,7 @@ export interface BookmarkTag {
 
 // Bookmark queue payload interface
 export interface BookmarkQueuePayload extends QueueTaskPayload {
-  type: 'bookmark_process';
+  type: "bookmark_process";
   data: {
     bookmarkId: string;
     sourceUrl: string;
