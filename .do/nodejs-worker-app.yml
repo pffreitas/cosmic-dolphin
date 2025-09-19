@@ -17,6 +17,9 @@ envs:
 - key: WORKER_PORT
   scope: RUN_AND_BUILD_TIME
   value: 3000
+- key: QUEUE_NAMES
+  scope: RUN_AND_BUILD_TIME
+  value: default,bookmarks
 
 name: cosmic-dolphin-worker-nodejs
 region: nyc
