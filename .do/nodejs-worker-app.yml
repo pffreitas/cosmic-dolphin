@@ -20,6 +20,9 @@ envs:
 - key: QUEUE_NAMES
   scope: RUN_AND_BUILD_TIME
   value: default,bookmarks
+- key: OPENROUTER_API_KEY
+  scope: RUN_AND_BUILD_TIME
+  value: ${OPENROUTER_API_KEY}
 
 name: cosmic-dolphin-worker-nodejs
 region: nyc
