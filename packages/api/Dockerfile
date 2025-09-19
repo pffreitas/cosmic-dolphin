@@ -12,7 +12,7 @@ COPY packages/shared/package.json ./packages/shared/
 COPY packages/api/package.json ./packages/api/
 
 # Install all dependencies including workspace dependencies
-RUN bun install --frozen-lockfile
+RUN bun install
 
 # Copy shared package source and build it first
 COPY packages/shared ./packages/shared
