@@ -54,7 +54,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           user_id,
           source_url
         );
-        if (existingBookmark && false) {
+        if (existingBookmark) {
           return reply
             .status(409)
             .send({ error: "Bookmark already exists for this URL" });
@@ -73,31 +73,12 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           }
         }
 
-        const { content, contentType } =
-          await services.webScraping.validateAndFetchUrl(source_url);
-        const ogData = services.webScraping.extractOpenGraphMetadata(content);
-        const metadata = services.webScraping.createBookmarkMetadata(
-          ogData,
-          contentType,
-          content
-        );
-
-        const bookmark = await services.bookmark.create({
-          sourceUrl: source_url,
-          title: metadata.title,
-          metadata,
-          collectionId: collection_id,
-          userId: user_id,
-          isArchived: false,
-          isFavorite: false,
-        });
+        const bookmark = await services.bookmark.create(source_url, user_id);
 
         try {
           await services.queue.sendBookmarkProcessingMessage(
             bookmark.id,
-            source_url,
-            user_id,
-            collection_id
+            user_id
           );
         } catch (queueError) {
           console.log("queueError", queueError);

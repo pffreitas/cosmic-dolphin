@@ -12,8 +12,13 @@ import {
   BookmarkProcessorServiceImpl,
   BookmarkServiceImpl,
   BookmarkService,
+  WebScrapingServiceImpl,
 } from "@cosmic-dolphin/shared";
-import { BOOKMARK_SERVICE, BOOKMARK_PROCESSOR_SERVICE } from "./tokens";
+import {
+  BOOKMARK_SERVICE,
+  BOOKMARK_PROCESSOR_SERVICE,
+  WEB_SCRAPING_SERVICE,
+} from "./tokens";
 
 @Module({
   imports: [ConfigModule],
@@ -32,9 +37,12 @@ import { BOOKMARK_SERVICE, BOOKMARK_PROCESSOR_SERVICE } from "./tokens";
     },
     {
       provide: BOOKMARK_SERVICE,
-      useFactory: (supabaseClient: SupabaseClientService) =>
-        new BookmarkServiceImpl(supabaseClient.getClient()),
-      inject: [SupabaseClientService],
+      useFactory: (
+        supabaseClient: SupabaseClientService,
+        webScrapingService: WebScrapingServiceImpl
+      ) =>
+        new BookmarkServiceImpl(supabaseClient.getClient(), webScrapingService),
+      inject: [SupabaseClientService, WEB_SCRAPING_SERVICE],
     },
     {
       provide: BOOKMARK_PROCESSOR_SERVICE,
@@ -44,6 +52,10 @@ import { BOOKMARK_SERVICE, BOOKMARK_PROCESSOR_SERVICE } from "./tokens";
         eventBus: EventBus
       ) => new BookmarkProcessorServiceImpl(bookmarkService, ai, eventBus),
       inject: [BOOKMARK_SERVICE, AI, EventBus],
+    },
+    {
+      provide: WEB_SCRAPING_SERVICE,
+      useFactory: () => new WebScrapingServiceImpl(),
     },
     QueueService,
     QueueProcessor,

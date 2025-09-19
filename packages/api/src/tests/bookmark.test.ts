@@ -1,40 +1,40 @@
-import { describe, it, expect } from 'bun:test';
-import { WebScrapingServiceImpl } from '@cosmic-dolphin/shared';
+import { describe, it, expect } from "bun:test";
+import { WebScrapingServiceImpl } from "@cosmic-dolphin/shared";
 
-describe('Bookmark Feature Validation', () => {
-  describe('URL validation', () => {
+describe("Bookmark Feature Validation", () => {
+  describe("URL validation", () => {
     const webScrapingService = new WebScrapingServiceImpl();
 
-    it('should validate valid URLs', () => {
+    it("should validate valid URLs", () => {
       const validUrls = [
-        'https://example.com',
-        'http://test.org',
-        'https://www.domain.com/path?query=1',
+        "https://example.com",
+        "http://test.org",
+        "https://www.domain.com/path?query=1",
       ];
 
-      validUrls.forEach(url => {
+      validUrls.forEach((url) => {
         expect(webScrapingService.isValidUrl(url)).toBe(true);
       });
     });
 
-    it('should reject invalid URLs', () => {
+    it("should reject invalid URLs", () => {
       const invalidUrls = [
-        'not-a-url',
-        'ftp://invalid-protocol.com',
-        'invalid://test.com',
-        '',
+        "not-a-url",
+        "ftp://invalid-protocol.com",
+        "invalid://test.com",
+        "",
       ];
 
-      invalidUrls.forEach(url => {
+      invalidUrls.forEach((url) => {
         expect(webScrapingService.isValidUrl(url)).toBe(false);
       });
     });
   });
 
-  describe('Open Graph metadata extraction', () => {
+  describe("Open Graph metadata extraction", () => {
     const webScrapingService = new WebScrapingServiceImpl();
 
-    it('should extract Open Graph metadata from HTML', () => {
+    it("should extract Open Graph metadata from HTML", () => {
       const sampleHtml = `
         <!DOCTYPE html>
         <html>
@@ -51,13 +51,17 @@ describe('Bookmark Feature Validation', () => {
         </html>
       `;
 
-      const metadata = webScrapingService.extractOpenGraphMetadata(sampleHtml);
-      expect(metadata.title).toBe('OG Title');
-      expect(metadata.description).toBe('OG Description');
-      expect(metadata.url).toBe('https://example.com');
+      const scrapedUrlContents = webScrapingService.scrapeContent(sampleHtml);
+      expect(scrapedUrlContents.title).toBe("OG Title");
+      expect(scrapedUrlContents.metadata.openGraph?.description).toBe(
+        "OG Description"
+      );
+      expect(scrapedUrlContents.metadata.openGraph?.url).toBe(
+        "https://example.com"
+      );
     });
 
-    it('should fallback to standard meta tags when OG tags are missing', () => {
+    it("should fallback to standard meta tags when OG tags are missing", () => {
       const sampleHtml = `
         <!DOCTYPE html>
         <html>
@@ -71,57 +75,59 @@ describe('Bookmark Feature Validation', () => {
         </html>
       `;
 
-      const metadata = webScrapingService.extractOpenGraphMetadata(sampleHtml);
-      expect(metadata.title).toBe('Test Page Title');
-      expect(metadata.description).toBe('Meta Description');
+      const scrapedUrlContents = webScrapingService.scrapeContent(sampleHtml);
+      expect(scrapedUrlContents.title).toBe("Test Page Title");
+      expect(scrapedUrlContents.metadata.openGraph?.description).toBe(
+        "Meta Description"
+      );
     });
   });
 
-  describe('Queue payload validation', () => {
-    it('should validate bookmark queue payload structure', () => {
+  describe("Queue payload validation", () => {
+    it("should validate bookmark queue payload structure", () => {
       const payload = {
-        type: 'bookmark_process',
+        type: "bookmark_process",
         data: {
-          bookmarkId: 'test-id',
-          sourceUrl: 'https://example.com',
-          userId: 'user-123',
-          collectionId: 'collection-456',
+          bookmarkId: "test-id",
+          sourceUrl: "https://example.com",
+          userId: "user-123",
+          collectionId: "collection-456",
         },
         metadata: {
-          source: 'api',
-          priority: 'medium',
+          source: "api",
+          priority: "medium",
         },
       };
 
-      expect(payload.type).toBe('bookmark_process');
+      expect(payload.type).toBe("bookmark_process");
       expect(payload.data.bookmarkId).toBeTruthy();
       expect(payload.data.sourceUrl).toBeTruthy();
       expect(payload.data.userId).toBeTruthy();
-      expect(payload.metadata?.source).toBe('api');
+      expect(payload.metadata?.source).toBe("api");
     });
   });
 
-  describe('Database schema validation', () => {
-    it('should validate bookmark interface structure', () => {
+  describe("Database schema validation", () => {
+    it("should validate bookmark interface structure", () => {
       const bookmark = {
-        id: 'bookmark-123',
-        sourceUrl: 'https://example.com',
-        title: 'Example Page',
-        description: 'An example page',
+        id: "bookmark-123",
+        sourceUrl: "https://example.com",
+        title: "Example Page",
+        content: "An example page",
         metadata: {
           openGraph: {
-            title: 'OG Title',
-            description: 'OG Description',
+            title: "OG Title",
+            description: "OG Description",
           },
-          contentType: 'text/html',
+          contentType: "text/html",
           wordCount: 100,
           readingTime: 1,
         },
-        collectionId: 'collection-123',
-        userId: 'user-123',
+        collectionId: "collection-123",
+        userId: "user-123",
         isArchived: false,
         isFavorite: false,
-        tags: ['example', 'test'],
+        cosmicTags: ["example", "test"],
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -129,9 +135,9 @@ describe('Bookmark Feature Validation', () => {
       expect(bookmark.id).toBeTruthy();
       expect(bookmark.sourceUrl).toBeTruthy();
       expect(bookmark.userId).toBeTruthy();
-      expect(Array.isArray(bookmark.tags)).toBe(true);
-      expect(typeof bookmark.isArchived).toBe('boolean');
-      expect(typeof bookmark.isFavorite).toBe('boolean');
+      expect(Array.isArray(bookmark.cosmicTags)).toBe(true);
+      expect(typeof bookmark.isArchived).toBe("boolean");
+      expect(typeof bookmark.isFavorite).toBe("boolean");
     });
   });
 });

@@ -2,7 +2,10 @@ import { Injectable, Logger, Inject } from "@nestjs/common";
 import { MessageHandler } from "../interfaces/message-handler.interface";
 import { QueueMessage } from "../../types/queue.types";
 import { SupabaseClientService } from "../supabase-client.service";
-import { BookmarkQueuePayload, BookmarkProcessorService } from "@cosmic-dolphin/shared";
+import {
+  BookmarkQueuePayload,
+  BookmarkProcessorService,
+} from "@cosmic-dolphin/shared";
 import { BOOKMARK_PROCESSOR_SERVICE } from "../tokens";
 
 const TurndownService = require("turndown");
@@ -19,7 +22,8 @@ export class BookmarkProcessorHandler implements MessageHandler {
 
   constructor(
     private readonly supabaseClient: SupabaseClientService,
-    @Inject(BOOKMARK_PROCESSOR_SERVICE) private readonly bookmarkProcessorService: BookmarkProcessorService
+    @Inject(BOOKMARK_PROCESSOR_SERVICE)
+    private readonly bookmarkProcessorService: BookmarkProcessorService
   ) {
     this.turndownService = new TurndownService({
       headingStyle: "atx",
@@ -65,13 +69,9 @@ export class BookmarkProcessorHandler implements MessageHandler {
   }
 
   private async processBookmark(payload: BookmarkQueuePayload): Promise<void> {
-    const { bookmarkId, sourceUrl, userId } = payload.data;
+    const { bookmarkId, userId } = payload.data;
 
     try {
-      // TODO: move this to bookmark processor service
-      const content = await this.fetchAndConvertContent(sourceUrl);
-      await this.updateBookmarkContent(bookmarkId, content);
-
       await this.bookmarkProcessorService.process(bookmarkId, userId);
     } catch (error) {
       throw error;

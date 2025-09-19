@@ -1,15 +1,15 @@
-import { OpenGraphMetadata, BookmarkMetadata, FetchUrlResult } from "../types";
+import { CheerioAPI } from "cheerio";
+import {
+  OpenGraphMetadata,
+  BookmarkMetadata,
+  ScrapedUrlContents,
+} from "../types";
 import * as cheerio from "cheerio";
 
 export interface WebScrapingService {
   isValidUrl(url: string): boolean;
-  validateAndFetchUrl(url: string): Promise<FetchUrlResult>;
-  extractOpenGraphMetadata(html: string): OpenGraphMetadata;
-  createBookmarkMetadata(
-    ogData: OpenGraphMetadata,
-    contentType: string,
-    html: string
-  ): BookmarkMetadata;
+  scrape(url: string): Promise<Omit<ScrapedUrlContents, "bookmarkId">>;
+  scrapeContent(content: string): Omit<ScrapedUrlContents, "bookmarkId">;
 }
 
 export class WebScrapingServiceImpl implements WebScrapingService {
@@ -24,7 +24,7 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     }
   }
 
-  async validateAndFetchUrl(url: string): Promise<FetchUrlResult> {
+  async scrape(url: string): Promise<Omit<ScrapedUrlContents, "bookmarkId">> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.requestTimeout);
 
@@ -56,7 +56,9 @@ export class WebScrapingServiceImpl implements WebScrapingService {
       }
 
       const content = await response.text();
-      return { content, contentType };
+      const scrapedUrlContents = this.scrapeContent(content);
+
+      return scrapedUrlContents;
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === "AbortError") {
@@ -66,8 +68,71 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     }
   }
 
-  extractOpenGraphMetadata(html: string): OpenGraphMetadata {
-    const $ = cheerio.load(html);
+  scrapeContent(content: string): Omit<ScrapedUrlContents, "bookmarkId"> {
+    const $ = cheerio.load(content);
+    const title = this.extractTitle($);
+    const metadata = this.extractMetadata($);
+    const images = this.extractImages($);
+    const links = this.extractLinks($);
+    return { title, content, metadata, images, links };
+  }
+
+  private extractTitle($: CheerioAPI): ScrapedUrlContents["title"] {
+    return $("title").text() ?? "";
+  }
+
+  private extractImages($: CheerioAPI): ScrapedUrlContents["images"] {
+    const images = $("img");
+    return images
+      .map((i, img) => {
+        return {
+          url: $(img).attr("src") ?? "",
+          alt: $(img).attr("alt") ?? "",
+        };
+      })
+      .get();
+  }
+
+  private extractLinks($: CheerioAPI): ScrapedUrlContents["links"] {
+    return $("a")
+      .map((i, link) => {
+        return {
+          url: $(link).attr("href") ?? "",
+          text: $(link).text() ?? "",
+        };
+      })
+      .get();
+  }
+
+  private extractMetadata($: CheerioAPI): BookmarkMetadata {
+    const ogData = this.extractOpenGraphMetadata($);
+
+    const textContent = $.root().text();
+    const wordCount = textContent
+      .split(/\s+/)
+      .filter((word: string) => word.length > 0).length;
+    const readingTime = Math.ceil(wordCount / 200);
+
+    let favicon =
+      $('link[rel="icon"]').attr("href") ||
+      $('link[rel="shortcut icon"]').attr("href") ||
+      $('link[rel="apple-touch-icon"]').attr("href");
+
+    if (favicon && !favicon.startsWith("http")) {
+      const url = new URL(ogData.url || "");
+      favicon = new URL(favicon, url.origin).href;
+    }
+
+    ogData.favicon = favicon;
+
+    return {
+      openGraph: ogData,
+      wordCount,
+      readingTime,
+    };
+  }
+
+  private extractOpenGraphMetadata($: CheerioAPI): OpenGraphMetadata {
     const ogData: OpenGraphMetadata = {};
 
     $('meta[property^="og:"]').each((_: number, element: any) => {
@@ -127,39 +192,5 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     }
 
     return ogData;
-  }
-
-  createBookmarkMetadata(
-    ogData: OpenGraphMetadata,
-    contentType: string,
-    html: string
-  ): BookmarkMetadata {
-    const $ = cheerio.load(html);
-
-    const textContent = $.root().text();
-    const wordCount = textContent
-      .split(/\s+/)
-      .filter((word: string) => word.length > 0).length;
-    const readingTime = Math.ceil(wordCount / 200);
-
-    let favicon =
-      $('link[rel="icon"]').attr("href") ||
-      $('link[rel="shortcut icon"]').attr("href") ||
-      $('link[rel="apple-touch-icon"]').attr("href");
-
-    if (favicon && !favicon.startsWith("http")) {
-      const url = new URL(ogData.url || "");
-      favicon = new URL(favicon, url.origin).href;
-    }
-
-    return {
-      openGraph: ogData,
-      title: ogData.title,
-      description: ogData.description,
-      favicon,
-      contentType,
-      wordCount,
-      readingTime,
-    };
   }
 }

@@ -34,15 +34,9 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       timestamp: new Date(),
     });
 
-    bookmark.summary = await this.summarizeContent(session, bookmark);
+    bookmark.cosmicSummary = await this.summarizeContent(session, bookmark);
     const tags = await this.generateMetadata(session, bookmark);
-    if (bookmark.metadata) {
-      bookmark.metadata.tags = tags;
-    } else {
-      bookmark.metadata = {
-        tags,
-      };
-    }
+    bookmark.cosmicTags = tags;
 
     await this.bookmarkService.update(bookmark.id, bookmark);
     this.eventBus.publishEvent({
@@ -88,7 +82,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       })) {
         if (part.type === "text") {
           summary = part.part.text;
-          bookmark.summary = summary;
+          bookmark.cosmicSummary = summary;
 
           this.eventBus.publishEvent({
             type: "bookmark.updated",

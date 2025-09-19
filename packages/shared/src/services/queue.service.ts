@@ -9,9 +9,7 @@ export interface QueueService {
   ): Promise<void>;
   sendBookmarkProcessingMessage(
     bookmarkId: string,
-    sourceUrl: string,
-    userId: string,
-    collectionId?: string
+    userId: string
   ): Promise<void>;
 }
 
@@ -38,17 +36,13 @@ export class QueueServiceImpl implements QueueService {
 
   async sendBookmarkProcessingMessage(
     bookmarkId: string,
-    sourceUrl: string,
-    userId: string,
-    collectionId?: string
+    userId: string
   ): Promise<void> {
     const payload: BookmarkQueuePayload = {
       type: "bookmark_process",
       data: {
         bookmarkId,
-        sourceUrl,
         userId,
-        collectionId,
       },
       metadata: {
         source: "api",

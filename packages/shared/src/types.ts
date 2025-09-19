@@ -25,8 +25,20 @@ export interface QueueTaskPayload {
   };
 }
 
+// Collection interface
+export interface Collection extends BaseEntity {
+  name: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  parentId?: string;
+  userId: string;
+  isPublic?: boolean;
+}
+
 // Open Graph metadata interface
 export interface OpenGraphMetadata {
+  favicon?: string;
   title?: string;
   description?: string;
   image?: string;
@@ -43,54 +55,49 @@ export interface OpenGraphMetadata {
 
 // Bookmark metadata interface
 export interface BookmarkMetadata {
-  title?: string;
-  description?: string;
   openGraph?: OpenGraphMetadata;
-  favicon?: string;
-  contentType?: string;
   wordCount?: number;
   readingTime?: number;
-  images?: {
-    url: string;
-    description: string;
-  }[];
-  links?: {
-    url: string;
-    relevance: string;
-  }[];
-  tags?: string[];
 }
 
-// Collection interface
-export interface Collection extends BaseEntity {
-  name: string;
-  description?: string;
-  color?: string;
-  icon?: string;
-  parentId?: string;
-  userId: string;
-  isPublic?: boolean;
+export interface BookmarkImage {
+  url: string;
+  description: string;
+}
+
+export interface BookmarkLink {
+  url: string;
+  relevance: string;
 }
 
 // Bookmark interface
 export interface Bookmark extends BaseEntity {
   sourceUrl: string;
-  title?: string;
-  metadata?: BookmarkMetadata;
   collectionId?: string;
+  title?: string;
   isArchived?: boolean;
   isFavorite?: boolean;
-  content?: string;
-  rawContent?: string;
-  summary?: string;
+  cosmicImages?: BookmarkImage[];
+  cosmicLinks?: BookmarkLink[];
+  cosmicSummary?: string;
+  cosmicTags?: string[];
+  metadata?: BookmarkMetadata;
   userId: string;
 }
 
-// Bookmark tag interface (for many-to-many relationship)
-export interface BookmarkTag {
+export interface ScrapedUrlContents {
   bookmarkId: string;
-  tag: string;
-  createdAt: Date;
+  title: string;
+  content: string;
+  metadata: BookmarkMetadata;
+  images?: {
+    url: string;
+    alt: string;
+  }[];
+  links?: {
+    url: string;
+    text: string;
+  }[];
 }
 
 // Bookmark queue payload interface
@@ -98,9 +105,7 @@ export interface BookmarkQueuePayload extends QueueTaskPayload {
   type: "bookmark_process";
   data: {
     bookmarkId: string;
-    sourceUrl: string;
     userId: string;
-    collectionId?: string;
   };
 }
 
@@ -130,7 +135,7 @@ export interface ErrorResponse {
 }
 
 // Service result types
-export interface FetchUrlResult {
+export interface UrlContents {
   content: string;
   contentType: string;
 }

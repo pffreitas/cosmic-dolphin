@@ -11,7 +11,6 @@ import {
 import { QueueService, QueueServiceImpl } from "./queue.service";
 import { BookmarkService, BookmarkServiceImpl } from "./bookmark.service";
 import { CollectionService, CollectionServiceImpl } from "./collection.service";
-import { BookmarkProcessorService, BookmarkProcessorServiceImpl } from "./bookmark.processor.service";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 export interface ServiceContainer {
@@ -27,7 +26,10 @@ export function createServiceContainer(
   return {
     webScraping: new WebScrapingServiceImpl(),
     queue: new QueueServiceImpl(supabaseClient),
-    bookmark: new BookmarkServiceImpl(supabaseClient),
+    bookmark: new BookmarkServiceImpl(
+      supabaseClient,
+      new WebScrapingServiceImpl()
+    ),
     collection: new CollectionServiceImpl(supabaseClient),
   };
 }

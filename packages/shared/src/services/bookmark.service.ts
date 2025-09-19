@@ -1,26 +1,28 @@
-import { Bookmark, CreateBookmarkRequest } from "../types";
+import { Bookmark, ScrapedUrlContents } from "../types";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { WebScrapingService } from "./web-scraping.service";
+
+export interface FindByUserOptions {
+  collectionId?: string;
+  limit?: number;
+  offset?: number;
+  includeArchived?: boolean;
+}
 
 export interface BookmarkService {
   findByUserAndUrl(userId: string, sourceUrl: string): Promise<Bookmark | null>;
   findByIdAndUser(id: string, userId: string): Promise<Bookmark | null>;
-  create(
-    data: Omit<Bookmark, "id" | "createdAt" | "updatedAt">
-  ): Promise<Bookmark>;
-  findByUser(
-    userId: string,
-    options?: {
-      collectionId?: string;
-      limit?: number;
-      offset?: number;
-      includeArchived?: boolean;
-    }
-  ): Promise<Bookmark[]>;
+  create(url: string, userId: string): Promise<Bookmark>;
+  findByUser(userId: string, options?: FindByUserOptions): Promise<Bookmark[]>;
   update(id: string, data: Partial<Bookmark>): Promise<Bookmark>;
   delete(id: string): Promise<void>;
 }
 
 export class BookmarkServiceImpl implements BookmarkService {
-  constructor(private supabaseClient: any) {}
+  constructor(
+    private supabaseClient: SupabaseClient,
+    private webScrapingService: WebScrapingService
+  ) {}
 
   async findByUserAndUrl(
     userId: string,
@@ -62,7 +64,22 @@ export class BookmarkServiceImpl implements BookmarkService {
     return this.mapDatabaseToBookmark(data);
   }
 
-  async create(
+  async create(url: string, userId: string): Promise<Bookmark> {
+    const scrapedUrlContents = await this.webScrapingService.scrape(url);
+
+    const bookmark = await this.insertBookmark({
+      sourceUrl: url,
+      title: scrapedUrlContents.title,
+      metadata: scrapedUrlContents.metadata,
+      userId,
+    });
+
+    await this.insertScrapedUrlContents(bookmark.id, scrapedUrlContents);
+
+    return bookmark;
+  }
+
+  private async insertBookmark(
     data: Omit<Bookmark, "id" | "createdAt" | "updatedAt">
   ): Promise<Bookmark> {
     const insertData = {
@@ -74,7 +91,7 @@ export class BookmarkServiceImpl implements BookmarkService {
       is_archived: data.isArchived || false,
       is_favorite: data.isFavorite || false,
       content: data.content,
-      summary: data.summary,
+      cosmic_summary: data.cosmicSummary,
     };
 
     const { data: bookmark, error } = await this.supabaseClient
@@ -88,6 +105,30 @@ export class BookmarkServiceImpl implements BookmarkService {
     }
 
     return this.mapDatabaseToBookmark(bookmark);
+  }
+
+  private async insertScrapedUrlContents(
+    bookmarkId: string,
+    scrapedUrlContents: Omit<ScrapedUrlContents, "bookmarkId">
+  ): Promise<void> {
+    const insertData = {
+      bookmark_id: bookmarkId,
+      title: scrapedUrlContents.title,
+      content: scrapedUrlContents.content,
+      metadata: scrapedUrlContents.metadata,
+      images: scrapedUrlContents.images || [],
+      links: scrapedUrlContents.links || [],
+    };
+
+    const { error } = await this.supabaseClient
+      .from("scraped_url_contents")
+      .insert(insertData);
+
+    if (error) {
+      throw new Error(
+        `Failed to insert scraped URL contents: ${error.message}`
+      );
+    }
   }
 
   async findByUser(
@@ -146,7 +187,9 @@ export class BookmarkServiceImpl implements BookmarkService {
     if (data.isArchived !== undefined) updateData.is_archived = data.isArchived;
     if (data.isFavorite !== undefined) updateData.is_favorite = data.isFavorite;
     if (data.content !== undefined) updateData.content = data.content;
-    if (data.summary !== undefined) updateData.summary = data.summary;
+    if (data.cosmicSummary !== undefined)
+      updateData.summary = data.cosmicSummary;
+    if (data.cosmicTags !== undefined) updateData.tags = data.cosmicTags;
 
     const { data: bookmark, error } = await this.supabaseClient
       .from("bookmarks")
@@ -184,7 +227,7 @@ export class BookmarkServiceImpl implements BookmarkService {
       isArchived: data.is_archived,
       isFavorite: data.is_favorite,
       content: data.content,
-      summary: data.summary,
+      cosmicSummary: data.summary,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),
     };
