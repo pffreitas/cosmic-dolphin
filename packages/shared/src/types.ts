@@ -75,6 +75,7 @@ export interface Bookmark extends BaseEntity {
   sourceUrl: string;
   collectionId?: string;
   title?: string;
+  content?: string;
   isArchived?: boolean;
   isFavorite?: boolean;
   cosmicImages?: BookmarkImage[];

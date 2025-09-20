@@ -12,6 +12,9 @@ import { QueueService, QueueServiceImpl } from "./queue.service";
 import { BookmarkService, BookmarkServiceImpl } from "./bookmark.service";
 import { CollectionService, CollectionServiceImpl } from "./collection.service";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { Kysely } from "kysely";
+import { Database } from "../database/schema";
+import { BookmarkRepositoryImpl, CollectionRepositoryImpl } from "../repositories";
 
 export interface ServiceContainer {
   webScraping: WebScrapingService;
@@ -21,15 +24,20 @@ export interface ServiceContainer {
 }
 
 export function createServiceContainer(
-  supabaseClient: SupabaseClient
+  supabaseClient: SupabaseClient,
+  db: Kysely<Database>
 ): ServiceContainer {
+  const webScrapingService = new WebScrapingServiceImpl();
+  const bookmarkRepository = new BookmarkRepositoryImpl(db);
+  const collectionRepository = new CollectionRepositoryImpl(db);
+
   return {
-    webScraping: new WebScrapingServiceImpl(),
+    webScraping: webScrapingService,
     queue: new QueueServiceImpl(supabaseClient),
     bookmark: new BookmarkServiceImpl(
-      supabaseClient,
-      new WebScrapingServiceImpl()
+      bookmarkRepository,
+      webScrapingService
     ),
-    collection: new CollectionServiceImpl(supabaseClient),
+    collection: new CollectionServiceImpl(collectionRepository),
   };
 }

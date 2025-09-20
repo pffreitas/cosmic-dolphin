@@ -1,4 +1,6 @@
 import { Collection } from '../types';
+import { CollectionRepository } from '../repositories';
+import { NewCollection, CollectionUpdate } from '../database/schema';
 
 export interface CollectionService {
   findByIdAndUser(id: string, userId: string): Promise<Collection | null>;
@@ -9,66 +11,35 @@ export interface CollectionService {
 }
 
 export class CollectionServiceImpl implements CollectionService {
-  constructor(private supabaseClient: any) {}
+  constructor(private collectionRepository: CollectionRepository) {}
 
   async findByIdAndUser(id: string, userId: string): Promise<Collection | null> {
-    const { data, error } = await this.supabaseClient
-      .from('collections')
-      .select('*')
-      .eq('id', id)
-      .eq('user_id', userId)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return null;
-      }
-      throw new Error(`Failed to find collection: ${error.message}`);
-    }
-
-    return this.mapDatabaseToCollection(data);
+    const collection = await this.collectionRepository.findByIdAndUser(id, userId);
+    return collection ? this.mapDatabaseToCollection(collection) : null;
   }
 
   async findByUser(userId: string): Promise<Collection[]> {
-    const { data, error } = await this.supabaseClient
-      .from('collections')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      throw new Error(`Failed to fetch collections: ${error.message}`);
-    }
-
-    return data.map(this.mapDatabaseToCollection);
+    const collections = await this.collectionRepository.findByUser(userId);
+    return collections.map(this.mapDatabaseToCollection);
   }
 
   async create(data: Omit<Collection, 'id' | 'createdAt' | 'updatedAt'>): Promise<Collection> {
-    const insertData = {
+    const newCollection: NewCollection = {
       name: data.name,
-      description: data.description,
-      color: data.color,
-      icon: data.icon,
-      parent_id: data.parentId,
+      description: data.description || null,
+      color: data.color || null,
+      icon: data.icon || null,
+      parent_id: data.parentId || null,
       user_id: data.userId,
       is_public: data.isPublic || false,
     };
 
-    const { data: collection, error } = await this.supabaseClient
-      .from('collections')
-      .insert(insertData)
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to create collection: ${error.message}`);
-    }
-
+    const collection = await this.collectionRepository.create(newCollection);
     return this.mapDatabaseToCollection(collection);
   }
 
   async update(id: string, data: Partial<Collection>): Promise<Collection> {
-    const updateData: any = {};
+    const updateData: CollectionUpdate = {};
 
     if (data.name !== undefined) updateData.name = data.name;
     if (data.description !== undefined) updateData.description = data.description;
@@ -78,29 +49,12 @@ export class CollectionServiceImpl implements CollectionService {
     if (data.userId !== undefined) updateData.user_id = data.userId;
     if (data.isPublic !== undefined) updateData.is_public = data.isPublic;
 
-    const { data: collection, error } = await this.supabaseClient
-      .from('collections')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to update collection: ${error.message}`);
-    }
-
+    const collection = await this.collectionRepository.update(id, updateData);
     return this.mapDatabaseToCollection(collection);
   }
 
   async delete(id: string): Promise<void> {
-    const { error } = await this.supabaseClient
-      .from('collections')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      throw new Error(`Failed to delete collection: ${error.message}`);
-    }
+    await this.collectionRepository.delete(id);
   }
 
   private mapDatabaseToCollection(data: any): Collection {

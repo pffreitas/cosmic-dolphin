@@ -7,6 +7,7 @@ import {
   ServiceContainer,
   createServiceContainer,
   Bookmark,
+  createDatabase,
 } from "@cosmic-dolphin/shared";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "../config/environment";
@@ -18,7 +19,8 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     config.SUPABASE_SERVICE_ROLE_KEY
   );
 
-  const services: ServiceContainer = createServiceContainer(supabase);
+  const db = createDatabase(config.DATABASE_URL);
+  const services: ServiceContainer = createServiceContainer(supabase, db);
 
   fastify.post<{
     Body: Omit<CreateBookmarkRequest, "user_id">;
