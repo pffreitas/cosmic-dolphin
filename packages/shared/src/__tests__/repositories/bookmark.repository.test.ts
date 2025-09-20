@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach } from 'bun:test';
 import { BookmarkRepositoryImpl } from '../../repositories/bookmark.repository';
 import { getTestDatabase } from '../../test-utils/database';
 import { TestDataFactory } from '../../test-utils/factories';
-import { NewBookmark } from '../../database/schema';
 
 describe('BookmarkRepository', () => {
   let repository: BookmarkRepositoryImpl;
@@ -26,7 +25,7 @@ describe('BookmarkRepository', () => {
       expect(result).toBeDefined();
       expect(result.id).toBeDefined();
       expect(result.source_url).toBe(bookmarkData.source_url);
-      expect(result.title).toBe(bookmarkData.title);
+      expect(result.title).toBe(bookmarkData.title ?? null);
       expect(result.user_id).toBe(testUserId);
       expect(result.created_at).toBeDefined();
       expect(result.updated_at).toBeDefined();
@@ -37,7 +36,6 @@ describe('BookmarkRepository', () => {
         user_id: testUserId,
         source_url: 'https://example.com/full-bookmark',
         title: 'Full Test Bookmark',
-        content: 'This is a full test bookmark with all fields',
         is_favorite: true,
         cosmic_summary: 'A test summary',
         cosmic_tags: ['test', 'bookmark'],
@@ -45,11 +43,10 @@ describe('BookmarkRepository', () => {
 
       const result = await repository.create(bookmarkData);
 
-      expect(result.title).toBe(bookmarkData.title);
-      expect(result.content).toBe(bookmarkData.content);
+      expect(result.title).toBe(bookmarkData.title ?? null);
       expect(result.is_favorite).toBe(true);
-      expect(result.cosmic_summary).toBe(bookmarkData.cosmic_summary);
-      expect(result.cosmic_tags).toEqual(bookmarkData.cosmic_tags);
+      expect(result.cosmic_summary).toBe(bookmarkData.cosmic_summary ?? null);
+      expect(result.cosmic_tags).toEqual(bookmarkData.cosmic_tags ?? null);
     });
   });
 

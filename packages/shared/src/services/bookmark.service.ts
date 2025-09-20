@@ -22,7 +22,10 @@ export class BookmarkServiceImpl implements BookmarkService {
     userId: string,
     sourceUrl: string
   ): Promise<Bookmark | null> {
-    const bookmark = await this.bookmarkRepository.findByUserAndUrl(userId, sourceUrl);
+    const bookmark = await this.bookmarkRepository.findByUserAndUrl(
+      userId,
+      sourceUrl
+    );
     return bookmark ? this.mapDatabaseToBookmark(bookmark) : null;
   }
 
@@ -37,18 +40,18 @@ export class BookmarkServiceImpl implements BookmarkService {
     const newBookmark: NewBookmark = {
       source_url: url,
       title: scrapedUrlContents.title,
-      content: scrapedUrlContents.content,
       metadata: scrapedUrlContents.metadata,
       user_id: userId,
     };
 
     const bookmark = await this.bookmarkRepository.create(newBookmark);
-    await this.bookmarkRepository.insertScrapedUrlContents(bookmark.id, scrapedUrlContents);
+    await this.bookmarkRepository.insertScrapedUrlContents(
+      bookmark.id,
+      scrapedUrlContents
+    );
 
     return this.mapDatabaseToBookmark(bookmark);
   }
-
-
 
   async findByUser(
     userId: string,
@@ -69,11 +72,12 @@ export class BookmarkServiceImpl implements BookmarkService {
 
     if (data.title !== undefined) updateData.title = data.title;
     if (data.metadata !== undefined) updateData.metadata = data.metadata;
-    if (data.collectionId !== undefined) updateData.collection_id = data.collectionId;
+    if (data.collectionId !== undefined)
+      updateData.collection_id = data.collectionId;
     if (data.isArchived !== undefined) updateData.is_archived = data.isArchived;
     if (data.isFavorite !== undefined) updateData.is_favorite = data.isFavorite;
-    if (data.content !== undefined) updateData.content = data.content;
-    if (data.cosmicSummary !== undefined) updateData.cosmic_summary = data.cosmicSummary;
+    if (data.cosmicSummary !== undefined)
+      updateData.cosmic_summary = data.cosmicSummary;
     if (data.cosmicTags !== undefined) updateData.cosmic_tags = data.cosmicTags;
 
     const bookmark = await this.bookmarkRepository.update(id, updateData);

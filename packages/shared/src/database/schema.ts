@@ -1,4 +1,4 @@
-import { Generated, Insertable, Selectable, Updateable } from 'kysely';
+import { Generated, Insertable, Selectable, Updateable } from "kysely";
 
 // Base table interface
 export interface BaseTable {
@@ -22,7 +22,6 @@ export interface CollectionsTable extends BaseTable {
 export interface BookmarksTable extends BaseTable {
   source_url: string;
   title: string | null;
-  content: string | null;
   metadata: any | null; // JSONB
   collection_id: string | null;
   user_id: string;

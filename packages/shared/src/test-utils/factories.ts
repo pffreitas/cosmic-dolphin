@@ -1,13 +1,19 @@
-import { NewBookmark, NewCollection, NewScrapedUrlContent } from '../database/schema';
-import { BookmarkMetadata, OpenGraphMetadata } from '../types';
+import {
+  NewBookmark,
+  NewCollection,
+  NewScrapedUrlContent,
+} from "../database/schema";
+import { BookmarkMetadata, OpenGraphMetadata } from "../types";
 
 export class TestDataFactory {
-  static createCollection(overrides: Partial<NewCollection> = {}): NewCollection {
+  static createCollection(
+    overrides: Partial<NewCollection> = {}
+  ): NewCollection {
     return {
-      name: 'Test Collection',
-      description: 'A test collection for automated testing',
-      color: '#3B82F6',
-      icon: '📚',
+      name: "Test Collection",
+      description: "A test collection for automated testing",
+      color: "#3B82F6",
+      icon: "📚",
       parent_id: null,
       user_id: crypto.randomUUID(),
       is_public: false,
@@ -24,8 +30,7 @@ export class TestDataFactory {
 
     return {
       source_url: TestDataFactory.generateUniqueUrl(),
-      title: 'Test Article',
-      content: 'This is a test article content for automated testing.',
+      title: "Test Article",
       metadata,
       collection_id: null,
       user_id: crypto.randomUUID(),
@@ -39,7 +44,9 @@ export class TestDataFactory {
     };
   }
 
-  static createScrapedUrlContent(overrides: Partial<NewScrapedUrlContent> = {}): NewScrapedUrlContent {
+  static createScrapedUrlContent(
+    overrides: Partial<NewScrapedUrlContent> = {}
+  ): NewScrapedUrlContent {
     const metadata: BookmarkMetadata = {
       openGraph: TestDataFactory.createOpenGraphMetadata(),
       wordCount: 1200,
@@ -48,36 +55,38 @@ export class TestDataFactory {
 
     return {
       bookmark_id: crypto.randomUUID(),
-      title: 'Test Article',
-      content: 'This is the scraped content of a test article.',
+      title: "Test Article",
+      content: "This is the scraped content of a test article.",
       metadata,
       images: [
-        { url: 'https://example.com/image1.jpg', alt: 'Test image 1' },
-        { url: 'https://example.com/image2.jpg', alt: 'Test image 2' },
+        { url: "https://example.com/image1.jpg", alt: "Test image 1" },
+        { url: "https://example.com/image2.jpg", alt: "Test image 2" },
       ],
       links: [
-        { url: 'https://example.com/related-1', text: 'Related article 1' },
-        { url: 'https://example.com/related-2', text: 'Related article 2' },
+        { url: "https://example.com/related-1", text: "Related article 1" },
+        { url: "https://example.com/related-2", text: "Related article 2" },
       ],
       ...overrides,
     };
   }
 
-  static createOpenGraphMetadata(overrides: Partial<OpenGraphMetadata> = {}): OpenGraphMetadata {
+  static createOpenGraphMetadata(
+    overrides: Partial<OpenGraphMetadata> = {}
+  ): OpenGraphMetadata {
     return {
-      favicon: 'https://example.com/favicon.ico',
-      title: 'Test Article Title',
-      description: 'This is a test article description for automated testing.',
-      image: 'https://example.com/og-image.jpg',
-      url: 'https://example.com/test-article',
-      site_name: 'Test Site',
-      type: 'article',
-      locale: 'en_US',
-      article_author: 'Test Author',
-      article_published_time: '2024-01-01T00:00:00Z',
-      article_modified_time: '2024-01-02T00:00:00Z',
-      article_section: 'Technology',
-      article_tag: ['testing', 'automation'],
+      favicon: "https://example.com/favicon.ico",
+      title: "Test Article Title",
+      description: "This is a test article description for automated testing.",
+      image: "https://example.com/og-image.jpg",
+      url: "https://example.com/test-article",
+      site_name: "Test Site",
+      type: "article",
+      locale: "en_US",
+      article_author: "Test Author",
+      article_published_time: "2024-01-01T00:00:00Z",
+      article_modified_time: "2024-01-02T00:00:00Z",
+      article_section: "Technology",
+      article_tag: ["testing", "automation"],
       ...overrides,
     };
   }
@@ -94,7 +103,10 @@ export class TestDataFactory {
     return crypto.randomUUID();
   }
 
-  static createMultipleCollections(count: number, userId: string): NewCollection[] {
+  static createMultipleCollections(
+    count: number,
+    userId: string
+  ): NewCollection[] {
     return Array.from({ length: count }, (_, i) =>
       TestDataFactory.createCollection({
         name: `Test Collection ${i + 1}`,
@@ -103,7 +115,11 @@ export class TestDataFactory {
     );
   }
 
-  static createMultipleBookmarks(count: number, userId: string, collectionId?: string): NewBookmark[] {
+  static createMultipleBookmarks(
+    count: number,
+    userId: string,
+    collectionId?: string
+  ): NewBookmark[] {
     return Array.from({ length: count }, (_, i) =>
       TestDataFactory.createBookmark({
         source_url: TestDataFactory.generateUniqueUrl(),

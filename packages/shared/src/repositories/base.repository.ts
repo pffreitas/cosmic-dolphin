@@ -5,8 +5,6 @@ export abstract class BaseRepository {
   constructor(protected db: Kysely<Database>) {}
 
   protected handleError(error: unknown, operation: string): never {
-    console.error(`Repository error during ${operation}:`, error);
-
     if (error instanceof Error) {
       throw new Error(`Database operation failed: ${error.message}`);
     }
