@@ -70,15 +70,15 @@ export class WebScrapingServiceImpl implements WebScrapingService {
 
   scrapeContent(content: string): Omit<ScrapedUrlContents, "bookmarkId"> {
     const $ = cheerio.load(content);
-    const title = this.extractTitle($);
     const metadata = this.extractMetadata($);
+    const title = metadata.openGraph?.title || this.extractTitle($);
     const images = this.extractImages($);
     const links = this.extractLinks($);
     return { title, content, metadata, images, links };
   }
 
   private extractTitle($: CheerioAPI): ScrapedUrlContents["title"] {
-    return $("title").text() ?? "";
+    return $("h1").text() ?? "";
   }
 
   private extractImages($: CheerioAPI): ScrapedUrlContents["images"] {
