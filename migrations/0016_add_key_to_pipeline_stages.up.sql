@@ -1,1 +1,0 @@
-ALTER TABLE pipeline_stages add COLUMN key VARCHAR(100) NOT NULL DEFAULT '';
