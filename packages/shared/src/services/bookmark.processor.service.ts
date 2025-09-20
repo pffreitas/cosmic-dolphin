@@ -145,7 +145,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         },
       })) {
         if (part.type === "text") {
-          output += part.part.text;
+          output = part.part.text;
         }
       }
 
