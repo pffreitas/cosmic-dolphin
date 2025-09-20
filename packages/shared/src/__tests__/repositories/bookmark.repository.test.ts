@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
-import { BookmarkRepositoryImpl } from '../../repositories/bookmark.repository';
-import { getTestDatabase } from '../../test-utils/database';
-import { TestDataFactory } from '../../test-utils/factories';
+import { describe, it, expect, beforeEach } from "@jest/globals";
+import { BookmarkRepositoryImpl } from "../../repositories/bookmark.repository";
+import { getTestDatabase } from "../../test-utils/database";
+import { TestDataFactory } from "../../test-utils/factories";
 
-describe('BookmarkRepository', () => {
+describe("BookmarkRepository", () => {
   let repository: BookmarkRepositoryImpl;
   let testUserId: string;
 
@@ -13,11 +13,11 @@ describe('BookmarkRepository', () => {
     testUserId = TestDataFactory.generateUserId();
   });
 
-  describe('create', () => {
-    it('should create a new bookmark', async () => {
+  describe("create", () => {
+    it("should create a new bookmark", async () => {
       const bookmarkData = TestDataFactory.createBookmark({
         user_id: testUserId,
-        source_url: 'https://example.com/unique-url',
+        source_url: "https://example.com/unique-url",
       });
 
       const result = await repository.create(bookmarkData);
@@ -31,14 +31,14 @@ describe('BookmarkRepository', () => {
       expect(result.updated_at).toBeDefined();
     });
 
-    it('should create a bookmark with all fields', async () => {
+    it("should create a bookmark with all fields", async () => {
       const bookmarkData = TestDataFactory.createBookmark({
         user_id: testUserId,
-        source_url: 'https://example.com/full-bookmark',
-        title: 'Full Test Bookmark',
+        source_url: "https://example.com/full-bookmark",
+        title: "Full Test Bookmark",
         is_favorite: true,
-        cosmic_summary: 'A test summary',
-        cosmic_tags: ['test', 'bookmark'],
+        cosmic_summary: "A test summary",
+        cosmic_tags: ["test", "bookmark"],
       });
 
       const result = await repository.create(bookmarkData);
@@ -50,9 +50,9 @@ describe('BookmarkRepository', () => {
     });
   });
 
-  describe('findByUserAndUrl', () => {
-    it('should find a bookmark by user and URL', async () => {
-      const url = 'https://example.com/findable-url';
+  describe("findByUserAndUrl", () => {
+    it("should find a bookmark by user and URL", async () => {
+      const url = "https://example.com/findable-url";
       const bookmarkData = TestDataFactory.createBookmark({
         user_id: testUserId,
         source_url: url,
@@ -67,13 +67,16 @@ describe('BookmarkRepository', () => {
       expect(found!.user_id).toBe(testUserId);
     });
 
-    it('should return null when bookmark is not found', async () => {
-      const result = await repository.findByUserAndUrl(testUserId, 'https://nonexistent.com');
+    it("should return null when bookmark is not found", async () => {
+      const result = await repository.findByUserAndUrl(
+        testUserId,
+        "https://nonexistent.com"
+      );
       expect(result).toBeNull();
     });
 
-    it('should not find bookmark for different user', async () => {
-      const url = 'https://example.com/private-url';
+    it("should not find bookmark for different user", async () => {
+      const url = "https://example.com/private-url";
       const bookmarkData = TestDataFactory.createBookmark({
         user_id: testUserId,
         source_url: url,
@@ -87,9 +90,11 @@ describe('BookmarkRepository', () => {
     });
   });
 
-  describe('findByIdAndUser', () => {
-    it('should find a bookmark by ID and user', async () => {
-      const bookmarkData = TestDataFactory.createBookmark({ user_id: testUserId });
+  describe("findByIdAndUser", () => {
+    it("should find a bookmark by ID and user", async () => {
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+      });
       const created = await repository.create(bookmarkData);
 
       const found = await repository.findByIdAndUser(created.id, testUserId);
@@ -99,13 +104,18 @@ describe('BookmarkRepository', () => {
       expect(found!.user_id).toBe(testUserId);
     });
 
-    it('should return null when bookmark ID is not found', async () => {
-      const result = await repository.findByIdAndUser('00000000-0000-0000-0000-000000000000', testUserId);
+    it("should return null when bookmark ID is not found", async () => {
+      const result = await repository.findByIdAndUser(
+        "00000000-0000-0000-0000-000000000000",
+        testUserId
+      );
       expect(result).toBeNull();
     });
 
-    it('should not find bookmark for different user', async () => {
-      const bookmarkData = TestDataFactory.createBookmark({ user_id: testUserId });
+    it("should not find bookmark for different user", async () => {
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+      });
       const created = await repository.create(bookmarkData);
       const otherUserId = TestDataFactory.generateUserId();
 
@@ -115,8 +125,8 @@ describe('BookmarkRepository', () => {
     });
   });
 
-  describe('findByUser', () => {
-    it('should find all bookmarks for a user', async () => {
+  describe("findByUser", () => {
+    it("should find all bookmarks for a user", async () => {
       const bookmarks = TestDataFactory.createMultipleBookmarks(3, testUserId);
 
       for (const bookmark of bookmarks) {
@@ -126,10 +136,10 @@ describe('BookmarkRepository', () => {
       const found = await repository.findByUser(testUserId);
 
       expect(found).toHaveLength(3);
-      expect(found.every(b => b.user_id === testUserId)).toBe(true);
+      expect(found.every((b) => b.user_id === testUserId)).toBe(true);
     });
 
-    it('should respect limit parameter', async () => {
+    it("should respect limit parameter", async () => {
       const bookmarks = TestDataFactory.createMultipleBookmarks(5, testUserId);
 
       for (const bookmark of bookmarks) {
@@ -141,27 +151,35 @@ describe('BookmarkRepository', () => {
       expect(found).toHaveLength(3);
     });
 
-    it('should respect offset parameter', async () => {
+    it("should respect offset parameter", async () => {
       const bookmarks = TestDataFactory.createMultipleBookmarks(5, testUserId);
 
       for (const bookmark of bookmarks) {
         await repository.create(bookmark);
       }
 
-      const firstPage = await repository.findByUser(testUserId, { limit: 2, offset: 0 });
-      const secondPage = await repository.findByUser(testUserId, { limit: 2, offset: 2 });
+      const firstPage = await repository.findByUser(testUserId, {
+        limit: 2,
+        offset: 0,
+      });
+      const secondPage = await repository.findByUser(testUserId, {
+        limit: 2,
+        offset: 2,
+      });
 
       expect(firstPage).toHaveLength(2);
       expect(secondPage).toHaveLength(2);
       expect(firstPage[0].id).not.toBe(secondPage[0].id);
     });
 
-    it('should filter by collection ID', async () => {
+    it("should filter by collection ID", async () => {
       // First create a collection
       const db = getTestDatabase();
-      const collectionData = TestDataFactory.createCollection({ user_id: testUserId });
+      const collectionData = TestDataFactory.createCollection({
+        user_id: testUserId,
+      });
       const collection = await db
-        .insertInto('collections')
+        .insertInto("collections")
         .values(collectionData)
         .returningAll()
         .executeTakeFirstOrThrow();
@@ -178,13 +196,15 @@ describe('BookmarkRepository', () => {
       await repository.create(bookmarkInCollection);
       await repository.create(bookmarkNotInCollection);
 
-      const found = await repository.findByUser(testUserId, { collectionId: collection.id });
+      const found = await repository.findByUser(testUserId, {
+        collectionId: collection.id,
+      });
 
       expect(found).toHaveLength(1);
       expect(found[0].collection_id).toBe(collection.id);
     });
 
-    it('should exclude archived bookmarks by default', async () => {
+    it("should exclude archived bookmarks by default", async () => {
       const archivedBookmark = TestDataFactory.createBookmark({
         user_id: testUserId,
         is_archived: true,
@@ -203,7 +223,7 @@ describe('BookmarkRepository', () => {
       expect(found[0].is_archived).toBe(false);
     });
 
-    it('should include archived bookmarks when requested', async () => {
+    it("should include archived bookmarks when requested", async () => {
       const archivedBookmark = TestDataFactory.createBookmark({
         user_id: testUserId,
         is_archived: true,
@@ -216,24 +236,28 @@ describe('BookmarkRepository', () => {
       await repository.create(archivedBookmark);
       await repository.create(activeBookmark);
 
-      const found = await repository.findByUser(testUserId, { includeArchived: true });
+      const found = await repository.findByUser(testUserId, {
+        includeArchived: true,
+      });
 
       expect(found).toHaveLength(2);
     });
   });
 
-  describe('update', () => {
-    it('should update a bookmark', async () => {
-      const bookmarkData = TestDataFactory.createBookmark({ user_id: testUserId });
+  describe("update", () => {
+    it("should update a bookmark", async () => {
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+      });
       const created = await repository.create(bookmarkData);
 
       // Small delay to ensure different timestamp
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       const updateData = {
-        title: 'Updated Title',
+        title: "Updated Title",
         is_favorite: true,
-        cosmic_summary: 'Updated summary',
+        cosmic_summary: "Updated summary",
       };
 
       const updated = await repository.update(created.id, updateData);
@@ -242,16 +266,22 @@ describe('BookmarkRepository', () => {
       expect(updated.title).toBe(updateData.title);
       expect(updated.is_favorite).toBe(true);
       expect(updated.cosmic_summary).toBe(updateData.cosmic_summary);
-      expect(updated.updated_at.getTime()).toBeGreaterThanOrEqual(created.updated_at.getTime());
+      expect(updated.updated_at.getTime()).toBeGreaterThanOrEqual(
+        created.updated_at.getTime()
+      );
     });
 
-    it('should update cosmic tags and images', async () => {
-      const bookmarkData = TestDataFactory.createBookmark({ user_id: testUserId });
+    it("should update cosmic tags and images", async () => {
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+      });
       const created = await repository.create(bookmarkData);
 
       const updateData = {
-        cosmic_tags: ['updated', 'tags'],
-        cosmic_images: [{ url: 'https://example.com/image.jpg', description: 'Test image' }],
+        cosmic_tags: ["updated", "tags"],
+        cosmic_images: [
+          { url: "https://example.com/image.jpg", description: "Test image" },
+        ],
       };
 
       const updated = await repository.update(created.id, updateData);
@@ -261,9 +291,11 @@ describe('BookmarkRepository', () => {
     });
   });
 
-  describe('delete', () => {
-    it('should delete a bookmark', async () => {
-      const bookmarkData = TestDataFactory.createBookmark({ user_id: testUserId });
+  describe("delete", () => {
+    it("should delete a bookmark", async () => {
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+      });
       const created = await repository.create(bookmarkData);
 
       await repository.delete(created.id);
@@ -273,9 +305,11 @@ describe('BookmarkRepository', () => {
     });
   });
 
-  describe('insertScrapedUrlContents', () => {
-    it('should insert scraped URL contents', async () => {
-      const bookmarkData = TestDataFactory.createBookmark({ user_id: testUserId });
+  describe("insertScrapedUrlContents", () => {
+    it("should insert scraped URL contents", async () => {
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+      });
       const bookmark = await repository.create(bookmarkData);
 
       const scrapedContent = TestDataFactory.createScrapedUrlContent({
@@ -293,9 +327,9 @@ describe('BookmarkRepository', () => {
       // Verify the scraped content was inserted
       const db = getTestDatabase();
       const inserted = await db
-        .selectFrom('scraped_url_contents')
+        .selectFrom("scraped_url_contents")
         .selectAll()
-        .where('bookmark_id', '=', bookmark.id)
+        .where("bookmark_id", "=", bookmark.id)
         .executeTakeFirst();
 
       expect(inserted).toBeDefined();
