@@ -1,4 +1,4 @@
-import { Bookmark } from "../types";
+import { Bookmark, ScrapedUrlContents } from "../types";
 import { BookmarkRepository, FindByUserOptions } from "../repositories";
 import { WebScrapingService } from "./web-scraping.service";
 import { NewBookmark, BookmarkUpdate } from "../database/schema";
@@ -6,6 +6,7 @@ import { NewBookmark, BookmarkUpdate } from "../database/schema";
 export interface BookmarkService {
   findByUserAndUrl(userId: string, sourceUrl: string): Promise<Bookmark | null>;
   findByIdAndUser(id: string, userId: string): Promise<Bookmark | null>;
+  getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
   create(url: string, userId: string): Promise<Bookmark>;
   findByUser(userId: string, options?: FindByUserOptions): Promise<Bookmark[]>;
   update(id: string, data: Partial<Bookmark>): Promise<Bookmark>;
@@ -53,6 +54,12 @@ export class BookmarkServiceImpl implements BookmarkService {
     return this.mapDatabaseToBookmark(bookmark);
   }
 
+  async getScrapedUrlContent(
+    bookmarkId: string
+  ): Promise<ScrapedUrlContents | null> {
+    return this.bookmarkRepository.getScrapedUrlContent(bookmarkId);
+  }
+
   async findByUser(
     userId: string,
     options: FindByUserOptions = {}
@@ -93,7 +100,6 @@ export class BookmarkServiceImpl implements BookmarkService {
       id: data.id,
       sourceUrl: data.source_url,
       title: data.title,
-      content: data.content,
       metadata: data.metadata,
       collectionId: data.collection_id,
       userId: data.user_id,

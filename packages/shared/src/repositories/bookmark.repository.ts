@@ -24,6 +24,7 @@ export interface BookmarkRepository {
     bookmarkId: string,
     contents: Omit<ScrapedUrlContents, "bookmarkId">
   ): Promise<void>;
+  getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
   findByUser(userId: string, options?: FindByUserOptions): Promise<Bookmark[]>;
   update(id: string, data: BookmarkUpdate): Promise<Bookmark>;
   delete(id: string): Promise<void>;
@@ -97,6 +98,19 @@ export class BookmarkRepositoryImpl
         .values(insertData)
         .execute();
     }, "insertScrapedUrlContents");
+  }
+
+  async getScrapedUrlContent(
+    bookmarkId: string
+  ): Promise<ScrapedUrlContents | null> {
+    return this.executeQuery(async () => {
+      const result = await this.db
+        .selectFrom("scraped_url_contents")
+        .selectAll()
+        .where("bookmark_id", "=", bookmarkId)
+        .executeTakeFirst();
+      return result ? { ...result, bookmarkId } : null;
+    }, "getScrapedUrlContent");
   }
 
   async findByUser(

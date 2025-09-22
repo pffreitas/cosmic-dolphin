@@ -338,4 +338,53 @@ describe("BookmarkRepository", () => {
       expect(inserted!.content).toBe(scrapedContent.content);
     });
   });
+
+  describe("getScrapedUrlContent", () => {
+    it("should retrieve scraped URL content by bookmark ID", async () => {
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+      });
+      const bookmark = await repository.create(bookmarkData);
+
+      const scrapedContent = TestDataFactory.createScrapedUrlContent({
+        bookmark_id: bookmark.id,
+      });
+
+      await repository.insertScrapedUrlContents(bookmark.id, {
+        title: scrapedContent.title,
+        content: scrapedContent.content,
+        metadata: scrapedContent.metadata,
+        images: scrapedContent.images,
+        links: scrapedContent.links,
+      });
+
+      const retrieved = await repository.getScrapedUrlContent(bookmark.id);
+
+      expect(retrieved).toBeDefined();
+      expect(retrieved!.bookmarkId).toBe(bookmark.id);
+      expect(retrieved!.title).toBe(scrapedContent.title);
+      expect(retrieved!.content).toBe(scrapedContent.content);
+      expect(retrieved!.metadata).toEqual(scrapedContent.metadata);
+      expect(retrieved!.images).toEqual(scrapedContent.images);
+      expect(retrieved!.links).toEqual(scrapedContent.links);
+    });
+
+    it("should return null when scraped content does not exist", async () => {
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+      });
+      const bookmark = await repository.create(bookmarkData);
+
+      const retrieved = await repository.getScrapedUrlContent(bookmark.id);
+
+      expect(retrieved).toBeNull();
+    });
+
+    it("should return null for non-existent bookmark ID", async () => {
+      const nonExistentId = "00000000-0000-0000-0000-000000000000";
+      const retrieved = await repository.getScrapedUrlContent(nonExistentId);
+
+      expect(retrieved).toBeNull();
+    });
+  });
 });

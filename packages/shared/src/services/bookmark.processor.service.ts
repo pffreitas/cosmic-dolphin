@@ -1,4 +1,4 @@
-import { Bookmark } from "../types";
+import { Bookmark, ScrapedUrlContents } from "../types";
 import { BookmarkService } from "./bookmark.service";
 import { AI } from "../ai";
 import { z } from "zod";
@@ -27,6 +27,13 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       throw new Error(`Bookmark not found: ${id}`);
     }
 
+    const content = await this.bookmarkService.getScrapedUrlContent(
+      bookmark.id
+    );
+    if (!content) {
+      throw new Error(`Scraped url content not found: ${bookmark.id}`);
+    }
+
     const session = await this.ai.newSession(bookmark.id);
     this.eventBus.publishEvent({
       type: "session.started",
@@ -34,8 +41,13 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       timestamp: new Date(),
     });
 
-    bookmark.cosmicSummary = await this.summarizeContent(session, bookmark);
-    const tags = await this.generateMetadata(session, bookmark);
+    bookmark.cosmicSummary = await this.summarizeContent(
+      session,
+      bookmark,
+      content
+    );
+
+    const tags = await this.generateMetadata(session, bookmark, content);
     bookmark.cosmicTags = tags;
 
     await this.bookmarkService.update(bookmark.id, bookmark);
@@ -48,7 +60,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
 
   private async summarizeContent(
     session: Session,
-    bookmark: Bookmark
+    bookmark: Bookmark,
+    content: ScrapedUrlContents
   ): Promise<string> {
     let summary = "";
 
@@ -76,7 +89,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
           role: "user",
           content: SUMMARIZE_PROMPT.replace(
             "{{CONTENT}}",
-            bookmark.content ?? ""
+            content.content ?? ""
           ),
         },
       })) {
@@ -113,7 +126,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
 
   private async generateMetadata(
     session: Session,
-    bookmark: Bookmark
+    bookmark: Bookmark,
+    content: ScrapedUrlContents
   ): Promise<string[]> {
     const task = await this.ai.newTask(
       session.sessionID,
@@ -140,7 +154,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
           role: "user",
           content: GENERATE_TAGS_PROMPT.replace(
             "{{CONTENT}}",
-            bookmark.content ?? ""
+            content.content ?? ""
           ),
         },
       })) {
