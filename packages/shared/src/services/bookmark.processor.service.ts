@@ -60,7 +60,15 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       timestamp: new Date(),
     });
 
-    await this.processImages(session, bookmark, content);
+    const images = await this.processImages(session, bookmark, content);
+    bookmark.cosmicImages = images;
+
+    await this.bookmarkService.update(bookmark.id, bookmark);
+    this.eventBus.publishEvent({
+      type: "bookmark.updated",
+      data: bookmark,
+      timestamp: new Date(),
+    });
   }
 
   private async summarizeContent(
@@ -200,8 +208,10 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     bookmark: Bookmark,
     content: ScrapedUrlContents
   ): Promise<BookmarkImage[]> {
+    const images: BookmarkImage[] = [];
+
     if (!content.images || content.images.length === 0) {
-      return [];
+      return images;
     }
 
     const task = await this.ai.newTask(session.sessionID, "Processing images");
@@ -281,6 +291,11 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
             endPosition: imageSize,
           });
 
+          images.push({
+            url: image.url,
+            description: image.alt,
+          });
+
           task.subTasks[imageSubTask.taskID].status = "completed";
           this.eventBus.publishEvent({
             type: "task.updated",
@@ -314,6 +329,6 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       });
       throw error;
     }
-    return [];
+    return images;
   }
 }

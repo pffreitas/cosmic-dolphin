@@ -152,7 +152,9 @@ Your task is to filter the images that are not relevant to the content. Follow t
 
 2. Filter the images that are not relevant to the content.
 
-3. For each image, provide a brief explanation (1-2 sentences) of why it's relevant and how it relates to the main content. Keep the image url and place the relevant analysis in thealt text in the output.
+3. For each image, provide a brief explanation (1-2 sentences) of why it's relevant and how it relates to the main content. 
+Do not consider hero images.
+Keep the image url and place the relevant analysis in thealt text in the output.
 
 4. Format the output as follows:
 You must ouput a json object following the schema below. You MUST NOT include any other text than the json object. Your output MUST be a valid json object following the schema below

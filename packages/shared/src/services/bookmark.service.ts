@@ -86,6 +86,10 @@ export class BookmarkServiceImpl implements BookmarkService {
     if (data.cosmicSummary !== undefined)
       updateData.cosmic_summary = data.cosmicSummary;
     if (data.cosmicTags !== undefined) updateData.cosmic_tags = data.cosmicTags;
+    if (data.cosmicImages !== undefined)
+      updateData.cosmic_images = data.cosmicImages;
+    if (data.cosmicLinks !== undefined)
+      updateData.cosmic_links = data.cosmicLinks;
 
     const bookmark = await this.bookmarkRepository.update(id, updateData);
     return this.mapDatabaseToBookmark(bookmark);
