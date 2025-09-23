@@ -93,6 +93,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         });
       } catch (error) {
         fastify.log.error({ error }, "Bookmark creation error");
+        fastify.log.error(error);
 
         if (error instanceof Error) {
           if (

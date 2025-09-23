@@ -14,6 +14,7 @@ export interface WebScrapingService {
     Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
   >;
   scrapeContent(
+    url: string,
     content: string
   ): Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">;
 }
@@ -35,6 +36,7 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   ): Promise<
     Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
   > {
+    console.log("Scraping URL:", url);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.requestTimeout);
 
@@ -66,7 +68,7 @@ export class WebScrapingServiceImpl implements WebScrapingService {
       }
 
       const content = await response.text();
-      const scrapedUrlContents = this.scrapeContent(content);
+      const scrapedUrlContents = this.scrapeContent(url, content);
 
       return scrapedUrlContents;
     } catch (error) {
@@ -79,6 +81,7 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   }
 
   scrapeContent(
+    url: string,
     content: string
   ): Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId"> {
     const $ = cheerio.load(content);
@@ -87,7 +90,7 @@ export class WebScrapingServiceImpl implements WebScrapingService {
 
     const body = $("body").html() ?? content;
 
-    const metadata = this.extractMetadata($);
+    const metadata = this.extractMetadata(url, $);
     const title = metadata.openGraph?.title || this.extractTitle($);
     const images = this.extractImages($);
     const links = this.extractLinks($);
@@ -121,8 +124,8 @@ export class WebScrapingServiceImpl implements WebScrapingService {
       .get();
   }
 
-  private extractMetadata($: CheerioAPI): BookmarkMetadata {
-    const ogData = this.extractOpenGraphMetadata($);
+  private extractMetadata(sourceUrl: string, $: CheerioAPI): BookmarkMetadata {
+    const ogData = this.extractOpenGraphMetadata(sourceUrl, $);
 
     const textContent = $.root().text();
     const wordCount = textContent
@@ -136,7 +139,7 @@ export class WebScrapingServiceImpl implements WebScrapingService {
       $('link[rel="apple-touch-icon"]').attr("href");
 
     if (favicon && !favicon.startsWith("http")) {
-      const url = new URL(ogData.url || "");
+      const url = new URL(ogData.url || sourceUrl);
       favicon = new URL(favicon, url.origin).href;
     }
 
@@ -149,7 +152,10 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     };
   }
 
-  private extractOpenGraphMetadata($: CheerioAPI): OpenGraphMetadata {
+  private extractOpenGraphMetadata(
+    sourceUrl: string,
+    $: CheerioAPI
+  ): OpenGraphMetadata {
     const ogData: OpenGraphMetadata = {};
 
     $('meta[property^="og:"]').each((_: number, element: any) => {
@@ -206,6 +212,10 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     if (!ogData.description) {
       ogData.description =
         $('meta[name="description"]').attr("content") || undefined;
+    }
+
+    if (!ogData.url) {
+      ogData.url = sourceUrl;
     }
 
     return ogData;

@@ -51,7 +51,10 @@ describe("Bookmark Feature Validation", () => {
         </html>
       `;
 
-      const scrapedUrlContents = webScrapingService.scrapeContent(sampleHtml);
+      const scrapedUrlContents = webScrapingService.scrapeContent(
+        "https://example.com",
+        sampleHtml
+      );
       expect(scrapedUrlContents.title).toBe("OG Title");
       expect(scrapedUrlContents.metadata.openGraph?.description).toBe(
         "OG Description"
@@ -75,7 +78,10 @@ describe("Bookmark Feature Validation", () => {
         </html>
       `;
 
-      const scrapedUrlContents = webScrapingService.scrapeContent(sampleHtml);
+      const scrapedUrlContents = webScrapingService.scrapeContent(
+        "https://example.com",
+        sampleHtml
+      );
       expect(scrapedUrlContents.title).toBe("Test Page Title");
       expect(scrapedUrlContents.metadata.openGraph?.description).toBe(
         "Meta Description"
