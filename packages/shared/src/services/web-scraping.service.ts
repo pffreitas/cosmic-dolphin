@@ -82,7 +82,11 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     content: string
   ): Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId"> {
     const $ = cheerio.load(content);
-    const body = $("body").text();
+    $("script").remove();
+    $("style").remove();
+
+    const body = $("body").html() ?? content;
+
     const metadata = this.extractMetadata($);
     const title = metadata.openGraph?.title || this.extractTitle($);
     const images = this.extractImages($);

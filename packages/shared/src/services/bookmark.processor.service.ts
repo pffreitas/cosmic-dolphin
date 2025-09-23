@@ -1,14 +1,16 @@
-import { Bookmark, ScrapedUrlContents } from "../types";
+import { Bookmark, BookmarkImage, ScrapedUrlContents } from "../types";
 import { BookmarkService } from "./bookmark.service";
 import { AI } from "../ai";
 import { z } from "zod";
 import {
   GENERATE_TAGS_PROMPT,
+  FILTER_IMAGES_PROMPT,
   SUMMARIZE_PROMPT,
 } from "../services/bookmark.processor.prompt";
 import { Session } from "../ai/types";
 import { Identifier } from "../ai/id";
 import { EventBus } from "../ai/bus";
+import { ContentChunkRepository } from "../repositories/content-chunk.repository";
 
 export interface BookmarkProcessorService {
   process(id: string, userId: string): Promise<void>;
@@ -17,6 +19,7 @@ export interface BookmarkProcessorService {
 export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
   constructor(
     private bookmarkService: BookmarkService,
+    private contentChunkRepository: ContentChunkRepository,
     private ai: AI,
     private eventBus: EventBus
   ) {}
@@ -56,6 +59,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       data: bookmark,
       timestamp: new Date(),
     });
+
+    await this.processImages(session, bookmark, content);
   }
 
   private async summarizeContent(
@@ -188,5 +193,127 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         timestamp: new Date(),
       });
     }
+  }
+
+  private async processImages(
+    session: Session,
+    bookmark: Bookmark,
+    content: ScrapedUrlContents
+  ): Promise<BookmarkImage[]> {
+    if (!content.images || content.images.length === 0) {
+      return [];
+    }
+
+    const task = await this.ai.newTask(session.sessionID, "Processing images");
+    this.eventBus.publishEvent({
+      type: "task.started",
+      data: task,
+      timestamp: new Date(),
+    });
+
+    try {
+      // TODO: call the model to filter out the images that are not relevant to the content
+      let output = "";
+      for await (const part of this.ai.prompt({
+        sessionID: session.sessionID,
+        taskID: task.taskID,
+        messageID: Identifier.ascending("message"),
+        modelId: "x-ai/grok-code-fast-1",
+        context: [],
+        tools: [],
+        message: {
+          role: "user",
+          content: FILTER_IMAGES_PROMPT.replace(
+            "{{CONTENT}}",
+            content.content ?? ""
+          ),
+        },
+      })) {
+        if (part.type === "text") {
+          output = part.part.text;
+        }
+      }
+
+      const parsed = z
+        .object({
+          images: z
+            .array(
+              z.object({
+                url: z.string().describe("The image URL"),
+                alt: z.string().describe("The image alt text"),
+              })
+            )
+            .describe("The array of image URLs"),
+        })
+        .parse(JSON.parse(output));
+
+      for (let index = 0; index < parsed.images.length; index++) {
+        const image = parsed.images[index];
+        const imageSubTask = await this.ai.newSubTask("Processing image");
+        task.subTasks[imageSubTask.taskID] = imageSubTask;
+        this.eventBus.publishEvent({
+          type: "task.updated",
+          data: task,
+          timestamp: new Date(),
+        });
+
+        try {
+          const response = await fetch(image.url);
+          if (!response.ok) {
+            // TODO: fail subtask and continue
+            throw new Error(`Failed to download image: ${response.statusText}`);
+          }
+
+          const imageBuffer = await response.arrayBuffer();
+          const imageByteArray = Buffer.from(imageBuffer);
+          const mimeType = response.headers.get("content-type") || "image/jpeg";
+          const imageSize = imageByteArray.length;
+
+          await this.contentChunkRepository.createImageChunk({
+            scrapedContentId: content.id,
+            imageData: imageByteArray,
+            mimeType: mimeType,
+            altText: image.alt,
+            originalUrl: image.url,
+            index: index,
+            size: imageSize,
+            startPosition: 0,
+            endPosition: imageSize,
+          });
+
+          task.subTasks[imageSubTask.taskID].status = "completed";
+          this.eventBus.publishEvent({
+            type: "task.updated",
+            data: task,
+            timestamp: new Date(),
+          });
+        } catch (error) {
+          console.error(`Failed to process image ${image.url}:`, error);
+          task.subTasks[imageSubTask.taskID].status = "failed";
+          this.eventBus.publishEvent({
+            type: "task.updated",
+            data: task,
+            timestamp: new Date(),
+          });
+        }
+      }
+
+      task.status = "completed";
+      this.eventBus.publishEvent({
+        type: "task.completed",
+        data: task,
+        timestamp: new Date(),
+      });
+    } catch (error) {
+      console.error("Failed to process images:", error);
+      task.status = "failed";
+      this.eventBus.publishEvent({
+        type: "task.failed",
+        data: task,
+        timestamp: new Date(),
+      });
+      throw error;
+    }
+    return [];
   }
 }

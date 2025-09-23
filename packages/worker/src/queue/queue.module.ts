@@ -18,6 +18,7 @@ import {
   CollectionRepositoryImpl,
   createDatabase,
   Database,
+  ContentChunkRepositoryImpl,
 } from "@cosmic-dolphin/shared";
 import { ConfigService } from "@nestjs/config";
 import {
@@ -79,9 +80,18 @@ import { Kysely } from "kysely";
       useFactory: (
         bookmarkService: BookmarkService,
         ai: AI,
-        eventBus: EventBus
-      ) => new BookmarkProcessorServiceImpl(bookmarkService, ai, eventBus),
-      inject: [BOOKMARK_SERVICE, AI, EventBus],
+        eventBus: EventBus,
+        db: Kysely<Database>
+      ) => {
+        const contentChunkRepository = new ContentChunkRepositoryImpl(db);
+        return new BookmarkProcessorServiceImpl(
+          bookmarkService,
+          contentChunkRepository,
+          ai,
+          eventBus
+        );
+      },
+      inject: [BOOKMARK_SERVICE, AI, EventBus, DATABASE_INSTANCE],
     },
     {
       provide: WEB_SCRAPING_SERVICE,
