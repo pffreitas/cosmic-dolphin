@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun run:*)",
+      "Bash(bun test:*)",
+      "Bash(bun add:*)",
+      "Bash(bun install:*)",
+      "Bash(docker build:*)",
+      "Bash(git checkout:*)",
+      "Bash(docker exec:*)",
+      "Bash(npm test)",
+      "Bash(npm test:*)",
+      "Bash(bun build:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

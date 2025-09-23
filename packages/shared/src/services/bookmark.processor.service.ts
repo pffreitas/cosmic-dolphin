@@ -11,6 +11,7 @@ import { Session } from "../ai/types";
 import { Identifier } from "../ai/id";
 import { EventBus } from "../ai/bus";
 import { ContentChunkRepository } from "../repositories/content-chunk.repository";
+import { HttpClient, FetchHttpClient } from "./http-client";
 
 export interface BookmarkProcessorService {
   process(id: string, userId: string): Promise<void>;
@@ -21,7 +22,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     private bookmarkService: BookmarkService,
     private contentChunkRepository: ContentChunkRepository,
     private ai: AI,
-    private eventBus: EventBus
+    private eventBus: EventBus,
+    private httpClient: HttpClient = new FetchHttpClient()
   ) {}
 
   async process(id: string, userId: string): Promise<void> {
@@ -268,7 +270,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         });
 
         try {
-          const response = await fetch(image.url);
+          const response = await this.httpClient.fetch(image.url);
           if (!response.ok) {
             // TODO: fail subtask and continue
             throw new Error(`Failed to download image: ${response.statusText}`);

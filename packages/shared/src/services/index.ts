@@ -3,6 +3,7 @@ export * from "./queue.service";
 export * from "./bookmark.service";
 export * from "./collection.service";
 export * from "./bookmark.processor.service";
+export * from "./http-client";
 
 import {
   WebScrapingService,
@@ -14,7 +15,10 @@ import { CollectionService, CollectionServiceImpl } from "./collection.service";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Kysely } from "kysely";
 import { Database } from "../database/schema";
-import { BookmarkRepositoryImpl, CollectionRepositoryImpl } from "../repositories";
+import {
+  BookmarkRepositoryImpl,
+  CollectionRepositoryImpl,
+} from "../repositories";
 
 export interface ServiceContainer {
   webScraping: WebScrapingService;
@@ -34,10 +38,7 @@ export function createServiceContainer(
   return {
     webScraping: webScrapingService,
     queue: new QueueServiceImpl(supabaseClient),
-    bookmark: new BookmarkServiceImpl(
-      bookmarkRepository,
-      webScrapingService
-    ),
+    bookmark: new BookmarkServiceImpl(bookmarkRepository, webScrapingService),
     collection: new CollectionServiceImpl(collectionRepository),
   };
 }

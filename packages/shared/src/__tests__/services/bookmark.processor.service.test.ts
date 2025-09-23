@@ -1,21 +1,41 @@
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import { BookmarkProcessorServiceImpl } from "../../services/bookmark.processor.service";
 import { BookmarkService } from "../../services/bookmark.service";
+import { ContentChunkRepository } from "../../repositories/content-chunk.repository";
 import { AI } from "../../ai";
 import { Session, Task } from "../../ai/types";
 import { EventBus } from "../../ai/bus";
 import { TestDataFactory } from "../../test-utils/factories";
 import { Bookmark, ScrapedUrlContents } from "../../types";
+import { HttpClient } from "../../services/http-client";
 
 describe("BookmarkProcessorService", () => {
   let service: BookmarkProcessorServiceImpl;
   let mockBookmarkService: jest.Mocked<BookmarkService>;
+  let mockContentChunkRepository: jest.Mocked<ContentChunkRepository>;
   let mockAI: jest.Mocked<AI>;
   let mockEventBus: jest.Mocked<EventBus>;
+  let mockHttpClient: jest.Mocked<HttpClient>;
   let testBookmark: Bookmark;
   let testScrapedContent: ScrapedUrlContents;
 
   beforeEach(() => {
+    // Mock HTTP client for image processing
+    mockHttpClient = {
+      fetch: jest.fn(),
+    };
+
+    // Configure fetch mock with proper function types
+    jest.mocked(mockHttpClient.fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      headers: {
+        get: (name: string) => "image/jpeg",
+      },
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(100)),
+    });
+
     mockBookmarkService = {
       findByIdAndUser: jest.fn(),
       getScrapedUrlContent: jest.fn(),
@@ -30,10 +50,21 @@ describe("BookmarkProcessorService", () => {
     const mockPromptGenerator = async function* () {
       if (callCount === 0) {
         // First call is for summarization
-        yield { type: 'text', part: { text: 'Generated summary' } };
-      } else {
+        yield { type: "text", part: { text: "Generated summary" } };
+      } else if (callCount === 1) {
         // Second call is for tags generation (needs JSON)
-        yield { type: 'text', part: { text: '{"tags": ["test", "bookmark"]}' } };
+        yield {
+          type: "text",
+          part: { text: '{"tags": ["test", "bookmark"]}' },
+        };
+      } else {
+        // Third call is for image processing (needs JSON)
+        yield {
+          type: "text",
+          part: {
+            text: '{"images": [{"url": "https://example.com/image.jpg", "alt": "Test image"}]}',
+          },
+        };
       }
       callCount++;
     };
@@ -51,10 +82,23 @@ describe("BookmarkProcessorService", () => {
       publishEvent: jest.fn(),
     } as any;
 
+    mockContentChunkRepository = {
+      createTextChunk: jest.fn(),
+      createImageChunk: jest.fn(),
+      findByScrapedContentId: jest.fn(),
+      findTextChunksByScrapedContentId: jest.fn(),
+      findImageChunksByScrapedContentId: jest.fn(),
+      findById: jest.fn(),
+      deleteByScrapedContentId: jest.fn(),
+      delete: jest.fn(),
+    } as jest.Mocked<ContentChunkRepository>;
+
     service = new BookmarkProcessorServiceImpl(
       mockBookmarkService,
+      mockContentChunkRepository,
       mockAI,
-      mockEventBus
+      mockEventBus,
+      mockHttpClient
     );
 
     testBookmark = {
@@ -103,7 +147,9 @@ describe("BookmarkProcessorService", () => {
       };
 
       mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
-      mockBookmarkService.getScrapedUrlContent.mockResolvedValue(testScrapedContent);
+      mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
+        testScrapedContent
+      );
       mockAI.newSession.mockResolvedValue(mockSession);
 
       // Mock the AI task responses
@@ -119,7 +165,7 @@ describe("BookmarkProcessorService", () => {
       mockAI.newSubTask.mockResolvedValue({
         taskID: "subtask-id",
         name: "test-subtask",
-        status: "pending"
+        status: "pending",
       });
 
       await service.process(testBookmark.id, testBookmark.userId);
@@ -142,9 +188,9 @@ describe("BookmarkProcessorService", () => {
     it("should throw error when bookmark is not found", async () => {
       mockBookmarkService.findByIdAndUser.mockResolvedValue(null);
 
-      await expect(service.process("non-existent-id", "user-id")).rejects.toThrow(
-        "Bookmark not found: non-existent-id"
-      );
+      await expect(
+        service.process("non-existent-id", "user-id")
+      ).rejects.toThrow("Bookmark not found: non-existent-id");
 
       expect(mockBookmarkService.getScrapedUrlContent).not.toHaveBeenCalled();
       expect(mockAI.newSession).not.toHaveBeenCalled();
@@ -154,9 +200,9 @@ describe("BookmarkProcessorService", () => {
       mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
       mockBookmarkService.getScrapedUrlContent.mockResolvedValue(null);
 
-      await expect(service.process(testBookmark.id, testBookmark.userId)).rejects.toThrow(
-        `Scraped url content not found: ${testBookmark.id}`
-      );
+      await expect(
+        service.process(testBookmark.id, testBookmark.userId)
+      ).rejects.toThrow(`Scraped url content not found: ${testBookmark.id}`);
 
       expect(mockBookmarkService.findByIdAndUser).toHaveBeenCalledWith(
         testBookmark.id,
@@ -183,13 +229,15 @@ describe("BookmarkProcessorService", () => {
       };
 
       mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
-      mockBookmarkService.getScrapedUrlContent.mockResolvedValue(testScrapedContent);
+      mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
+        testScrapedContent
+      );
       mockAI.newSession.mockResolvedValue(mockSession);
       mockAI.newTask.mockResolvedValue(mockTask);
       mockAI.newSubTask.mockResolvedValue({
         taskID: "subtask-id",
         name: "test-subtask",
-        status: "pending"
+        status: "pending",
       });
 
       await service.process(testBookmark.id, testBookmark.userId);
@@ -212,18 +260,20 @@ describe("BookmarkProcessorService", () => {
       };
 
       mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
-      mockBookmarkService.getScrapedUrlContent.mockResolvedValue(testScrapedContent);
+      mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
+        testScrapedContent
+      );
       mockAI.newSession.mockResolvedValue(mockSession);
       mockAI.newSubTask.mockResolvedValue({
         taskID: "subtask-id",
         name: "test-subtask",
-        status: "pending"
+        status: "pending",
       });
       mockAI.newTask.mockRejectedValue(new Error("AI service unavailable"));
 
-      await expect(service.process(testBookmark.id, testBookmark.userId)).rejects.toThrow(
-        "AI service unavailable"
-      );
+      await expect(
+        service.process(testBookmark.id, testBookmark.userId)
+      ).rejects.toThrow("AI service unavailable");
 
       expect(mockEventBus.publishEvent).toHaveBeenCalledWith({
         type: "session.started",

@@ -7,17 +7,22 @@ import { TestDataFactory } from "../../test-utils/factories";
 import { WebScrapingService } from "../../services/web-scraping.service";
 import { AI } from "../../ai";
 import { EventBus } from "../../ai/bus";
+import { ContentChunkRepository } from "../../repositories/content-chunk.repository";
 
 describe("Bookmark Content Refactor Integration", () => {
   let repository: BookmarkRepositoryImpl;
   let service: BookmarkServiceImpl;
   let processorService: BookmarkProcessorServiceImpl;
   let mockWebScrapingService: jest.Mocked<WebScrapingService>;
+  let mockContentChunkRepository: jest.Mocked<ContentChunkRepository>;
   let mockAI: jest.Mocked<AI>;
   let mockEventBus: jest.Mocked<EventBus>;
   let testUserId: string;
 
   beforeEach(() => {
+    // Note: This integration test doesn't directly test HTTP functionality,
+    // so we don't need to mock the HTTP client here
+
     const db = getTestDatabase();
     repository = new BookmarkRepositoryImpl(db);
 
@@ -27,14 +32,36 @@ describe("Bookmark Content Refactor Integration", () => {
       scrapeContent: jest.fn(),
     } as jest.Mocked<WebScrapingService>;
 
+    mockContentChunkRepository = {
+      createTextChunk: jest.fn(),
+      createImageChunk: jest.fn(),
+      findByScrapedContentId: jest.fn(),
+      findTextChunksByScrapedContentId: jest.fn(),
+      findImageChunksByScrapedContentId: jest.fn(),
+      findById: jest.fn(),
+      deleteByScrapedContentId: jest.fn(),
+      delete: jest.fn(),
+    } as jest.Mocked<ContentChunkRepository>;
+
     let callCount = 0;
     const mockPromptGenerator = async function* () {
       if (callCount === 0) {
         // First call is for summarization
-        yield { type: 'text', part: { text: 'Generated AI summary' } };
-      } else {
+        yield { type: "text", part: { text: "Generated AI summary" } };
+      } else if (callCount === 1) {
         // Second call is for tags generation (needs JSON)
-        yield { type: 'text', part: { text: '{"tags": ["ai", "processing"]}' } };
+        yield {
+          type: "text",
+          part: { text: '{"tags": ["ai", "processing"]}' },
+        };
+      } else {
+        // Third call is for image processing (needs JSON)
+        yield {
+          type: "text",
+          part: {
+            text: '{"images": [{"url": "https://example.com/image.jpg", "alt": "Test image"}]}',
+          },
+        };
       }
       callCount++;
     };
@@ -53,7 +80,12 @@ describe("Bookmark Content Refactor Integration", () => {
     } as any;
 
     service = new BookmarkServiceImpl(repository, mockWebScrapingService);
-    processorService = new BookmarkProcessorServiceImpl(service, mockAI, mockEventBus);
+    processorService = new BookmarkProcessorServiceImpl(
+      service,
+      mockContentChunkRepository,
+      mockAI,
+      mockEventBus
+    );
     testUserId = TestDataFactory.generateUserId();
   });
 
@@ -69,13 +101,14 @@ describe("Bookmark Content Refactor Integration", () => {
       const bookmark = await repository.create(bookmarkData);
 
       // Verify bookmark doesn't have content field
-      expect(bookmark).not.toHaveProperty('content');
+      expect(bookmark).not.toHaveProperty("content");
 
       // Add scraped content separately
       const scrapedContent = TestDataFactory.createScrapedUrlContent({
         bookmark_id: bookmark.id,
         title: "Scraped Article Title",
-        content: "This is the actual scraped content that should be used for AI processing.",
+        content:
+          "This is the actual scraped content that should be used for AI processing.",
       });
 
       await repository.insertScrapedUrlContents(bookmark.id, {
@@ -87,12 +120,15 @@ describe("Bookmark Content Refactor Integration", () => {
       });
 
       // Retrieve and verify separation
-      const retrievedBookmark = await service.findByIdAndUser(bookmark.id, testUserId);
+      const retrievedBookmark = await service.findByIdAndUser(
+        bookmark.id,
+        testUserId
+      );
       const retrievedContent = await service.getScrapedUrlContent(bookmark.id);
 
       expect(retrievedBookmark).toBeDefined();
       expect(retrievedBookmark!.id).toBe(bookmark.id);
-      expect(retrievedBookmark).not.toHaveProperty('content');
+      expect(retrievedBookmark).not.toHaveProperty("content");
 
       expect(retrievedContent).toBeDefined();
       expect(retrievedContent!.bookmarkId).toBe(bookmark.id);
@@ -141,14 +177,17 @@ describe("Bookmark Content Refactor Integration", () => {
       mockAI.newSubTask.mockResolvedValue({
         taskID: "subtask-id",
         name: "test-subtask",
-        status: "pending"
+        status: "pending",
       });
 
       // Process the bookmark
       await processorService.process(bookmark.id, testUserId);
 
       // Verify the bookmark was updated with AI-generated content
-      const updatedBookmark = await service.findByIdAndUser(bookmark.id, testUserId);
+      const updatedBookmark = await service.findByIdAndUser(
+        bookmark.id,
+        testUserId
+      );
       expect(updatedBookmark!.cosmicSummary).toBe("Generated AI summary");
       expect(updatedBookmark!.cosmicTags).toEqual(["ai", "processing"]);
 
@@ -191,16 +230,23 @@ describe("Bookmark Content Refactor Integration", () => {
 
       // Verify all data is correctly stored and retrievable
       for (let i = 0; i < 3; i++) {
-        const retrievedBookmark = await service.findByIdAndUser(bookmarks[i].id, testUserId);
-        const retrievedContent = await service.getScrapedUrlContent(bookmarks[i].id);
+        const retrievedBookmark = await service.findByIdAndUser(
+          bookmarks[i].id,
+          testUserId
+        );
+        const retrievedContent = await service.getScrapedUrlContent(
+          bookmarks[i].id
+        );
 
         expect(retrievedBookmark).toBeDefined();
         expect(retrievedBookmark!.title).toBe(`Article ${i}`);
-        expect(retrievedBookmark).not.toHaveProperty('content');
+        expect(retrievedBookmark).not.toHaveProperty("content");
 
         expect(retrievedContent).toBeDefined();
         expect(retrievedContent!.title).toBe(`Scraped Title ${i}`);
-        expect(retrievedContent!.content).toBe(`Scraped content for article ${i}`);
+        expect(retrievedContent!.content).toBe(
+          `Scraped content for article ${i}`
+        );
         expect(retrievedContent!.bookmarkId).toBe(bookmarks[i].id);
       }
 
@@ -209,7 +255,9 @@ describe("Bookmark Content Refactor Integration", () => {
         for (let j = 0; j < 3; j++) {
           if (i !== j) {
             const content = await service.getScrapedUrlContent(bookmarks[i].id);
-            expect(content!.content).not.toBe(`Scraped content for article ${j}`);
+            expect(content!.content).not.toBe(
+              `Scraped content for article ${j}`
+            );
           }
         }
       }
@@ -227,9 +275,9 @@ describe("Bookmark Content Refactor Integration", () => {
       expect(content).toBeNull();
 
       // Processing should fail gracefully
-      await expect(processorService.process(bookmark.id, testUserId)).rejects.toThrow(
-        `Scraped url content not found: ${bookmark.id}`
-      );
+      await expect(
+        processorService.process(bookmark.id, testUserId)
+      ).rejects.toThrow(`Scraped url content not found: ${bookmark.id}`);
     });
 
     it("should support updating bookmark metadata without affecting scraped content", async () => {
