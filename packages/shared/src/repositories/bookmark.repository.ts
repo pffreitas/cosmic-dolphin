@@ -22,7 +22,7 @@ export interface BookmarkRepository {
   create(data: NewBookmark): Promise<Bookmark>;
   insertScrapedUrlContents(
     bookmarkId: string,
-    contents: Omit<ScrapedUrlContents, "bookmarkId">
+    contents: Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
   ): Promise<void>;
   getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
   findByUser(userId: string, options?: FindByUserOptions): Promise<Bookmark[]>;
@@ -81,7 +81,7 @@ export class BookmarkRepositoryImpl
 
   async insertScrapedUrlContents(
     bookmarkId: string,
-    contents: Omit<ScrapedUrlContents, "bookmarkId">
+    contents: Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
   ): Promise<void> {
     return this.executeQuery(async () => {
       const insertData: NewScrapedUrlContent = {
@@ -109,7 +109,20 @@ export class BookmarkRepositoryImpl
         .selectAll()
         .where("bookmark_id", "=", bookmarkId)
         .executeTakeFirst();
-      return result ? { ...result, bookmarkId } : null;
+
+      if (!result) return null;
+
+      return {
+        id: result.id,
+        createdAt: result.created_at,
+        updatedAt: result.updated_at,
+        bookmarkId,
+        title: result.title,
+        content: result.content,
+        metadata: result.metadata,
+        images: result.images,
+        links: result.links,
+      };
     }, "getScrapedUrlContent");
   }
 

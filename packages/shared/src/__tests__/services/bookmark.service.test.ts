@@ -37,6 +37,9 @@ describe("BookmarkService", () => {
     it("should delegate to repository and return scraped content", async () => {
       const bookmarkId = "test-bookmark-id";
       const mockScrapedContent: ScrapedUrlContents = {
+        id: "test-scraped-id",
+        createdAt: new Date(),
+        updatedAt: new Date(),
         bookmarkId,
         title: "Test Title",
         content: "Test content",

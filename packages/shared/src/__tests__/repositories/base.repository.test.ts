@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { Kysely } from 'kysely';
 import { BaseRepository } from '../../repositories/base.repository';
 import { Database } from '../../database/schema';
@@ -98,7 +98,7 @@ describe('BaseRepository', () => {
     });
 
     it('should execute custom query functions', async () => {
-      const mockQuery = jest.fn().mockResolvedValue('test result');
+      const mockQuery = jest.fn<() => Promise<string>>().mockResolvedValue('test result');
 
       const result = await repository.testExecuteQuery(mockQuery, 'custom operation');
 
@@ -107,7 +107,7 @@ describe('BaseRepository', () => {
     });
 
     it('should handle async query function errors', async () => {
-      const mockQuery = jest.fn().mockRejectedValue(new Error('Async error'));
+      const mockQuery = jest.fn<() => Promise<any>>().mockRejectedValue(new Error('Async error'));
 
       await expect(
         repository.testExecuteQuery(mockQuery, 'async operation')

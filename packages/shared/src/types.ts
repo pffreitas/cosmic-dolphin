@@ -70,7 +70,6 @@ export interface BookmarkLink {
   relevance: string;
 }
 
-// Bookmark interface
 export interface Bookmark extends BaseEntity {
   sourceUrl: string;
   collectionId?: string;
@@ -85,7 +84,8 @@ export interface Bookmark extends BaseEntity {
   userId: string;
 }
 
-export interface ScrapedUrlContents {
+// TODO rename to ScrapedContent
+export interface ScrapedUrlContents extends BaseEntity {
   bookmarkId: string;
   title: string;
   content: string;
@@ -100,7 +100,30 @@ export interface ScrapedUrlContents {
   }[];
 }
 
-// Bookmark queue payload interface
+export interface BaseContentChunk extends BaseEntity {
+  scrapedContentId: string;
+  chunkType: 'text' | 'image';
+  index: number;
+  size: number;
+  startPosition: number;
+  endPosition: number;
+}
+
+export interface TextChunk extends BaseContentChunk {
+  chunkType: 'text';
+  content: string;
+}
+
+export interface ImageChunk extends BaseContentChunk {
+  chunkType: 'image';
+  imageData: Buffer;
+  mimeType: string;
+  altText?: string;
+  originalUrl?: string;
+}
+
+export type ContentChunk = TextChunk | ImageChunk;
+
 export interface BookmarkQueuePayload extends QueueTaskPayload {
   type: "bookmark_process";
   data: {
@@ -109,7 +132,6 @@ export interface BookmarkQueuePayload extends QueueTaskPayload {
   };
 }
 
-// API Request/Response types
 export interface CreateBookmarkRequest {
   source_url: string;
   collection_id?: string;
@@ -134,7 +156,6 @@ export interface ErrorResponse {
   error: string;
 }
 
-// Service result types
 export interface UrlContents {
   content: string;
   contentType: string;

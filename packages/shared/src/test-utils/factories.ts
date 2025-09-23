@@ -4,6 +4,7 @@ import {
   NewScrapedUrlContent,
 } from "../database/schema";
 import { BookmarkMetadata, OpenGraphMetadata } from "../types";
+import { CreateTextChunkData, CreateImageChunkData } from "../repositories/content-chunk.repository";
 
 export class TestDataFactory {
   static createCollection(
@@ -128,5 +129,120 @@ export class TestDataFactory {
         collection_id: collectionId || null,
       })
     );
+  }
+
+  static createTextChunk(
+    overrides: Partial<CreateTextChunkData> = {}
+  ): CreateTextChunkData {
+    return {
+      scrapedContentId: crypto.randomUUID(),
+      content: "This is a test text chunk content with some meaningful text for testing purposes.",
+      index: 0,
+      size: 256,
+      startPosition: 0,
+      endPosition: 255,
+      ...overrides,
+    };
+  }
+
+  static createImageChunk(
+    overrides: Partial<CreateImageChunkData> = {}
+  ): CreateImageChunkData {
+    // Create a small test image buffer (1x1 pixel PNG)
+    const testImageBuffer = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+      0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+      0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+      0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+      0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41,
+      0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
+      0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00,
+      0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae,
+      0x42, 0x60, 0x82
+    ]);
+
+    return {
+      scrapedContentId: crypto.randomUUID(),
+      imageData: testImageBuffer,
+      mimeType: "image/png",
+      altText: "Test image alt text",
+      originalUrl: "https://example.com/test-image.png",
+      index: 0,
+      size: testImageBuffer.length,
+      startPosition: 0,
+      endPosition: testImageBuffer.length - 1,
+      ...overrides,
+    };
+  }
+
+  static createMultipleTextChunks(
+    count: number,
+    scrapedContentId: string
+  ): CreateTextChunkData[] {
+    return Array.from({ length: count }, (_, i) =>
+      TestDataFactory.createTextChunk({
+        scrapedContentId,
+        content: `Text chunk ${i + 1} content for testing purposes.`,
+        index: i,
+        startPosition: i * 100,
+        endPosition: (i + 1) * 100 - 1,
+        size: 100,
+      })
+    );
+  }
+
+  static createMultipleImageChunks(
+    count: number,
+    scrapedContentId: string
+  ): CreateImageChunkData[] {
+    return Array.from({ length: count }, (_, i) =>
+      TestDataFactory.createImageChunk({
+        scrapedContentId,
+        altText: `Test image ${i + 1} alt text`,
+        originalUrl: `https://example.com/test-image-${i + 1}.png`,
+        index: i,
+        startPosition: i * 1000,
+        endPosition: (i + 1) * 1000 - 1,
+      })
+    );
+  }
+
+  static createMixedContentChunks(
+    textCount: number,
+    imageCount: number,
+    scrapedContentId: string
+  ): (CreateTextChunkData | CreateImageChunkData)[] {
+    const chunks: (CreateTextChunkData | CreateImageChunkData)[] = [];
+    let index = 0;
+    let position = 0;
+
+    // Interleave text and image chunks
+    for (let i = 0; i < Math.max(textCount, imageCount); i++) {
+      if (i < textCount) {
+        chunks.push(TestDataFactory.createTextChunk({
+          scrapedContentId,
+          content: `Mixed text chunk ${i + 1} content.`,
+          index: index++,
+          startPosition: position,
+          endPosition: position + 99,
+          size: 100,
+        }));
+        position += 100;
+      }
+
+      if (i < imageCount) {
+        chunks.push(TestDataFactory.createImageChunk({
+          scrapedContentId,
+          altText: `Mixed image ${i + 1} alt text`,
+          originalUrl: `https://example.com/mixed-image-${i + 1}.png`,
+          index: index++,
+          startPosition: position,
+          endPosition: position + 999,
+        }));
+        position += 1000;
+      }
+    }
+
+    return chunks;
   }
 }

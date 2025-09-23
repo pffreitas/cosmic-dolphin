@@ -266,8 +266,8 @@ describe('CollectionRepository', () => {
     });
 
     it('should handle delete of non-existent collection', async () => {
-      // Delete should not throw error even if collection doesn't exist
-      await expect(repository.delete('00000000-0000-0000-0000-000000000000')).resolves.not.toThrow();
+      // Delete should complete without throwing, even if collection doesn't exist
+      await expect(repository.delete('00000000-0000-0000-0000-000000000000')).resolves.toBeUndefined();
     });
   });
 });

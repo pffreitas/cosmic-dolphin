@@ -8,8 +8,14 @@ import * as cheerio from "cheerio";
 
 export interface WebScrapingService {
   isValidUrl(url: string): boolean;
-  scrape(url: string): Promise<Omit<ScrapedUrlContents, "bookmarkId">>;
-  scrapeContent(content: string): Omit<ScrapedUrlContents, "bookmarkId">;
+  scrape(
+    url: string
+  ): Promise<
+    Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
+  >;
+  scrapeContent(
+    content: string
+  ): Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">;
 }
 
 export class WebScrapingServiceImpl implements WebScrapingService {
@@ -24,7 +30,11 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     }
   }
 
-  async scrape(url: string): Promise<Omit<ScrapedUrlContents, "bookmarkId">> {
+  async scrape(
+    url: string
+  ): Promise<
+    Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
+  > {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.requestTimeout);
 
@@ -68,13 +78,16 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     }
   }
 
-  scrapeContent(content: string): Omit<ScrapedUrlContents, "bookmarkId"> {
+  scrapeContent(
+    content: string
+  ): Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId"> {
     const $ = cheerio.load(content);
+    const body = $("body").text();
     const metadata = this.extractMetadata($);
     const title = metadata.openGraph?.title || this.extractTitle($);
     const images = this.extractImages($);
     const links = this.extractLinks($);
-    return { title, content, metadata, images, links };
+    return { title, content: body, metadata, images, links };
   }
 
   private extractTitle($: CheerioAPI): ScrapedUrlContents["title"] {

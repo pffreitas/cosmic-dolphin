@@ -79,6 +79,9 @@ describe("BookmarkProcessorService", () => {
     };
 
     testScrapedContent = {
+      id: "test-scraped-id",
+      createdAt: new Date(),
+      updatedAt: new Date(),
       bookmarkId: testBookmark.id,
       title: "Test Article",
       content: "This is the test article content for processing.",
