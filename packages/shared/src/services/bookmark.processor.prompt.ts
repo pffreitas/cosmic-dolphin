@@ -13,6 +13,7 @@ Your task is to generate the metadata for the content. Follow the instructions b
 - Links: For each link in the content execute an analysis like described in step 3.
 - Images: For each <img> tag (or image reference in markdown) in the content execute an analysis like described in step 4.
 
+
 3. Analyze ALL links:
 - You must analyze **ALL** the links in the content and provide a context for each link.
 - You must include all links relevant to the content in the output.
@@ -94,52 +95,74 @@ Your task is to generate the title for the content. Follow the instructions belo
 `;
 
 export const SUMMARIZE_PROMPT = `
-Your task is to generate the summary for the content. Follow the instructions below step by step:
-
-1. Read and analyze the following content:
+You will be creating a comprehensive summary of provided content. Follow these instructions carefully:
 
 <content>
 {{CONTENT}}
 </content>
 
-2. Create a summary with the following sections:
+Your task is to analyze the above content and create a structured summary following these steps:
 
-- Title: A concise, descriptive title for the content
-- Summary: A brief overview of the main ideas (2-3 sentences)
-- Key Points: 3-5 bullet points highlighting the most important information
-- Takeaways: 2-3 main lessons or insights from the content
-- Practical Applications: 3 ways this knowledge can be applied in real-world situations
-- Follow-up Links: Identify a maximum of 3 links within the content that are extremely relevant to the main article and highlight them as follow-up links.
+1. **Read and Analyze**: Carefully read through the entire content to understand the main themes, key concepts, and overall message.
 
-3. Format the output as follows:
-You must ouput in markdown format. You MUST NOT include any other text than the markdown text. Like this:
+2. **Identify Core Elements**: Determine what specific elements are central to the content (e.g., if it's about "5 Design Patterns," ensure all 5 patterns are captured; if it's about a process, capture all steps).
 
-    ## [Title]
+3. **Create Summary Sections**: Generate the following required sections:
+   - **Title**: Create a concise, descriptive title that captures the essence of the content
+   - **Summary**: Write 2-3 sentences providing a brief overview of the main ideas
+   - **Key Points**: List 3-5 bullet points highlighting the most important information
+   - **Takeaways**: Identify 2-3 main lessons or insights from the content
+   - **Practical Applications**: List 3 numbered ways this knowledge can be applied in real-world situations
+   - **Follow-up Links**: Find up to 3 links within the content that are extremely relevant to the main topic and list them with brief explanations
 
-    [Summary]
+4. **Add Content-Specific Sections**: Based on your analysis, include additional sections that are relevant to the main message. For example:
+   - If the content covers multiple frameworks, create a section listing them
+   - If there are sequential steps or processes, create a section outlining them
+   - If there are categories or types being discussed, organize them appropriately
+   - Use tables or lists when they would present the information more clearly
 
-    ## Key Points
+5. **Format Requirements**:
+   - Output ONLY in markdown format
+   - Do NOT include any text other than the markdown content
+   - Do NOT wrap the output in code blocks ('''markdown''' or '''json'''')
+   - Use ## for main section headers
+   - Use bullet points (-) for Key Points and Takeaways
+   - Use numbered lists (1., 2., 3.) for Practical Applications and Follow-up Links
 
-    [Bullet points]
+Your output should follow this structure:
 
-    ## Takeaways
+## [Title]
 
-    [Bullet points]
+[Summary paragraph]
 
-    ## Practical Applications
+## Key Points
 
-    [Numbered list]
+- [Point 1]
+- [Point 2]
+- [Point 3]
 
-    ## Follow-up Links
+## Takeaways
 
-    [Numbered list of links to follow up with explanations]
+- [Takeaway 1]
+- [Takeaway 2]
 
+## Practical Applications
 
-## Important requirements:
-- Use markdown format for the summary content.
-- Do not include any text other than the markdown output.
-- Do not enclose the output in '''markdown''' blocks.
-- Do not enclose the output in '''json''' blocks.
+1. [Application 1]
+2. [Application 2]
+3. [Application 3]
+
+## Follow-up Links
+
+1. [Link 1 with explanation]
+2. [Link 2 with explanation]
+3. [Link 3 with explanation]
+
+## [Any Additional Content-Specific Sections]
+
+[Relevant content organized appropriately]
+
+Begin your response immediately with the markdown content.
 `;
 
 export const FILTER_IMAGES_PROMPT = `
