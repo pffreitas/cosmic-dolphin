@@ -13,8 +13,8 @@
     "clean": "bun run --cwd packages/shared clean && bun run --cwd packages/api clean",
     "lint": "bun run --cwd packages/api lint && bun run --cwd packages/worker lint",
     "test": "bun run --cwd packages/shared test && bun run --cwd packages/api test && bun run --cwd packages/worker test",
-    "test:db:up": "docker-compose -f docker-compose.test.yml up -d",
-    "test:db:down": "docker-compose -f docker-compose.test.yml down -v",
+    "test:db:up": "docker compose -f docker-compose.test.yml up -d",
+    "test:db:down": "docker compose -f docker-compose.test.yml down -v",
     "test:db:reset": "bun run test:db:down && bun run test:db:up",
     "install:all": "bun install"
   },
