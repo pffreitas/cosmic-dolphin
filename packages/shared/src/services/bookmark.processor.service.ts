@@ -6,6 +6,7 @@ import {
   GENERATE_TAGS_PROMPT,
   FILTER_IMAGES_PROMPT,
   SUMMARIZE_PROMPT,
+  BRIEF_SUMMARY_PROMPT,
 } from "../services/bookmark.processor.prompt";
 import { Session } from "../ai/types";
 import { Identifier } from "../ai/id";
@@ -46,11 +47,13 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       timestamp: new Date(),
     });
 
-    bookmark.cosmicSummary = await this.summarizeContent(
+    const { summary, briefSummary } = await this.summarizeContent(
       session,
       bookmark,
       content
     );
+    bookmark.cosmicSummary = summary;
+    // bookmark.cosmicBriefSummary = briefSummary;
 
     const tags = await this.generateMetadata(session, bookmark, content);
     bookmark.cosmicTags = tags;
@@ -77,8 +80,9 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     session: Session,
     bookmark: Bookmark,
     content: ScrapedUrlContents
-  ): Promise<string> {
+  ): Promise<{ summary: string; briefSummary: string }> {
     let summary = "";
+    let briefSummary = "";
 
     const task = await this.ai.newTask(
       session.sessionID,
@@ -119,6 +123,16 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
           });
         }
       }
+
+      briefSummary = await this.ai.generateObject({
+        sessionID: session.sessionID,
+        modelId: "x-ai/grok-code-fast-1",
+        prompt: BRIEF_SUMMARY_PROMPT.replace(
+          "{{CONTENT}}",
+          content.content ?? ""
+        ),
+        schema: z.string().describe("The summary of the content"),
+      });
     } catch (error) {
       console.error("Failed to summarize content", error);
       this.eventBus.publishEvent({
@@ -136,7 +150,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       });
     }
 
-    return summary;
+    return { summary, briefSummary };
   }
 
   private async generateMetadata(
@@ -225,42 +239,28 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
 
     try {
       // TODO: call the model to filter out the images that are not relevant to the content
-      let output = "";
-      for await (const part of this.ai.prompt({
+      const relevantImages = await this.ai.generateObject({
         sessionID: session.sessionID,
-        taskID: task.taskID,
-        messageID: Identifier.ascending("message"),
         modelId: "x-ai/grok-code-fast-1",
-        context: [],
-        tools: [],
-        message: {
-          role: "user",
-          content: FILTER_IMAGES_PROMPT.replace(
-            "{{CONTENT}}",
-            content.content ?? ""
-          ),
-        },
-      })) {
-        if (part.type === "text") {
-          output = part.part.text;
-        }
-      }
-
-      const parsed = z
-        .object({
+        prompt: FILTER_IMAGES_PROMPT.replace(
+          "{{CONTENT}}",
+          content.content ?? ""
+        ),
+        schema: z.object({
           images: z
             .array(
               z.object({
                 url: z.string().describe("The image URL"),
-                alt: z.string().describe("The image alt text"),
+                title: z.string().describe("The image title"),
+                description: z.string().describe("The image description"),
               })
             )
             .describe("The array of image URLs"),
-        })
-        .parse(JSON.parse(output));
+        }),
+      });
 
-      for (let index = 0; index < parsed.images.length; index++) {
-        const image = parsed.images[index];
+      for (let index = 0; index < relevantImages.images.length; index++) {
+        const image = relevantImages.images[index];
         const imageSubTask = await this.ai.newSubTask("Processing image");
         task.subTasks[imageSubTask.taskID] = imageSubTask;
         this.eventBus.publishEvent({
@@ -285,7 +285,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
             scrapedContentId: content.id,
             imageData: imageByteArray,
             mimeType: mimeType,
-            altText: image.alt,
+            altText: image.title,
             originalUrl: image.url,
             index: index,
             size: imageSize,
@@ -295,7 +295,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
 
           images.push({
             url: image.url,
-            description: image.alt,
+            title: image.title,
+            description: image.description,
           });
 
           task.subTasks[imageSubTask.taskID].status = "completed";

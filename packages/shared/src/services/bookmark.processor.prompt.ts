@@ -165,6 +165,19 @@ Your output should follow this structure:
 Begin your response immediately with the markdown content.
 `;
 
+export const BRIEF_SUMMARY_PROMPT = `
+Your task is to generate a brief summary of the content. Follow the instructions below step by step:
+
+1. Read and analyze the following content:
+
+<content>
+{{CONTENT}}
+</content>
+
+2. Generate a brief summary of the content.
+
+`;
+
 export const FILTER_IMAGES_PROMPT = `
 Your task is to filter the images that are not relevant to the content. Follow the instructions below step by step:
 
@@ -175,9 +188,11 @@ Your task is to filter the images that are not relevant to the content. Follow t
 
 2. Filter the images that are not relevant to the content.
 
-3. For each image, provide a brief explanation (1-2 sentences) of why it's relevant and how it relates to the main content. 
-Do not consider hero images.
-Keep the image url and place the relevant analysis in thealt text in the output.
+3. For each image, provide a title and explanation (1-2 sentences) of why it's relevant and how it relates to the main content. The description must be a complete description of the image and how it relates to the main content.
+You must ignore hero images.
+You must ignore ads.
+You must ignore author avatar images.
+You must ignore images that are not relevant to the content.
 
 4. Format the output as follows:
 You must ouput a json object following the schema below. You MUST NOT include any other text than the json object. Your output MUST be a valid json object following the schema below
@@ -185,7 +200,8 @@ You must ouput a json object following the schema below. You MUST NOT include an
     "images": [
         {
             "url": "string",
-            "alt": "string"
+            "title": "string",
+            "description": "string"
         }
     ]
 }

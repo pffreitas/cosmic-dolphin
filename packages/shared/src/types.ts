@@ -62,6 +62,7 @@ export interface BookmarkMetadata {
 
 export interface BookmarkImage {
   url: string;
+  title: string;
   description: string;
 }
 
@@ -102,7 +103,7 @@ export interface ScrapedUrlContents extends BaseEntity {
 
 export interface BaseContentChunk extends BaseEntity {
   scrapedContentId: string;
-  chunkType: 'text' | 'image';
+  chunkType: "text" | "image";
   index: number;
   size: number;
   startPosition: number;
@@ -110,12 +111,12 @@ export interface BaseContentChunk extends BaseEntity {
 }
 
 export interface TextChunk extends BaseContentChunk {
-  chunkType: 'text';
+  chunkType: "text";
   content: string;
 }
 
 export interface ImageChunk extends BaseContentChunk {
-  chunkType: 'image';
+  chunkType: "image";
   imageData: Buffer;
   mimeType: string;
   altText?: string;

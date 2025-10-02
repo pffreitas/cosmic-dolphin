@@ -1,4 +1,5 @@
 import { Tool } from "./tool";
+import { ZodSchema } from "zod";
 
 export interface Session {
   sessionID: string;
@@ -32,6 +33,13 @@ export interface PromptInput {
   context: Message[];
   tools: Tool.Info[];
   message: Message;
+}
+
+export interface GenerateObjectInput<T = any> {
+  sessionID: string;
+  modelId: string;
+  prompt: string;
+  schema: ZodSchema<T>;
 }
 
 export interface LLMResponsePart {

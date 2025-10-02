@@ -4,6 +4,7 @@ import {
   ToolSet,
   Tool as AITool,
   tool,
+  generateObject,
 } from "ai";
 import {
   createOpenRouter,
@@ -20,6 +21,7 @@ import {
   Session,
   SubTask,
   Task,
+  GenerateObjectInput,
 } from "./types";
 import { Tool } from "./tool";
 import { ToolRegistry } from "./tool";
@@ -91,6 +93,16 @@ export class AI {
       return this.azure(modelId.replace("azure:", ""));
     }
     return this.openrouter(modelId);
+  }
+
+  async generateObject<T>(input: GenerateObjectInput<T>): Promise<T> {
+    const { object } = await generateObject({
+      model: this.getModel(input.modelId),
+      schema: input.schema,
+      prompt: input.prompt,
+    });
+
+    return object;
   }
 
   async *prompt(input: PromptInput): AsyncGenerator<LLMResponsePart> {
