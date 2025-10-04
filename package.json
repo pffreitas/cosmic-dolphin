@@ -19,7 +19,8 @@
     "install:all": "bun install"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "shadcn": "^3.3.1"
   },
   "engines": {
     "node": ">=22.0.0",
