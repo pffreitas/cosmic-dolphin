@@ -70,6 +70,23 @@ describe("Bookmark Content Refactor Integration", () => {
       newSession: jest.fn(),
       newTask: jest.fn(),
       newSubTask: jest.fn(),
+      generateObject: jest.fn().mockImplementation(async (input: any) => {
+        // Return different mocked values based on what's being generated
+        if (input.prompt && input.prompt.includes("Your task is to generate a brief summary")) {
+          return "Generated brief summary";
+        } else if (input.prompt && input.prompt.includes("Your task is to filter the images")) {
+          return {
+            images: [
+              {
+                url: "https://example.com/image.jpg",
+                title: "Test image",
+                description: "A test image"
+              }
+            ]
+          };
+        }
+        return "Default generated object";
+      }),
       prompt: jest.fn().mockImplementation(() => mockPromptGenerator()),
       processStream: jest.fn(),
     } as any;
