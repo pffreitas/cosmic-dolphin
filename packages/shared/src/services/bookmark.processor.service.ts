@@ -12,7 +12,7 @@ import { Session } from "../ai/types";
 import { Identifier } from "../ai/id";
 import { EventBus } from "../ai/bus";
 import { ContentChunkRepository } from "../repositories/content-chunk.repository";
-import { HttpClient, FetchHttpClient } from "./http-client";
+import { HttpClient, CosmicHttpClient } from "./http-client";
 
 export interface BookmarkProcessorService {
   process(id: string, userId: string): Promise<void>;
@@ -24,7 +24,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     private contentChunkRepository: ContentChunkRepository,
     private ai: AI,
     private eventBus: EventBus,
-    private httpClient: HttpClient = new FetchHttpClient()
+    private httpClient: HttpClient = new CosmicHttpClient()
   ) {}
 
   async process(id: string, userId: string): Promise<void> {
@@ -238,7 +238,6 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     });
 
     try {
-      // TODO: call the model to filter out the images that are not relevant to the content
       const relevantImages = await this.ai.generateObject({
         sessionID: session.sessionID,
         modelId: "x-ai/grok-code-fast-1",
