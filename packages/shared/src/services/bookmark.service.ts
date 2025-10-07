@@ -52,6 +52,7 @@ export class BookmarkServiceImpl implements BookmarkService {
       title: scrapedUrlContents.title,
       metadata: scrapedUrlContents.metadata,
       user_id: userId,
+      quick_access: `${scrapedUrlContents.title} ${url}`,
     };
 
     const bookmark = await this.bookmarkRepository.create(newBookmark);
