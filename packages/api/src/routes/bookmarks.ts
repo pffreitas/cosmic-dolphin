@@ -4,6 +4,8 @@ import {
   CreateBookmarkResponse,
   GetBookmarksQuery,
   GetBookmarksResponse,
+  SearchBookmarksQuery,
+  SearchBookmarksResponse,
   ServiceContainer,
   createServiceContainer,
   Bookmark,
@@ -57,9 +59,10 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           source_url
         );
         if (existingBookmark) {
-          return reply
-            .status(409)
-            .send({ error: "Bookmark already exists for this URL" });
+          return reply.status(201).send({
+            bookmark: existingBookmark,
+            message: "Bookmark created successfully",
+          });
         }
 
         if (collection_id) {
@@ -149,6 +152,48 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ error: "Internal server error" });
     }
   });
+
+  fastify.get<{
+    Querystring: Omit<SearchBookmarksQuery, "user_id">;
+    Reply: SearchBookmarksResponse | { error: string };
+  }>(
+    "/bookmarks/search",
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      try {
+        const {
+          query,
+          limit = 50,
+          offset = 0,
+        } = request.query as Omit<SearchBookmarksQuery, "user_id">;
+        const user_id = request.userId!;
+
+        fastify.log.info(
+          { query, limit, offset, user_id },
+          "Search bookmarks request"
+        );
+
+        if (!query || query.trim() === "") {
+          return reply.status(400).send({ error: "Search query is required" });
+        }
+
+        const bookmarks = await services.bookmark.searchByQuickAccess(
+          user_id,
+          query,
+          {
+            limit,
+            offset,
+            includeArchived: false,
+          }
+        );
+
+        return reply.send({ bookmarks });
+      } catch (error) {
+        fastify.log.error({ error }, "Search bookmarks error");
+        return reply.status(500).send({ error: "Internal server error" });
+      }
+    }
+  );
 
   fastify.get<{
     Params: { id: string };

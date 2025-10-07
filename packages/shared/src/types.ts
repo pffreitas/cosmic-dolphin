@@ -83,6 +83,7 @@ export interface Bookmark extends BaseEntity {
   cosmicTags?: string[];
   metadata?: BookmarkMetadata;
   userId: string;
+  quickAccess?: string;
 }
 
 // TODO rename to ScrapedContent
@@ -151,6 +152,17 @@ export interface GetBookmarksQuery {
 
 export interface GetBookmarksResponse {
   bookmarks: Bookmark[];
+}
+
+export interface SearchBookmarksQuery {
+  query: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SearchBookmarksResponse {
+  bookmarks: Bookmark[];
+  total?: number;
 }
 
 export interface ErrorResponse {

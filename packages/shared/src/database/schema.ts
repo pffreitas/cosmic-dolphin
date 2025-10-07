@@ -31,6 +31,7 @@ export interface BookmarksTable extends BaseTable {
   cosmic_tags: string[] | null;
   cosmic_images: any | null; // JSONB
   cosmic_links: any | null; // JSONB
+  quick_access: string | null; // PGroonga searchable text
 }
 
 // Scraped URL contents table
@@ -46,7 +47,7 @@ export interface ScrapedUrlContentsTable extends BaseTable {
 // Content chunks base table
 export interface ContentChunksTable extends BaseTable {
   scraped_content_id: string;
-  chunk_type: 'text' | 'image';
+  chunk_type: "text" | "image";
   index: number;
   size: number;
   start_position: number;

@@ -1,5 +1,9 @@
-import { Bookmark, ScrapedUrlContents } from "../types";
-import { BookmarkRepository, FindByUserOptions } from "../repositories";
+import { Bookmark, ScrapedUrlContents, SearchBookmarksQuery } from "../types";
+import {
+  BookmarkRepository,
+  FindByUserOptions,
+  SearchOptions,
+} from "../repositories";
 import { WebScrapingService } from "./web-scraping.service";
 import { NewBookmark, BookmarkUpdate } from "../database/schema";
 
@@ -9,6 +13,11 @@ export interface BookmarkService {
   getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
   create(url: string, userId: string): Promise<Bookmark>;
   findByUser(userId: string, options?: FindByUserOptions): Promise<Bookmark[]>;
+  searchByQuickAccess(
+    userId: string,
+    query: string,
+    options?: SearchOptions
+  ): Promise<Bookmark[]>;
   update(id: string, data: Partial<Bookmark>): Promise<Bookmark>;
   delete(id: string): Promise<void>;
 }
@@ -90,6 +99,8 @@ export class BookmarkServiceImpl implements BookmarkService {
       updateData.cosmic_images = data.cosmicImages;
     if (data.cosmicLinks !== undefined)
       updateData.cosmic_links = data.cosmicLinks;
+    if (data.quickAccess !== undefined)
+      updateData.quick_access = data.quickAccess;
 
     const bookmark = await this.bookmarkRepository.update(id, updateData);
     return this.mapDatabaseToBookmark(bookmark);
@@ -97,6 +108,19 @@ export class BookmarkServiceImpl implements BookmarkService {
 
   async delete(id: string): Promise<void> {
     await this.bookmarkRepository.delete(id);
+  }
+
+  async searchByQuickAccess(
+    userId: string,
+    query: string,
+    options: SearchOptions = {}
+  ): Promise<Bookmark[]> {
+    const bookmarks = await this.bookmarkRepository.searchByQuickAccess(
+      userId,
+      query,
+      options
+    );
+    return bookmarks.map(this.mapDatabaseToBookmark);
   }
 
   private mapDatabaseToBookmark(data: any): Bookmark {
@@ -113,6 +137,7 @@ export class BookmarkServiceImpl implements BookmarkService {
       cosmicTags: data.cosmic_tags,
       cosmicImages: data.cosmic_images,
       cosmicLinks: data.cosmic_links,
+      quickAccess: data.quick_access,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),
     };

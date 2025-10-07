@@ -1,4 +1,4 @@
-import { Kysely } from "kysely";
+import { Kysely, sql } from "kysely";
 import { BaseRepository } from "./base.repository";
 import {
   Database,
@@ -16,16 +16,30 @@ export interface FindByUserOptions {
   includeArchived?: boolean;
 }
 
+export interface SearchOptions {
+  limit?: number;
+  offset?: number;
+  includeArchived?: boolean;
+}
+
 export interface BookmarkRepository {
   findByUserAndUrl(userId: string, sourceUrl: string): Promise<Bookmark | null>;
   findByIdAndUser(id: string, userId: string): Promise<Bookmark | null>;
   create(data: NewBookmark): Promise<Bookmark>;
   insertScrapedUrlContents(
     bookmarkId: string,
-    contents: Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
+    contents: Omit<
+      ScrapedUrlContents,
+      "id" | "createdAt" | "updatedAt" | "bookmarkId"
+    >
   ): Promise<void>;
   getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
   findByUser(userId: string, options?: FindByUserOptions): Promise<Bookmark[]>;
+  searchByQuickAccess(
+    userId: string,
+    query: string,
+    options?: SearchOptions
+  ): Promise<Bookmark[]>;
   update(id: string, data: BookmarkUpdate): Promise<Bookmark>;
   delete(id: string): Promise<void>;
 }
@@ -81,7 +95,10 @@ export class BookmarkRepositoryImpl
 
   async insertScrapedUrlContents(
     bookmarkId: string,
-    contents: Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
+    contents: Omit<
+      ScrapedUrlContents,
+      "id" | "createdAt" | "updatedAt" | "bookmarkId"
+    >
   ): Promise<void> {
     return this.executeQuery(async () => {
       const insertData: NewScrapedUrlContent = {
@@ -189,5 +206,31 @@ export class BookmarkRepositoryImpl
     return this.executeQuery(async () => {
       await this.db.deleteFrom("bookmarks").where("id", "=", id).execute();
     }, "delete");
+  }
+
+  async searchByQuickAccess(
+    userId: string,
+    query: string,
+    options: SearchOptions = {}
+  ): Promise<Bookmark[]> {
+    return this.executeQuery(async () => {
+      const { limit = 50, offset = 0, includeArchived = false } = options;
+
+      let sqlQuery = this.db
+        .selectFrom("bookmarks")
+        .selectAll()
+        .where("user_id", "=", userId)
+        // Use PGroonga full-text search operator &@~ with raw SQL
+        .where(sql<boolean>`quick_access &@~ ${query}`)
+        .orderBy("created_at", "desc")
+        .limit(limit)
+        .offset(offset);
+
+      if (!includeArchived) {
+        sqlQuery = sqlQuery.where("is_archived", "=", false);
+      }
+
+      return await sqlQuery.execute();
+    }, "searchByQuickAccess");
   }
 }
