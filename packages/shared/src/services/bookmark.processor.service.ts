@@ -258,8 +258,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         }),
       });
 
-      for (let index = 0; index < relevantImages.images.length; index++) {
-        const image = relevantImages.images[index];
+      const imageProcessingPromises = relevantImages.images.map(async (image, index) => {
         const imageSubTask = await this.ai.newSubTask("Processing image");
         task.subTasks[imageSubTask.taskID] = imageSubTask;
         this.eventBus.publishEvent({
@@ -271,7 +270,6 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         try {
           const response = await this.httpClient.fetch(image.url);
           if (!response.ok) {
-            // TODO: fail subtask and continue
             throw new Error(`Failed to download image: ${response.statusText}`);
           }
 
@@ -292,18 +290,18 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
             endPosition: imageSize,
           });
 
-          images.push({
-            url: image.url,
-            title: image.title,
-            description: image.description,
-          });
-
           task.subTasks[imageSubTask.taskID].status = "completed";
           this.eventBus.publishEvent({
             type: "task.updated",
             data: task,
             timestamp: new Date(),
           });
+
+          return {
+            url: image.url,
+            title: image.title,
+            description: image.description,
+          };
         } catch (error) {
           console.error(`Failed to process image ${image.url}:`, error);
           task.subTasks[imageSubTask.taskID].status = "failed";
@@ -312,8 +310,12 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
             data: task,
             timestamp: new Date(),
           });
+          return null;
         }
-      }
+      });
+
+      const processedImages = await Promise.all(imageProcessingPromises);
+      images.push(...processedImages.filter((img) => img !== null));
 
       task.status = "completed";
       this.eventBus.publishEvent({
