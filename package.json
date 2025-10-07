@@ -15,10 +15,15 @@
     "test": "bun run --cwd packages/shared test && bun run --cwd packages/api test && bun run --cwd packages/worker test",
     "test:db:up": "docker compose -f docker-compose.test.yml up -d",
     "test:db:down": "docker compose -f docker-compose.test.yml down -v",
-    "local:db:up": "docker-compose -f docker-compose.test.yml up -d",
+    "local:db:up": "docker-compose -f docker-compose.test.yml up",
     "local:db:down": "docker-compose -f docker-compose.test.yml down -v",
     "local:db:reset": "bun run local:db:down && bun run local:db:up",
     "test:db:reset": "bun run test:db:down && bun run test:db:up",
+    "docker:clean": "docker system prune -f",
+    "docker:clean:all": "docker system prune -a -f --volumes",
+    "docker:clean:build": "docker builder prune -f",
+    "docker:clean:images": "docker image prune -a -f",
+    "docker:clean:containers": "docker container prune -f",
     "install:all": "bun install"
   },
   "devDependencies": {

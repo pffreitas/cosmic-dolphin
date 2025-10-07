@@ -1,8 +1,11 @@
-version: '3.8'
+version: "3.8"
 
 services:
   postgres-test:
-    image: pgvector/pgvector:pg15
+    build:
+      context: .
+      dockerfile: Dockerfile.test-db
+    image: cosmic-dolphin-test-db:latest
     container_name: cosmic-dolphin-test-db
     environment:
       POSTGRES_DB: cosmic_dolphin_test
@@ -19,7 +22,7 @@ services:
       timeout: 5s
       retries: 5
     tmpfs:
-      - /var/lib/postgresql/data
+      - /var/lib/postgresql/data:rw,noexec,nosuid,size=512m,uid=999,gid=999
     networks:
       - test-network
 

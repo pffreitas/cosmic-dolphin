@@ -33,6 +33,7 @@ describe("BookmarkProcessorService", () => {
       headers: {
         get: (name: string) => "image/jpeg",
       },
+      body: "",
       arrayBuffer: () => Promise.resolve(new ArrayBuffer(100)),
     });
 
@@ -43,6 +44,7 @@ describe("BookmarkProcessorService", () => {
       create: jest.fn(),
       findByUserAndUrl: jest.fn(),
       findByUser: jest.fn(),
+      searchByQuickAccess: jest.fn(),
       delete: jest.fn(),
     } as jest.Mocked<BookmarkService>;
 
@@ -75,17 +77,23 @@ describe("BookmarkProcessorService", () => {
       newSubTask: jest.fn(),
       generateObject: jest.fn().mockImplementation(async (input: any) => {
         // Return different mocked values based on what's being generated
-        if (input.prompt && input.prompt.includes("Your task is to generate a brief summary")) {
+        if (
+          input.prompt &&
+          input.prompt.includes("Your task is to generate a brief summary")
+        ) {
           return "Generated brief summary";
-        } else if (input.prompt && input.prompt.includes("Your task is to filter the images")) {
+        } else if (
+          input.prompt &&
+          input.prompt.includes("Your task is to filter the images")
+        ) {
           return {
             images: [
               {
                 url: "https://example.com/image.jpg",
                 title: "Test image",
-                description: "A test image"
-              }
-            ]
+                description: "A test image",
+              },
+            ],
           };
         }
         return "Default generated object";

@@ -19,6 +19,7 @@ describe("BookmarkService", () => {
       insertScrapedUrlContents: jest.fn(),
       getScrapedUrlContent: jest.fn(),
       findByUser: jest.fn(),
+      searchByQuickAccess: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
     } as jest.Mocked<BookmarkRepository>;
@@ -56,7 +57,9 @@ describe("BookmarkService", () => {
 
       const result = await service.getScrapedUrlContent(bookmarkId);
 
-      expect(mockRepository.getScrapedUrlContent).toHaveBeenCalledWith(bookmarkId);
+      expect(mockRepository.getScrapedUrlContent).toHaveBeenCalledWith(
+        bookmarkId
+      );
       expect(result).toEqual(mockScrapedContent);
     });
 
@@ -67,7 +70,9 @@ describe("BookmarkService", () => {
 
       const result = await service.getScrapedUrlContent(bookmarkId);
 
-      expect(mockRepository.getScrapedUrlContent).toHaveBeenCalledWith(bookmarkId);
+      expect(mockRepository.getScrapedUrlContent).toHaveBeenCalledWith(
+        bookmarkId
+      );
       expect(result).toBeNull();
     });
 
@@ -77,8 +82,12 @@ describe("BookmarkService", () => {
 
       mockRepository.getScrapedUrlContent.mockRejectedValue(error);
 
-      await expect(service.getScrapedUrlContent(bookmarkId)).rejects.toThrow("Database connection failed");
-      expect(mockRepository.getScrapedUrlContent).toHaveBeenCalledWith(bookmarkId);
+      await expect(service.getScrapedUrlContent(bookmarkId)).rejects.toThrow(
+        "Database connection failed"
+      );
+      expect(mockRepository.getScrapedUrlContent).toHaveBeenCalledWith(
+        bookmarkId
+      );
     });
   });
 
@@ -113,7 +122,7 @@ describe("BookmarkService", () => {
       expect(mappedBookmark.sourceUrl).toBe(dbBookmark.source_url);
       expect(mappedBookmark.title).toBe(dbBookmark.title);
       expect(mappedBookmark.userId).toBe(dbBookmark.user_id);
-      expect(mappedBookmark).not.toHaveProperty('content');
+      expect(mappedBookmark).not.toHaveProperty("content");
     });
   });
 });

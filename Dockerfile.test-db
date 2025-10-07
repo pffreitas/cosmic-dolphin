@@ -1,0 +1,38 @@
+# Custom PostgreSQL image with both pgvector and pgroonga extensions
+FROM pgvector/pgvector:pg15
+
+# Switch to root to install packages
+USER root
+
+# Build PGroonga from source (most reliable approach)
+RUN apt-get update && \
+    # Install minimal build dependencies
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        postgresql-server-dev-15 \
+        libgroonga-dev \
+        wget \
+        ca-certificates \
+    && \
+    # Download and build PGroonga (using version compatible with Groonga 13.0.0)
+    cd /tmp && \
+    wget -q https://packages.groonga.org/source/pgroonga/pgroonga-3.0.9.tar.gz && \
+    tar xzf pgroonga-3.0.9.tar.gz && \
+    cd pgroonga-3.0.9 && \
+    make -j$(nproc) install && \
+    # Aggressive cleanup to minimize image size
+    cd / && \
+    rm -rf /tmp/pgroonga-3.0.9* && \
+    apt-get remove -y build-essential wget && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /var/cache/apt/* /usr/share/doc/* /usr/share/man/*
+
+# Switch back to postgres user
+USER postgres
+
+# Expose the default PostgreSQL port
+EXPOSE 5432
+
+# Use the default entrypoint from the base image
+CMD ["postgres"]
