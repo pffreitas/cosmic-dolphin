@@ -41,6 +41,7 @@ describe("BookmarkProcessorService", () => {
       findByIdAndUser: jest.fn(),
       getScrapedUrlContent: jest.fn(),
       update: jest.fn(),
+      updateProcessingStatus: jest.fn(),
       create: jest.fn(),
       findByUserAndUrl: jest.fn(),
       findByUser: jest.fn(),
@@ -105,6 +106,8 @@ describe("BookmarkProcessorService", () => {
     mockEventBus = {
       publish: jest.fn(),
       publishEvent: jest.fn(),
+      publishToBookmark: jest.fn(),
+      cleanupBookmarkChannel: jest.fn(),
     } as any;
 
     mockContentChunkRepository = {
@@ -143,6 +146,7 @@ describe("BookmarkProcessorService", () => {
       cosmicTags: undefined,
       cosmicImages: undefined,
       cosmicLinks: undefined,
+      processingStatus: "idle",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -175,6 +179,10 @@ describe("BookmarkProcessorService", () => {
       mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
         testScrapedContent
       );
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(
+        testBookmark
+      );
+      mockBookmarkService.update.mockResolvedValue(testBookmark);
       mockAI.newSession.mockResolvedValue(mockSession);
 
       // Mock the AI task responses
@@ -203,11 +211,11 @@ describe("BookmarkProcessorService", () => {
         testBookmark.id
       );
       expect(mockAI.newSession).toHaveBeenCalledWith(testBookmark.id);
-      expect(mockEventBus.publishEvent).toHaveBeenCalledWith({
-        type: "session.started",
-        data: mockSession,
-        timestamp: expect.any(Date),
-      });
+      expect(mockEventBus.publishToBookmark).toHaveBeenCalledWith(
+        testBookmark.id,
+        "session.started",
+        mockSession
+      );
     });
 
     it("should throw error when bookmark is not found", async () => {
@@ -257,6 +265,10 @@ describe("BookmarkProcessorService", () => {
       mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
         testScrapedContent
       );
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(
+        testBookmark
+      );
+      mockBookmarkService.update.mockResolvedValue(testBookmark);
       mockAI.newSession.mockResolvedValue(mockSession);
       mockAI.newTask.mockResolvedValue(mockTask);
       mockAI.newSubTask.mockResolvedValue({
@@ -271,11 +283,11 @@ describe("BookmarkProcessorService", () => {
       expect(mockBookmarkService.getScrapedUrlContent).toHaveBeenCalledWith(
         testBookmark.id
       );
-      expect(mockEventBus.publishEvent).toHaveBeenCalledWith({
-        type: "session.started",
-        data: mockSession,
-        timestamp: expect.any(Date),
-      });
+      expect(mockEventBus.publishToBookmark).toHaveBeenCalledWith(
+        testBookmark.id,
+        "session.started",
+        mockSession
+      );
     });
 
     it("should handle AI processing errors gracefully", async () => {
@@ -287,6 +299,9 @@ describe("BookmarkProcessorService", () => {
       mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
       mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
         testScrapedContent
+      );
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(
+        testBookmark
       );
       mockAI.newSession.mockResolvedValue(mockSession);
       mockAI.newSubTask.mockResolvedValue({
@@ -300,11 +315,11 @@ describe("BookmarkProcessorService", () => {
         service.process(testBookmark.id, testBookmark.userId)
       ).rejects.toThrow("AI service unavailable");
 
-      expect(mockEventBus.publishEvent).toHaveBeenCalledWith({
-        type: "session.started",
-        data: mockSession,
-        timestamp: expect.any(Date),
-      });
+      expect(mockEventBus.publishToBookmark).toHaveBeenCalledWith(
+        testBookmark.id,
+        "session.started",
+        mockSession
+      );
     });
   });
 });

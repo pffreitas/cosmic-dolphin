@@ -94,6 +94,8 @@ describe("Bookmark Content Refactor Integration", () => {
     mockEventBus = {
       publish: jest.fn(),
       publishEvent: jest.fn(),
+      publishToBookmark: jest.fn(),
+      cleanupBookmarkChannel: jest.fn(),
     } as any;
 
     service = new BookmarkServiceImpl(repository, mockWebScrapingService);

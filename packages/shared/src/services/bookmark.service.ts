@@ -90,9 +90,8 @@ export class BookmarkServiceImpl implements BookmarkService {
 
   async update(
     id: string,
-    data: Omit<
-      Bookmark,
-      "id" | "createdAt" | "updatedAt" | "sourceUrl" | "userId"
+    data: Partial<
+      Omit<Bookmark, "id" | "createdAt" | "updatedAt" | "sourceUrl" | "userId">
     >
   ): Promise<Bookmark> {
     const updateData: BookmarkUpdate = {};
