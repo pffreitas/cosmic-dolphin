@@ -18,6 +18,9 @@ export interface CollectionsTable extends BaseTable {
   is_public: Generated<boolean>;
 }
 
+// Processing status type
+export type ProcessingStatus = "idle" | "processing" | "completed" | "failed";
+
 // Bookmarks table
 export interface BookmarksTable extends BaseTable {
   source_url: string;
@@ -32,6 +35,10 @@ export interface BookmarksTable extends BaseTable {
   cosmic_images: any | null; // JSONB
   cosmic_links: any | null; // JSONB
   quick_access: string | null; // PGroonga searchable text
+  processing_status: Generated<ProcessingStatus>;
+  processing_started_at: Date | null;
+  processing_completed_at: Date | null;
+  processing_error: string | null;
 }
 
 // Scraped URL contents table

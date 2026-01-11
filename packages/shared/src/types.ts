@@ -71,6 +71,9 @@ export interface BookmarkLink {
   relevance: string;
 }
 
+// Processing status type
+export type ProcessingStatus = "idle" | "processing" | "completed" | "failed";
+
 export interface Bookmark extends BaseEntity {
   sourceUrl: string;
   collectionId?: string;
@@ -84,6 +87,10 @@ export interface Bookmark extends BaseEntity {
   metadata?: BookmarkMetadata;
   userId: string;
   quickAccess?: string;
+  processingStatus: ProcessingStatus;
+  processingStartedAt?: Date;
+  processingCompletedAt?: Date;
+  processingError?: string;
 }
 
 // TODO rename to ScrapedContent

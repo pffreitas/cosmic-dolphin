@@ -1,4 +1,9 @@
-import { Bookmark, ScrapedUrlContents, SearchBookmarksQuery } from "../types";
+import {
+  Bookmark,
+  ScrapedUrlContents,
+  SearchBookmarksQuery,
+  ProcessingStatus,
+} from "../types";
 import {
   BookmarkRepository,
   FindByUserOptions,
@@ -19,6 +24,11 @@ export interface BookmarkService {
     options?: SearchOptions
   ): Promise<Bookmark[]>;
   update(id: string, data: Partial<Bookmark>): Promise<Bookmark>;
+  updateProcessingStatus(
+    id: string,
+    status: ProcessingStatus,
+    error?: string
+  ): Promise<Bookmark>;
   delete(id: string): Promise<void>;
 }
 
@@ -111,6 +121,31 @@ export class BookmarkServiceImpl implements BookmarkService {
     await this.bookmarkRepository.delete(id);
   }
 
+  async updateProcessingStatus(
+    id: string,
+    status: ProcessingStatus,
+    error?: string
+  ): Promise<Bookmark> {
+    const updateData: BookmarkUpdate = {
+      processing_status: status,
+    };
+
+    if (status === "processing") {
+      updateData.processing_started_at = new Date();
+      updateData.processing_completed_at = null;
+      updateData.processing_error = null;
+    } else if (status === "completed") {
+      updateData.processing_completed_at = new Date();
+      updateData.processing_error = null;
+    } else if (status === "failed") {
+      updateData.processing_completed_at = new Date();
+      updateData.processing_error = error || "Unknown error";
+    }
+
+    const bookmark = await this.bookmarkRepository.update(id, updateData);
+    return this.mapDatabaseToBookmark(bookmark);
+  }
+
   async searchByQuickAccess(
     userId: string,
     query: string,
@@ -139,6 +174,14 @@ export class BookmarkServiceImpl implements BookmarkService {
       cosmicImages: data.cosmic_images,
       cosmicLinks: data.cosmic_links,
       quickAccess: data.quick_access,
+      processingStatus: data.processing_status || "idle",
+      processingStartedAt: data.processing_started_at
+        ? new Date(data.processing_started_at)
+        : undefined,
+      processingCompletedAt: data.processing_completed_at
+        ? new Date(data.processing_completed_at)
+        : undefined,
+      processingError: data.processing_error,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),
     };
