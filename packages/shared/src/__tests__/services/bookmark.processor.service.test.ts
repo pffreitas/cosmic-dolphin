@@ -130,7 +130,7 @@ describe("BookmarkProcessorService", () => {
       findTreeByUser: jest.fn<any>().mockResolvedValue([]),
       create: jest.fn<any>(),
       createPath: jest.fn<any>().mockResolvedValue({
-        id: "mock-category-id",
+        id: "00000000-0000-0000-0000-000000000001",
         name: "Uncategorized",
         parent_id: null,
         user_id: "test-user-id",
