@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import { BookmarkProcessorServiceImpl } from "../../services/bookmark.processor.service";
 import { BookmarkService } from "../../services/bookmark.service";
 import { ContentChunkRepository } from "../../repositories/content-chunk.repository";
+import { CollectionRepository } from "../../repositories/collection.repository";
 import { AI } from "../../ai";
 import { Session, Task } from "../../ai/types";
 import { EventBus } from "../../ai/bus";
@@ -13,6 +14,7 @@ describe("BookmarkProcessorService", () => {
   let service: BookmarkProcessorServiceImpl;
   let mockBookmarkService: jest.Mocked<BookmarkService>;
   let mockContentChunkRepository: jest.Mocked<ContentChunkRepository>;
+  let mockCollectionRepository: jest.Mocked<CollectionRepository>;
   let mockAI: jest.Mocked<AI>;
   let mockEventBus: jest.Mocked<EventBus>;
   let mockHttpClient: jest.Mocked<HttpClient>;
@@ -121,9 +123,28 @@ describe("BookmarkProcessorService", () => {
       delete: jest.fn(),
     } as jest.Mocked<ContentChunkRepository>;
 
+    mockCollectionRepository = {
+      findByIdAndUser: jest.fn<any>(),
+      findByUser: jest.fn<any>(),
+      findByNameAndParent: jest.fn<any>(),
+      findTreeByUser: jest.fn<any>().mockResolvedValue([]),
+      create: jest.fn<any>(),
+      createPath: jest.fn<any>().mockResolvedValue({
+        id: "mock-category-id",
+        name: "Uncategorized",
+        parent_id: null,
+        user_id: "test-user-id",
+        created_at: new Date(),
+        updated_at: new Date(),
+      }),
+      update: jest.fn<any>(),
+      delete: jest.fn<any>(),
+    } as jest.Mocked<CollectionRepository>;
+
     service = new BookmarkProcessorServiceImpl(
       mockBookmarkService,
       mockContentChunkRepository,
+      mockCollectionRepository,
       mockAI,
       mockEventBus,
       mockHttpClient

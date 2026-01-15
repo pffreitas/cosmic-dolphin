@@ -8,6 +8,7 @@ import { WebScrapingService } from "../../services/web-scraping.service";
 import { AI } from "../../ai";
 import { EventBus } from "../../ai/bus";
 import { ContentChunkRepository } from "../../repositories/content-chunk.repository";
+import { CollectionRepository } from "../../repositories/collection.repository";
 
 describe("Bookmark Content Refactor Integration", () => {
   let repository: BookmarkRepositoryImpl;
@@ -15,6 +16,7 @@ describe("Bookmark Content Refactor Integration", () => {
   let processorService: BookmarkProcessorServiceImpl;
   let mockWebScrapingService: jest.Mocked<WebScrapingService>;
   let mockContentChunkRepository: jest.Mocked<ContentChunkRepository>;
+  let mockCollectionRepository: jest.Mocked<CollectionRepository>;
   let mockAI: jest.Mocked<AI>;
   let mockEventBus: jest.Mocked<EventBus>;
   let testUserId: string;
@@ -42,6 +44,24 @@ describe("Bookmark Content Refactor Integration", () => {
       deleteByScrapedContentId: jest.fn(),
       delete: jest.fn(),
     } as jest.Mocked<ContentChunkRepository>;
+
+    mockCollectionRepository = {
+      findByIdAndUser: jest.fn<any>(),
+      findByUser: jest.fn<any>(),
+      findByNameAndParent: jest.fn<any>(),
+      findTreeByUser: jest.fn<any>().mockResolvedValue([]),
+      create: jest.fn<any>(),
+      createPath: jest.fn<any>().mockResolvedValue({
+        id: "mock-category-id",
+        name: "Uncategorized",
+        parent_id: null,
+        user_id: "test-user-id",
+        created_at: new Date(),
+        updated_at: new Date(),
+      }),
+      update: jest.fn<any>(),
+      delete: jest.fn<any>(),
+    } as jest.Mocked<CollectionRepository>;
 
     let callCount = 0;
     const mockPromptGenerator = async function* () {
@@ -102,6 +122,7 @@ describe("Bookmark Content Refactor Integration", () => {
     processorService = new BookmarkProcessorServiceImpl(
       service,
       mockContentChunkRepository,
+      mockCollectionRepository,
       mockAI,
       mockEventBus
     );
