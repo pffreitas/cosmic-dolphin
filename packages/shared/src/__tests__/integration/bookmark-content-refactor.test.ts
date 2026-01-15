@@ -75,25 +75,34 @@ describe("Bookmark Content Refactor Integration", () => {
       newSubTask: jest.fn(),
       generateObject: jest.fn().mockImplementation(async (input: any) => {
         // Return different mocked values based on what's being generated
-        if (input.prompt && input.prompt.includes("Your task is to generate a brief summary")) {
+        if (
+          input.prompt &&
+          input.prompt.includes("Your task is to generate a brief summary")
+        ) {
           return "Generated brief summary";
-        } else if (input.prompt && input.prompt.includes("Your task is to filter the images")) {
+        } else if (
+          input.prompt &&
+          input.prompt.includes("Your task is to filter the images")
+        ) {
           return {
             images: [
               {
                 url: "https://example.com/image.jpg",
                 title: "Test image",
-                description: "A test image"
-              }
-            ]
+                description: "A test image",
+              },
+            ],
           };
-        } else if (input.prompt && input.prompt.includes("bookmark categorization assistant")) {
+        } else if (
+          input.prompt &&
+          input.prompt.includes("bookmark categorization assistant")
+        ) {
           // Categorization prompt - suggest a new category path
           return {
             existingCategoryId: null,
             newCategoryPath: ["Test", "Category"],
             confidence: 0.85,
-            reasoning: "Creating a new test category for this bookmark"
+            reasoning: "Creating a new test category for this bookmark",
           };
         }
         return "Default generated object";
