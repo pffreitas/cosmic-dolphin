@@ -13,19 +13,33 @@ import { Identifier } from "../ai/id";
 import { EventBus } from "../ai/bus";
 import { ContentChunkRepository } from "../repositories/content-chunk.repository";
 import { HttpClient, CosmicHttpClient } from "./http-client";
+import {
+  BookmarkCategorizerService,
+  BookmarkCategorizerServiceImpl,
+} from "./bookmark.categorizer.service";
+import { CollectionRepository } from "../repositories/collection.repository";
 
 export interface BookmarkProcessorService {
   process(id: string, userId: string): Promise<void>;
 }
 
 export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
+  private categorizerService: BookmarkCategorizerService;
+
   constructor(
     private bookmarkService: BookmarkService,
     private contentChunkRepository: ContentChunkRepository,
+    private collectionRepository: CollectionRepository,
     private ai: AI,
     private eventBus: EventBus,
     private httpClient: HttpClient = new CosmicHttpClient()
-  ) {}
+  ) {
+    this.categorizerService = new BookmarkCategorizerServiceImpl(
+      collectionRepository,
+      ai,
+      eventBus
+    );
+  }
 
   async process(id: string, userId: string): Promise<void> {
     let bookmark = await this.bookmarkService.findByIdAndUser(id, userId);
@@ -65,6 +79,17 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
 
       const tags = await this.generateMetadata(session, bookmark, content);
       bookmark.cosmicTags = tags;
+
+      bookmark = await this.bookmarkService.update(bookmark.id, bookmark);
+      await this.eventBus.publishToBookmark(bookmark.id, "bookmark.updated", bookmark);
+
+      // Categorize the bookmark using AI
+      const categorization = await this.categorizerService.categorize(
+        session,
+        bookmark,
+        content
+      );
+      bookmark.collectionId = categorization.categoryId;
 
       bookmark = await this.bookmarkService.update(bookmark.id, bookmark);
       await this.eventBus.publishToBookmark(bookmark.id, "bookmark.updated", bookmark);

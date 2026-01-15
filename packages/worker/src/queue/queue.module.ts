@@ -84,9 +84,11 @@ import { Kysely } from "kysely";
         db: Kysely<Database>
       ) => {
         const contentChunkRepository = new ContentChunkRepositoryImpl(db);
+        const collectionRepository = new CollectionRepositoryImpl(db);
         return new BookmarkProcessorServiceImpl(
           bookmarkService,
           contentChunkRepository,
+          collectionRepository,
           ai,
           eventBus
         );

@@ -35,16 +35,13 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
       reply: FastifyReply
     ) => {
       try {
-        const { source_url, collection_id } = request.body as Omit<
+        const { source_url } = request.body as Omit<
           CreateBookmarkRequest,
           "user_id"
         >;
         const user_id = request.userId!;
 
-        fastify.log.info(
-          { source_url, collection_id, user_id },
-          "Create bookmark request"
-        );
+        fastify.log.info({ source_url, user_id }, "Create bookmark request");
 
         if (!source_url) {
           return reply.status(400).send({ error: "source_url is required" });
@@ -63,19 +60,6 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
             bookmark: existingBookmark,
             message: "Bookmark created successfully",
           });
-        }
-
-        if (collection_id) {
-          const collection = await services.collection.findByIdAndUser(
-            collection_id,
-            user_id
-          );
-          if (!collection) {
-            return reply.status(400).send({
-              error:
-                "Invalid collection_id or collection does not belong to user",
-            });
-          }
         }
 
         const bookmark = await services.bookmark.create(source_url, user_id);

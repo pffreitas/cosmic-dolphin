@@ -3,6 +3,7 @@ export * from "./queue.service";
 export * from "./bookmark.service";
 export * from "./collection.service";
 export * from "./bookmark.processor.service";
+export * from "./bookmark.categorizer.service";
 export * from "./http-client";
 
 import {
