@@ -166,7 +166,7 @@ Begin your response immediately with the markdown content.
 `;
 
 export const BRIEF_SUMMARY_PROMPT = `
-Your task is to generate a brief summary of the content. Follow the instructions below step by step:
+Your task is to generate a compelling brief summary that helps users decide if they want to read the full content.
 
 1. Read and analyze the following content:
 
@@ -174,8 +174,26 @@ Your task is to generate a brief summary of the content. Follow the instructions
 {{CONTENT}}
 </content>
 
-2. Generate a brief summary of the content.
+2. Generate a brief summary following these guidelines:
 
+**Purpose:** Create a preview that hooks the reader and highlights the value proposition of the content.
+
+**Requirements:**
+- Length: 2-4 sentences (approximately 50-100 words)
+- Tone: Engaging, informative, and compelling
+- Content: Include the key takeaway and why it matters to the reader
+
+**What to include:**
+- The main topic or problem being addressed
+- The key insight, solution, or value the content provides
+- Why this is relevant or useful to the reader
+
+**What to avoid:**
+- Generic phrases like "This article discusses..." or "In this post..."
+- Overly technical jargon unless essential
+- Spoiling all the details (leave something to discover)
+
+3. Output ONLY the summary text. Do NOT include any labels, prefixes, or formatting. Just the plain summary paragraph.
 `;
 
 export const FILTER_IMAGES_PROMPT = `

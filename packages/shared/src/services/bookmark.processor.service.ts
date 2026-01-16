@@ -61,13 +61,21 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     );
 
     // Publish processing started event to bookmark-specific channel
-    await this.eventBus.publishToBookmark(bookmark.id, "bookmark.processing.started", {
-      bookmark,
-    });
+    await this.eventBus.publishToBookmark(
+      bookmark.id,
+      "bookmark.processing.started",
+      {
+        bookmark,
+      }
+    );
 
     try {
       const session = await this.ai.newSession(bookmark.id);
-      await this.eventBus.publishToBookmark(bookmark.id, "session.started", session);
+      await this.eventBus.publishToBookmark(
+        bookmark.id,
+        "session.started",
+        session
+      );
 
       const { summary, briefSummary } = await this.summarizeContent(
         session,
@@ -75,13 +83,17 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         content
       );
       bookmark.cosmicSummary = summary;
-      // bookmark.cosmicBriefSummary = briefSummary;
+      bookmark.cosmicBriefSummary = briefSummary;
 
       const tags = await this.generateMetadata(session, bookmark, content);
       bookmark.cosmicTags = tags;
 
       bookmark = await this.bookmarkService.update(bookmark.id, bookmark);
-      await this.eventBus.publishToBookmark(bookmark.id, "bookmark.updated", bookmark);
+      await this.eventBus.publishToBookmark(
+        bookmark.id,
+        "bookmark.updated",
+        bookmark
+      );
 
       // Categorize the bookmark using AI
       const categorization = await this.categorizerService.categorize(
@@ -92,34 +104,51 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       bookmark.collectionId = categorization.categoryId;
 
       bookmark = await this.bookmarkService.update(bookmark.id, bookmark);
-      await this.eventBus.publishToBookmark(bookmark.id, "bookmark.updated", bookmark);
+      await this.eventBus.publishToBookmark(
+        bookmark.id,
+        "bookmark.updated",
+        bookmark
+      );
 
       const images = await this.processImages(session, bookmark, content);
       bookmark.cosmicImages = images;
 
       bookmark = await this.bookmarkService.update(bookmark.id, bookmark);
-      await this.eventBus.publishToBookmark(bookmark.id, "bookmark.updated", bookmark);
+      await this.eventBus.publishToBookmark(
+        bookmark.id,
+        "bookmark.updated",
+        bookmark
+      );
 
       // Update processing status to 'completed'
       bookmark = await this.bookmarkService.updateProcessingStatus(
         bookmark.id,
         "completed"
       );
-      await this.eventBus.publishToBookmark(bookmark.id, "bookmark.processing.completed", {
-        bookmark,
-      });
+      await this.eventBus.publishToBookmark(
+        bookmark.id,
+        "bookmark.processing.completed",
+        {
+          bookmark,
+        }
+      );
     } catch (error) {
       // Update processing status to 'failed'
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       bookmark = await this.bookmarkService.updateProcessingStatus(
         bookmark.id,
         "failed",
         errorMessage
       );
-      await this.eventBus.publishToBookmark(bookmark.id, "bookmark.processing.failed", {
-        bookmark,
-        error: errorMessage,
-      });
+      await this.eventBus.publishToBookmark(
+        bookmark.id,
+        "bookmark.processing.failed",
+        {
+          bookmark,
+          error: errorMessage,
+        }
+      );
       throw error;
     } finally {
       // Cleanup the bookmark channel
@@ -148,7 +177,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         sessionID: session.sessionID,
         taskID: task.taskID,
         messageID: Identifier.ascending("message"),
-        modelId: "x-ai/grok-code-fast-1",
+        modelId: "google/gemini-2.5-pro",
         context: [],
         tools: [],
         message: {
@@ -164,13 +193,17 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
           bookmark.cosmicSummary = summary;
 
           // Stream the updated bookmark content to the client
-          await this.eventBus.publishToBookmark(bookmark.id, "bookmark.updated", bookmark);
+          await this.eventBus.publishToBookmark(
+            bookmark.id,
+            "bookmark.updated",
+            bookmark
+          );
         }
       }
 
       briefSummary = await this.ai.generateObject({
         sessionID: session.sessionID,
-        modelId: "x-ai/grok-code-fast-1",
+        modelId: "google/gemini-2.5-flash",
         prompt: BRIEF_SUMMARY_PROMPT.replace(
           "{{CONTENT}}",
           content.content ?? ""
@@ -183,7 +216,11 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       throw error;
     } finally {
       task.subTasks[subTask.taskID].status = "completed";
-      await this.eventBus.publishToBookmark(bookmark.id, "task.completed", task);
+      await this.eventBus.publishToBookmark(
+        bookmark.id,
+        "task.completed",
+        task
+      );
     }
 
     return { summary, briefSummary };
@@ -239,7 +276,11 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     } finally {
       task.status = "completed";
       task.subTasks[subTask.taskID].status = "completed";
-      await this.eventBus.publishToBookmark(bookmark.id, "task.completed", task);
+      await this.eventBus.publishToBookmark(
+        bookmark.id,
+        "task.completed",
+        task
+      );
     }
   }
 
@@ -278,55 +319,76 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         }),
       });
 
-      const imageProcessingPromises = relevantImages.images.map(async (image, index) => {
-        const imageSubTask = await this.ai.newSubTask("Processing image");
-        task.subTasks[imageSubTask.taskID] = imageSubTask;
-        await this.eventBus.publishToBookmark(bookmark.id, "task.updated", task);
+      const imageProcessingPromises = relevantImages.images.map(
+        async (image, index) => {
+          const imageSubTask = await this.ai.newSubTask("Processing image");
+          task.subTasks[imageSubTask.taskID] = imageSubTask;
+          await this.eventBus.publishToBookmark(
+            bookmark.id,
+            "task.updated",
+            task
+          );
 
-        try {
-          const response = await this.httpClient.fetch(image.url);
-          if (!response.ok) {
-            throw new Error(`Failed to download image: ${response.statusText}`);
+          try {
+            const response = await this.httpClient.fetch(image.url);
+            if (!response.ok) {
+              throw new Error(
+                `Failed to download image: ${response.statusText}`
+              );
+            }
+
+            const imageBuffer = await response.arrayBuffer();
+            const imageByteArray = Buffer.from(imageBuffer);
+            const mimeType =
+              response.headers.get("content-type") || "image/jpeg";
+            const imageSize = imageByteArray.length;
+
+            await this.contentChunkRepository.createImageChunk({
+              scrapedContentId: content.id,
+              imageData: imageByteArray,
+              mimeType: mimeType,
+              altText: image.title,
+              originalUrl: image.url,
+              index: index,
+              size: imageSize,
+              startPosition: 0,
+              endPosition: imageSize,
+            });
+
+            task.subTasks[imageSubTask.taskID].status = "completed";
+            await this.eventBus.publishToBookmark(
+              bookmark.id,
+              "task.updated",
+              task
+            );
+
+            return {
+              url: image.url,
+              title: image.title,
+              description: image.description,
+            };
+          } catch (error) {
+            console.error(`Failed to process image ${image.url}:`, error);
+            task.subTasks[imageSubTask.taskID].status = "failed";
+            await this.eventBus.publishToBookmark(
+              bookmark.id,
+              "task.updated",
+              task
+            );
+            return null;
           }
-
-          const imageBuffer = await response.arrayBuffer();
-          const imageByteArray = Buffer.from(imageBuffer);
-          const mimeType = response.headers.get("content-type") || "image/jpeg";
-          const imageSize = imageByteArray.length;
-
-          await this.contentChunkRepository.createImageChunk({
-            scrapedContentId: content.id,
-            imageData: imageByteArray,
-            mimeType: mimeType,
-            altText: image.title,
-            originalUrl: image.url,
-            index: index,
-            size: imageSize,
-            startPosition: 0,
-            endPosition: imageSize,
-          });
-
-          task.subTasks[imageSubTask.taskID].status = "completed";
-          await this.eventBus.publishToBookmark(bookmark.id, "task.updated", task);
-
-          return {
-            url: image.url,
-            title: image.title,
-            description: image.description,
-          };
-        } catch (error) {
-          console.error(`Failed to process image ${image.url}:`, error);
-          task.subTasks[imageSubTask.taskID].status = "failed";
-          await this.eventBus.publishToBookmark(bookmark.id, "task.updated", task);
-          return null;
         }
-      });
+      );
 
       const processedImages = await Promise.all(imageProcessingPromises);
       images.push(...processedImages.filter((img) => img !== null));
 
       task.status = "completed";
-      await this.eventBus.publishToBookmark(bookmark.id, "task.completed", task);
+      await this.eventBus.publishToBookmark(
+        bookmark.id,
+        "task.completed",
+        task
+      );
     } catch (error) {
       console.error("Failed to process images:", error);
       task.status = "failed";

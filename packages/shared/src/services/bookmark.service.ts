@@ -104,6 +104,8 @@ export class BookmarkServiceImpl implements BookmarkService {
     if (data.isFavorite !== undefined) updateData.is_favorite = data.isFavorite;
     if (data.cosmicSummary !== undefined)
       updateData.cosmic_summary = data.cosmicSummary;
+    if (data.cosmicBriefSummary !== undefined)
+      updateData.cosmic_brief_summary = data.cosmicBriefSummary;
     if (data.cosmicTags !== undefined) updateData.cosmic_tags = data.cosmicTags;
     if (data.cosmicImages !== undefined)
       updateData.cosmic_images = data.cosmicImages;
@@ -169,6 +171,7 @@ export class BookmarkServiceImpl implements BookmarkService {
       isArchived: data.is_archived,
       isFavorite: data.is_favorite,
       cosmicSummary: data.cosmic_summary,
+      cosmicBriefSummary: data.cosmic_brief_summary,
       cosmicTags: data.cosmic_tags,
       cosmicImages: data.cosmic_images,
       cosmicLinks: data.cosmic_links,

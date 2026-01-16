@@ -83,6 +83,7 @@ export interface Bookmark extends BaseEntity {
   cosmicImages?: BookmarkImage[];
   cosmicLinks?: BookmarkLink[];
   cosmicSummary?: string;
+  cosmicBriefSummary?: string;
   cosmicTags?: string[];
   metadata?: BookmarkMetadata;
   userId: string;
