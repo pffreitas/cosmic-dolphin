@@ -1,4 +1,4 @@
-import { Kysely } from "kysely";
+import { Kysely, sql } from "kysely";
 import { BaseRepository } from "./base.repository";
 import {
   Database,
@@ -6,6 +6,7 @@ import {
   NewCollection,
   CollectionUpdate,
 } from "../database/schema";
+import { CollectionPathItem } from "../types";
 
 export interface CollectionRepository {
   findByIdAndUser(id: string, userId: string): Promise<Collection | null>;
@@ -20,6 +21,10 @@ export interface CollectionRepository {
   createPath(userId: string, path: string[]): Promise<Collection>;
   update(id: string, data: CollectionUpdate): Promise<Collection>;
   delete(id: string): Promise<void>;
+  getCollectionPath(collectionId: string): Promise<CollectionPathItem[]>;
+  getCollectionsByIds(
+    collectionIds: string[]
+  ): Promise<Map<string, CollectionPathItem>>;
 }
 
 export class CollectionRepositoryImpl
@@ -149,5 +154,64 @@ export class CollectionRepositoryImpl
     return this.executeQuery(async () => {
       await this.db.deleteFrom("collections").where("id", "=", id).execute();
     }, "delete");
+  }
+
+  async getCollectionPath(collectionId: string): Promise<CollectionPathItem[]> {
+    return this.executeQuery(async () => {
+      // Use recursive CTE to traverse from child to root
+      const result = await sql<{ id: string; name: string; depth: number }>`
+        WITH RECURSIVE collection_path AS (
+          -- Base case: start with the given collection
+          SELECT id, name, parent_id, 0 as depth
+          FROM collections
+          WHERE id = ${collectionId}
+          
+          UNION ALL
+          
+          -- Recursive case: get parent collection
+          SELECT c.id, c.name, c.parent_id, cp.depth + 1
+          FROM collections c
+          INNER JOIN collection_path cp ON c.id = cp.parent_id
+        )
+        SELECT id, name, depth
+        FROM collection_path
+        ORDER BY depth DESC
+      `.execute(this.db);
+
+      return result.rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+      }));
+    }, "getCollectionPath");
+  }
+
+  async getCollectionsByIds(
+    collectionIds: string[]
+  ): Promise<Map<string, CollectionPathItem>> {
+    if (collectionIds.length === 0) {
+      return new Map();
+    }
+
+    return this.executeQuery(async () => {
+      const result = await this.db
+        .selectFrom("collections")
+        .select(["id", "name"])
+        .where(
+          "id",
+          "in",
+          collectionIds.map((id) => id)
+        )
+        .execute();
+
+      const collectionsMap = new Map<string, CollectionPathItem>();
+      for (const row of result) {
+        collectionsMap.set(row.id, {
+          id: row.id,
+          name: row.name,
+        });
+      }
+
+      return collectionsMap;
+    }, "getCollectionsByIds");
   }
 }

@@ -3,9 +3,11 @@ import {
   ScrapedUrlContents,
   SearchBookmarksQuery,
   ProcessingStatus,
+  CollectionPathItem,
 } from "../types";
 import {
   BookmarkRepository,
+  CollectionRepository,
   FindByUserOptions,
   SearchOptions,
 } from "../repositories";
@@ -35,7 +37,8 @@ export interface BookmarkService {
 export class BookmarkServiceImpl implements BookmarkService {
   constructor(
     private bookmarkRepository: BookmarkRepository,
-    private webScrapingService: WebScrapingService
+    private webScrapingService: WebScrapingService,
+    private collectionRepository?: CollectionRepository
   ) {}
 
   async findByUserAndUrl(
@@ -46,12 +49,16 @@ export class BookmarkServiceImpl implements BookmarkService {
       userId,
       sourceUrl
     );
-    return bookmark ? this.mapDatabaseToBookmark(bookmark) : null;
+    if (!bookmark) return null;
+    const mapped = this.mapDatabaseToBookmark(bookmark);
+    return this.enrichWithCollectionPath(mapped);
   }
 
   async findByIdAndUser(id: string, userId: string): Promise<Bookmark | null> {
     const bookmark = await this.bookmarkRepository.findByIdAndUser(id, userId);
-    return bookmark ? this.mapDatabaseToBookmark(bookmark) : null;
+    if (!bookmark) return null;
+    const mapped = this.mapDatabaseToBookmark(bookmark);
+    return this.enrichWithCollectionPath(mapped);
   }
 
   async create(url: string, userId: string): Promise<Bookmark> {
@@ -85,7 +92,8 @@ export class BookmarkServiceImpl implements BookmarkService {
     options: FindByUserOptions = {}
   ): Promise<Bookmark[]> {
     const bookmarks = await this.bookmarkRepository.findByUser(userId, options);
-    return bookmarks.map(this.mapDatabaseToBookmark);
+    const mapped = bookmarks.map(this.mapDatabaseToBookmark);
+    return this.enrichManyWithCollectionInfo(mapped);
   }
 
   async update(
@@ -157,7 +165,63 @@ export class BookmarkServiceImpl implements BookmarkService {
       query,
       options
     );
-    return bookmarks.map(this.mapDatabaseToBookmark);
+    const mapped = bookmarks.map(this.mapDatabaseToBookmark);
+    return this.enrichManyWithCollectionInfo(mapped);
+  }
+
+  private async enrichWithCollectionPath(
+    bookmark: Bookmark
+  ): Promise<Bookmark> {
+    if (!bookmark.collectionId || !this.collectionRepository) {
+      return bookmark;
+    }
+
+    const collectionPath = await this.collectionRepository.getCollectionPath(
+      bookmark.collectionId
+    );
+
+    return {
+      ...bookmark,
+      collectionPath,
+    };
+  }
+
+  private async enrichManyWithCollectionInfo(
+    bookmarks: Bookmark[]
+  ): Promise<Bookmark[]> {
+    if (!this.collectionRepository) {
+      return bookmarks;
+    }
+
+    // Collect unique collection IDs
+    const collectionIds = [
+      ...new Set(
+        bookmarks
+          .map((b) => b.collectionId)
+          .filter((id): id is string => id !== undefined && id !== null)
+      ),
+    ];
+
+    if (collectionIds.length === 0) {
+      return bookmarks;
+    }
+
+    // Fetch all collections in one batch (just id and name, no hierarchy)
+    const collectionsMap =
+      await this.collectionRepository.getCollectionsByIds(collectionIds);
+
+    // Enrich bookmarks with collection info (single-element array for consistency)
+    return bookmarks.map((bookmark) => {
+      if (!bookmark.collectionId) {
+        return bookmark;
+      }
+
+      const collection = collectionsMap.get(bookmark.collectionId);
+      return {
+        ...bookmark,
+        collectionPath: collection ? [collection] : undefined,
+      };
+    });
   }
 
   private mapDatabaseToBookmark(data: any): Bookmark {

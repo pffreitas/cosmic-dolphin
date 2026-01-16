@@ -39,7 +39,11 @@ export function createServiceContainer(
   return {
     webScraping: webScrapingService,
     queue: new QueueServiceImpl(supabaseClient),
-    bookmark: new BookmarkServiceImpl(bookmarkRepository, webScrapingService),
+    bookmark: new BookmarkServiceImpl(
+      bookmarkRepository,
+      webScrapingService,
+      collectionRepository
+    ),
     collection: new CollectionServiceImpl(collectionRepository),
   };
 }

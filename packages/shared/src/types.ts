@@ -36,6 +36,12 @@ export interface Collection extends BaseEntity {
   isPublic?: boolean;
 }
 
+// Collection path item for breadcrumb navigation
+export interface CollectionPathItem {
+  id: string;
+  name: string;
+}
+
 // Open Graph metadata interface
 export interface OpenGraphMetadata {
   favicon?: string;
@@ -77,6 +83,7 @@ export type ProcessingStatus = "idle" | "processing" | "completed" | "failed";
 export interface Bookmark extends BaseEntity {
   sourceUrl: string;
   collectionId?: string;
+  collectionPath?: CollectionPathItem[];
   title?: string;
   isArchived?: boolean;
   isFavorite?: boolean;
