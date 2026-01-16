@@ -92,7 +92,7 @@ export class BookmarkServiceImpl implements BookmarkService {
     options: FindByUserOptions = {}
   ): Promise<Bookmark[]> {
     const bookmarks = await this.bookmarkRepository.findByUser(userId, options);
-    const mapped = bookmarks.map(this.mapDatabaseToBookmark);
+    const mapped = bookmarks.map((b) => this.mapDatabaseToBookmark(b));
     return this.enrichManyWithCollectionInfo(mapped);
   }
 
@@ -165,7 +165,7 @@ export class BookmarkServiceImpl implements BookmarkService {
       query,
       options
     );
-    const mapped = bookmarks.map(this.mapDatabaseToBookmark);
+    const mapped = bookmarks.map((b) => this.mapDatabaseToBookmark(b));
     return this.enrichManyWithCollectionInfo(mapped);
   }
 
@@ -206,22 +206,28 @@ export class BookmarkServiceImpl implements BookmarkService {
       return bookmarks;
     }
 
-    // Fetch all collections in one batch (just id and name, no hierarchy)
-    const collectionsMap =
-      await this.collectionRepository.getCollectionsByIds(collectionIds);
+    try {
+      // Fetch all collections in one batch (just id and name, no hierarchy)
+      const collectionsMap =
+        await this.collectionRepository.getCollectionsByIds(collectionIds);
 
-    // Enrich bookmarks with collection info (single-element array for consistency)
-    return bookmarks.map((bookmark) => {
-      if (!bookmark.collectionId) {
-        return bookmark;
-      }
+      // Enrich bookmarks with collection info (single-element array for consistency)
+      return bookmarks.map((bookmark) => {
+        if (!bookmark.collectionId) {
+          return bookmark;
+        }
 
-      const collection = collectionsMap.get(bookmark.collectionId);
-      return {
-        ...bookmark,
-        collectionPath: collection ? [collection] : undefined,
-      };
-    });
+        const collection = collectionsMap.get(bookmark.collectionId);
+        return {
+          ...bookmark,
+          collectionPath: collection ? [collection] : undefined,
+        };
+      });
+    } catch (error) {
+      // If collection enrichment fails, return bookmarks without collection paths
+      console.error("Failed to enrich bookmarks with collection info:", error);
+      return bookmarks;
+    }
   }
 
   private mapDatabaseToBookmark(data: any): Bookmark {

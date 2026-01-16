@@ -139,6 +139,8 @@ describe("BookmarkProcessorService", () => {
       }),
       update: jest.fn<any>(),
       delete: jest.fn<any>(),
+      getCollectionPath: jest.fn<any>().mockResolvedValue([]),
+      getCollectionsByIds: jest.fn<any>().mockResolvedValue([]),
     } as jest.Mocked<CollectionRepository>;
 
     service = new BookmarkProcessorServiceImpl(

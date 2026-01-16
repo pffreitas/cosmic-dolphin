@@ -132,7 +132,10 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
 
       return reply.send({ bookmarks });
     } catch (error) {
-      fastify.log.error({ error }, "Get bookmarks error");
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      fastify.log.error({ errorMessage, errorStack }, "Get bookmarks error");
       return reply.status(500).send({ error: "Internal server error" });
     }
   });
