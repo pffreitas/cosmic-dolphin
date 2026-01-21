@@ -1,7 +1,7 @@
 import { BookmarkBody } from "@/components/bookmark/BookmarkBody";
 import { BookmarksAPI } from "@/lib/api/bookmarks";
 import _ from "lodash";
-import { Suspense, useEffect } from "react";
+import { Suspense } from "react";
 
 interface PageProps {
   params: Promise<{
