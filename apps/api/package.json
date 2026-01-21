@@ -9,7 +9,7 @@
     "start": "bun dist/index.js",
     "clean": "rm -rf dist",
     "lint": "eslint src --ext .ts",
-    "test": "bun test --passWithNoTests"
+    "test": "bun test src --passWithNoTests"
   },
   "keywords": [],
   "author": "",
