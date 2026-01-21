@@ -1,4 +1,5 @@
-import { StyleSheet, View, Pressable, Linking, ScrollView } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, View, Pressable, Linking, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useShareIntent } from 'expo-share-intent';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { BookmarksAPI } from '@/lib/api';
 
 // Helper to extract URL from various share intent structures
 function extractUrl(shareIntent: any): string | null {
@@ -46,6 +48,10 @@ export default function ShareScreen() {
   const insets = useSafeAreaInsets();
   const { shareIntent, resetShareIntent, hasShareIntent } = useShareIntent();
   
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
+  
   const tintColor = useThemeColor({}, 'tint');
   const iconColor = useThemeColor({}, 'icon');
 
@@ -62,7 +68,7 @@ export default function ShareScreen() {
   console.log('  Extracted URL:', sharedUrl);
   console.log('  Extracted Title:', sharedTitle);
 
-  const handleClose = () => {
+  const navigateAway = () => {
     // Reset share intent first, then navigate after a small delay
     // to ensure the intent is cleared before navigation triggers any effects
     resetShareIntent();
@@ -71,6 +77,35 @@ export default function ShareScreen() {
     setTimeout(() => {
       router.replace('/(tabs)');
     }, 50);
+  };
+
+  const handleClose = () => {
+    navigateAway();
+  };
+
+  const handleSaveAndClose = async () => {
+    if (!sharedUrl) {
+      navigateAway();
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      await BookmarksAPI.create({ source_url: sharedUrl });
+      setIsSaved(true);
+      
+      // Brief delay to show success state before closing
+      setTimeout(() => {
+        navigateAway();
+      }, 500);
+    } catch (error) {
+      console.error('Error saving bookmark:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save bookmark';
+      setSaveError(errorMessage);
+      setIsSaving(false);
+    }
   };
 
   const handleOpenLink = async () => {
@@ -150,26 +185,78 @@ export default function ShareScreen() {
           </View>
         )}
 
+        {/* Error message */}
+        {saveError && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={20} color="#ef4444" />
+            <ThemedText style={styles.errorText}>{saveError}</ThemedText>
+          </View>
+        )}
+
         {/* Info text */}
-        <ThemedText style={styles.infoText}>
-          This link has been received by Cosmic Dolphin.{'\n'}
-          Future updates will allow you to save and organize links.
-        </ThemedText>
+        {sharedUrl && !isSaved && (
+          <ThemedText style={styles.infoText}>
+            Tap "Save Bookmark" to add this link to your collection.
+          </ThemedText>
+        )}
       </View>
 
-      {/* Done Button */}
+      {/* Footer Buttons */}
       <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
-        <Pressable 
-          onPress={handleClose}
-          style={({ pressed }) => [
-            styles.doneButton,
-            { borderColor: tintColor, opacity: pressed ? 0.8 : 1 }
-          ]}
-        >
-          <ThemedText style={[styles.doneButtonText, { color: tintColor }]}>
-            Done
-          </ThemedText>
-        </Pressable>
+        {sharedUrl ? (
+          <Pressable 
+            onPress={handleSaveAndClose}
+            disabled={isSaving || isSaved}
+            style={({ pressed }) => [
+              styles.saveButton,
+              { 
+                backgroundColor: isSaved ? '#22c55e' : tintColor, 
+                opacity: (pressed || isSaving) ? 0.8 : 1 
+              }
+            ]}
+          >
+            {isSaving ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : isSaved ? (
+              <>
+                <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                <ThemedText style={styles.saveButtonText}>Saved!</ThemedText>
+              </>
+            ) : (
+              <>
+                <Ionicons name="bookmark" size={20} color="#fff" />
+                <ThemedText style={styles.saveButtonText}>Save Bookmark</ThemedText>
+              </>
+            )}
+          </Pressable>
+        ) : (
+          <Pressable 
+            onPress={handleClose}
+            style={({ pressed }) => [
+              styles.doneButton,
+              { borderColor: tintColor, opacity: pressed ? 0.8 : 1 }
+            ]}
+          >
+            <ThemedText style={[styles.doneButtonText, { color: tintColor }]}>
+              Close
+            </ThemedText>
+          </Pressable>
+        )}
+        
+        {sharedUrl && !isSaved && (
+          <Pressable 
+            onPress={handleClose}
+            disabled={isSaving}
+            style={({ pressed }) => [
+              styles.cancelButton,
+              { opacity: (pressed || isSaving) ? 0.5 : 1 }
+            ]}
+          >
+            <ThemedText style={styles.cancelButtonText}>
+              Cancel
+            </ThemedText>
+          </Pressable>
+        )}
       </View>
     </ThemedView>
   );
@@ -289,8 +376,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
   },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 8,
+  },
+  errorText: {
+    flex: 1,
+    color: '#ef4444',
+    fontSize: 14,
+  },
   footer: {
     paddingHorizontal: 24,
+    gap: 12,
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 12,
+    paddingVertical: 14,
+    minHeight: 52,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
   },
   doneButton: {
     borderWidth: 2,
@@ -301,5 +418,13 @@ const styles = StyleSheet.create({
   doneButtonText: {
     fontWeight: '600',
     fontSize: 16,
+  },
+  cancelButton: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  cancelButtonText: {
+    opacity: 0.6,
+    fontSize: 14,
   },
 });

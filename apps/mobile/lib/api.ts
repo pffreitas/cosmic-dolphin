@@ -57,6 +57,16 @@ export interface GetBookmarksParams {
   collection_id?: string;
 }
 
+export interface CreateBookmarkParams {
+  source_url: string;
+  collection_id?: string;
+}
+
+export interface CreateBookmarkResponse {
+  bookmark: Bookmark;
+  message: string;
+}
+
 async function getAuthHeaders(): Promise<HeadersInit> {
   const { data: { session } } = await supabase.auth.getSession();
   const accessToken = session?.access_token || '';
@@ -121,6 +131,28 @@ export namespace BookmarksAPI {
       return await response.json();
     } catch (error) {
       console.error('Error fetching bookmark by id:', error);
+      throw error;
+    }
+  }
+
+  export async function create(params: CreateBookmarkParams): Promise<CreateBookmarkResponse> {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/bookmarks`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(params),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating bookmark:', error);
       throw error;
     }
   }
