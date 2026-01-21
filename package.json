@@ -53,6 +53,10 @@
     "bun": ">=1.0.0"
   },
   "packageManager": "bun@1.2.0",
+  "overrides": {
+    "@types/react": "18.2.46",
+    "@types/react-dom": "18.2.18"
+  },
   "trustedDependencies": [
     "@nestjs/core"
   ]

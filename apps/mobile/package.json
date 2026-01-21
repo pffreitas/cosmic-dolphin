@@ -9,10 +9,14 @@
     "postinstall": "patch-package",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
+    "android:device": "expo run:android --device",
     "ios": "expo run:ios",
+    "ios:device": "expo run:ios --device",
     "web": "expo start --web",
     "test": "jest --watchAll",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "build:dev:android": "eas build --profile development --platform android",
+    "build:dev:ios": "eas build --profile development --platform ios"
   },
   "jest": {
     "preset": "jest-expo"
