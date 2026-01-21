@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { StyleSheet, View, Pressable, Linking, ScrollView, ActivityIndicator } from 'react-native';
+import { useState, useEffect } from 'react';
+import { StyleSheet, View, Pressable, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useShareIntent } from 'expo-share-intent';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { BookmarksAPI } from '@/lib/api';
+import { BookmarksAPI, UrlPreviewMetadata } from '@/lib/api';
 
 // Helper to extract URL from various share intent structures
 function extractUrl(shareIntent: any): string | null {
@@ -38,9 +38,14 @@ function extractUrl(shareIntent: any): string | null {
   return shareIntent.text || shareIntent.data || null;
 }
 
-function extractTitle(shareIntent: any): string | null {
-  if (!shareIntent) return null;
-  return shareIntent.title || shareIntent.meta?.title || shareIntent.subject || null;
+// Helper to extract domain from URL
+function extractDomain(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname.replace('www.', '');
+  } catch {
+    return url;
+  }
 }
 
 export default function ShareScreen() {
@@ -52,21 +57,44 @@ export default function ShareScreen() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   
+  // Preview state
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [previewData, setPreviewData] = useState<UrlPreviewMetadata | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  
   const tintColor = useThemeColor({}, 'tint');
   const iconColor = useThemeColor({}, 'icon');
 
   // Extract URL from share intent - check multiple possible fields
   const sharedUrl = extractUrl(shareIntent);
-  const sharedTitle = extractTitle(shareIntent);
 
-  // Debug logging - log all keys and values
+  // Debug logging
   console.log('📱 Share Screen Debug:');
   console.log('  hasShareIntent:', hasShareIntent);
-  console.log('  shareIntent type:', typeof shareIntent);
-  console.log('  shareIntent keys:', shareIntent ? Object.keys(shareIntent) : 'null');
-  console.log('  Full shareIntent:', JSON.stringify(shareIntent, null, 2));
   console.log('  Extracted URL:', sharedUrl);
-  console.log('  Extracted Title:', sharedTitle);
+
+  // Fetch preview when URL is available
+  useEffect(() => {
+    if (sharedUrl) {
+      fetchPreview(sharedUrl);
+    }
+  }, [sharedUrl]);
+
+  const fetchPreview = async (url: string) => {
+    setIsLoadingPreview(true);
+    setPreviewError(null);
+    
+    try {
+      const metadata = await BookmarksAPI.preview(url);
+      setPreviewData(metadata);
+    } catch (error) {
+      console.error('Error fetching preview:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load preview';
+      setPreviewError(errorMessage);
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  };
 
   const navigateAway = () => {
     // Reset share intent first, then navigate after a small delay
@@ -108,14 +136,12 @@ export default function ShareScreen() {
     }
   };
 
-  const handleOpenLink = async () => {
-    if (sharedUrl) {
-      const canOpen = await Linking.canOpenURL(sharedUrl);
-      if (canOpen) {
-        await Linking.openURL(sharedUrl);
-      }
-    }
-  };
+  // Get display values from preview data or fallbacks
+  const displayTitle = previewData?.title || extractDomain(sharedUrl || '');
+  const displayDescription = previewData?.description;
+  const displayImage = previewData?.image;
+  const displayFavicon = previewData?.favicon;
+  const displaySiteName = previewData?.siteName || (sharedUrl ? extractDomain(sharedUrl) : '');
 
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
@@ -125,48 +151,92 @@ export default function ShareScreen() {
           <Ionicons name="close" size={28} color={iconColor} />
         </Pressable>
         <ThemedText type="subtitle" style={styles.headerTitle}>
-          Shared Link
+          Save Bookmark
         </ThemedText>
         <View style={styles.placeholder} />
       </View>
 
       {/* Content */}
-      <View style={styles.content}>
-        {/* Dolphin Icon */}
-        <View style={[styles.iconContainer, { backgroundColor: tintColor }]}>
-          <ThemedText style={styles.dolphinEmoji}>🐬</ThemedText>
-        </View>
-
-        <ThemedText type="title" style={styles.title}>
-          Link Received!
-        </ThemedText>
-
+      <ScrollView style={styles.scrollContent} contentContainerStyle={styles.contentContainer}>
         {sharedUrl ? (
-          <View style={styles.linkCard}>
-            {sharedTitle && (
-              <ThemedText type="defaultSemiBold" style={styles.linkTitle} numberOfLines={2}>
-                {sharedTitle}
+          <>
+            {/* Loading state */}
+            {isLoadingPreview && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={tintColor} />
+                <ThemedText style={styles.loadingText}>Loading preview...</ThemedText>
+              </View>
+            )}
+
+            {/* Preview Card */}
+            {!isLoadingPreview && (
+              <View style={styles.previewCard}>
+                {/* OpenGraph Image */}
+                {displayImage && (
+                  <Image 
+                    source={{ uri: displayImage }} 
+                    style={styles.previewImage}
+                    resizeMode="cover"
+                  />
+                )}
+
+                {/* Card Content */}
+                <View style={styles.previewContent}>
+                  {/* Title */}
+                  <ThemedText type="defaultSemiBold" style={styles.previewTitle} numberOfLines={2}>
+                    {displayTitle}
+                  </ThemedText>
+
+                  {/* Description */}
+                  {displayDescription && (
+                    <ThemedText style={styles.previewDescription} numberOfLines={3}>
+                      {displayDescription}
+                    </ThemedText>
+                  )}
+
+                  {/* Site info */}
+                  <View style={styles.siteInfo}>
+                    {displayFavicon ? (
+                      <Image 
+                        source={{ uri: displayFavicon }} 
+                        style={styles.favicon}
+                      />
+                    ) : (
+                      <Ionicons name="globe-outline" size={16} color={iconColor} />
+                    )}
+                    <ThemedText style={styles.siteName} numberOfLines={1}>
+                      {displaySiteName}
+                    </ThemedText>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Preview error - show URL fallback */}
+            {previewError && !isLoadingPreview && !previewData && (
+              <View style={styles.urlFallback}>
+                <Ionicons name="link" size={20} color={tintColor} />
+                <ThemedText style={styles.urlFallbackText} numberOfLines={2}>
+                  {sharedUrl}
+                </ThemedText>
+              </View>
+            )}
+
+            {/* Error message */}
+            {saveError && (
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={20} color="#ef4444" />
+                <ThemedText style={styles.errorText}>{saveError}</ThemedText>
+              </View>
+            )}
+
+            {/* Info text */}
+            {!isSaved && (
+              <ThemedText style={styles.infoText}>
+                Tap "Save Bookmark" to add this link to your collection.
               </ThemedText>
             )}
-            
-            <View style={styles.urlContainer}>
-              <Ionicons name="link" size={20} color={tintColor} style={styles.linkIcon} />
-              <ThemedText type="link" style={styles.urlText} numberOfLines={3}>
-                {sharedUrl}
-              </ThemedText>
-            </View>
-
-            <Pressable 
-              onPress={handleOpenLink} 
-              style={({ pressed }) => [
-                styles.openButton,
-                { backgroundColor: tintColor, opacity: pressed ? 0.8 : 1 }
-              ]}
-            >
-              <Ionicons name="open-outline" size={20} color="#fff" />
-              <ThemedText style={styles.openButtonText}>Open in Browser</ThemedText>
-            </Pressable>
-          </View>
+          </>
         ) : (
           <View style={styles.emptyState}>
             <Ionicons name="alert-circle-outline" size={48} color={iconColor} />
@@ -184,22 +254,7 @@ export default function ShareScreen() {
             )}
           </View>
         )}
-
-        {/* Error message */}
-        {saveError && (
-          <View style={styles.errorContainer}>
-            <Ionicons name="alert-circle" size={20} color="#ef4444" />
-            <ThemedText style={styles.errorText}>{saveError}</ThemedText>
-          </View>
-        )}
-
-        {/* Info text */}
-        {sharedUrl && !isSaved && (
-          <ThemedText style={styles.infoText}>
-            Tap "Save Bookmark" to add this link to your collection.
-          </ThemedText>
-        )}
-      </View>
+      </ScrollView>
 
       {/* Footer Buttons */}
       <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
@@ -284,62 +339,76 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 44,
   },
-  content: {
+  scrollContent: {
     flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 32,
   },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  contentContainer: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
+  },
+  loadingContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    paddingVertical: 60,
+    gap: 16,
   },
-  dolphinEmoji: {
-    fontSize: 40,
+  loadingText: {
+    opacity: 0.6,
+    fontSize: 14,
   },
-  title: {
-    marginBottom: 32,
-    textAlign: 'center',
-  },
-  linkCard: {
+  previewCard: {
     width: '100%',
     backgroundColor: 'rgba(128, 128, 128, 0.1)',
     borderRadius: 16,
-    padding: 20,
-    gap: 16,
+    overflow: 'hidden',
   },
-  linkTitle: {
+  previewImage: {
+    width: '100%',
+    height: 180,
+    backgroundColor: 'rgba(128, 128, 128, 0.2)',
+  },
+  previewContent: {
+    padding: 16,
+    gap: 12,
+  },
+  previewTitle: {
     fontSize: 18,
+    lineHeight: 24,
   },
-  urlContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  linkIcon: {
-    marginTop: 2,
-  },
-  urlText: {
-    flex: 1,
+  previewDescription: {
     fontSize: 14,
+    lineHeight: 20,
+    opacity: 0.7,
   },
-  openButton: {
+  siteInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 8,
-    paddingVertical: 14,
-    borderRadius: 12,
-    marginTop: 8,
+    marginTop: 4,
   },
-  openButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
+  favicon: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+  },
+  siteName: {
+    fontSize: 13,
+    opacity: 0.5,
+    flex: 1,
+  },
+  urlFallback: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 16,
+    backgroundColor: 'rgba(128, 128, 128, 0.1)',
+    borderRadius: 12,
+  },
+  urlFallbackText: {
+    flex: 1,
+    fontSize: 14,
+    opacity: 0.7,
   },
   emptyState: {
     alignItems: 'center',
@@ -370,7 +439,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   infoText: {
-    marginTop: 32,
+    marginTop: 24,
     textAlign: 'center',
     opacity: 0.5,
     fontSize: 14,
@@ -385,6 +454,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
     borderRadius: 8,
+    width: '100%',
   },
   errorText: {
     flex: 1,

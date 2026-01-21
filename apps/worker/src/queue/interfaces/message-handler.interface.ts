@@ -1,4 +1,4 @@
-import { QueueMessage } from '../../types/queue.types';
+import { QueueMessage } from "../../types/queue.types";
 
 export interface MessageHandler {
   canHandle(messageType: string): boolean;

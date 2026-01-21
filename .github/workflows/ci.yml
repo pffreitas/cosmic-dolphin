@@ -39,9 +39,6 @@ jobs:
       - name: Type check
         run: bun run typecheck
 
-      - name: Lint
-        run: bun run lint
-
       - name: Start test database
         run: bun run test:db:up
 

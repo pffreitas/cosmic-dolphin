@@ -60,7 +60,7 @@ import { Kysely } from "kysely";
       provide: BOOKMARK_SERVICE,
       useFactory: (
         db: Kysely<Database>,
-        webScrapingService: WebScrapingServiceImpl
+        webScrapingService: WebScrapingServiceImpl,
       ) => {
         const bookmarkRepository = new BookmarkRepositoryImpl(db);
         return new BookmarkServiceImpl(bookmarkRepository, webScrapingService);
@@ -81,7 +81,7 @@ import { Kysely } from "kysely";
         bookmarkService: BookmarkService,
         ai: AI,
         eventBus: EventBus,
-        db: Kysely<Database>
+        db: Kysely<Database>,
       ) => {
         const contentChunkRepository = new ContentChunkRepositoryImpl(db);
         const collectionRepository = new CollectionRepositoryImpl(db);
@@ -90,7 +90,7 @@ import { Kysely } from "kysely";
           contentChunkRepository,
           collectionRepository,
           ai,
-          eventBus
+          eventBus,
         );
       },
       inject: [BOOKMARK_SERVICE, AI, EventBus, DATABASE_INSTANCE],
@@ -107,7 +107,7 @@ import { Kysely } from "kysely";
       provide: "MESSAGE_HANDLERS",
       useFactory: (
         defaultHandler: DefaultMessageHandler,
-        bookmarkHandler: BookmarkProcessorHandler
+        bookmarkHandler: BookmarkProcessorHandler,
       ): MessageHandler[] => [
         bookmarkHandler,
         defaultHandler, // Keep default handler last as fallback

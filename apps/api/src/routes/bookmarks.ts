@@ -182,6 +182,78 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     }
   );
 
+  // Preview endpoint - fetches OpenGraph metadata for a URL without saving
+  fastify.post<{
+    Body: { url: string };
+    Reply:
+      | {
+          metadata: {
+            title?: string;
+            description?: string;
+            image?: string;
+            favicon?: string;
+            siteName?: string;
+            url?: string;
+          };
+        }
+      | { error: string };
+  }>(
+    "/bookmarks/preview",
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      try {
+        const { url } = request.body;
+
+        fastify.log.info({ url }, "Preview URL request");
+
+        if (!url) {
+          return reply.status(400).send({ error: "url is required" });
+        }
+
+        if (!services.webScraping.isValidUrl(url)) {
+          return reply.status(400).send({ error: "Invalid URL format" });
+        }
+
+        const scrapedContent = await services.webScraping.scrape(url);
+        const openGraph = scrapedContent.metadata?.openGraph;
+
+        return reply.send({
+          metadata: {
+            title: openGraph?.title || scrapedContent.title,
+            description: openGraph?.description,
+            image: openGraph?.image,
+            favicon: openGraph?.favicon,
+            siteName: openGraph?.site_name,
+            url: openGraph?.url || url,
+          },
+        });
+      } catch (error) {
+        fastify.log.error({ error }, "Preview URL error");
+
+        if (error instanceof Error) {
+          if (
+            error.message.includes("timeout") ||
+            error.message.includes("Request timeout")
+          ) {
+            return reply.status(408).send({ error: "URL request timeout" });
+          }
+
+          if (error.message.includes("HTTP")) {
+            return reply
+              .status(422)
+              .send({ error: `URL not accessible: ${error.message}` });
+          }
+
+          if (error.message.includes("Unsupported content type")) {
+            return reply.status(422).send({ error: error.message });
+          }
+        }
+
+        return reply.status(500).send({ error: "Internal server error" });
+      }
+    }
+  );
+
   fastify.get<{
     Params: { id: string };
     Reply: Bookmark | { error: string };

@@ -67,6 +67,19 @@ export interface CreateBookmarkResponse {
   message: string;
 }
 
+export interface UrlPreviewMetadata {
+  title?: string;
+  description?: string;
+  image?: string;
+  favicon?: string;
+  siteName?: string;
+  url?: string;
+}
+
+export interface PreviewUrlResponse {
+  metadata: UrlPreviewMetadata;
+}
+
 async function getAuthHeaders(): Promise<HeadersInit> {
   const { data: { session } } = await supabase.auth.getSession();
   const accessToken = session?.access_token || '';
@@ -153,6 +166,29 @@ export namespace BookmarksAPI {
       return await response.json();
     } catch (error) {
       console.error('Error creating bookmark:', error);
+      throw error;
+    }
+  }
+
+  export async function preview(url: string): Promise<UrlPreviewMetadata> {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/bookmarks/preview`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ url }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
+        throw new Error(errorMessage);
+      }
+
+      const data: PreviewUrlResponse = await response.json();
+      return data.metadata;
+    } catch (error) {
+      console.error('Error fetching URL preview:', error);
       throw error;
     }
   }

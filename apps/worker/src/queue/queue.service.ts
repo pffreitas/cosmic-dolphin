@@ -18,7 +18,7 @@ export class QueueService {
       if (error) {
         this.logger.error(
           `Failed to pop message from queue ${queueName}`,
-          error
+          error,
         );
         throw new Error(`Queue pop failed: ${error.message}`);
       }
@@ -53,7 +53,7 @@ export class QueueService {
       if (error) {
         this.logger.error(
           `Failed to pop messages from queue ${queueName}`,
-          error
+          error,
         );
         throw new Error(`Queue pop failed: ${error.message}`);
       }
@@ -72,7 +72,7 @@ export class QueueService {
     } catch (error) {
       this.logger.error(
         `Error popping messages from queue ${queueName}`,
-        error
+        error,
       );
       throw error;
     }
@@ -91,7 +91,7 @@ export class QueueService {
       if (error) {
         this.logger.error(
           `Failed to archive message ${msgId} from queue ${queueName}`,
-          error
+          error,
         );
         throw new Error(`Message archive failed: ${error.message}`);
       }
@@ -100,7 +100,7 @@ export class QueueService {
     } catch (error) {
       this.logger.error(
         `Error archiving message ${msgId} from queue ${queueName}`,
-        error
+        error,
       );
       throw error;
     }
@@ -119,7 +119,7 @@ export class QueueService {
       if (error) {
         this.logger.error(
           `Failed to delete message ${msgId} from queue ${queueName}`,
-          error
+          error,
         );
         throw new Error(`Message delete failed: ${error.message}`);
       }
@@ -128,7 +128,7 @@ export class QueueService {
     } catch (error) {
       this.logger.error(
         `Error deleting message ${msgId} from queue ${queueName}`,
-        error
+        error,
       );
       throw error;
     }
@@ -137,7 +137,7 @@ export class QueueService {
   async sendMessage(
     queueName: string,
     message: any,
-    delaySeconds?: number
+    delaySeconds?: number,
   ): Promise<number> {
     try {
       const { data, error } = await this.supabaseClient
@@ -152,7 +152,7 @@ export class QueueService {
       if (error) {
         this.logger.error(
           `Failed to send message to queue ${queueName}`,
-          error
+          error,
         );
         throw new Error(`Message send failed: ${error.message}`);
       }

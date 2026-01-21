@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { MessageHandler } from '../interfaces/message-handler.interface';
-import { QueueMessage } from '../../types/queue.types';
+import { Injectable, Logger } from "@nestjs/common";
+import { MessageHandler } from "../interfaces/message-handler.interface";
+import { QueueMessage } from "../../types/queue.types";
 
 @Injectable()
 export class DefaultMessageHandler implements MessageHandler {
@@ -13,18 +13,18 @@ export class DefaultMessageHandler implements MessageHandler {
   async handle(message: QueueMessage): Promise<void> {
     this.logger.warn(`No specific handler found for message`, {
       msg_id: message.msg_id,
-      message_type: message.message?.type || 'unknown',
+      message_type: message.message?.type || "unknown",
       message: message.message,
     });
 
     // Just log the message for debugging purposes
-    this.logger.debug('Processing unknown message type', {
+    this.logger.debug("Processing unknown message type", {
       msg_id: message.msg_id,
       payload: message.message,
     });
   }
 
   getMessageType(): string {
-    return 'default';
+    return "default";
   }
 }

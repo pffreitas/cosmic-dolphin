@@ -1,8 +1,18 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { QueueService } from './queue.service';
-import { MessageHandler } from './interfaces/message-handler.interface';
-import { QueueMessage, QueueConfig, ProcessorOptions } from '../types/queue.types';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+  Inject,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { QueueService } from "./queue.service";
+import { MessageHandler } from "./interfaces/message-handler.interface";
+import {
+  QueueMessage,
+  QueueConfig,
+  ProcessorOptions,
+} from "../types/queue.types";
 
 @Injectable()
 export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
@@ -14,11 +24,11 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
   constructor(
     private queueService: QueueService,
     private configService: ConfigService,
-    @Inject('MESSAGE_HANDLERS') private messageHandlers: MessageHandler[],
+    @Inject("MESSAGE_HANDLERS") private messageHandlers: MessageHandler[],
   ) {}
 
   async onModuleInit() {
-    if (this.configService.get<boolean>('QUEUE_AUTO_START', true)) {
+    if (this.configService.get<boolean>("QUEUE_AUTO_START", true)) {
       await this.startProcessing();
     }
   }
@@ -29,14 +39,16 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
 
   async startProcessing(): Promise<void> {
     if (this.isProcessing) {
-      this.logger.warn('Queue processor is already running');
+      this.logger.warn("Queue processor is already running");
       return;
     }
 
     this.isProcessing = true;
     const options = this.getProcessorOptions();
-    
-    this.logger.log(`Starting queue processor with ${options.queues.length} queues`);
+
+    this.logger.log(
+      `Starting queue processor with ${options.queues.length} queues`,
+    );
 
     for (const queueConfig of options.queues) {
       const promise = this.processQueue(queueConfig);
@@ -49,24 +61,30 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    this.logger.log('Stopping queue processor...');
+    this.logger.log("Stopping queue processor...");
     this.isProcessing = false;
 
-    const timeout = this.configService.get<number>('QUEUE_GRACEFUL_SHUTDOWN_TIMEOUT', 30000);
-    
+    const timeout = this.configService.get<number>(
+      "QUEUE_GRACEFUL_SHUTDOWN_TIMEOUT",
+      30000,
+    );
+
     try {
       await Promise.race([
         Promise.all(this.processingPromises),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Graceful shutdown timeout')), timeout)
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Graceful shutdown timeout")),
+            timeout,
+          ),
         ),
       ]);
     } catch (error) {
-      this.logger.warn('Graceful shutdown timeout reached, forcing stop');
+      this.logger.warn("Graceful shutdown timeout reached, forcing stop");
     }
 
     this.processingPromises = [];
-    this.logger.log('Queue processor stopped');
+    this.logger.log("Queue processor stopped");
   }
 
   private async processQueue(config: QueueConfig): Promise<void> {
@@ -74,19 +92,25 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
 
     while (this.isProcessing) {
       try {
-        const messages = await this.queueService.popMessages(config.name, config.batchSize);
+        const messages = await this.queueService.popMessages(
+          config.name,
+          config.batchSize,
+        );
 
         if (messages.length === 0) {
           await this.sleep(config.pollInterval);
           continue;
         }
 
-        this.logger.debug(`Processing ${messages.length} messages from queue ${config.name}`);
+        this.logger.debug(
+          `Processing ${messages.length} messages from queue ${config.name}`,
+        );
 
         // Process messages concurrently but respect concurrency limit
-        const processPromises = messages.map(message => this.processMessage(message, config));
+        const processPromises = messages.map((message) =>
+          this.processMessage(message, config),
+        );
         await Promise.allSettled(processPromises);
-
       } catch (error) {
         this.logger.error(`Error processing queue ${config.name}`, error);
         await this.sleep(config.pollInterval);
@@ -94,9 +118,12 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async processMessage(message: QueueMessage, config: QueueConfig): Promise<void> {
+  private async processMessage(
+    message: QueueMessage,
+    config: QueueConfig,
+  ): Promise<void> {
     const messageKey = `${config.name}-${message.msg_id}`;
-    
+
     try {
       const handler = this.findHandler(message);
       if (!handler) {
@@ -106,26 +133,31 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
       }
 
       await handler.handle(message);
-      
+
       // Successfully processed, remove from queue
       await this.queueService.deleteMessage(config.name, message.msg_id);
       this.retryAttempts.delete(messageKey);
-      
-      this.logger.debug(`Successfully processed message ${message.msg_id} from queue ${config.name}`);
 
+      this.logger.debug(
+        `Successfully processed message ${message.msg_id} from queue ${config.name}`,
+      );
     } catch (error) {
       await this.handleError(message, config, error, messageKey);
     }
   }
 
   private async handleError(
-    message: QueueMessage, 
-    config: QueueConfig, 
-    error: any, 
-    messageKey: string
+    message: QueueMessage,
+    config: QueueConfig,
+    error: any,
+    messageKey: string,
   ): Promise<void> {
     const currentAttempts = this.retryAttempts.get(messageKey) || 0;
-    const shouldRetry = this.shouldRetryMessage(error, currentAttempts, config.maxRetries);
+    const shouldRetry = this.shouldRetryMessage(
+      error,
+      currentAttempts,
+      config.maxRetries,
+    );
 
     this.logger.error(`Error processing message ${message.msg_id}`, {
       error: error.message,
@@ -145,13 +177,22 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
     try {
       await this.queueService.archiveMessage(config.name, message.msg_id);
       this.retryAttempts.delete(messageKey);
-      this.logger.warn(`Archived message ${message.msg_id} after ${currentAttempts + 1} failed attempts`);
+      this.logger.warn(
+        `Archived message ${message.msg_id} after ${currentAttempts + 1} failed attempts`,
+      );
     } catch (archiveError) {
-      this.logger.error(`Failed to archive message ${message.msg_id}`, archiveError);
+      this.logger.error(
+        `Failed to archive message ${message.msg_id}`,
+        archiveError,
+      );
     }
   }
 
-  private shouldRetryMessage(error: any, currentAttempts: number, maxRetries: number): boolean {
+  private shouldRetryMessage(
+    error: any,
+    currentAttempts: number,
+    maxRetries: number,
+  ): boolean {
     if (currentAttempts >= maxRetries) {
       return false;
     }
@@ -166,8 +207,8 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
   }
 
   private findHandler(message: QueueMessage): MessageHandler | null {
-    const messageType = message.message?.type || 'default';
-    
+    const messageType = message.message?.type || "default";
+
     for (const handler of this.messageHandlers) {
       if (handler.canHandle(messageType)) {
         return handler;
@@ -178,12 +219,23 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
   }
 
   private getProcessorOptions(): ProcessorOptions {
-    const queueNames = this.configService.get<string>('QUEUE_NAMES', 'default').split(',');
-    const defaultPollInterval = this.configService.get<number>('QUEUE_POLL_INTERVAL', 5000);
-    const defaultMaxRetries = this.configService.get<number>('QUEUE_MAX_RETRIES', 3);
-    const defaultBatchSize = this.configService.get<number>('QUEUE_BATCH_SIZE', 10);
+    const queueNames = this.configService
+      .get<string>("QUEUE_NAMES", "default")
+      .split(",");
+    const defaultPollInterval = this.configService.get<number>(
+      "QUEUE_POLL_INTERVAL",
+      5000,
+    );
+    const defaultMaxRetries = this.configService.get<number>(
+      "QUEUE_MAX_RETRIES",
+      3,
+    );
+    const defaultBatchSize = this.configService.get<number>(
+      "QUEUE_BATCH_SIZE",
+      10,
+    );
 
-    const queues: QueueConfig[] = queueNames.map(name => ({
+    const queues: QueueConfig[] = queueNames.map((name) => ({
       name: name.trim(),
       pollInterval: defaultPollInterval,
       maxRetries: defaultMaxRetries,
@@ -192,12 +244,15 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
 
     return {
       queues,
-      concurrency: this.configService.get<number>('QUEUE_CONCURRENCY', 5),
-      gracefulShutdownTimeout: this.configService.get<number>('QUEUE_GRACEFUL_SHUTDOWN_TIMEOUT', 30000),
+      concurrency: this.configService.get<number>("QUEUE_CONCURRENCY", 5),
+      gracefulShutdownTimeout: this.configService.get<number>(
+        "QUEUE_GRACEFUL_SHUTDOWN_TIMEOUT",
+        30000,
+      ),
     };
   }
 
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

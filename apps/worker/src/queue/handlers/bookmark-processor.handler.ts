@@ -13,7 +13,7 @@ export class BookmarkProcessorHandler implements MessageHandler {
 
   constructor(
     @Inject(BOOKMARK_PROCESSOR_SERVICE)
-    private readonly bookmarkProcessorService: BookmarkProcessorService
+    private readonly bookmarkProcessorService: BookmarkProcessorService,
   ) {}
 
   canHandle(): boolean {
