@@ -22,6 +22,10 @@ RUN npm install --ignore-scripts
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
+
+# Copy root package.json for workspace resolution
+COPY package.json ./
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages ./packages
 COPY apps/web ./apps/web
