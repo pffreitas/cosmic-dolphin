@@ -1,10 +1,61 @@
+# Environment files
 *.env
-.env.dev
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+*/dist/
+.next/
+out/
+build/
+
+# TypeScript
+*.tsbuildinfo
+
+# Turbo
+.turbo/
+
+# Temp files
+*/.temp
 /bin
 /vendor
 /test-results
-node_modules/
-dist/
-*/dist/
-*.tsbuildinfo
-*/.temp
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeSpec output
+packages/apispec/tsp-output/
+
+# Generated API client (can be regenerated)
+packages/api-client/src/
+packages/api-client/dist/
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+
+# Mobile (Expo/React Native)
+apps/mobile/.expo/
+apps/mobile/ios/Pods/
+apps/mobile/ios/build/
+apps/mobile/android/.gradle/
+apps/mobile/android/app/build/
+apps/mobile/android/build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/

@@ -1,0 +1,202 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles for expandable marks */
+.expandable-mark {
+  @apply bg-blue-100 hover:bg-blue-200 cursor-pointer px-1 py-0.5 rounded border border-blue-300 transition-colors;
+}
+
+.dark .expandable-mark {
+  @apply bg-blue-900 hover:bg-blue-800 border-blue-700;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 20 14.3% 4.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 14.3% 4.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14.3% 4.1%;
+    --primary: 24 9.8% 10%;
+    --primary-foreground: 60 9.1% 97.8%;
+    --secondary: 60 4.8% 95.9%;
+    --secondary-foreground: 24 9.8% 10%;
+    --muted: 60 4.8% 95.9%;
+    --muted-foreground: 25 5.3% 44.7%;
+    --accent: 60 4.8% 95.9%;
+    --accent-foreground: 24 9.8% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 60 9.1% 97.8%;
+    --border: 20 5.9% 90%;
+    --input: 20 5.9% 90%;
+    --ring: 20 14.3% 4.1%;
+    --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 20 14.3% 4.1%;
+    --foreground: 60 9.1% 97.8%;
+    --card: 20 14.3% 4.1%;
+    --card-foreground: 60 9.1% 97.8%;
+    --popover: 20 14.3% 4.1%;
+    --popover-foreground: 60 9.1% 97.8%;
+    --primary: 60 9.1% 97.8%;
+    --primary-foreground: 24 9.8% 10%;
+    --secondary: 12 6.5% 15.1%;
+    --secondary-foreground: 60 9.1% 97.8%;
+    --muted: 12 6.5% 15.1%;
+    --muted-foreground: 24 5.4% 63.9%;
+    --accent: 12 6.5% 15.1%;
+    --accent-foreground: 60 9.1% 97.8%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 60 9.1% 97.8%;
+    --border: 12 6.5% 15.1%;
+    --input: 12 6.5% 15.1%;
+    --ring: 24 5.7% 82.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+
+
+.shimmer {
+  font-size: 1rem;
+  font-weight: bold;
+  color: #302b57;
+  position: relative;
+  overflow: hidden;
+  /* Create a gradient background */
+  background: linear-gradient(
+    to right,
+    #9c9ab3 0%,
+    #161429 20%,
+    #9c9ab3 40%,
+    #161429 60%,
+    #9c9ab3 80%,
+    #161429 100%
+  );
+  background-size: 200% 100%;
+  /* Clip the background to the text */
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  /* Animation */
+  animation: shimmer 5s linear infinite;
+}
+
+/* Define the shimmer animation */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* TipTap Editor Styles */
+.tiptap {
+  outline: none;
+  position: static !important;
+}
+
+.tiptap h1 {
+  @apply text-4xl border-b border-gray-200 pb-2 mb-8 mt-4 font-extrabold tracking-tight text-balance;
+}
+
+/* Additional TipTap element styles you might want */
+.tiptap h2 {
+  @apply text-3xl font-semibold tracking-tight mb-2 mt-4;
+}
+
+.tiptap h3 {
+  @apply text-2xl font-semibold tracking-tight mb-2 mt-4;
+}
+
+.tiptap p {
+  @apply text-base leading-relaxed;
+}
+
+.tiptap ul {
+  @apply list-disc pl-6 space-y-1;
+}
+
+.tiptap ol {
+  @apply list-decimal pl-6 space-y-1;
+}
+
+.tiptap blockquote {
+  @apply border-l-4 border-gray-400 pl-4 italic;
+}
+
+.tiptap code {
+  @apply bg-gray-200 text-purple-950 px-1 py-0.5 rounded text-sm font-mono;
+}
+
+.tiptap strong {
+  @apply font-bold;
+}
+
+.tiptap em {
+  @apply italic;
+}
+
+.tiptap img {
+  @apply rounded-md;
+}
+
+.tiptap a {
+  @apply text-blue-500 underline;
+}
+
+/* Mobile-specific utilities */
+.safe-area-pt {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-pl {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-area-pr {
+  padding-right: env(safe-area-inset-right);
+}

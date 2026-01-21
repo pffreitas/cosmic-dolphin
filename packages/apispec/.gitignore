@@ -1,0 +1,8 @@
+# Dependencies
+node_modules/
+
+# Generated OpenAPI spec (can be regenerated)
+tsp-output/
+
+# Generated client (regenerated from TypeSpec)
+client/

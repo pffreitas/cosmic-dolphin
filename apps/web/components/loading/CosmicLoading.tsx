@@ -1,0 +1,125 @@
+import { RotatingText } from "../ui/shadcn-io/rotating-text";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+
+export default function CosmicLoading() {
+  const verbs = [
+    "Splashing",
+    "Swimming",
+    "Diving",
+    "Floating",
+    "Gliding",
+    "Surfing",
+    "Leaping",
+    "Soaring",
+    "Twinkling",
+    "Sparkling",
+    "Shimmering",
+    "Gleaming",
+    "Radiating",
+    "Beaming",
+    "Glowing",
+    "Bubbling",
+    "Rippling",
+    "Cascading",
+    "Flowing",
+    "Drifting",
+    "Sailing",
+    "Cruising",
+    "Voyaging",
+    "Exploring",
+    "Discovering",
+    "Adventuring",
+    "Journeying",
+    "Wandering",
+    "Roaming",
+    "Traversing",
+    "Navigating",
+    "Charting",
+    "Mapping",
+    "Stargazing",
+    "Moonbathing",
+    "Sunbathing",
+    "Basking",
+    "Warming",
+    "Illuminating",
+    "Brightening",
+    "Lightening",
+    "Dazzling",
+    "Glistening",
+    "Coruscating",
+    "Scintillating",
+    "Phosphorescing",
+    "Luminescing",
+    "Fluorescing",
+    "Iridescent",
+    "Opalizing",
+    "Prismatizing",
+    "Refracting",
+    "Reflecting",
+    "Mirroring",
+    "Echoing",
+    "Resonating",
+    "Harmonizing",
+    "Synchronizing",
+    "Aligning",
+    "Balancing",
+    "Centering",
+    "Grounding",
+    "Anchoring",
+    "Mooring",
+    "Docking",
+    "Harboring",
+    "Sheltering",
+    "Nesting",
+    "Cradling",
+    "Nurturing",
+    "Fostering",
+    "Cultivating",
+    "Growing",
+    "Blooming",
+    "Blossoming",
+    "Flourishing",
+    "Thriving",
+    "Prospering",
+    "Ascending",
+    "Rising",
+    "Elevating",
+    "Uplifting",
+    "Inspiring",
+    "Motivating",
+    "Encouraging",
+    "Empowering",
+    "Energizing",
+    "Vitalizing",
+    "Refreshing",
+    "Rejuvenating",
+    "Revitalizing",
+    "Renewing",
+    "Restoring",
+    "Healing",
+    "Mending",
+    "Soothing",
+    "Calming",
+    "Relaxing",
+    "Unwinding",
+    "Chilling",
+    "Vibing",
+  ];
+
+  return (
+    <div className="flex gap-2">
+      <DotLottieReact
+        src="/animations/loading.json"
+        loop
+        autoplay
+        className="w-8 h-8"
+      />
+      <RotatingText
+        className="flex-1"
+        text={verbs}
+        duration={3000}
+        transition={{ duration: 0.5, ease: "easeInOut" }}
+      />
+    </div>
+  );
+}

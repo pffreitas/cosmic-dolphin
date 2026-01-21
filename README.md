@@ -1,62 +1,75 @@
 # 🐬 Cosmic Dolphin
 
-A full-stack TypeScript application built with modern microservices architecture, featuring a Fastify REST API and NestJS background worker with AI integration capabilities.
+A full-stack TypeScript monorepo featuring a Next.js webapp, React Native mobile app, Fastify REST API, and NestJS background worker with AI integration capabilities.
 
-## 🏗️ Architecture Overview
-
-Cosmic Dolphin is structured as a monorepo with a clean separation between API, worker services, and shared utilities:
+## 🏗️ Monorepo Structure
 
 ```
 cosmic-dolphin/
+├── apps/
+│   ├── api/                 # Fastify REST API (Port 3000)
+│   ├── web/                 # Next.js Webapp (Port 3001)
+│   ├── worker/              # NestJS Background Worker
+│   └── mobile/              # React Native Mobile App (Expo)
 ├── packages/
-│   ├── api/              # Fastify REST API Server (Port 3001)
-│   ├── worker/           # NestJS Background Worker (Port 3002)
-│   └── shared/           # Shared TypeScript types and utilities
-├── .do/                  # DigitalOcean App Platform configs
-├── supabase/migrations/  # Database migrations (PostgreSQL + pgmq)
-└── docker-compose.yml    # Local development environment
+│   ├── api-client/          # Generated OpenAPI TypeScript client
+│   ├── apispec/             # TypeSpec API definitions
+│   └── shared/              # Shared backend utilities
+├── supabase/                # Database migrations
+├── .do/                     # DigitalOcean deployment configs
+├── .github/workflows/       # CI/CD pipelines
+├── turbo.json               # Turborepo configuration
+└── package.json             # Root workspace configuration
 ```
 
-### Service Architecture
+### Architecture Overview
 
-```mermaid
-graph TD
-    A[Client] --> B[Fastify API :3001]
-    B --> C[PostgreSQL + pgvector]
-    B --> D[pgmq Queues]
-    D --> E[NestJS Worker :3002]
-    E --> C
-    E --> F[AI Services]
-    F --> G[OpenAI/Anthropic/Ollama]
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              CLIENTS                                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│    ┌──────────────┐              ┌──────────────┐                       │
+│    │   apps/web   │              │ apps/mobile  │                       │
+│    │   (Next.js)  │              │ (React Native)│                      │
+│    └──────┬───────┘              └──────┬───────┘                       │
+│           │                             │                                │
+│           └──────────┬──────────────────┘                               │
+│                      │                                                   │
+│                      ▼                                                   │
+│           ┌──────────────────┐                                          │
+│           │ packages/        │                                          │
+│           │ api-client       │  ← Generated from packages/apispec       │
+│           └────────┬─────────┘                                          │
+│                    │                                                     │
+└────────────────────┼─────────────────────────────────────────────────────┘
+                     │
+┌────────────────────┼─────────────────────────────────────────────────────┐
+│                    ▼              BACKEND                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│    ┌──────────────┐         ┌──────────────┐                            │
+│    │  apps/api    │         │ apps/worker  │                            │
+│    │  (Fastify)   │         │  (NestJS)    │                            │
+│    └──────┬───────┘         └──────┬───────┘                            │
+│           │                        │                                     │
+│           └────────┬───────────────┘                                    │
+│                    │                                                     │
+│                    ▼                                                     │
+│           ┌──────────────────┐                                          │
+│           │ packages/shared  │                                          │
+│           └────────┬─────────┘                                          │
+│                    │                                                     │
+│                    ▼                                                     │
+│    ┌───────────────────────────────────────┐                            │
+│    │  PostgreSQL + pgvector + pgmq         │                            │
+│    │  (Supabase)                           │                            │
+│    └───────────────────────────────────────┘                            │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 🛠️ Tech Stack
-
-### Core Technologies
-- **Runtime**: Bun (primary), Node.js 22+ (compatible)
-- **Language**: TypeScript 5.x
-- **Package Manager**: Bun workspaces
-
-### API Service (`packages/api/`)
-- **Framework**: Fastify 4.x
-- **Authentication**: JWT with `@fastify/jwt`
-- **Database**: PostgreSQL with Supabase client
-- **Security**: Helmet, CORS
-- **Validation**: Zod schemas
-- **Testing**: Jest with Bun test runner
-
-### Worker Service (`packages/worker/`)
-- **Framework**: NestJS 10.x
-- **Queue System**: pgmq (PostgreSQL Message Queue)
-- **AI Integration**: Multiple providers (OpenAI, Anthropic, Ollama)
-- **Configuration**: NestJS Config module
-- **Testing**: Jest with NestJS testing utilities
-
-### Infrastructure
-- **Database**: PostgreSQL 15+ with pgvector extension
-- **Queue System**: pgmq (PostgreSQL-based message queues)
-- **Deployment**: Docker containers on DigitalOcean App Platform
-- **CI/CD**: GitHub Actions with automated deployments
+---
 
 ## 🚀 Quick Start
 
@@ -64,354 +77,425 @@ graph TD
 
 ```bash
 # Required
-node >= 22.0.0
 bun >= 1.0.0
+node >= 22.0.0
+docker & docker-compose
 
-# For local development
-docker
-docker-compose
+# For API client generation
+java >= 17  # Required for OpenAPI Generator
 ```
 
-### Local Development Setup
-
-1. **Clone and install dependencies**:
-   ```bash
-   git clone <repository-url>
-   cd cosmic-dolphin
-   bun install
-   ```
-
-2. **Environment configuration**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration (see ENV_CONFIG.md)
-   ```
-
-3. **Start development environment**:
-   ```bash
-   # Option 1: Full Docker environment (recommended)
-   bun run docker:up
-
-   # Option 2: Manual development
-   docker-compose up postgres -d  # Start PostgreSQL
-   bun run dev                    # Start API and Worker
-   ```
-
-### Available Scripts
+### Initial Setup
 
 ```bash
-# Development
-bun run dev              # Start both API and Worker in development mode
-bun run docker:up        # Start all services with Docker Compose
-bun run docker:down      # Stop Docker services
-bun run docker:logs      # View Docker logs
+# Clone the repository
+git clone <repository-url>
+cd cosmic-dolphin
 
-# Building
-bun run build            # Build all packages (shared → api → worker)
-bun run clean            # Clean build artifacts
+# Install all dependencies (also generates API client)
+bun install
 
-# Testing & Quality
-bun run test             # Run tests for all packages
-bun run lint             # Lint all packages
+# Start local database
+bun run db:up
 
-# Individual package commands
-bun run --cwd packages/api dev       # API development server
-bun run --cwd packages/worker start:dev  # Worker development server
+# Start development (see scenarios below)
+bun run dev:fullstack
 ```
 
-## 📡 API Reference
+---
 
-### Health & Status Endpoints
+## 🔧 Development Workflow
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | API health check |
-| `/api/v1/status` | GET | Detailed API status |
+### Development Scenarios
 
-### Worker Health Check
+Turborepo allows running any combination of apps in parallel using filters.
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `http://localhost:3002/health` | GET | Worker service health |
+#### Scenario 1: Webapp Development
 
-## 🗄️ Database Schema
-
-The application uses PostgreSQL with pgvector extension and pgmq for queuing:
-
-- **Schema**: Defined in `supabase/migrations/` directory
-- **ORM**: Supabase client with direct SQL
-- **Migrations**: Supabase migration system
-- **Extensions**: pgvector (AI embeddings), pgmq (message queues)
-
-### Local Database Setup
+Run **API + Worker + Web** for full-stack web development:
 
 ```bash
-# Using Docker Compose (recommended)
-docker-compose up postgres -d
+# Option A: Single command
+bun run dev:fullstack
 
-# Manual PostgreSQL setup with Supabase
-npx supabase start
-npx supabase db reset
+# Option B: Separate terminals for more control
+# Terminal 1: Backend
+bun run dev:backend
+
+# Terminal 2: Web
+bun run dev:web
 ```
 
-## 🔄 Background Jobs & Queue System
+#### Scenario 2: Mobile App Development
 
-The system uses **pgmq** (PostgreSQL Message Queue) instead of Redis for reliable message processing:
+Run **API + Worker + Mobile** for full-stack mobile development:
 
-### Queue Architecture
-- **Technology**: pgmq extension for PostgreSQL
-- **Queues**: `default`, `tasks`, `notifications`, `bookmarks`
-- **Benefits**: ACID transactions, no additional infrastructure, PostgreSQL-native
+```bash
+# Start backend + mobile
+bun run dev:fullstack:mobile
 
-### Queue Operations
+# Or with Expo in a separate terminal
+bun run dev:backend
+cd apps/mobile && bun run start
+```
+
+#### Scenario 3: Backend-Only Development
+
+Run **API + Worker** for API development and testing:
+
+```bash
+bun run dev:backend
+```
+
+#### Scenario 4: Frontend-Only Development
+
+Run against a remote/staging API (no local backend):
+
+```bash
+# Configure apps/web/.env.local to point to staging API
+# NEXT_PUBLIC_API_URL=https://api.staging.cosmic-dolphin.com
+
+bun run dev:web
+```
+
+### What Happens During Development
+
+When you run `bun run dev:fullstack`, Turborepo:
+
+1. Builds dependencies in correct order (`packages/apispec` → `packages/api-client` → apps)
+2. Starts all services in parallel
+3. Shows prefixed output so you know which service logged what
+
+```
+@cosmic-dolphin/api:dev: Fastify listening on http://localhost:3000
+@cosmic-dolphin/worker:dev: NestJS worker started
+@cosmic-dolphin/web:dev: Next.js ready on http://localhost:3001
+```
+
+### Updating the API Contract
+
+When you modify the API specification:
+
+```bash
+# 1. Edit TypeSpec definitions
+code packages/apispec/bookmarks.tsp
+
+# 2. Regenerate the client
+bun run apispec
+
+# 3. TypeScript will show errors in web/mobile if types changed
+#    Fix the errors and continue development
+```
+
+---
+
+## 📜 Available Scripts
+
+### Root Commands
+
+| Command | Description |
+|---------|-------------|
+| `bun run dev` | Start all apps in development mode |
+| `bun run dev:backend` | Start API + Worker only |
+| `bun run dev:web` | Start Web app only |
+| `bun run dev:mobile` | Start Mobile app only |
+| `bun run dev:fullstack` | Start API + Worker + Web |
+| `bun run dev:fullstack:mobile` | Start API + Worker + Mobile |
+| `bun run build` | Build all packages and apps |
+| `bun run test` | Run all tests |
+| `bun run lint` | Lint all packages |
+| `bun run typecheck` | Type-check all packages |
+| `bun run apispec` | Regenerate API client from TypeSpec |
+
+### Database Commands
+
+| Command | Description |
+|---------|-------------|
+| `bun run db:up` | Start local PostgreSQL + Supabase |
+| `bun run db:down` | Stop local database |
+| `bun run db:reset` | Reset database (down + up) |
+| `bun run test:db:up` | Start test database container |
+| `bun run test:db:down` | Stop test database container |
+
+### Build Commands
+
+| Command | Description |
+|---------|-------------|
+| `bun run build` | Build everything |
+| `bun run build:web` | Build web app only |
+| `bun run build:api` | Build API only |
+| `bun run build:worker` | Build worker only |
+
+---
+
+## 📦 Package Dependencies
+
+### Dependency Graph
+
+```
+packages/apispec (TypeSpec definitions)
+       │
+       │ generates
+       ▼
+packages/api-client (@cosmic-dolphin/api-client)
+       │
+       ├────────────────┬────────────────┐
+       ▼                ▼                ▼
+   apps/web        apps/mobile      (future clients)
+
+
+packages/shared (@cosmic-dolphin/shared)
+       │
+       ├────────────────┐
+       ▼                ▼
+   apps/api        apps/worker
+```
+
+### Package Descriptions
+
+| Package | Name | Description |
+|---------|------|-------------|
+| `packages/apispec` | `@cosmic-dolphin/apispec` | TypeSpec API definitions (source of truth) |
+| `packages/api-client` | `@cosmic-dolphin/api-client` | Generated TypeScript client for API |
+| `packages/shared` | `@cosmic-dolphin/shared` | Shared backend utilities, types, services |
+| `apps/api` | `@cosmic-dolphin/api` | Fastify REST API server |
+| `apps/worker` | `@cosmic-dolphin/worker` | NestJS background job processor |
+| `apps/web` | `@cosmic-dolphin/web` | Next.js web application |
+| `apps/mobile` | `@cosmic-dolphin/mobile` | React Native mobile app |
+
+---
+
+## 🌍 Environment Variables
+
+Each app has its own environment file:
+
+```
+cosmic-dolphin/
+├── .env                      # Shared (DATABASE_URL, etc.)
+├── apps/
+│   ├── api/.env              # API_PORT, JWT_SECRET
+│   ├── web/.env.local        # NEXT_PUBLIC_* variables
+│   ├── worker/.env           # Queue config, AI keys
+│   └── mobile/.env           # API_URL for mobile
+```
+
+### Example Configurations
+
+**Shared `.env`:**
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:54322/postgres
+SUPABASE_URL=http://localhost:54321
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+**`apps/api/.env`:**
+```env
+PORT=3000
+JWT_SECRET=your-jwt-secret
+```
+
+**`apps/web/.env.local`:**
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3000
+NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+**`apps/worker/.env`:**
+```env
+OPENROUTER_API_KEY=your-openrouter-key
+OPENAI_API_KEY=your-openai-key
+```
+
+### Using Staging/Production APIs
+
+For frontend-only development against remote APIs:
+
+```env
+# apps/web/.env.local
+NEXT_PUBLIC_API_URL=https://api.cosmic-dolphin.com
+
+# apps/mobile/.env
+API_URL=https://api.cosmic-dolphin.com
+```
+
+---
+
+## 🛠️ Tech Stack
+
+### Apps
+
+| App | Framework | Port | Description |
+|-----|-----------|------|-------------|
+| `apps/api` | Fastify 4.x | 3000 | REST API with JWT auth |
+| `apps/web` | Next.js 14+ | 3001 | React webapp with App Router |
+| `apps/worker` | NestJS 10.x | - | Background job processor |
+| `apps/mobile` | React Native + Expo | - | iOS/Android mobile app |
+
+### Packages
+
+| Package | Technology | Description |
+|---------|------------|-------------|
+| `packages/apispec` | TypeSpec | API contract definitions |
+| `packages/api-client` | OpenAPI Generator | Generated fetch client |
+| `packages/shared` | TypeScript | Shared backend code |
+
+### Infrastructure
+
+- **Database**: PostgreSQL 15+ with pgvector, pgmq
+- **Auth**: Supabase Auth + JWT
+- **Queue**: pgmq (PostgreSQL Message Queue)
+- **Deployment**: DigitalOcean App Platform
+- **CI/CD**: GitHub Actions
+
+---
+
+## 🗄️ Database
+
+### Local Development
+
+```bash
+# Start Supabase locally
+bun run db:up
+
+# Run migrations
+cd supabase && supabase db push
+
+# Reset database
+bun run db:reset
+```
+
+### Migrations
+
+Migrations are in `supabase/migrations/` and managed via Supabase CLI:
+
+```bash
+# Create new migration
+supabase migration new my_migration_name
+
+# Apply migrations locally
+supabase db push
+
+# Deploy to production (via CI/CD)
+supabase db push --linked
+```
+
+---
+
+## 🔄 Background Jobs
+
+The worker service uses **pgmq** for reliable message processing:
 
 ```typescript
-// Example queue operations
-interface QueueMessage {
-  msg_id: number;
-  read_ct: number;
-  enqueued_at: Date;
-  vt: Date;
-  message: any;
-}
+// Send a job from API
+await queueService.sendMessage('bookmarks', {
+  type: 'process_bookmark',
+  bookmarkId: '123'
+});
 
-// Queue service methods
-await queueService.sendMessage('bookmarks', payload);
-const message = await queueService.popMessage('bookmarks');
-await queueService.archiveMessage('bookmarks', messageId);
+// Worker processes it automatically via handlers
 ```
 
 ### Adding New Job Types
 
-1. Define job type in `packages/shared/src/types.ts`
-2. Add processor in `packages/worker/src/queue/handlers/`
-3. Register handler in `packages/worker/src/queue/queue.module.ts`
+1. Define type in `packages/shared/src/types.ts`
+2. Create handler in `apps/worker/src/queue/handlers/`
+3. Register in `apps/worker/src/queue/queue.module.ts`
 
-## 🤖 AI Integration
-
-The worker service integrates with multiple AI providers through the shared AI service:
-
-- **OpenAI**: GPT models via `@ai-sdk/openai`
-- **Anthropic**: Claude models via `@ai-sdk/anthropic`
-- **Ollama**: Local models via `ollama-ai-provider-v2`
-- **Azure OpenAI**: Enterprise models via `@ai-sdk/azure`
-
-### Configuration
-
-```env
-# AI Provider API Keys
-OPENAI_API_KEY=your_openai_key
-ANTHROPIC_API_KEY=your_anthropic_key
-AZURE_OPENAI_API_KEY=your_azure_key
-AZURE_OPENAI_ENDPOINT=your_azure_endpoint
-
-# Ollama (local)
-OLLAMA_BASE_URL=http://localhost:11434
-```
+---
 
 ## 🚢 Deployment
 
-### DigitalOcean App Platform
+### CI/CD Pipeline
 
-The project includes automated CI/CD via GitHub Actions:
+GitHub Actions handles deployment with path-based filtering:
 
-1. **Triggers**: Push to `main` branch or manual dispatch
-2. **Process**:
-   - Run Supabase migrations (including pgmq setup)
-   - Build and test all packages
-   - Build Docker images
-   - Push to DigitalOcean Container Registry
-   - Deploy API and Worker as separate apps
+| Workflow | Trigger Paths | Deploys |
+|----------|---------------|---------|
+| `deploy-api.yml` | `apps/api/**`, `packages/shared/**` | API service |
+| `deploy-worker.yml` | `apps/worker/**`, `packages/shared/**` | Worker service |
+| `deploy-web.yml` | `apps/web/**`, `packages/api-client/**` | Web app |
 
-### Required Environment Variables
-
-```env
-# Production essentials
-NODE_ENV=production
-DATABASE_URL=your_supabase_connection_string
-JWT_SECRET=your_secure_jwt_secret
-
-# Service Ports
-API_PORT=3001
-WORKER_PORT=3002
-
-# AI Services (optional)
-OPENAI_API_KEY=your_openai_key
-ANTHROPIC_API_KEY=your_anthropic_key
-```
-
-### Manual Docker Deployment
+### Manual Docker Build
 
 ```bash
-# Build images
-docker build -f packages/api/Dockerfile -t cosmic-dolphin-api .
-docker build -f packages/worker/Dockerfile -t cosmic-dolphin-worker .
-
-# Run with Docker Compose
-docker-compose up -d
+# Build individual services
+docker build -f apps/api/Dockerfile -t cosmic-dolphin-api .
+docker build -f apps/web/Dockerfile -t cosmic-dolphin-web .
+docker build -f apps/worker/Dockerfile -t cosmic-dolphin-worker .
 ```
 
-## 🧪 Testing Strategy
+---
 
-### Test Structure
-```
-packages/
-├── api/
-│   ├── src/
-│   │   └── **/*.spec.ts      # Unit tests
-│   └── jest.config.ts
-├── worker/
-│   ├── src/
-│   │   └── **/*.spec.ts      # Unit tests
-│   └── test/
-│       └── **/*.e2e-spec.ts  # E2E tests
-└── shared/
-    └── src/
-        └── **/*.test.ts       # Utility tests
-```
+## 🧪 Testing
 
-### Running Tests
 ```bash
-# All packages
+# Run all tests
 bun run test
 
-# Individual packages
-bun run --cwd packages/api test
-bun run --cwd packages/worker test
-bun run --cwd packages/shared test
+# Run tests for specific app/package
+bun run test --filter=@cosmic-dolphin/api
+bun run test --filter=@cosmic-dolphin/shared
 
-# Watch mode
-bun run --cwd packages/api test --watch
+# Run with database (integration tests)
+bun run test:db:up
+bun run test
+bun run test:db:down
 ```
 
-## 🔧 Development Workflow
-
-### Adding New Features
-
-1. **Shared Types**: Add to `packages/shared/src/types.ts`
-2. **API Endpoints**: Add to `packages/api/src/routes/`
-3. **Background Jobs**: Add to `packages/worker/src/queue/handlers/`
-4. **Build Shared**: `bun run --cwd packages/shared build`
-
-### Queue Development
-
-```typescript
-// 1. Define message type in shared/src/types.ts
-export interface MyTaskPayload extends QueueTaskPayload {
-  type: "my_task";
-  data: {
-    // task-specific data
-  };
-}
-
-// 2. Create handler in worker/src/queue/handlers/
-@Injectable()
-export class MyTaskHandler implements MessageHandler {
-  canHandle(message: any): boolean {
-    return message.type === "my_task";
-  }
-
-  async handle(message: QueueMessage): Promise<void> {
-    // Process the task
-  }
-}
-
-// 3. Register in queue.module.ts
-```
-
-### Code Quality
-
-```bash
-# Linting
-bun run lint
-
-# Type checking
-bun run --cwd packages/api tsc --noEmit
-bun run --cwd packages/worker tsc --noEmit
-```
-
-## 📚 Documentation
-
-- **Environment Setup**: [`ENV_CONFIG.md`](./ENV_CONFIG.md)
-- **API Documentation**: Auto-generated from Fastify schemas
-- **Architecture Details**: [`packages/README.md`](./packages/README.md)
-
-## 🤝 Contributing
-
-1. **Fork** the repository
-2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
-3. **Commit** changes: `git commit -m 'Add amazing feature'`
-4. **Test** thoroughly: `bun run test && bun run lint`
-5. **Push** to branch: `git push origin feature/amazing-feature`
-6. **Create** a Pull Request
-
-### Development Guidelines
-
-- Follow existing TypeScript and architectural patterns
-- Add tests for new features
-- Update documentation for API changes
-- Ensure all packages build successfully
-- Use conventional commit messages
-
-## 📊 Monitoring & Observability
-
-### Health Checks
-- **API**: `GET /health` - Basic health status
-- **Worker**: `GET :3002/health` - Worker service status
-- **Database**: Connection validation in health checks
-- **Queue**: pgmq queue status via PostgreSQL queries
-
-### Logging
-- **API**: Fastify built-in logging with Pino
-- **Worker**: NestJS logging with custom formatters
-- **Development**: Pretty-printed logs via `pino-pretty`
-
-### Queue Monitoring
-
-```sql
--- Monitor queue status
-SELECT * FROM pgmq.metrics('bookmarks');
-
--- View pending messages
-SELECT * FROM pgmq_public.q_bookmarks;
-
--- Archive old messages
-SELECT pgmq.purge_queue('bookmarks', '2024-01-01'::timestamp);
-```
-
-## 🔐 Security
-
-- **Authentication**: JWT-based with secure secret management
-- **CORS**: Configured via `@fastify/cors`
-- **Helmet**: Security headers via `@fastify/helmet`
-- **Environment**: Secrets managed via environment variables
-- **Database**: Parameterized queries, RLS policies via Supabase
+---
 
 ## 📋 Troubleshooting
 
 ### Common Issues
 
-1. **Port Conflicts**: Ensure ports 3001, 3002 are available
-2. **Docker Issues**: Run `docker-compose down && docker-compose up -d`
-3. **Build Failures**: Clean and rebuild: `bun run clean && bun run build`
-4. **Database Connection**: Verify `DATABASE_URL` in `.env`
-5. **Queue Issues**: Check pgmq extension: `SELECT * FROM pg_extension WHERE extname = 'pgmq';`
+| Issue | Solution |
+|-------|----------|
+| Port already in use | Check for running processes: `lsof -i :3000` |
+| API client outdated | Regenerate: `bun run apispec` |
+| Database connection failed | Ensure database is running: `bun run db:up` |
+| Build fails | Clean and rebuild: `bun run clean && bun run build` |
+| Type errors after API change | Regenerate client and fix imports |
 
 ### Debug Mode
 
 ```bash
-# API debug
-bun run --cwd packages/api dev
+# Verbose Turborepo output
+bun run dev --verbosity=2
 
-# Worker debug
-bun run --cwd packages/worker start:debug
-
-# Queue debugging
-SELECT pgmq.metrics_all();  -- View all queue metrics
+# Debug specific app
+cd apps/api && bun --inspect run dev
 ```
 
 ---
 
-**License**: ISC
-**Version**: 1.0.0
+## 🤝 Contributing
+
+1. Create a feature branch: `git checkout -b feature/amazing-feature`
+2. Make your changes
+3. Run tests: `bun run test`
+4. Run linting: `bun run lint`
+5. Commit: `git commit -m 'Add amazing feature'`
+6. Push: `git push origin feature/amazing-feature`
+7. Create a Pull Request
+
+### Guidelines
+
+- Follow existing TypeScript patterns
+- Add tests for new features
+- Update TypeSpec when changing API contracts
+- Ensure all packages build successfully
+
+---
+
+## 📚 Additional Documentation
+
+- **API Specification**: `packages/apispec/*.tsp`
+- **Shared Package**: `packages/shared/README.md`
+- **Deployment Configs**: `.do/*.yml`
+
+---
+
+**License**: ISC  
+**Version**: 2.0.0  
 **Maintained by**: Cosmic Dolphin Team

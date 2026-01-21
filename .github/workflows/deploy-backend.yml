@@ -1,0 +1,157 @@
+name: Deploy Backend (API + Worker)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/api/**"
+      - "apps/worker/**"
+      - "packages/shared/**"
+      - "package.json"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch:
+
+env:
+  BUN_VERSION: "1.2"
+  REGISTRY_NAME: ${{ secrets.DIGITALOCEAN_REGISTRY_NAME }}
+  IMAGE_NAME_API: cosmic-dolphin-api
+  IMAGE_NAME_WORKER: cosmic-dolphin-worker
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build shared package
+        run: bun run --cwd packages/shared build
+
+      - name: Build API
+        run: bun run --cwd apps/api build
+
+      - name: Build Worker
+        run: bun run --cwd apps/worker build
+
+      - name: Start test database
+        run: bun run test:db:up
+
+      - name: Run tests
+        run: bun run test:backend
+
+      - name: Stop test database
+        run: bun run test:db:down
+        if: always()
+
+  supabase-migrations:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Run Supabase migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase link --project-ref ${{ vars.SUPABASE_PROJECT_REF }}
+          supabase db push
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build shared package
+        run: bun run --cwd packages/shared build
+
+      - name: Build API
+        run: bun run --cwd apps/api build
+
+      - name: Build Worker
+        run: bun run --cwd apps/worker build
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Log in to DigitalOcean Container Registry
+        run: doctl registry login
+
+      - name: Build API Docker image
+        run: docker build -t $IMAGE_NAME_API -f apps/api/Dockerfile .
+
+      - name: Tag API Docker image
+        run: |
+          docker tag $IMAGE_NAME_API registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME_API:$GITHUB_SHA
+          docker tag $IMAGE_NAME_API registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME_API:latest
+
+      - name: Push API Docker image
+        run: |
+          docker push registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME_API:$GITHUB_SHA
+          docker push registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME_API:latest
+
+      - name: Build Worker Docker image
+        run: docker build -t $IMAGE_NAME_WORKER -f apps/worker/Dockerfile .
+
+      - name: Tag Worker Docker image
+        run: |
+          docker tag $IMAGE_NAME_WORKER registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME_WORKER:$GITHUB_SHA
+          docker tag $IMAGE_NAME_WORKER registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME_WORKER:latest
+
+      - name: Push Worker Docker image
+        run: |
+          docker push registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME_WORKER:$GITHUB_SHA
+          docker push registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME_WORKER:latest
+
+      - name: Deploy API to DigitalOcean App Platform
+        uses: digitalocean/app_action/deploy@v2
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          app_spec_location: .do/api-app.yml
+
+      - name: Deploy Worker to DigitalOcean App Platform
+        uses: digitalocean/app_action/deploy@v2
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          app_spec_location: .do/worker-app.yml

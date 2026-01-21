@@ -1,38 +1,44 @@
 {
-  "name": "cosmic-dolphin-workspace",
-  "version": "1.0.0",
+  "name": "cosmic-dolphin",
+  "version": "2.0.0",
   "description": "Cosmic Dolphin Monorepo",
   "private": true,
   "workspaces": [
+    "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "build": "bun run --cwd packages/shared build && bun run --cwd packages/api build && bun run --cwd packages/worker build",
-    "dev": "bun run  build && concurrently \"bun --env-file=../../.env.dev run --cwd packages/api dev\" \"bun --env-file=../../.env.dev run --cwd packages/worker start:dev\"",
-    "start": "concurrently \"bun run --cwd packages/api start\" \"bun run --cwd packages/worker start:prod\"",
-    "clean": "bun run --cwd packages/shared clean && bun run --cwd packages/api clean",
-    "lint": "bun run --cwd packages/api lint && bun run --cwd packages/worker lint",
-    "test": "bun run --cwd packages/shared test && bun run --cwd packages/api test && bun run --cwd packages/worker test",
+    "dev": "turbo run dev",
+    "dev:backend": "turbo run dev --filter=@cosmic-dolphin/api --filter=@cosmic-dolphin/worker",
+    "dev:web": "turbo run dev --filter=@cosmic-dolphin/web",
+    "dev:mobile": "turbo run dev --filter=@cosmic-dolphin/mobile",
+    "dev:fullstack": "turbo run dev --filter=@cosmic-dolphin/api --filter=@cosmic-dolphin/worker --filter=@cosmic-dolphin/web",
+    "dev:fullstack:mobile": "turbo run dev --filter=@cosmic-dolphin/api --filter=@cosmic-dolphin/worker --filter=@cosmic-dolphin/mobile",
+    "build": "turbo run build",
+    "build:web": "turbo run build --filter=@cosmic-dolphin/web",
+    "build:api": "turbo run build --filter=@cosmic-dolphin/api",
+    "build:worker": "turbo run build --filter=@cosmic-dolphin/worker",
+    "test": "turbo run test",
+    "test:backend": "turbo run test --filter=@cosmic-dolphin/api --filter=@cosmic-dolphin/worker --filter=@cosmic-dolphin/shared",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean",
+    "apispec:install": "cd packages/apispec && bun install --ignore-scripts",
+    "apispec:compile": "cd packages/apispec && bun run compile",
+    "apispec:generate": "cd packages/apispec && bun run generate:client",
+    "apispec:build": "cd packages/api-client && bun install --ignore-scripts && bun run build",
+    "apispec": "bun run apispec:install && bun run apispec:compile && bun run apispec:generate && bun run apispec:build",
+    "postinstall": "bun run apispec:build || echo 'API client build skipped - run bun run apispec to regenerate'",
+    "db:up": "docker compose -f docker-compose.test.yml up -d",
+    "db:down": "docker compose -f docker-compose.test.yml down -v",
+    "db:reset": "bun run db:down && bun run db:up",
     "test:db:up": "docker compose -f docker-compose.test.yml up -d",
     "test:db:down": "docker compose -f docker-compose.test.yml down -v",
-    "local:db:up": "docker-compose -f docker-compose.test.yml up",
-    "local:db:down": "docker-compose -f docker-compose.test.yml down -v",
-    "local:db:reset": "bun run local:db:down && bun run local:db:up",
-    "test:db:reset": "bun run test:db:down && bun run test:db:up",
-    "docker:clean": "docker system prune -f",
-    "docker:clean:all": "docker system prune -a -f --volumes",
-    "docker:clean:build": "docker builder prune -f",
-    "docker:clean:images": "docker image prune -a -f",
-    "docker:clean:containers": "docker container prune -f",
-    "install:all": "bun install"
+    "test:db:reset": "bun run test:db:down && bun run test:db:up"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
-    "shadcn": "^3.3.1"
-  },
-  "engines": {
-    "node": ">=22.0.0",
-    "bun": ">=1.0.0"
+    "turbo": "^2.3.0"
   },
   "dependencies": {
     "@ai-sdk/azure": "^2.0.30",
@@ -42,6 +48,11 @@
     "ollama-ai-provider-v2": "^1.3.1",
     "zod-to-json-schema": "^3.24.6"
   },
+  "engines": {
+    "node": ">=22.0.0",
+    "bun": ">=1.0.0"
+  },
+  "packageManager": "bun@1.2.0",
   "trustedDependencies": [
     "@nestjs/core"
   ]

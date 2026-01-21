@@ -1,0 +1,55 @@
+alerts:
+  - rule: DEPLOYMENT_FAILED
+  - rule: DOMAIN_FAILED
+
+domains:
+  - domain: cosmic-dolphin.com
+    type: PRIMARY
+    zone: cosmic-dolphin.com
+  - domain: www.cosmic-dolphin.com
+    type: ALIAS
+    zone: cosmic-dolphin.com
+
+envs:
+  - key: NODE_ENV
+    scope: RUN_AND_BUILD_TIME
+    value: production
+  - key: NEXT_PUBLIC_SUPABASE_URL
+    scope: RUN_AND_BUILD_TIME
+    value: ${NEXT_PUBLIC_SUPABASE_URL}
+  - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+    scope: RUN_AND_BUILD_TIME
+    value: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+  - key: NEXT_PUBLIC_REDIRECT_URL
+    scope: RUN_AND_BUILD_TIME
+    value: ${NEXT_PUBLIC_REDIRECT_URL}
+  - key: NEXT_PUBLIC_BASE_URL
+    scope: RUN_AND_BUILD_TIME
+    value: ${NEXT_PUBLIC_BASE_URL}
+  - key: HOST
+    scope: RUN_AND_BUILD_TIME
+    value: ${HOST}
+  - key: NEXT_PUBLIC_API_URL
+    scope: RUN_AND_BUILD_TIME
+    value: ${NEXT_PUBLIC_API_URL}
+
+ingress:
+  rules:
+    - component:
+        name: cosmic-dolphin-webapp
+      match:
+        path:
+          prefix: /
+
+name: cosmic-dolphin-webapp
+region: nyc
+
+services:
+  - name: cosmic-dolphin-webapp
+    image:
+      registry_type: DOCR
+      repository: cosmic-dolphin-webapp
+      tag: ${IMAGE_TAG}
+    http_port: 3000
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb
