@@ -116,7 +116,7 @@ export default async function RootLayout({
                   </div>
                 </main>
 
-                {/* Mobile Layout */}
+                {/* Mobile Layout!! */}
                 <main className="md:hidden flex flex-col min-h-screen">
                   {/* Content area with padding for fixed header and bottom nav */}
                   <div className={`flex-1 pt-20 ${isLoggedIn ? 'pb-28' : 'pb-8'} px-4`}>
