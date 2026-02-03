@@ -344,11 +344,8 @@ export class AI {
               cachedInputTokens: value.totalUsage.cachedInputTokens,
             },
           };
-        // this.eventBus.publish("message.part.updated", usage);
-        // yield usage;
-
-        // TODO: publish usage
-        // this.eventBus.publish("session.updated", usage);
+          this.eventBus.publish("message.part.updated", usage);
+          yield usage;
       }
     }
   }
