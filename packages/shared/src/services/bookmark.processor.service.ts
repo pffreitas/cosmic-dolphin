@@ -18,6 +18,7 @@ import {
   BookmarkCategorizerServiceImpl,
 } from "./bookmark.categorizer.service";
 import { CollectionRepository } from "../repositories/collection.repository";
+import pLimit from "p-limit";
 
 export interface BookmarkProcessorService {
   process(id: string, userId: string): Promise<void>;
@@ -319,8 +320,10 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         }),
       });
 
-      const imageProcessingPromises = relevantImages.images.map(
-        async (image, index) => {
+      const limit = pLimit(5); // Limit to 5 concurrent image downloads
+
+      const imageProcessingPromises = relevantImages.images.map((image, index) =>
+        limit(async () => {
           const imageSubTask = await this.ai.newSubTask("Processing image");
           task.subTasks[imageSubTask.taskID] = imageSubTask;
           await this.eventBus.publishToBookmark(
@@ -377,7 +380,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
             );
             return null;
           }
-        }
+        })
       );
 
       const processedImages = await Promise.all(imageProcessingPromises);

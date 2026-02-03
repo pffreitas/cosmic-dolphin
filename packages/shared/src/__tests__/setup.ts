@@ -8,6 +8,10 @@ config({ path: join(__dirname, '../../.env.test') });
 let dbUtils: DatabaseTestUtils | null = null;
 
 beforeAll(async () => {
+  if (process.env.SKIP_DB === 'true') {
+    console.log('Skipping database setup');
+    return;
+  }
   // Initialize test database connection
   const db = getTestDatabase();
   dbUtils = new DatabaseTestUtils(db);
@@ -26,6 +30,9 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  if (process.env.SKIP_DB === 'true') {
+    return;
+  }
   // Close database connection after all tests
   await closeTestDatabase();
   console.log('Test database connection closed');
