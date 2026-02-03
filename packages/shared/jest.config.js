@@ -15,7 +15,7 @@ module.exports = {
   },
   extensionsToTreatAsEsm: [".ts"],
   transformIgnorePatterns: [
-    "node_modules/(?!(got|@sindresorhus/is|@szmarczak/http-timer|cacheable-request|cacheable-lookup|responselike|lowercase-keys|p-cancelable|form-data-encoder)/)",
+    "node_modules/(?!(got|@sindresorhus/is|@szmarczak/http-timer|cacheable-request|cacheable-lookup|responselike|lowercase-keys|p-cancelable|form-data-encoder|p-limit|yocto-queue)/)",
   ],
   moduleNameMapper: {
     "^got$": "<rootDir>/src/__mocks__/got.ts",
