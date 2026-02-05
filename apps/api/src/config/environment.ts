@@ -2,6 +2,13 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+const isProduction = process.env.NODE_ENV === "production";
+const jwtSecret = process.env.JWT_SECRET;
+
+if (isProduction && !jwtSecret) {
+  throw new Error("JWT_SECRET environment variable is required in production");
+}
+
 export const config = {
   NODE_ENV: process.env.NODE_ENV || "development",
   PORT: parseInt(process.env.API_PORT || "3001", 10),
@@ -16,5 +23,5 @@ export const config = {
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
 
   // JWT
-  JWT_SECRET: process.env.JWT_SECRET || "your-secret-key",
+  JWT_SECRET: jwtSecret || "your-secret-key",
 };
