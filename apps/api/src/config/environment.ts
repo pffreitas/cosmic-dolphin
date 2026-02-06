@@ -2,6 +2,14 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+function requiredEnv(key: string): string {
+  const value = process.env[key];
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+  return value;
+}
+
 export const config = {
   NODE_ENV: process.env.NODE_ENV || "development",
   PORT: parseInt(process.env.API_PORT || "3001", 10),
@@ -9,12 +17,12 @@ export const config = {
   LOG_LEVEL: process.env.LOG_LEVEL || "info",
 
   // Database
-  DATABASE_URL: process.env.DATABASE_URL || "",
+  DATABASE_URL: requiredEnv("DATABASE_URL"),
 
   // Supabase
-  SUPABASE_URL: process.env.SUPABASE_URL || "",
-  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+  SUPABASE_URL: requiredEnv("SUPABASE_URL"),
+  SUPABASE_SERVICE_ROLE_KEY: requiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
 
   // JWT
-  JWT_SECRET: process.env.JWT_SECRET || "your-secret-key",
+  JWT_SECRET: process.env.JWT_SECRET,
 };
