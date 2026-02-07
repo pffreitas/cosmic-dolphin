@@ -26,7 +26,27 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   isValidUrl(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      return urlObj.protocol === "http:" || urlObj.protocol === "https:";
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return false;
+      }
+
+      const hostname = urlObj.hostname;
+
+      // Prevent SSRF: Reject localhost and private IP ranges
+      if (
+        hostname === "localhost" ||
+        hostname === "0.0.0.0" ||
+        hostname === "[::1]" ||
+        hostname.startsWith("127.") ||
+        hostname.startsWith("10.") ||
+        hostname.startsWith("192.168.") ||
+        hostname.startsWith("169.254.") ||
+        /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname)
+      ) {
+        return false;
+      }
+
+      return true;
     } catch {
       return false;
     }
