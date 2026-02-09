@@ -26,7 +26,50 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   isValidUrl(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      return urlObj.protocol === "http:" || urlObj.protocol === "https:";
+
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return false;
+      }
+
+      const hostname = urlObj.hostname;
+
+      // Block localhost
+      if (hostname === "localhost") {
+        return false;
+      }
+
+      // Block IPv6 loopback
+      if (hostname === "[::1]" || hostname === "::1") {
+        return false;
+      }
+
+      // Block IPv4 loopback (127.0.0.0/8)
+      if (/^127\.\d+\.\d+\.\d+$/.test(hostname)) {
+        return false;
+      }
+
+      // Block Private IPv4 ranges:
+      // 10.0.0.0/8
+      if (/^10\.\d+\.\d+\.\d+$/.test(hostname)) {
+        return false;
+      }
+
+      // 172.16.0.0/12 (172.16.x.x - 172.31.x.x)
+      if (/^172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+$/.test(hostname)) {
+        return false;
+      }
+
+      // 192.168.0.0/16
+      if (/^192\.168\.\d+\.\d+$/.test(hostname)) {
+        return false;
+      }
+
+      // 169.254.0.0/16 (Link-local)
+      if (/^169\.254\.\d+\.\d+$/.test(hostname)) {
+        return false;
+      }
+
+      return true;
     } catch {
       return false;
     }
