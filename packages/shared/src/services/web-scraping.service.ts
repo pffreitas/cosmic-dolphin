@@ -1,4 +1,5 @@
 import { CheerioAPI } from "cheerio";
+import { isIP } from "net";
 import {
   OpenGraphMetadata,
   BookmarkMetadata,
@@ -26,7 +27,51 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   isValidUrl(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      return urlObj.protocol === "http:" || urlObj.protocol === "https:";
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return false;
+      }
+
+      let hostname = urlObj.hostname;
+
+      // IPv6 hostnames are enclosed in brackets in the URL object
+      if (hostname.startsWith("[") && hostname.endsWith("]")) {
+        hostname = hostname.slice(1, -1);
+      }
+
+      // Check for localhost
+      if (hostname === "localhost" || hostname.endsWith(".localhost")) {
+        return false;
+      }
+
+      // If it is NOT an IP address, we allow it (synchronous check limitation)
+      // This prevents blocking valid domains like "10.com"
+      if (isIP(hostname) === 0) {
+        return true;
+      }
+
+      // IPv4 Checks
+      // 0.0.0.0/8 (Current network)
+      if (hostname.match(/^0\./)) return false;
+      // 127.0.0.0/8 (Loopback)
+      if (hostname.match(/^127\./)) return false;
+      // 10.0.0.0/8 (Private network)
+      if (hostname.match(/^10\./)) return false;
+      // 192.168.0.0/16 (Private network)
+      if (hostname.match(/^192\.168\./)) return false;
+      // 169.254.0.0/16 (Link-local)
+      if (hostname.match(/^169\.254\./)) return false;
+      // 172.16.0.0/12 (Private network)
+      if (hostname.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./)) return false;
+
+      // IPv6 Checks
+      // ::1 (Loopback)
+      if (hostname === "::1") return false;
+      // fc00::/7 (Unique Local)
+      if (hostname.match(/^[fF][cCdD][0-9a-fA-F]{2}:/)) return false;
+      // fe80::/10 (Link Local)
+      if (hostname.match(/^[fF][eE][89abAB][0-9a-fA-F]:/)) return false;
+
+      return true;
     } catch {
       return false;
     }
