@@ -5,6 +5,7 @@ import {
   ScrapedUrlContents,
 } from "../types";
 import * as cheerio from "cheerio";
+import * as net from "net";
 import { HttpClient, CosmicHttpClient } from "./http-client";
 
 export interface WebScrapingService {
@@ -26,10 +27,64 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   isValidUrl(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      return urlObj.protocol === "http:" || urlObj.protocol === "https:";
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return false;
+      }
+
+      let hostname = urlObj.hostname;
+
+      // Handle IPv6 bracketed addresses
+      if (hostname.startsWith("[") && hostname.endsWith("]")) {
+        hostname = hostname.slice(1, -1);
+      }
+
+      // Block localhost
+      if (hostname === "localhost" || hostname.endsWith(".localhost")) {
+        return false;
+      }
+
+      // Check if hostname is an IP address
+      if (net.isIP(hostname)) {
+        if (this.isPrivateIP(hostname)) {
+          return false;
+        }
+      }
+
+      return true;
     } catch {
       return false;
     }
+  }
+
+  private isPrivateIP(ip: string): boolean {
+    const family = net.isIP(ip);
+    if (family === 4) {
+      const parts = ip.split(".").map(Number);
+      // 127.0.0.0/8 (Loopback)
+      if (parts[0] === 127) return true;
+      // 10.0.0.0/8 (Private)
+      if (parts[0] === 10) return true;
+      // 172.16.0.0/12 (Private)
+      if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+      // 192.168.0.0/16 (Private)
+      if (parts[0] === 192 && parts[1] === 168) return true;
+      // 169.254.0.0/16 (Link-local)
+      if (parts[0] === 169 && parts[1] === 254) return true;
+      // 0.0.0.0/8 (Current network)
+      if (parts[0] === 0) return true;
+      return false;
+    } else if (family === 6) {
+      const normalized = ip.toLowerCase();
+      // ::1 (Loopback)
+      if (normalized === "::1") return true;
+      // fe80::/10 (Link-local)
+      if (normalized.startsWith("fe80:")) return true;
+      // fc00::/7 (Unique Local)
+      if (normalized.startsWith("fc") || normalized.startsWith("fd"))
+        return true;
+      return false;
+    }
+    return false;
   }
 
   async scrape(
