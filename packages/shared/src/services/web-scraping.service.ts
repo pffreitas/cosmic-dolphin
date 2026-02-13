@@ -6,6 +6,7 @@ import {
 } from "../types";
 import * as cheerio from "cheerio";
 import { HttpClient, CosmicHttpClient } from "./http-client";
+import * as net from "net";
 
 export interface WebScrapingService {
   isValidUrl(url: string): boolean;
@@ -26,10 +27,73 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   isValidUrl(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      return urlObj.protocol === "http:" || urlObj.protocol === "https:";
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return false;
+      }
+
+      let hostname = urlObj.hostname;
+
+      // Strip brackets from IPv6 addresses
+      if (hostname.startsWith("[") && hostname.endsWith("]")) {
+        hostname = hostname.slice(1, -1);
+      }
+
+      // Block localhost
+      if (hostname === "localhost" || hostname.endsWith(".localhost")) {
+        return false;
+      }
+
+      // Check if hostname is an IP address and if it is private
+      if (net.isIP(hostname) !== 0 && this.isPrivateIP(hostname)) {
+        return false;
+      }
+
+      return true;
     } catch {
       return false;
     }
+  }
+
+  private isPrivateIP(ip: string): boolean {
+    if (net.isIPv4(ip)) {
+      // 0.0.0.0 - Any
+      if (ip === "0.0.0.0") return true;
+      // 127.0.0.0/8 - Loopback
+      if (ip.startsWith("127.")) return true;
+      // 10.0.0.0/8 - Private
+      if (ip.startsWith("10.")) return true;
+      // 169.254.0.0/16 - Link-local
+      if (ip.startsWith("169.254.")) return true;
+      // 192.168.0.0/16 - Private
+      if (ip.startsWith("192.168.")) return true;
+      // 172.16.0.0/12 - Private
+      if (ip.startsWith("172.")) {
+        const parts = ip.split(".");
+        const second = parseInt(parts[1], 10);
+        if (second >= 16 && second <= 31) return true;
+      }
+      return false;
+    }
+
+    if (net.isIPv6(ip)) {
+      // ::1 - Loopback
+      if (ip === "::1") return true;
+      // :: - Any
+      if (ip === "::") return true;
+      // fe80::/10 - Link-local
+      if (ip.toLowerCase().startsWith("fe80:")) return true;
+      // fc00::/7 - Unique Local
+      if (
+        ip.toLowerCase().startsWith("fc") ||
+        ip.toLowerCase().startsWith("fd")
+      )
+        return true;
+      // IPv4-mapped IPv6 addresses for localhost
+      if (ip.toLowerCase().includes("127.0.0.1")) return true;
+      return false;
+    }
+
+    return false;
   }
 
   async scrape(
