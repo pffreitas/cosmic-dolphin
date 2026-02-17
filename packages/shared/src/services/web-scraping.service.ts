@@ -1,4 +1,5 @@
 import { CheerioAPI } from "cheerio";
+import { isIP } from "node:net";
 import {
   OpenGraphMetadata,
   BookmarkMetadata,
@@ -26,10 +27,87 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   isValidUrl(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      return urlObj.protocol === "http:" || urlObj.protocol === "https:";
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return false;
+      }
+
+      let hostname = urlObj.hostname;
+
+      // Handle IPv6 brackets (URL hostname includes brackets for IPv6)
+      if (hostname.startsWith("[") && hostname.endsWith("]")) {
+        hostname = hostname.slice(1, -1);
+      }
+
+      // Block localhost
+      if (hostname === "localhost") {
+        return false;
+      }
+
+      // Check if hostname is an IP address
+      const ipVersion = isIP(hostname);
+      if (ipVersion !== 0) {
+        if (this.isPrivateIP(hostname, ipVersion)) {
+          return false;
+        }
+      }
+
+      return true;
     } catch {
       return false;
     }
+  }
+
+  private isPrivateIP(ip: string, version: number): boolean {
+    if (version === 4) {
+      // IPv4 checks
+      const parts = ip.split(".").map(Number);
+      if (parts.length !== 4) return false;
+
+      // 10.0.0.0/8
+      if (parts[0] === 10) return true;
+
+      // 172.16.0.0/12 (172.16.x.x - 172.31.x.x)
+      if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+
+      // 192.168.0.0/16
+      if (parts[0] === 192 && parts[1] === 168) return true;
+
+      // 127.0.0.0/8 (Loopback)
+      if (parts[0] === 127) return true;
+
+      // 169.254.0.0/16 (Link-local)
+      if (parts[0] === 169 && parts[1] === 254) return true;
+
+      return false;
+    } else if (version === 6) {
+      // IPv6 checks - simple string matching for common prefixes
+
+      // Loopback ::1
+      if (ip === "::1") return true;
+
+      // Unique Local Address fc00::/7 (starts with fc or fd)
+      if (
+        ip.toLowerCase().startsWith("fc") ||
+        ip.toLowerCase().startsWith("fd")
+      )
+        return true;
+
+      // Link-local Address fe80::/10 (starts with fe8, fe9, fea, feb)
+      const lowerIp = ip.toLowerCase();
+      if (
+        lowerIp.startsWith("fe8") ||
+        lowerIp.startsWith("fe9") ||
+        lowerIp.startsWith("fea") ||
+        lowerIp.startsWith("feb")
+      )
+        return true;
+
+      // IPv4-mapped IPv6 ::ffff:0:0/96
+      if (lowerIp.startsWith("::ffff:")) return true;
+
+      return false;
+    }
+    return false;
   }
 
   async scrape(
