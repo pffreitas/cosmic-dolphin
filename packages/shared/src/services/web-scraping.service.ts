@@ -6,6 +6,7 @@ import {
 } from "../types";
 import * as cheerio from "cheerio";
 import { HttpClient, CosmicHttpClient } from "./http-client";
+import { isSafeHostname } from "../security";
 
 export interface WebScrapingService {
   isValidUrl(url: string): boolean;
@@ -26,7 +27,10 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   isValidUrl(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      return urlObj.protocol === "http:" || urlObj.protocol === "https:";
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return false;
+      }
+      return isSafeHostname(urlObj.hostname);
     } catch {
       return false;
     }
