@@ -1,0 +1,4 @@
+## 2024-05-22 - Server-Side Request Forgery (SSRF) Protection in Shared HTTP Client
+**Vulnerability:** The `CosmicHttpClient` in `packages/shared` allowed fetching arbitrary URLs without validation. An attacker could potentially use this to access internal network resources (SSRF) by supplying private IP addresses or localhost.
+**Learning:** `got` HTTP client exposes a `dnsLookup` option that allows intercepting DNS resolution. This is a robust place to implement SSRF protection because it prevents DNS rebinding attacks (time-of-check to time-of-use) by validating the IP address that will actually be used for the connection.
+**Prevention:** Always use a custom DNS lookup function (`safeLookup`) that validates the resolved IP address against private/reserved ranges before allowing the connection to proceed. Implemented in `packages/shared/src/security.ts`.
