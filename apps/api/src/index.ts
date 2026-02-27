@@ -20,18 +20,6 @@ server.register(require('@fastify/cors'), {
 
 server.register(require('@fastify/helmet'));
 
-server.register(require('@fastify/env'), {
-  dotenv: true,
-  schema: {
-    type: 'object',
-    required: ['PORT'],
-    properties: {
-      PORT: { type: 'string', default: '3000' },
-      NODE_ENV: { type: 'string', default: 'development' }
-    }
-  }
-});
-
 // Health check route
 server.get('/health', async () => {
   return { status: 'ok', timestamp: new Date().toISOString() };
