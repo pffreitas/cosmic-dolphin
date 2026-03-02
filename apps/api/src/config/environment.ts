@@ -15,6 +15,9 @@ export const config = {
   SUPABASE_URL: process.env.SUPABASE_URL || "",
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
 
+  // CORS
+  CORS_ORIGIN: process.env.CORS_ORIGIN || "*",
+
   // JWT
   JWT_SECRET: process.env.JWT_SECRET || "your-secret-key",
 };
