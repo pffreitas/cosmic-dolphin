@@ -40,6 +40,15 @@ export interface BookmarksTable extends BaseTable {
   processing_started_at: Date | null;
   processing_completed_at: Date | null;
   processing_error: string | null;
+  like_count: Generated<number>;
+}
+
+// Bookmark likes table (user x bookmark junction)
+export interface BookmarkLikesTable {
+  id: Generated<string>;
+  user_id: string;
+  bookmark_id: string;
+  created_at: Generated<Date>;
 }
 
 // Scraped URL contents table
@@ -81,6 +90,7 @@ export interface ImageChunksTable {
 export interface Database {
   collections: CollectionsTable;
   bookmarks: BookmarksTable;
+  bookmark_likes: BookmarkLikesTable;
   scraped_url_contents: ScrapedUrlContentsTable;
   content_chunks: ContentChunksTable;
   text_chunks: TextChunksTable;
@@ -95,6 +105,9 @@ export type CollectionUpdate = Updateable<CollectionsTable>;
 export type Bookmark = Selectable<BookmarksTable>;
 export type NewBookmark = Insertable<BookmarksTable>;
 export type BookmarkUpdate = Updateable<BookmarksTable>;
+
+export type BookmarkLike = Selectable<BookmarkLikesTable>;
+export type NewBookmarkLike = Insertable<BookmarkLikesTable>;
 
 export type ScrapedUrlContent = Selectable<ScrapedUrlContentsTable>;
 export type NewScrapedUrlContent = Insertable<ScrapedUrlContentsTable>;

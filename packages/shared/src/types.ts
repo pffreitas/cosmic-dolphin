@@ -95,6 +95,8 @@ export interface Bookmark extends BaseEntity {
   metadata?: BookmarkMetadata;
   userId: string;
   quickAccess?: string;
+  likeCount?: number;
+  isLikedByCurrentUser?: boolean;
   processingStatus: ProcessingStatus;
   processingStartedAt?: Date;
   processingCompletedAt?: Date;
