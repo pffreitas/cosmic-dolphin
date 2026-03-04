@@ -246,6 +246,7 @@ export class BookmarkServiceImpl implements BookmarkService {
       cosmicImages: data.cosmic_images,
       cosmicLinks: data.cosmic_links,
       quickAccess: data.quick_access,
+      likeCount: data.like_count ?? 0,
       processingStatus: data.processing_status || "idle",
       processingStartedAt: data.processing_started_at
         ? new Date(data.processing_started_at)

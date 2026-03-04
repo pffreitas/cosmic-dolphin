@@ -5,6 +5,10 @@ export {
 } from "./bookmark.repository";
 export type { FindByUserOptions, SearchOptions } from "./bookmark.repository";
 export {
+  BookmarkLikeRepository,
+  BookmarkLikeRepositoryImpl,
+} from "./bookmark-like.repository";
+export {
   CollectionRepository,
   CollectionRepositoryImpl,
 } from "./collection.repository";
