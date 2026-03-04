@@ -271,9 +271,54 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           return reply.status(404).send({ error: "Bookmark not found" });
         }
 
-        return reply.send(bookmark);
+        const isLikedByCurrentUser =
+          await services.bookmarkLike.isLikedByUser(user_id, id);
+
+        return reply.send({ ...bookmark, isLikedByCurrentUser });
       } catch (error) {
         fastify.log.error({ error }, "Get bookmark by ID error");
+        return reply.status(500).send({ error: "Internal server error" });
+      }
+    }
+  );
+
+  fastify.put<{
+    Params: { id: string };
+    Reply: { likeCount: number; isLikedByCurrentUser: boolean } | { error: string };
+  }>(
+    "/bookmarks/:id/like",
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const user_id = request.userId!;
+
+        const result = await services.bookmarkLike.like(user_id, id);
+
+        return reply.send(result);
+      } catch (error) {
+        fastify.log.error({ error }, "Like bookmark error");
+        return reply.status(500).send({ error: "Internal server error" });
+      }
+    }
+  );
+
+  fastify.delete<{
+    Params: { id: string };
+    Reply: { likeCount: number; isLikedByCurrentUser: boolean } | { error: string };
+  }>(
+    "/bookmarks/:id/like",
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const user_id = request.userId!;
+
+        const result = await services.bookmarkLike.unlike(user_id, id);
+
+        return reply.send(result);
+      } catch (error) {
+        fastify.log.error({ error }, "Unlike bookmark error");
         return reply.status(500).send({ error: "Internal server error" });
       }
     }

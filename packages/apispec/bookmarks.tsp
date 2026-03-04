@@ -37,6 +37,8 @@ model Bookmark {
     cosmicTags?: string[];
     metadata?: BookmarkMetadata;
     userId: string;
+    likeCount?: int32;
+    isLikedByCurrentUser?: boolean;
 }
 
 model BookmarkImage {
@@ -122,6 +124,11 @@ model SearchBookmarksResponse {
     total?: int32;
 }
 
+model LikeResponse {
+    likeCount: int32;
+    isLikedByCurrentUser: boolean;
+}
+
 model BookmarkError {
     error: string;
 }
@@ -182,6 +189,24 @@ interface Bookmarks {
     @get
     @route("/search")
     search(...SearchBookmarksQuery): SearchBookmarksResponse | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+
+    @doc("Like a bookmark")
+    @useAuth(BearerAuth)
+    @put
+    @route("/{id}/like")
+    like(@path id: string): LikeResponse | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+
+    @doc("Unlike a bookmark")
+    @useAuth(BearerAuth)
+    @delete
+    @route("/{id}/like")
+    unlike(@path id: string): LikeResponse | {
         @statusCode statusCode: 500;
         @body body: BookmarkError;
     };
