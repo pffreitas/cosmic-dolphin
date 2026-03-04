@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 import { BookmarkCard } from '@/components/BookmarkCard';
 import { useBookmarks } from '@/hooks/useBookmarks';
@@ -17,6 +18,7 @@ import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function HomeScreen() {
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const {
@@ -30,9 +32,8 @@ export default function HomeScreen() {
   } = useBookmarks();
 
   const handleBookmarkPress = useCallback((bookmark: Bookmark) => {
-    // TODO: Navigate to bookmark detail screen
-    console.log('Bookmark pressed:', bookmark.id);
-  }, []);
+    router.push(`/bookmark/${bookmark.id}`);
+  }, [router]);
 
   const renderBookmark = useCallback(
     ({ item }: { item: Bookmark }) => (
