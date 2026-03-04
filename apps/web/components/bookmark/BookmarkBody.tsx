@@ -9,9 +9,8 @@ import CosmicLoading from "@/components/loading/CosmicLoading";
 import { ConnectionStatus } from "@/components/realtime/ConnectionStatus";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  RefreshCcwIcon,
+  HeartIcon,
   ShareIcon,
-  ThumbsUpIcon,
   AlertCircleIcon,
   Loader2Icon,
 } from "lucide-react";
@@ -43,6 +42,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import Link from "next/link";
+import { BookmarksClientAPI } from "@/lib/api/bookmarks-client";
 
 interface ProcessingStatusProps {
   status: string;
@@ -98,6 +98,13 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
   const dispatch = useAppDispatch();
   const { currentBookmark } = useAppSelector((state) => state.realtime);
   const [isImageGaleryDialogOpen, setIsImageGaleryDialogOpen] = useState(false);
+  const [isLiked, setIsLiked] = useState(
+    () => (props.bookmark as any).isLikedByCurrentUser ?? false
+  );
+  const [likeCount, setLikeCount] = useState(
+    () => (props.bookmark as any).likeCount ?? 0
+  );
+  const [isLikeLoading, setIsLikeLoading] = useState(false);
 
   // Subscribe to realtime updates for this specific bookmark
   const { isConnected, isProcessing } = useBookmarkRealtime(props.bookmark.id, {
@@ -123,6 +130,32 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
   const processingStatus =
     (bookmark as any).processingStatus ||
     (activeSession?.isLoading ? "processing" : "idle");
+
+  const handleLikeToggle = async () => {
+    if (isLikeLoading) return;
+
+    const previousIsLiked = isLiked;
+    const previousLikeCount = likeCount;
+
+    setIsLiked(!isLiked);
+    setLikeCount(isLiked ? Math.max(likeCount - 1, 0) : likeCount + 1);
+    setIsLikeLoading(true);
+
+    try {
+      const result = isLiked
+        ? await BookmarksClientAPI.unlike(bookmark.id)
+        : await BookmarksClientAPI.like(bookmark.id);
+
+      setLikeCount(result.likeCount);
+      setIsLiked(result.isLikedByCurrentUser);
+    } catch (error) {
+      console.error("Failed to toggle like:", error);
+      setIsLiked(previousIsLiked);
+      setLikeCount(previousLikeCount);
+    } finally {
+      setIsLikeLoading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -281,19 +314,32 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
           </Dialog>
         </div>
       )}
-      <div className="flex">
-        <Actions>
-          <Action label="Like">
-            <RefreshCcwIcon className="size-4" />
-          </Action>
-          <Action label="Like">
-            <ThumbsUpIcon className="size-4" />
-          </Action>
-          <Action label="Share">
-            <ShareIcon className="size-4" />
-          </Action>
-        </Actions>
-      </div>
+      <Actions>
+        <Action
+          label={isLiked ? "Unlike" : "Like"}
+          tooltip={isLiked ? "Unlike" : "Like"}
+          onClick={handleLikeToggle}
+          disabled={isLikeLoading}
+          className={
+            isLiked
+              ? "text-red-500 hover:text-red-600"
+              : "text-muted-foreground hover:text-red-500"
+          }
+        >
+          <HeartIcon
+            className="size-4"
+            fill={isLiked ? "currentColor" : "none"}
+          />
+        </Action>
+        {likeCount > 0 && (
+          <span className="text-sm text-muted-foreground">
+            {likeCount}
+          </span>
+        )}
+        <Action label="Share">
+          <ShareIcon className="size-4" />
+        </Action>
+      </Actions>
     </div>
   );
 };

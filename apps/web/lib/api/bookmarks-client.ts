@@ -5,6 +5,7 @@ import {
   CreateBookmarkRequest,
   CreateBookmarkResponse,
   SearchBookmarksResponse,
+  LikeResponse,
 } from "@cosmic-dolphin/api-client";
 import { SearchBookmarksQuery } from "@/lib/types/bookmark";
 import { createClient } from "@/utils/supabase/client";
@@ -86,6 +87,32 @@ export namespace BookmarksClientAPI {
     } catch (error) {
       console.error("Error searching bookmarks", error);
       return { bookmarks: [], total: 0 };
+    }
+  }
+
+  export async function like(bookmarkId: string): Promise<LikeResponse> {
+    const bookmarksApi = await getApiInstance();
+    try {
+      return await bookmarksApi.bookmarksLike({ id: bookmarkId });
+    } catch (error: any) {
+      console.error("Error liking bookmark", error);
+      if (error?.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw error;
+    }
+  }
+
+  export async function unlike(bookmarkId: string): Promise<LikeResponse> {
+    const bookmarksApi = await getApiInstance();
+    try {
+      return await bookmarksApi.bookmarksUnlike({ id: bookmarkId });
+    } catch (error: any) {
+      console.error("Error unliking bookmark", error);
+      if (error?.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw error;
     }
   }
 }
