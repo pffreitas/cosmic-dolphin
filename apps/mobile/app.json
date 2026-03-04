@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Cosmic Dolphin",
-    "slug": "cosmic-dolphin-app",
+    "slug": "cosmic-dolphin",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -14,7 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.cosmicdolphin.app"
+      "bundleIdentifier": "com.cosmicdolphin.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -57,8 +60,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "9c88371f-3f1a-4ead-998c-efab561fef10"
+        "projectId": "f4af56aa-569f-41af-83af-86e8def9d764"
       }
-    }
+    },
+    "owner": "cosmic-dolphin"
   }
 }
