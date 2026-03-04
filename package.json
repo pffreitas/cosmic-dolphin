@@ -12,6 +12,7 @@
     "dev:backend": "turbo run dev --filter=@cosmic-dolphin/api --filter=@cosmic-dolphin/worker",
     "dev:web": "turbo run dev --filter=@cosmic-dolphin/web",
     "dev:mobile": "turbo run dev --filter=@cosmic-dolphin/mobile",
+    "dev:mobile:device": "turbo run dev --filter=@cosmic-dolphin/mobile ",
     "dev:fullstack": "turbo run dev --filter=@cosmic-dolphin/api --filter=@cosmic-dolphin/worker --filter=@cosmic-dolphin/web",
     "dev:fullstack:mobile": "turbo run dev --filter=@cosmic-dolphin/api --filter=@cosmic-dolphin/worker --filter=@cosmic-dolphin/mobile",
     "build": "turbo run build",
