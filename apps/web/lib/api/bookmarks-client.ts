@@ -10,6 +10,16 @@ import {
 import { SearchBookmarksQuery } from "@/lib/types/bookmark";
 import { createClient } from "@/utils/supabase/client";
 
+function getApiBasePath(): string {
+  const basePath = process.env.NEXT_PUBLIC_API_URL;
+  if (!basePath) {
+    throw new Error(
+      "NEXT_PUBLIC_API_URL is not set. Please configure it in your environment variables.",
+    );
+  }
+  return basePath;
+}
+
 export namespace BookmarksClientAPI {
   async function getApiInstance(): Promise<BookmarksApi> {
     const supabase = createClient();
@@ -20,7 +30,7 @@ export namespace BookmarksClientAPI {
 
     return new BookmarksApi(
       new Configuration({
-        basePath: process.env.NEXT_PUBLIC_API_URL,
+        basePath: getApiBasePath(),
         accessToken,
       })
     );

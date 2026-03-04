@@ -1,6 +1,16 @@
 import { Configuration, BookmarksApi, Bookmark } from "@cosmic-dolphin/api-client";
 import { createClient } from "@/utils/supabase/server";
 
+function getApiBasePath(): string {
+  const basePath = process.env.NEXT_PUBLIC_API_URL;
+  if (!basePath) {
+    throw new Error(
+      "NEXT_PUBLIC_API_URL is not set. Please configure it in your environment variables.",
+    );
+  }
+  return basePath;
+}
+
 export namespace BookmarksAPI {
   async function getApiInstance(): Promise<BookmarksApi> {
     const supabase = await createClient();
@@ -11,7 +21,7 @@ export namespace BookmarksAPI {
 
     return new BookmarksApi(
       new Configuration({
-        basePath: process.env.NEXT_PUBLIC_API_URL,
+        basePath: getApiBasePath(),
         accessToken,
       }),
     );
