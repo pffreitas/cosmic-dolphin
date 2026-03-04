@@ -19,7 +19,11 @@ export function getTestDatabase(): Kysely<Database> {
 }
 
 export async function clearDatabase(db: Kysely<Database>): Promise<void> {
-  // Clear tables in order to respect foreign key constraints
+  // Clear tables in reverse FK dependency order
+  await db.deleteFrom('image_chunks').execute();
+  await db.deleteFrom('text_chunks').execute();
+  await db.deleteFrom('content_chunks').execute();
+  await db.deleteFrom('bookmark_likes').execute();
   await db.deleteFrom('scraped_url_contents').execute();
   await db.deleteFrom('bookmarks').execute();
   await db.deleteFrom('collections').execute();
