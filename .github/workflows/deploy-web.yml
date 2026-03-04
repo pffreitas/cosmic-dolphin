@@ -100,13 +100,13 @@ jobs:
         run: |
           docker build \
             -f apps/web/Dockerfile \
-            --build-arg NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
-            --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
-            --build-arg NEXT_PUBLIC_REDIRECT_URL=$NEXT_PUBLIC_REDIRECT_URL \
-            --build-arg NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL \
-            --build-arg HOST=$HOST \
-            --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
-            -t $IMAGE_NAME .
+            --build-arg "NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL" \
+            --build-arg "NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+            --build-arg "NEXT_PUBLIC_REDIRECT_URL=$NEXT_PUBLIC_REDIRECT_URL" \
+            --build-arg "NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL" \
+            --build-arg "HOST=$HOST" \
+            --build-arg "NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL" \
+            -t "$IMAGE_NAME" .
 
       - name: Tag Docker image
         run: |
