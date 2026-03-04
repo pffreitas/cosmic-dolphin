@@ -7,6 +7,7 @@ yarn-error.log*
 
 # Production builds
 packages/*/dist/
+!packages/api-client/dist/
 packages/shared/dist/
 
 # Environment files
