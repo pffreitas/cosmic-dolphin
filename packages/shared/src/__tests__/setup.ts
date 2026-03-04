@@ -2,7 +2,7 @@ import { config } from 'dotenv';
 import { join } from 'path';
 import { getTestDatabase, DatabaseTestUtils, closeTestDatabase } from '../test-utils/database';
 
-// Load test environment variables from project root
+// Load .env.test for local development; in CI, env vars are injected by the workflow.
 config({ path: join(process.cwd(), '.env.test') });
 
 let dbUtils: DatabaseTestUtils | null = null;
