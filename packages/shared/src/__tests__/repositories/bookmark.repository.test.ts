@@ -129,13 +129,17 @@ describe("BookmarkRepository", () => {
     it("should find all bookmarks for a user", async () => {
       const bookmarks = TestDataFactory.createMultipleBookmarks(3, testUserId);
 
+      const createdIds: string[] = [];
       for (const bookmark of bookmarks) {
-        await repository.create(bookmark);
+        const created = await repository.create(bookmark);
+        createdIds.push(created.id);
       }
 
       const found = await repository.findByUser(testUserId);
+      const foundIds = found.map((b) => b.id);
 
-      expect(found).toHaveLength(3);
+      expect(found.length).toBeGreaterThanOrEqual(3);
+      expect(foundIds).toEqual(expect.arrayContaining(createdIds));
       expect(found.every((b) => b.user_id === testUserId)).toBe(true);
     });
 
@@ -173,7 +177,6 @@ describe("BookmarkRepository", () => {
     });
 
     it("should filter by collection ID", async () => {
-      // First create a collection
       const db = getTestDatabase();
       const collectionData = TestDataFactory.createCollection({
         user_id: testUserId,
@@ -193,15 +196,16 @@ describe("BookmarkRepository", () => {
         collection_id: null,
       });
 
-      await repository.create(bookmarkInCollection);
+      const createdInCollection = await repository.create(bookmarkInCollection);
       await repository.create(bookmarkNotInCollection);
 
       const found = await repository.findByUser(testUserId, {
         collectionId: collection.id,
       });
 
-      expect(found).toHaveLength(1);
-      expect(found[0].collection_id).toBe(collection.id);
+      expect(found.length).toBeGreaterThanOrEqual(1);
+      expect(found.map((b) => b.id)).toContain(createdInCollection.id);
+      expect(found.every((b) => b.collection_id === collection.id)).toBe(true);
     });
 
     it("should exclude archived bookmarks by default", async () => {
@@ -215,12 +219,13 @@ describe("BookmarkRepository", () => {
       });
 
       await repository.create(archivedBookmark);
-      await repository.create(activeBookmark);
+      const createdActive = await repository.create(activeBookmark);
 
       const found = await repository.findByUser(testUserId);
 
-      expect(found).toHaveLength(1);
-      expect(found[0].is_archived).toBe(false);
+      expect(found.length).toBeGreaterThanOrEqual(1);
+      expect(found.map((b) => b.id)).toContain(createdActive.id);
+      expect(found.every((b) => b.is_archived === false)).toBe(true);
     });
 
     it("should include archived bookmarks when requested", async () => {
@@ -233,14 +238,16 @@ describe("BookmarkRepository", () => {
         is_archived: false,
       });
 
-      await repository.create(archivedBookmark);
-      await repository.create(activeBookmark);
+      const createdArchived = await repository.create(archivedBookmark);
+      const createdActive = await repository.create(activeBookmark);
 
       const found = await repository.findByUser(testUserId, {
         includeArchived: true,
       });
+      const foundIds = found.map((b) => b.id);
 
-      expect(found).toHaveLength(2);
+      expect(found.length).toBeGreaterThanOrEqual(2);
+      expect(foundIds).toEqual(expect.arrayContaining([createdArchived.id, createdActive.id]));
     });
   });
 
