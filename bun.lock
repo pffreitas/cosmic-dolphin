@@ -119,7 +119,7 @@
         "@reduxjs/toolkit": "^2.8.2",
         "@supabase/auth-helpers-react": "^0.5.0",
         "@supabase/ssr": "^0.9.0",
-        "@supabase/supabase-js": "^2.97.0",
+        "@supabase/supabase-js": "^2.98.0",
         "@tiptap/extension-highlight": "^3.0.1",
         "@tiptap/extension-image": "^3.0.7",
         "@tiptap/extension-placeholder": "^3.0.1",

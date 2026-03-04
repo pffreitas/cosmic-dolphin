@@ -30,6 +30,11 @@ jobs:
           distribution: "temurin"
           java-version: ${{ env.JAVA_VERSION }}
 
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
       - name: Install dependencies
         run: bun install
 
@@ -39,12 +44,14 @@ jobs:
       - name: Type check
         run: bun run typecheck
 
-      - name: Start test database
-        run: bun run test:db:up
+      - name: Apply migrations to test database
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase link --project-ref bckvyorfgbwngsahdonc
+          supabase db push
 
       - name: Run tests
+        env:
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
         run: bun run test
-
-      - name: Stop test database
-        run: bun run test:db:down
-        if: always()

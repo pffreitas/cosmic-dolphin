@@ -6,7 +6,13 @@ let testDb: Kysely<Database> | null = null;
 
 export function getTestDatabase(): Kysely<Database> {
   if (!testDb) {
-    const databaseUrl = process.env.DATABASE_URL || 'postgresql://test_user:test_password@localhost:5433/cosmic_dolphin_test';
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error(
+        'DATABASE_URL is required. Set it in .env.test for local development ' +
+        'or as a CI secret for automated testing.'
+      );
+    }
     testDb = createDatabase(databaseUrl);
   }
   return testDb;

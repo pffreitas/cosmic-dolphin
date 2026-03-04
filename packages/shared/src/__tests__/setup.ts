@@ -2,8 +2,8 @@ import { config } from 'dotenv';
 import { join } from 'path';
 import { getTestDatabase, DatabaseTestUtils, closeTestDatabase } from '../test-utils/database';
 
-// Load test environment variables
-config({ path: join(__dirname, '../../.env.test') });
+// Load test environment variables from project root
+config({ path: join(process.cwd(), '.env.test') });
 
 let dbUtils: DatabaseTestUtils | null = null;
 
