@@ -34,6 +34,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useBookmarkRealtime } from "@/lib/hooks/useBookmarkRealtime";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import Link from "next/link";
 
 interface ProcessingStatusProps {
   status: string;
@@ -117,6 +126,38 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
 
   return (
     <div className="flex flex-col gap-8">
+      {bookmark.collectionPath && bookmark.collectionPath.length > 0 && (
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link href="/my/library">My Bookmarks</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            {bookmark.collectionPath.map((item, index) => {
+              const isLast = index === bookmark.collectionPath!.length - 1;
+              return (
+                <div key={item.id} className="flex items-center gap-1.5">
+                  <BreadcrumbItem>
+                    {isLast ? (
+                      <BreadcrumbPage>{item.name}</BreadcrumbPage>
+                    ) : (
+                      <BreadcrumbLink asChild>
+                        <Link href={`/my/library?collection_id=${item.id}`}>
+                          {item.name}
+                        </Link>
+                      </BreadcrumbLink>
+                    )}
+                  </BreadcrumbItem>
+                  {!isLast && <BreadcrumbSeparator />}
+                </div>
+              );
+            })}
+          </BreadcrumbList>
+        </Breadcrumb>
+      )}
+
       <ConnectionStatus />
 
       {/* Processing Status Banner */}

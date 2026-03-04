@@ -17,11 +17,15 @@ export namespace BookmarksAPI {
     );
   }
 
-  export async function list(): Promise<Bookmark[]> {
+  export async function list(query?: {
+    collection_id?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<Bookmark[]> {
     const bookmarksApi = await getApiInstance();
 
     try {
-      const response = await bookmarksApi.bookmarksList();
+      const response = await bookmarksApi.bookmarksList(query);
       return response.bookmarks || [];
     } catch (error) {
       console.error("Error fetching bookmarks", error);

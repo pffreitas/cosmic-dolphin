@@ -102,8 +102,14 @@ const BookmarkCard = ({ bookmark }: { bookmark: Bookmark }) => {
   );
 };
 
-async function BookmarksList() {
-  const bookmarks = await BookmarksAPI.list();
+async function BookmarksList({
+  searchParams,
+}: {
+  searchParams: { collection_id?: string };
+}) {
+  const bookmarks = await BookmarksAPI.list({
+    collection_id: searchParams.collection_id,
+  });
 
   if (!bookmarks || bookmarks.length === 0) {
     return (
@@ -166,11 +172,16 @@ const LoadingBookmarks = () => (
   </div>
 );
 
-export default function Index() {
+export default async function Index({
+  searchParams,
+}: {
+  searchParams: Promise<{ collection_id?: string }>;
+}) {
+  const params = await searchParams;
   return (
     <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
       <Suspense fallback={<LoadingBookmarks />}>
-        <BookmarksList />
+        <BookmarksList searchParams={params} />
       </Suspense>
     </main>
   );
