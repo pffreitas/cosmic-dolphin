@@ -13,22 +13,29 @@ This package contains shared utilities, types, database schemas, repositories, a
 
 ### Prerequisites
 
-- Docker (for test database)
-- Node.js/Bun
-- PostgreSQL (via Docker)
+- Bun
+- A Supabase project for testing (with migrations applied via `supabase db push`)
+
+### Configuration
+
+Tests require a `DATABASE_URL` environment variable pointing to a Supabase database.
+
+Set it in the project root `.env.test`:
+```
+DATABASE_URL=postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-1-us-east-2.pooler.supabase.com:6543/postgres
+NODE_ENV=test
+```
+
+> **WARNING**: Tests truncate tables between runs. Never point this at a production database.
 
 ### Running Tests
 
-**Important**: All test commands must be run from the `packages/shared` directory.
-
 ```bash
-# Navigate to the shared package
+# From the project root
+bun run test --filter=@cosmic-dolphin/shared
+
+# Or from the shared package directory
 cd packages/shared
-
-# Start the test database
-bun run test:db:up
-
-# Run tests
 bun run test
 
 # Run tests with coverage
@@ -36,41 +43,21 @@ bun run test:coverage
 
 # Run tests in watch mode
 bun run test:watch
-
-# Stop the test database
-bun run test:db:down
-
-# Reset the test database (stop + start)
-bun run test:db:reset
 ```
 
-**Alternative**: Run from project root using workspace commands:
+### Applying Migrations
+
+Migrations live in `supabase/migrations/` and are applied to Supabase projects via the Supabase CLI:
+
 ```bash
-# From project root
-cd /path/to/cosmic-dolphin
+# Link to your Supabase project (one-time setup)
+supabase link --project-ref <your-project-ref>
 
-# Run tests in shared package
-bun run --cwd packages/shared test
-
-# Start test database
-bun run --cwd packages/shared test:db:up
+# Push pending migrations
+supabase db push
 ```
 
-### Test Database
-
-The test database runs in Docker using the same Supabase migrations as production. This ensures:
-
-- **Schema Consistency**: Tests run against the exact same schema as production
-- **Migration Testing**: Migrations are tested as part of the setup process
-- **Isolation**: Each test run starts with a clean database state
-
-#### Configuration
-
-Test database configuration is in `.env.test`:
-- Database: `cosmic_dolphin_test`
-- User: `test_user`
-- Password: `test_password`
-- Port: `5433` (to avoid conflicts with local PostgreSQL)
+In CI, this happens automatically before tests run.
 
 ### Test Structure
 
@@ -121,15 +108,6 @@ const created = await repository.create(bookmarkData);
 const found = await repository.findByIdAndUser(created.id, userId);
 ```
 
-### Migration Testing
-
-The test database automatically runs all Supabase migrations during initialization:
-
-1. Docker starts PostgreSQL container
-2. Init script (`init-test-db.sh`) executes all `.sql` files from `supabase/migrations/`
-3. Migrations run in timestamp order (e.g., `20250908222056_*.sql`)
-4. Database is ready for testing
-
 ## Repository Testing Coverage
 
 ### BookmarkRepository
@@ -166,13 +144,12 @@ The test database automatically runs all Supabase migrations during initializati
 ### Database Schema Changes
 
 When Supabase migrations are added:
-1. Tests automatically pick up new schema changes
+1. Push migrations to your test project: `supabase db push`
 2. Update Kysely schema types in `src/database/schema.ts`
 3. Update repositories if needed
 4. Add corresponding tests
 
 ### Debugging Tests
 
-- Check Docker logs: `docker-compose -f ../../docker-compose.test.yml logs`
-- Verify database connection: `bun run test:db:up && docker exec cosmic-dolphin-test-db psql -U test_user -d cosmic_dolphin_test -c "\dt"`
 - Run single test: `bun run test -- --testNamePattern="specific test name"`
+- Check Supabase dashboard for query logs and table state

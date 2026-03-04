@@ -211,11 +211,8 @@ bun run apispec
 
 | Command | Description |
 |---------|-------------|
-| `bun run db:up` | Start local PostgreSQL + Supabase |
-| `bun run db:down` | Stop local database |
-| `bun run db:reset` | Reset database (down + up) |
-| `bun run test:db:up` | Start test database container |
-| `bun run test:db:down` | Stop test database container |
+| `bun run db:migrate` | Push migrations to the linked Supabase project |
+| `bun run db:migrate:test` | Push migrations to the test Supabase project |
 
 ### Build Commands
 
@@ -430,17 +427,12 @@ docker build -f apps/worker/Dockerfile -t cosmic-dolphin-worker .
 ## 🧪 Testing
 
 ```bash
-# Run all tests
+# Run all tests (requires DATABASE_URL in .env.test or environment)
 bun run test
 
 # Run tests for specific app/package
 bun run test --filter=@cosmic-dolphin/api
 bun run test --filter=@cosmic-dolphin/shared
-
-# Run with database (integration tests)
-bun run test:db:up
-bun run test
-bun run test:db:down
 ```
 
 ---
