@@ -8,7 +8,6 @@ import {
   CreditCard,
   Settings,
   Smile,
-  User,
   Home,
   Bookmark,
   Search,
@@ -211,20 +210,10 @@ export function GlobalCommandDialog() {
             <span>Home</span>
             <CommandShortcut>⌘H</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => handleNavigationSelect("/my/dashboard")}>
-            <User className="mr-2 h-4 w-4" />
-            <span>Dashboard</span>
-            <CommandShortcut>⌘D</CommandShortcut>
-          </CommandItem>
           <CommandItem onSelect={() => handleNavigationSelect("/my/library")}>
             <Library className="mr-2 h-4 w-4" />
             <span>Library</span>
             <CommandShortcut>⌘L</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => handleNavigationSelect("/explore")}>
-            <Search className="mr-2 h-4 w-4" />
-            <span>Explore</span>
-            <CommandShortcut>⌘E</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={() => handleNavigationSelect("/my/profile")}>
             <Settings className="mr-2 h-4 w-4" />

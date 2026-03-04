@@ -1,14 +1,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Library } from "lucide-react";
+import { Home, Library } from "lucide-react";
 
 export const CosmicMenu = () => {
   const pathname = usePathname();
   const navItems = [
     {
-      icon: <LayoutDashboard />,
-      label: "Dashboard",
+      icon: <Home />,
+      label: "Home",
       active: true,
       href: "/my/dashboard",
     },
