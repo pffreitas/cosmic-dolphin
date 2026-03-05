@@ -14,7 +14,11 @@ export const config = {
   // Supabase
   SUPABASE_URL: process.env.SUPABASE_URL || "",
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
-
   // JWT
   JWT_SECRET: process.env.JWT_SECRET || "your-secret-key",
+
+  // CORS
+  CORS_ORIGIN: process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+    : (process.env.NODE_ENV === 'development' ? true : false),
 };
