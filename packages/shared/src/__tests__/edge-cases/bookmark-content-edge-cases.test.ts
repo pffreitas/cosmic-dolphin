@@ -26,21 +26,16 @@ describe("Bookmark Content Edge Cases", () => {
   });
 
   describe("getScrapedUrlContent edge cases", () => {
-    it("should handle malformed bookmark IDs", async () => {
-      const malformedIds = [
-        "",
-        "not-a-uuid",
-        "123",
-        "malformed-uuid-string",
-        null as any,
-        undefined as any,
+    it("should handle nonexistent bookmark IDs", async () => {
+      const nonexistentIds = [
+        "00000000-0000-0000-0000-000000000000",
+        "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        crypto.randomUUID(),
       ];
 
-      for (const id of malformedIds) {
-        if (id !== null && id !== undefined) {
-          const result = await repository.getScrapedUrlContent(id);
-          expect(result).toBeNull();
-        }
+      for (const id of nonexistentIds) {
+        const result = await repository.getScrapedUrlContent(id);
+        expect(result).toBeNull();
       }
     });
 

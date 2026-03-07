@@ -20,6 +20,8 @@ describe("BookmarkService", () => {
       getScrapedUrlContent: jest.fn(),
       findByUser: jest.fn(),
       searchByQuickAccess: jest.fn(),
+      fullTextSearch: jest.fn(),
+      vectorSearch: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
     } as jest.Mocked<BookmarkRepository>;

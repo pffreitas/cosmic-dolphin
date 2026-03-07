@@ -38,6 +38,7 @@ describe("Bookmark Content Refactor Integration", () => {
     mockContentChunkRepository = {
       createTextChunk: jest.fn(),
       createImageChunk: jest.fn(),
+      updateTextChunkEmbedding: jest.fn(),
       findByScrapedContentId: jest.fn(),
       findTextChunksByScrapedContentId: jest.fn(),
       findImageChunksByScrapedContentId: jest.fn(),
