@@ -46,18 +46,36 @@ export class SearchServiceImpl implements SearchService {
   ): Promise<HybridSearchResult[]> {
     const { limit = 20 } = options;
 
-    const queryEmbedding = await this.embeddingService.embedText(query);
+    const ftsPromise = this.bookmarkRepository.fullTextSearch(userId, query, {
+      ...options,
+      limit: limit * 2,
+    });
 
-    const [ftsResults, vectorResults] = await Promise.all([
-      this.bookmarkRepository.fullTextSearch(userId, query, {
-        ...options,
-        limit: limit * 2,
-      }),
-      this.bookmarkRepository.vectorSearch(userId, queryEmbedding, {
-        ...options,
-        limit: limit * 2,
-      }),
+    const vectorPromise = this.embeddingService
+      .embedText(query)
+      .then((embedding) =>
+        this.bookmarkRepository.vectorSearch(userId, embedding, {
+          ...options,
+          limit: limit * 2,
+        })
+      );
+
+    const [ftsSettled, vectorSettled] = await Promise.allSettled([
+      ftsPromise,
+      vectorPromise,
     ]);
+
+    const ftsResults =
+      ftsSettled.status === "fulfilled" ? ftsSettled.value : [];
+    const vectorResults =
+      vectorSettled.status === "fulfilled" ? vectorSettled.value : [];
+
+    if (ftsSettled.status === "rejected") {
+      console.error("Full-text search failed:", ftsSettled.reason);
+    }
+    if (vectorSettled.status === "rejected") {
+      console.error("Vector search failed:", vectorSettled.reason);
+    }
 
     return this.fuseResults(ftsResults, vectorResults, limit);
   }
