@@ -5,6 +5,7 @@ import "@typespec/openapi3";
 import "./notes.tsp";
 import "./pipeline.tsp";
 import "./bookmarks.tsp";
+import "./search.tsp";
 
 using TypeSpec.Http;
 

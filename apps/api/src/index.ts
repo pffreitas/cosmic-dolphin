@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import { config } from './config/environment';
 import bookmarkRoutes from './routes/bookmarks';
+import searchRoutes from './routes/search';
 
 const server = Fastify({
   logger: config.NODE_ENV === 'development' ? {
@@ -45,6 +46,7 @@ server.register(async function (fastify) {
   
   // Register bookmark routes with /api/v1 prefix
   await fastify.register(bookmarkRoutes, { prefix: '/api/v1' });
+  await fastify.register(searchRoutes, { prefix: '/api/v1' });
 });
 
 // Start server
