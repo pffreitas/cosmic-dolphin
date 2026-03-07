@@ -35,7 +35,8 @@ export interface BookmarksTable extends BaseTable {
   cosmic_tags: string[] | null;
   cosmic_images: any | null; // JSONB
   cosmic_links: any | null; // JSONB
-  quick_access: string | null; // PGroonga searchable text
+  quick_access: string | null;
+  search_document: string | null;
   processing_status: Generated<ProcessingStatus>;
   processing_started_at: Date | null;
   processing_completed_at: Date | null;
@@ -75,6 +76,7 @@ export interface ContentChunksTable extends BaseTable {
 export interface TextChunksTable {
   chunk_id: string;
   content: string;
+  embedding: number[] | null;
 }
 
 // Image chunks table
