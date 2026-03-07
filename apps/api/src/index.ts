@@ -15,8 +15,13 @@ const server = Fastify({
 });
 
 // Register plugins
+let corsOrigin: boolean | string | string[] = true;
+if (config.CORS_ORIGIN && config.CORS_ORIGIN !== '*' && config.CORS_ORIGIN !== 'true') {
+  corsOrigin = config.CORS_ORIGIN.split(',').map((o) => o.trim());
+}
+
 server.register(require('@fastify/cors'), {
-  origin: true
+  origin: corsOrigin
 });
 
 server.register(require('@fastify/helmet'));

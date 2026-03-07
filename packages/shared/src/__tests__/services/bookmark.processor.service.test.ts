@@ -121,6 +121,7 @@ describe("BookmarkProcessorService", () => {
       findById: jest.fn(),
       deleteByScrapedContentId: jest.fn(),
       delete: jest.fn(),
+      updateTextChunkEmbedding: jest.fn(),
     } as jest.Mocked<ContentChunkRepository>;
 
     mockCollectionRepository = {
