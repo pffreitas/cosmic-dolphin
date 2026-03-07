@@ -22,6 +22,8 @@ describe("BookmarkService", () => {
       searchByQuickAccess: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      fullTextSearch: jest.fn(),
+      vectorSearch: jest.fn(),
     } as jest.Mocked<BookmarkRepository>;
 
     mockWebScrapingService = {

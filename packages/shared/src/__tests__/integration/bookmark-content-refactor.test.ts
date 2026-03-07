@@ -44,6 +44,7 @@ describe("Bookmark Content Refactor Integration", () => {
       findById: jest.fn(),
       deleteByScrapedContentId: jest.fn(),
       delete: jest.fn(),
+      updateTextChunkEmbedding: jest.fn(),
     } as jest.Mocked<ContentChunkRepository>;
 
     let callCount = 0;
