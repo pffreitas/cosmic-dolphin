@@ -80,6 +80,12 @@ export interface PreviewUrlResponse {
   metadata: UrlPreviewMetadata;
 }
 
+export interface HybridSearchResultItem {
+  bookmark: Bookmark;
+  score: number;
+  matchedChunks: string[];
+}
+
 async function getAuthHeaders(): Promise<HeadersInit> {
   const { data: { session } } = await supabase.auth.getSession();
   const accessToken = session?.access_token || '';
@@ -170,6 +176,32 @@ export namespace BookmarksAPI {
     }
   }
 
+  export async function search(query: string, limit = 10, offset = 0): Promise<Bookmark[]> {
+    try {
+      const headers = await getAuthHeaders();
+      const params = new URLSearchParams({
+        query,
+        limit: limit.toString(),
+        offset: offset.toString(),
+      });
+
+      const response = await fetch(`${API_URL}/bookmarks/search?${params}`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: GetBookmarksResponse = await response.json();
+      return data.bookmarks || [];
+    } catch (error) {
+      console.error('Error searching bookmarks:', error);
+      throw error;
+    }
+  }
+
   export async function preview(url: string): Promise<UrlPreviewMetadata> {
     try {
       const headers = await getAuthHeaders();
@@ -190,6 +222,79 @@ export namespace BookmarksAPI {
     } catch (error) {
       console.error('Error fetching URL preview:', error);
       throw error;
+    }
+  }
+}
+
+export namespace SearchAPI {
+  export interface SSECallbacks {
+    onResults: (results: HybridSearchResultItem[]) => void;
+    onChunk: (text: string) => void;
+    onDone: () => void;
+    onError: (error: string) => void;
+  }
+
+  export async function askWithStream(query: string, callbacks: SSECallbacks): Promise<void> {
+    const headers = await getAuthHeaders();
+
+    const response = await fetch(`${API_URL}/search/ask`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ query }),
+    });
+
+    if (!response.ok) {
+      callbacks.onError(`Search failed with status ${response.status}`);
+      return;
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      callbacks.onError('No response stream available');
+      return;
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      let currentEvent = '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          currentEvent = line.slice(7);
+        } else if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          try {
+            const parsed = JSON.parse(data);
+
+            switch (currentEvent) {
+              case 'results':
+                callbacks.onResults(parsed.results);
+                break;
+              case 'chunk':
+                callbacks.onChunk(parsed.text);
+                break;
+              case 'done':
+                callbacks.onDone();
+                break;
+              case 'error':
+                callbacks.onError(parsed.error);
+                break;
+            }
+          } catch {
+            // skip malformed data
+          }
+          currentEvent = '';
+        }
+      }
     }
   }
 }
