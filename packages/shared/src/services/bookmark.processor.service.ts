@@ -18,6 +18,8 @@ import {
   BookmarkCategorizerServiceImpl,
 } from "./bookmark.categorizer.service";
 import { CollectionRepository } from "../repositories/collection.repository";
+import { ChunkingService, ChunkingServiceImpl } from "./chunking.service";
+import { EmbeddingService, EmbeddingServiceImpl } from "./embedding.service";
 
 export interface BookmarkProcessorService {
   process(id: string, userId: string): Promise<void>;
@@ -25,6 +27,8 @@ export interface BookmarkProcessorService {
 
 export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
   private categorizerService: BookmarkCategorizerService;
+  private chunkingService: ChunkingService;
+  private embeddingService: EmbeddingService;
 
   constructor(
     private bookmarkService: BookmarkService,
@@ -32,13 +36,17 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     private collectionRepository: CollectionRepository,
     private ai: AI,
     private eventBus: EventBus,
-    private httpClient: HttpClient = new CosmicHttpClient()
+    private httpClient: HttpClient = new CosmicHttpClient(),
+    chunkingService?: ChunkingService,
+    embeddingService?: EmbeddingService
   ) {
     this.categorizerService = new BookmarkCategorizerServiceImpl(
       collectionRepository,
       ai,
       eventBus
     );
+    this.chunkingService = chunkingService ?? new ChunkingServiceImpl();
+    this.embeddingService = embeddingService ?? new EmbeddingServiceImpl();
   }
 
   async process(id: string, userId: string): Promise<void> {
@@ -119,6 +127,12 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         "bookmark.updated",
         bookmark
       );
+
+      await this.chunkAndEmbed(session, bookmark, content);
+
+      const searchDocument = this.buildSearchDocument(bookmark, content);
+      bookmark.searchDocument = searchDocument;
+      bookmark = await this.bookmarkService.update(bookmark.id, bookmark);
 
       // Update processing status to 'completed'
       bookmark = await this.bookmarkService.updateProcessingStatus(
@@ -281,6 +295,92 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         "task.completed",
         task
       );
+    }
+  }
+
+  private buildSearchDocument(
+    bookmark: Bookmark,
+    content: ScrapedUrlContents
+  ): string {
+    const cleanedText = this.chunkingService.stripHtml(content.content ?? "");
+    const truncated = cleanedText.slice(0, 5000);
+
+    const parts = [
+      bookmark.title ?? "",
+      bookmark.sourceUrl,
+      bookmark.cosmicBriefSummary ?? "",
+      bookmark.cosmicTags?.join(" ") ?? "",
+      truncated,
+    ];
+
+    return parts.filter(Boolean).join("\n");
+  }
+
+  private async chunkAndEmbed(
+    session: Session,
+    bookmark: Bookmark,
+    content: ScrapedUrlContents
+  ): Promise<void> {
+    const task = await this.ai.newTask(
+      session.sessionID,
+      "Chunking and embedding content"
+    );
+    await this.eventBus.publishToBookmark(bookmark.id, "task.started", task);
+
+    try {
+      const scrapedContent =
+        await this.bookmarkService.getScrapedUrlContent(bookmark.id);
+      if (!scrapedContent) {
+        throw new Error(
+          `Scraped content not found for bookmark ${bookmark.id}`
+        );
+      }
+
+      const chunks = this.chunkingService.chunkHtml(content.content ?? "");
+
+      if (chunks.length === 0) {
+        task.status = "completed";
+        await this.eventBus.publishToBookmark(
+          bookmark.id,
+          "task.completed",
+          task
+        );
+        return;
+      }
+
+      const textChunkIds: string[] = [];
+      for (const chunk of chunks) {
+        const textChunk = await this.contentChunkRepository.createTextChunk({
+          scrapedContentId: scrapedContent.id,
+          content: chunk.content,
+          index: chunk.index,
+          size: chunk.size,
+          startPosition: chunk.startPosition,
+          endPosition: chunk.endPosition,
+        });
+        textChunkIds.push(textChunk.id);
+      }
+
+      const chunkTexts = chunks.map((c) => c.content);
+      const embeddings = await this.embeddingService.embedTexts(chunkTexts);
+
+      for (let i = 0; i < textChunkIds.length; i++) {
+        await this.contentChunkRepository.updateTextChunkEmbedding(
+          textChunkIds[i],
+          embeddings[i]
+        );
+      }
+
+      task.status = "completed";
+      await this.eventBus.publishToBookmark(
+        bookmark.id,
+        "task.completed",
+        task
+      );
+    } catch (error) {
+      console.error("Failed to chunk and embed content:", error);
+      task.status = "failed";
+      await this.eventBus.publishToBookmark(bookmark.id, "task.failed", task);
     }
   }
 

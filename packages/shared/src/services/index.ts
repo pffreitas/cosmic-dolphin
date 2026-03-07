@@ -5,6 +5,9 @@ export * from "./bookmark-like.service";
 export * from "./collection.service";
 export * from "./bookmark.processor.service";
 export * from "./bookmark.categorizer.service";
+export * from "./chunking.service";
+export * from "./embedding.service";
+export * from "./search.service";
 export * from "./http-client";
 
 import {
@@ -18,6 +21,8 @@ import {
   BookmarkLikeServiceImpl,
 } from "./bookmark-like.service";
 import { CollectionService, CollectionServiceImpl } from "./collection.service";
+import { SearchService, SearchServiceImpl } from "./search.service";
+import { EmbeddingServiceImpl } from "./embedding.service";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Kysely } from "kysely";
 import { Database } from "../database/schema";
@@ -26,6 +31,8 @@ import {
   BookmarkLikeRepositoryImpl,
   CollectionRepositoryImpl,
 } from "../repositories";
+import { AI } from "../ai";
+import { EventBus } from "../ai/bus";
 
 export interface ServiceContainer {
   webScraping: WebScrapingService;
@@ -33,6 +40,7 @@ export interface ServiceContainer {
   bookmark: BookmarkService;
   bookmarkLike: BookmarkLikeService;
   collection: CollectionService;
+  search: SearchService;
 }
 
 export function createServiceContainer(
@@ -44,6 +52,10 @@ export function createServiceContainer(
   const bookmarkLikeRepository = new BookmarkLikeRepositoryImpl(db);
   const collectionRepository = new CollectionRepositoryImpl(db);
 
+  const eventBus = new EventBus(supabaseClient);
+  const ai = new AI(eventBus);
+  const embeddingService = new EmbeddingServiceImpl();
+
   return {
     webScraping: webScrapingService,
     queue: new QueueServiceImpl(supabaseClient),
@@ -54,5 +66,6 @@ export function createServiceContainer(
     ),
     bookmarkLike: new BookmarkLikeServiceImpl(bookmarkLikeRepository),
     collection: new CollectionServiceImpl(collectionRepository),
+    search: new SearchServiceImpl(bookmarkRepository, embeddingService, ai),
   };
 }

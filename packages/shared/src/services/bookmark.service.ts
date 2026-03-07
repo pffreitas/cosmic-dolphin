@@ -121,6 +121,8 @@ export class BookmarkServiceImpl implements BookmarkService {
       updateData.cosmic_links = data.cosmicLinks;
     if (data.quickAccess !== undefined)
       updateData.quick_access = data.quickAccess;
+    if (data.searchDocument !== undefined)
+      updateData.search_document = data.searchDocument;
 
     const bookmark = await this.bookmarkRepository.update(id, updateData);
     return this.mapDatabaseToBookmark(bookmark);
@@ -246,6 +248,7 @@ export class BookmarkServiceImpl implements BookmarkService {
       cosmicImages: data.cosmic_images,
       cosmicLinks: data.cosmic_links,
       quickAccess: data.quick_access,
+      searchDocument: data.search_document,
       likeCount: data.like_count ?? 0,
       processingStatus: data.processing_status || "idle",
       processingStartedAt: data.processing_started_at
