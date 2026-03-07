@@ -82,7 +82,7 @@ export class AI {
     };
   }
 
-  private getModel(modelId: string): LanguageModelV2 {
+  getModel(modelId: string): LanguageModelV2 {
     if (modelId.startsWith("ollama:")) {
       return this.ollama(modelId.replace("ollama:", ""));
     }
