@@ -3,16 +3,13 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
-  Calculator,
-  Calendar,
-  CreditCard,
   Settings,
-  Smile,
   Home,
   Bookmark,
   Search,
   Library,
   ExternalLink,
+  Sparkles,
 } from "lucide-react";
 
 import {
@@ -196,8 +193,24 @@ export function GlobalCommandDialog() {
           </CommandGroup>
         )}
 
-        {/* Separator between search results and navigation */}
+        {inputValue.trim() && (
+          <CommandGroup heading="AI Search">
+            <CommandItem
+              onSelect={() => {
+                setOpen(false);
+                router.push(
+                  `/search?q=${encodeURIComponent(inputValue.trim())}`
+                );
+              }}
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              <span>Search with AI: "{inputValue.trim()}"</span>
+            </CommandItem>
+          </CommandGroup>
+        )}
+
         {(searchResults.length > 0 ||
+          inputValue.trim() ||
           (searchLoading && inputValue.trim()) ||
           (!searchLoading &&
             inputValue.trim() &&
