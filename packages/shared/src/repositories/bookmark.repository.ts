@@ -266,7 +266,7 @@ export class BookmarkRepositoryImpl
         Bookmark & { pgroonga_score: number }
       >`SELECT *, pgroonga_score(tableoid, ctid) AS pgroonga_score
         FROM bookmarks
-        WHERE user_id = ${userId}::uuid
+        WHERE user_id = ${userId}
           AND search_document &@~ ${query}
           ${includeArchived ? sql`` : sql`AND is_archived = false`}
         ORDER BY pgroonga_score DESC
@@ -301,8 +301,8 @@ export class BookmarkRepositoryImpl
         FROM text_chunks tc
         INNER JOIN content_chunks cc ON cc.id = tc.chunk_id
         INNER JOIN scraped_url_contents suc ON suc.id = cc.scraped_content_id
-        INNER JOIN bookmarks b ON b.id = suc.bookmark_id::uuid
-        WHERE b.user_id = ${userId}::uuid
+        INNER JOIN bookmarks b ON b.id = suc.bookmark_id
+        WHERE b.user_id = ${userId}
           AND tc.embedding IS NOT NULL
           ${includeArchived ? sql`` : sql`AND b.is_archived = false`}
         ORDER BY tc.embedding <=> ${vectorStr}::vector

@@ -48,7 +48,7 @@ export class SearchServiceImpl implements SearchService {
 
     const queryEmbedding = await this.embeddingService.embedText(query);
 
-    const [ftsResults, vectorResults] = await Promise.allSettled([
+    const [ftsResults, vectorResults] = await Promise.all([
       this.bookmarkRepository.fullTextSearch(userId, query, {
         ...options,
         limit: limit * 2,
@@ -59,19 +59,7 @@ export class SearchServiceImpl implements SearchService {
       }),
     ]);
 
-    const fts =
-      ftsResults.status === "fulfilled" ? ftsResults.value : [];
-    const vec =
-      vectorResults.status === "fulfilled" ? vectorResults.value : [];
-
-    if (ftsResults.status === "rejected") {
-      console.error("Full-text search failed:", ftsResults.reason);
-    }
-    if (vectorResults.status === "rejected") {
-      console.error("Vector search failed:", vectorResults.reason);
-    }
-
-    return this.fuseResults(fts, vec, limit);
+    return this.fuseResults(ftsResults, vectorResults, limit);
   }
 
   async askWithContext(
