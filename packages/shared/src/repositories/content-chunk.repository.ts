@@ -1,4 +1,4 @@
-import { Kysely } from "kysely";
+import { Kysely, sql } from "kysely";
 import { BaseRepository } from "./base.repository";
 import {
   Database,
@@ -39,6 +39,10 @@ export interface CreateImageChunkData {
 export interface ContentChunkRepository {
   createTextChunk(data: CreateTextChunkData): Promise<TypeScriptTextChunk>;
   createImageChunk(data: CreateImageChunkData): Promise<TypeScriptImageChunk>;
+  updateTextChunkEmbedding(
+    chunkId: string,
+    embedding: number[]
+  ): Promise<void>;
   findByScrapedContentId(
     scrapedContentId: string
   ): Promise<TypeScriptContentChunk[]>;
@@ -153,6 +157,18 @@ export class ContentChunkRepositoryImpl
         };
       });
     }, "createImageChunk");
+  }
+
+  async updateTextChunkEmbedding(
+    chunkId: string,
+    embedding: number[]
+  ): Promise<void> {
+    return this.executeQuery(async () => {
+      const vectorStr = `[${embedding.join(",")}]`;
+      await sql`UPDATE text_chunks SET embedding = ${vectorStr}::vector WHERE chunk_id = ${chunkId}`.execute(
+        this.db
+      );
+    }, "updateTextChunkEmbedding");
   }
 
   async findByScrapedContentId(

@@ -3,7 +3,12 @@ export {
   BookmarkRepository,
   BookmarkRepositoryImpl,
 } from "./bookmark.repository";
-export type { FindByUserOptions, SearchOptions } from "./bookmark.repository";
+export type {
+  FindByUserOptions,
+  SearchOptions,
+  FullTextSearchResult,
+  VectorSearchResult,
+} from "./bookmark.repository";
 export {
   BookmarkLikeRepository,
   BookmarkLikeRepositoryImpl,

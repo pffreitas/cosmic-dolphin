@@ -22,6 +22,17 @@ export interface SearchOptions {
   includeArchived?: boolean;
 }
 
+export interface FullTextSearchResult {
+  bookmark: Bookmark;
+  score: number;
+}
+
+export interface VectorSearchResult {
+  bookmark: Bookmark;
+  score: number;
+  matchedChunk: string;
+}
+
 export interface BookmarkRepository {
   findByUserAndUrl(userId: string, sourceUrl: string): Promise<Bookmark | null>;
   findByIdAndUser(id: string, userId: string): Promise<Bookmark | null>;
@@ -40,6 +51,16 @@ export interface BookmarkRepository {
     query: string,
     options?: SearchOptions
   ): Promise<Bookmark[]>;
+  fullTextSearch(
+    userId: string,
+    query: string,
+    options?: SearchOptions
+  ): Promise<FullTextSearchResult[]>;
+  vectorSearch(
+    userId: string,
+    queryEmbedding: number[],
+    options?: SearchOptions
+  ): Promise<VectorSearchResult[]>;
   update(id: string, data: BookmarkUpdate): Promise<Bookmark>;
   delete(id: string): Promise<void>;
 }
@@ -220,7 +241,6 @@ export class BookmarkRepositoryImpl
         .selectFrom("bookmarks")
         .selectAll()
         .where("user_id", "=", userId)
-        // Use PGroonga full-text search operator &@~ with raw SQL
         .where(sql<boolean>`quick_access &@~ ${query}`)
         .orderBy("created_at", "desc")
         .limit(limit)
@@ -232,5 +252,92 @@ export class BookmarkRepositoryImpl
 
       return await sqlQuery.execute();
     }, "searchByQuickAccess");
+  }
+
+  async fullTextSearch(
+    userId: string,
+    query: string,
+    options: SearchOptions = {}
+  ): Promise<FullTextSearchResult[]> {
+    return this.executeQuery(async () => {
+      const { limit = 20, offset = 0, includeArchived = false } = options;
+
+      const results = await sql<
+        Bookmark & { pgroonga_score: number }
+      >`SELECT *, pgroonga_score(tableoid, ctid) AS pgroonga_score
+        FROM bookmarks
+        WHERE user_id = ${userId}::uuid
+          AND search_document &@~ ${query}
+          ${includeArchived ? sql`` : sql`AND is_archived = false`}
+        ORDER BY pgroonga_score DESC
+        LIMIT ${limit}
+        OFFSET ${offset}`.execute(this.db);
+
+      return results.rows.map((row) => ({
+        bookmark: row,
+        score: row.pgroonga_score,
+      }));
+    }, "fullTextSearch");
+  }
+
+  async vectorSearch(
+    userId: string,
+    queryEmbedding: number[],
+    options: SearchOptions = {}
+  ): Promise<VectorSearchResult[]> {
+    return this.executeQuery(async () => {
+      const { limit = 20, includeArchived = false } = options;
+
+      const vectorStr = `[${queryEmbedding.join(",")}]`;
+
+      const results = await sql<{
+        bookmark_id: string;
+        chunk_content: string;
+        similarity: number;
+      }>`SELECT
+          b.id AS bookmark_id,
+          tc.content AS chunk_content,
+          1 - (tc.embedding <=> ${vectorStr}::vector) AS similarity
+        FROM text_chunks tc
+        INNER JOIN content_chunks cc ON cc.id = tc.chunk_id
+        INNER JOIN scraped_url_contents suc ON suc.id = cc.scraped_content_id
+        INNER JOIN bookmarks b ON b.id = suc.bookmark_id::uuid
+        WHERE b.user_id = ${userId}::uuid
+          AND tc.embedding IS NOT NULL
+          ${includeArchived ? sql`` : sql`AND b.is_archived = false`}
+        ORDER BY tc.embedding <=> ${vectorStr}::vector
+        LIMIT ${limit}`.execute(this.db);
+
+      const bookmarkIds = [
+        ...new Set(results.rows.map((r) => r.bookmark_id)),
+      ];
+
+      if (bookmarkIds.length === 0) return [];
+
+      const bookmarks = await this.db
+        .selectFrom("bookmarks")
+        .selectAll()
+        .where("id", "in", bookmarkIds)
+        .execute();
+
+      const bookmarkMap = new Map(bookmarks.map((b) => [b.id, b]));
+
+      const seen = new Set<string>();
+      const searchResults: VectorSearchResult[] = [];
+
+      for (const row of results.rows) {
+        const bookmark = bookmarkMap.get(row.bookmark_id);
+        if (!bookmark || seen.has(row.bookmark_id)) continue;
+        seen.add(row.bookmark_id);
+
+        searchResults.push({
+          bookmark,
+          score: row.similarity,
+          matchedChunk: row.chunk_content,
+        });
+      }
+
+      return searchResults;
+    }, "vectorSearch");
   }
 }
