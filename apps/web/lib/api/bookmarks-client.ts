@@ -6,6 +6,7 @@ import {
   Collection,
   CreateBookmarkRequest,
   CreateBookmarkResponse,
+  DeleteBookmarkResponse,
   PreviewResponse,
   GetCollectionsResponse,
   SearchBookmarksResponse,
@@ -171,6 +172,19 @@ export namespace BookmarksClientAPI {
       });
     } catch (error: any) {
       console.error("Error previewing URL", error);
+      if (error?.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw error;
+    }
+  }
+
+  export async function remove(bookmarkId: string): Promise<void> {
+    const bookmarksApi = await getApiInstance();
+    try {
+      await bookmarksApi.bookmarksRemove({ id: bookmarkId });
+    } catch (error: any) {
+      console.error("Error deleting bookmark", error);
       if (error?.response?.data?.error) {
         throw new Error(error.response.data.error);
       }

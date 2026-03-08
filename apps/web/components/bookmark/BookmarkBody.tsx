@@ -17,6 +17,7 @@ import {
   CheckIcon,
   ExternalLinkIcon,
   LockIcon,
+  Trash2Icon,
 } from "lucide-react";
 import { Action, Actions } from "@/components/ai-elements/actions";
 import { Separator } from "@/components/ui/separator";
@@ -49,6 +50,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { BookmarksClientAPI } from "@/lib/api/bookmarks-client";
 
 interface ProcessingStatusProps {
@@ -119,6 +121,10 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isShareLoading, setIsShareLoading] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const router = useRouter();
 
   // Subscribe to realtime updates for this specific bookmark
   const { isConnected, isProcessing } = useBookmarkRealtime(props.bookmark.id, {
@@ -215,6 +221,23 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
       setTimeout(() => setIsCopied(false), 2000);
     } catch (error) {
       console.error("Failed to copy link:", error);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (isDeleteLoading) return;
+
+    setIsDeleteLoading(true);
+    setDeleteError(null);
+    try {
+      await BookmarksClientAPI.remove(bookmark.id);
+      router.push("/my/library");
+    } catch (error) {
+      console.error("Failed to delete bookmark:", error);
+      setDeleteError(
+        error instanceof Error ? error.message : "Failed to delete bookmark"
+      );
+      setIsDeleteLoading(false);
     }
   };
 
@@ -435,6 +458,15 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
         >
           <ShareIcon className="size-4" />
         </Action>
+        <Action
+          label="Delete"
+          tooltip="Delete bookmark"
+          onClick={() => setIsDeleteDialogOpen(true)}
+          variant="outline"
+          className="text-muted-foreground hover:text-red-500 w-auto px-3 gap-2"
+        >
+          <Trash2Icon className="size-4" />
+        </Action>
       </Actions>
 
       <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
@@ -473,6 +505,54 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
               className="text-red-500 hover:text-red-600 hover:bg-red-50"
             >
               Stop sharing
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={(open) => {
+        if (!isDeleteLoading) {
+          setIsDeleteDialogOpen(open);
+          if (!open) setDeleteError(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete bookmark</DialogTitle>
+            <DialogDescription>
+              This will permanently delete this bookmark and all associated data
+              including summaries, tags, and images. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteError && (
+            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 rounded-md px-3 py-2">
+              <AlertCircleIcon className="size-4 shrink-0" />
+              <span>{deleteError}</span>
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={isDeleteLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDelete}
+              disabled={isDeleteLoading}
+            >
+              {isDeleteLoading ? (
+                <>
+                  <Loader2Icon className="size-4 animate-spin mr-1" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
             </Button>
           </div>
         </DialogContent>
