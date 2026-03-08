@@ -9,6 +9,9 @@ import { AI } from "../../ai";
 import { EventBus } from "../../ai/bus";
 import { ContentChunkRepository } from "../../repositories/content-chunk.repository";
 import { CollectionRepositoryImpl } from "../../repositories/collection.repository";
+import { HttpClient } from "../../services/http-client";
+import { ChunkingService } from "../../services/chunking.service";
+import { EmbeddingService } from "../../services/embedding.service";
 
 describe("Bookmark Content Refactor Integration", () => {
   let repository: BookmarkRepositoryImpl;
@@ -19,13 +22,25 @@ describe("Bookmark Content Refactor Integration", () => {
   let mockContentChunkRepository: jest.Mocked<ContentChunkRepository>;
   let mockAI: jest.Mocked<AI>;
   let mockEventBus: jest.Mocked<EventBus>;
+  let mockHttpClient: jest.Mocked<HttpClient>;
+  let mockChunkingService: jest.Mocked<ChunkingService>;
+  let mockEmbeddingService: jest.Mocked<EmbeddingService>;
   let testUserId: string;
 
   beforeEach(() => {
-    // Note: This integration test doesn't directly test HTTP functionality,
-    // so we don't need to mock the HTTP client here
-
     const db = getTestDatabase();
+
+    mockHttpClient = {
+      fetch: jest.fn(),
+    };
+    (mockHttpClient.fetch as any).mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      headers: { get: (_name: string) => "image/jpeg" },
+      body: "",
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(100)),
+    });
     repository = new BookmarkRepositoryImpl(db);
     collectionRepository = new CollectionRepositoryImpl(db);
 
@@ -119,13 +134,26 @@ describe("Bookmark Content Refactor Integration", () => {
       cleanupBookmarkChannel: jest.fn(),
     } as any;
 
+    mockChunkingService = {
+      chunkHtml: jest.fn<any>().mockReturnValue([]),
+      stripHtml: jest.fn<any>().mockReturnValue(""),
+    };
+
+    mockEmbeddingService = {
+      embedText: jest.fn<any>().mockResolvedValue([0.1, 0.2, 0.3]),
+      embedTexts: jest.fn<any>().mockResolvedValue([[0.1, 0.2, 0.3]]),
+    };
+
     service = new BookmarkServiceImpl(repository, mockWebScrapingService);
     processorService = new BookmarkProcessorServiceImpl(
       service,
       mockContentChunkRepository,
       collectionRepository,
       mockAI,
-      mockEventBus
+      mockEventBus,
+      mockHttpClient,
+      mockChunkingService,
+      mockEmbeddingService
     );
     testUserId = TestDataFactory.generateUserId();
   });

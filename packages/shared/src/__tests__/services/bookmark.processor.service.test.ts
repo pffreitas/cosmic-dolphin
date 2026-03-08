@@ -9,6 +9,8 @@ import { EventBus } from "../../ai/bus";
 import { TestDataFactory } from "../../test-utils/factories";
 import { Bookmark, ScrapedUrlContents } from "../../types";
 import { HttpClient } from "../../services/http-client";
+import { ChunkingService } from "../../services/chunking.service";
+import { EmbeddingService } from "../../services/embedding.service";
 
 describe("BookmarkProcessorService", () => {
   let service: BookmarkProcessorServiceImpl;
@@ -27,8 +29,7 @@ describe("BookmarkProcessorService", () => {
       fetch: jest.fn(),
     };
 
-    // Configure fetch mock with proper function types
-    jest.mocked(mockHttpClient.fetch).mockResolvedValue({
+    (mockHttpClient.fetch as any).mockResolvedValue({
       ok: true,
       status: 200,
       statusText: "OK",
@@ -144,13 +145,25 @@ describe("BookmarkProcessorService", () => {
       getCollectionsByIds: jest.fn<any>().mockResolvedValue([]),
     } as jest.Mocked<CollectionRepository>;
 
+    const mockChunkingService: jest.Mocked<ChunkingService> = {
+      chunkHtml: jest.fn<any>().mockReturnValue([]),
+      stripHtml: jest.fn<any>().mockReturnValue(""),
+    };
+
+    const mockEmbeddingService: jest.Mocked<EmbeddingService> = {
+      embedText: jest.fn<any>().mockResolvedValue([0.1, 0.2, 0.3]),
+      embedTexts: jest.fn<any>().mockResolvedValue([[0.1, 0.2, 0.3]]),
+    };
+
     service = new BookmarkProcessorServiceImpl(
       mockBookmarkService,
       mockContentChunkRepository,
       mockCollectionRepository,
       mockAI,
       mockEventBus,
-      mockHttpClient
+      mockHttpClient,
+      mockChunkingService,
+      mockEmbeddingService
     );
 
     testBookmark = {

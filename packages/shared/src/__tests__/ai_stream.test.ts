@@ -1,27 +1,25 @@
-import { AI } from "../ai";
-import { EventBus } from "../ai/bus";
+import { describe, it, expect, beforeAll, mock } from "bun:test";
 import { PromptInput } from "../ai/types";
-import { Identifier } from "../ai/id";
-import { jest, describe, it, expect, beforeAll } from '@jest/globals';
 
-// Mock dependencies
-jest.mock("@openrouter/ai-sdk-provider", () => ({
-  createOpenRouter: jest.fn(() => jest.fn()),
+mock.module("@openrouter/ai-sdk-provider", () => ({
+  createOpenRouter: mock(() => mock()),
 }));
 
-// Mock Identifier
-jest.mock("../ai/id", () => ({
+mock.module("../ai/id", () => ({
   Identifier: {
-    ascending: jest.fn(() => "mock-part-id"),
+    ascending: mock(() => "mock-part-id"),
   },
 }));
+
+import { AI } from "../ai";
+import { EventBus } from "../ai/bus";
 
 describe("AI Stream", () => {
   let mockEventBus: EventBus;
 
   beforeAll(() => {
     mockEventBus = {
-      publish: jest.fn(),
+      publish: mock(),
     } as unknown as EventBus;
   });
 
@@ -57,13 +55,11 @@ describe("AI Stream", () => {
 
     const generator = ai.processStream(input, stream);
 
-    // Consume the generator
     const parts = [];
     for await (const part of generator) {
-        parts.push(part);
+      parts.push(part);
     }
 
-    // Check if publish was called with message.part.updated and usage type
     expect(mockEventBus.publish).toHaveBeenCalledWith(
       "message.part.updated",
       expect.objectContaining({
