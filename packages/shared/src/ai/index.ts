@@ -10,7 +10,7 @@ import {
   createOpenRouter,
   OpenRouterProvider,
 } from "@openrouter/ai-sdk-provider";
-import { LanguageModelV2, ProviderV2 } from "@ai-sdk/provider";
+import { LanguageModelV2 } from "@ai-sdk/provider";
 import {
   LLMResponse,
   LLMResponsePart,
@@ -28,32 +28,12 @@ import { ToolRegistry } from "./tool";
 import { z, ZodSchema } from "zod";
 import { Identifier } from "./id";
 import { EventBus } from "./bus";
-import { createOllama, OllamaProvider } from "ollama-ai-provider-v2";
-import { createOpenAI, OpenAIProvider } from "@ai-sdk/openai";
-import { createAzure, AzureOpenAIProvider } from "@ai-sdk/azure";
-
 export class AI {
   private openrouter: OpenRouterProvider;
-  private ollama: OllamaProvider;
-  private openai: OpenAIProvider;
-  private azure: AzureOpenAIProvider;
 
   constructor(private eventBus: EventBus) {
-    this.openai = createOpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-
-    this.azure = createAzure({
-      resourceName: process.env.AZURE_RESOURCE_NAME,
-      apiKey: process.env.AZURE_API_KEY,
-    });
-
     this.openrouter = createOpenRouter({
       apiKey: process.env.OPENROUTER_API_KEY,
-    });
-
-    this.ollama = createOllama({
-      baseURL: process.env.OLLAMA_URL,
     });
   }
 
@@ -83,15 +63,6 @@ export class AI {
   }
 
   getModel(modelId: string): LanguageModelV2 {
-    if (modelId.startsWith("ollama:")) {
-      return this.ollama(modelId.replace("ollama:", ""));
-    }
-    if (modelId.startsWith("openai:")) {
-      return this.openai(modelId.replace("openai:", ""));
-    }
-    if (modelId.startsWith("azure:")) {
-      return this.azure(modelId.replace("azure:", ""));
-    }
     return this.openrouter(modelId);
   }
 
