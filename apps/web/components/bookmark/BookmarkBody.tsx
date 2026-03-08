@@ -320,22 +320,23 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
           tooltip={isLiked ? "Unlike" : "Like"}
           onClick={handleLikeToggle}
           disabled={isLikeLoading}
+          variant="outline"
           className={
             isLiked
-              ? "text-red-500 hover:text-red-600"
-              : "text-muted-foreground hover:text-red-500"
+              ? "text-red-500 hover:text-red-600 border-red-200 bg-red-50/50 hover:bg-red-50 w-auto px-3 gap-2"
+              : "text-muted-foreground hover:text-red-500 w-auto px-3 gap-2"
           }
         >
           <HeartIcon
             className="size-4"
             fill={isLiked ? "currentColor" : "none"}
           />
+          {likeCount > 0 && (
+            <span className="text-sm font-medium">
+              {likeCount}
+            </span>
+          )}
         </Action>
-        {likeCount > 0 && (
-          <span className="text-sm text-muted-foreground">
-            {likeCount}
-          </span>
-        )}
         <Action label="Share">
           <ShareIcon className="size-4" />
         </Action>
