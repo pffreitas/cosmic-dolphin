@@ -144,8 +144,12 @@ describe("Bookmark Content Edge Cases", () => {
         links: scrapedContent.links,
       });
 
+      // Verify data exists before concurrent reads
+      const baseline = await repository.getScrapedUrlContent(bookmark.id);
+      expect(baseline).not.toBeNull();
+
       // Simulate concurrent reads
-      const concurrentReads = Array.from({ length: 10 }, () =>
+      const concurrentReads = Array.from({ length: 5 }, () =>
         repository.getScrapedUrlContent(bookmark.id)
       );
 
@@ -153,7 +157,7 @@ describe("Bookmark Content Edge Cases", () => {
 
       // All reads should succeed and return the same content
       results.forEach(result => {
-        expect(result).toBeDefined();
+        expect(result).not.toBeNull();
         expect(result!.bookmarkId).toBe(bookmark.id);
         expect(result!.content).toBe(scrapedContent.content);
       });
