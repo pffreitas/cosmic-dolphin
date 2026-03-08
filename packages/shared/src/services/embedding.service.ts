@@ -12,9 +12,9 @@ export class EmbeddingServiceImpl implements EmbeddingService {
   private model: EmbeddingModelV2<string>;
 
   constructor() {
-    const provider = process.env.EMBEDDING_PROVIDER || "openai";
+    const provider = process.env.EMBEDDING_PROVIDER || "openrouter";
     const modelId =
-      process.env.EMBEDDING_MODEL || "text-embedding-3-small";
+      process.env.EMBEDDING_MODEL || "openai/text-embedding-3-small";
 
     this.model = this.resolveModel(provider, modelId);
   }
