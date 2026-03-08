@@ -63,7 +63,7 @@ export interface BookmarkRepository {
   ): Promise<VectorSearchResult[]>;
   findByShareSlug(slug: string): Promise<Bookmark | null>;
   update(id: string, data: BookmarkUpdate): Promise<Bookmark>;
-  delete(id: string): Promise<void>;
+  deleteByUser(id: string, userId: string): Promise<boolean>;
 }
 
 export class BookmarkRepositoryImpl
@@ -237,10 +237,15 @@ export class BookmarkRepositoryImpl
     }, "update");
   }
 
-  async delete(id: string): Promise<void> {
+  async deleteByUser(id: string, userId: string): Promise<boolean> {
     return this.executeQuery(async () => {
-      await this.db.deleteFrom("bookmarks").where("id", "=", id).execute();
-    }, "delete");
+      const result = await this.db
+        .deleteFrom("bookmarks")
+        .where("id", "=", id)
+        .where("user_id", "=", userId)
+        .executeTakeFirst();
+      return BigInt(result.numDeletedRows) > 0;
+    }, "deleteByUser");
   }
 
   async searchByQuickAccess(

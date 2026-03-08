@@ -72,7 +72,7 @@ export interface BookmarkService {
   share(bookmarkId: string, userId: string): Promise<ShareBookmarkResponse>;
   unshare(bookmarkId: string, userId: string): Promise<ShareBookmarkResponse>;
   findByShareSlug(slug: string): Promise<Bookmark | null>;
-  delete(id: string): Promise<void>;
+  delete(id: string, userId: string): Promise<void>;
 }
 
 export class BookmarkServiceImpl implements BookmarkService {
@@ -220,8 +220,11 @@ export class BookmarkServiceImpl implements BookmarkService {
     return this.mapDatabaseToBookmark(bookmark);
   }
 
-  async delete(id: string): Promise<void> {
-    await this.bookmarkRepository.delete(id);
+  async delete(id: string, userId: string): Promise<void> {
+    const deleted = await this.bookmarkRepository.deleteByUser(id, userId);
+    if (!deleted) {
+      throw new Error("Bookmark not found");
+    }
   }
 
   async updateProcessingStatus(
