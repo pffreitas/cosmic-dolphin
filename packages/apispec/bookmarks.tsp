@@ -174,6 +174,10 @@ model GetCollectionsResponse {
     collections: Collection[];
 }
 
+model DeleteBookmarkResponse {
+    message: string;
+}
+
 model BookmarkError {
     error: string;
 }
@@ -222,6 +226,17 @@ interface Bookmarks {
     @useAuth(BearerAuth)
     @get
     findById(@path id: string): Bookmark | {
+        @statusCode statusCode: 404;
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+
+    @doc("Delete a bookmark and all associated data")
+    @useAuth(BearerAuth)
+    @delete
+    remove(@path id: string): DeleteBookmarkResponse | {
         @statusCode statusCode: 404;
         @body body: BookmarkError;
     } | {
