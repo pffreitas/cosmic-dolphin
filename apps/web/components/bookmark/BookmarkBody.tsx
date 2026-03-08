@@ -13,6 +13,8 @@ import {
   ShareIcon,
   AlertCircleIcon,
   Loader2Icon,
+  CopyIcon,
+  CheckIcon,
 } from "lucide-react";
 import { Action, Actions } from "@/components/ai-elements/actions";
 import { Separator } from "@/components/ui/separator";
@@ -29,9 +31,12 @@ import OpenGraphImage from "@/components/opengraph/OpenGraphImage";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useBookmarkRealtime } from "@/lib/hooks/useBookmarkRealtime";
 import {
   Breadcrumb,
@@ -105,6 +110,13 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
     () => (props.bookmark as any).likeCount ?? 0
   );
   const [isLikeLoading, setIsLikeLoading] = useState(false);
+  const [isShared, setIsShared] = useState(
+    () => (props.bookmark as any).isPublic ?? false
+  );
+  const [shareUrl, setShareUrl] = useState("");
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isShareLoading, setIsShareLoading] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   // Subscribe to realtime updates for this specific bookmark
   const { isConnected, isProcessing } = useBookmarkRealtime(props.bookmark.id, {
@@ -154,6 +166,53 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
       setLikeCount(previousLikeCount);
     } finally {
       setIsLikeLoading(false);
+    }
+  };
+
+  const handleShareToggle = async () => {
+    if (isShareLoading) return;
+
+    if (isShared) {
+      setIsShareDialogOpen(true);
+      return;
+    }
+
+    setIsShareLoading(true);
+    try {
+      const result = await BookmarksClientAPI.share(bookmark.id);
+      setIsShared(result.isPublic);
+      setShareUrl(result.shareUrl);
+      setIsShareDialogOpen(true);
+    } catch (error) {
+      console.error("Failed to share bookmark:", error);
+    } finally {
+      setIsShareLoading(false);
+    }
+  };
+
+  const handleUnshare = async () => {
+    if (isShareLoading) return;
+
+    setIsShareLoading(true);
+    try {
+      const result = await BookmarksClientAPI.unshare(bookmark.id);
+      setIsShared(result.isPublic);
+      setShareUrl("");
+      setIsShareDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to unshare bookmark:", error);
+    } finally {
+      setIsShareLoading(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy link:", error);
     }
   };
 
@@ -337,10 +396,62 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
             </span>
           )}
         </Action>
-        <Action label="Share">
+        <Action
+          label={isShared ? "Shared" : "Share"}
+          tooltip={isShared ? "Manage share link" : "Share bookmark"}
+          onClick={handleShareToggle}
+          disabled={isShareLoading}
+          variant="outline"
+          className={
+            isShared
+              ? "text-blue-500 hover:text-blue-600 border-blue-200 bg-blue-50/50 hover:bg-blue-50 w-auto px-3 gap-2"
+              : "text-muted-foreground hover:text-blue-500 w-auto px-3 gap-2"
+          }
+        >
           <ShareIcon className="size-4" />
         </Action>
       </Actions>
+
+      <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Share bookmark</DialogTitle>
+            <DialogDescription>
+              Anyone with this link can view this bookmark.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2">
+            <Input
+              value={shareUrl}
+              readOnly
+              className="flex-1"
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleCopyLink}
+              className="shrink-0"
+            >
+              {isCopied ? (
+                <CheckIcon className="size-4 text-green-500" />
+              ) : (
+                <CopyIcon className="size-4" />
+              )}
+            </Button>
+          </div>
+          <div className="flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleUnshare}
+              disabled={isShareLoading}
+              className="text-red-500 hover:text-red-600 hover:bg-red-50"
+            >
+              Stop sharing
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
