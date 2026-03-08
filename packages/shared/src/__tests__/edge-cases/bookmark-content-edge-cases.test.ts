@@ -279,13 +279,11 @@ describe("Bookmark Content Edge Cases", () => {
       });
 
       // Delete the bookmark
-      await repository.delete(bookmark.id);
+      await repository.deleteByUser(bookmark.id, testUserId);
 
-      // Scraped content should still be accessible (or handle as per business logic)
+      // Scraped content is cascade-deleted with the bookmark
       const retrievedContent = await repository.getScrapedUrlContent(bookmark.id);
-      // This behavior depends on whether cascading delete is implemented
-      // For now, we'll test that it doesn't throw an error
-      expect(() => retrievedContent).not.toThrow();
+      expect(retrievedContent).toBeNull();
     });
   });
 });

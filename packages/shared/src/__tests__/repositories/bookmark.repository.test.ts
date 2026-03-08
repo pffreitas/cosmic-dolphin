@@ -298,17 +298,184 @@ describe("BookmarkRepository", () => {
     });
   });
 
-  describe("delete", () => {
-    it("should delete a bookmark", async () => {
+  describe("deleteByUser", () => {
+    it("should delete a bookmark owned by the user and return true", async () => {
       const bookmarkData = TestDataFactory.createBookmark({
         user_id: testUserId,
       });
       const created = await repository.create(bookmarkData);
 
-      await repository.delete(created.id);
+      const result = await repository.deleteByUser(created.id, testUserId);
+
+      expect(result).toBe(true);
+    });
+
+    it("should verify the bookmark is no longer findable after deletion", async () => {
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+      });
+      const created = await repository.create(bookmarkData);
+
+      await repository.deleteByUser(created.id, testUserId);
 
       const found = await repository.findByIdAndUser(created.id, testUserId);
       expect(found).toBeNull();
+    });
+
+    it("should return false when trying to delete another user's bookmark", async () => {
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+      });
+      const created = await repository.create(bookmarkData);
+      const otherUserId = TestDataFactory.generateUserId();
+
+      const result = await repository.deleteByUser(created.id, otherUserId);
+
+      expect(result).toBe(false);
+    });
+
+    it("should NOT delete the bookmark when called with wrong userId", async () => {
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+      });
+      const created = await repository.create(bookmarkData);
+      const otherUserId = TestDataFactory.generateUserId();
+
+      await repository.deleteByUser(created.id, otherUserId);
+
+      const found = await repository.findByIdAndUser(created.id, testUserId);
+      expect(found).not.toBeNull();
+      expect(found!.id).toBe(created.id);
+    });
+
+    it("should return false when bookmark ID does not exist", async () => {
+      const result = await repository.deleteByUser(
+        "00000000-0000-0000-0000-000000000000",
+        testUserId
+      );
+      expect(result).toBe(false);
+    });
+
+    it("should return false when deleting an already-deleted bookmark", async () => {
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+      });
+      const created = await repository.create(bookmarkData);
+
+      await repository.deleteByUser(created.id, testUserId);
+      const secondResult = await repository.deleteByUser(created.id, testUserId);
+
+      expect(secondResult).toBe(false);
+    });
+
+    it("should cascade delete scraped_url_contents when bookmark is deleted", async () => {
+      const db = getTestDatabase();
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+      });
+      const bookmark = await repository.create(bookmarkData);
+
+      await repository.insertScrapedUrlContents(bookmark.id, {
+        title: "Test Title",
+        content: "Test content",
+        metadata: { wordCount: 10, readingTime: 1 },
+        images: [],
+        links: [],
+      });
+
+      await repository.deleteByUser(bookmark.id, testUserId);
+
+      const scrapedContent = await db
+        .selectFrom("scraped_url_contents")
+        .selectAll()
+        .where("bookmark_id", "=", bookmark.id)
+        .executeTakeFirst();
+      expect(scrapedContent).toBeUndefined();
+    });
+
+    it("should cascade delete content_chunks and text_chunks when bookmark is deleted", async () => {
+      const db = getTestDatabase();
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+      });
+      const bookmark = await repository.create(bookmarkData);
+
+      await repository.insertScrapedUrlContents(bookmark.id, {
+        title: "Test Title",
+        content: "Test content for chunking",
+        metadata: { wordCount: 20, readingTime: 1 },
+        images: [],
+        links: [],
+      });
+
+      const scrapedContent = await db
+        .selectFrom("scraped_url_contents")
+        .select("id")
+        .where("bookmark_id", "=", bookmark.id)
+        .executeTakeFirstOrThrow();
+
+      const contentChunk = await db
+        .insertInto("content_chunks")
+        .values({
+          scraped_content_id: scrapedContent.id,
+          chunk_type: "text",
+          index: 0,
+          size: 100,
+          start_position: 0,
+          end_position: 99,
+        })
+        .returning("id")
+        .executeTakeFirstOrThrow();
+
+      await db
+        .insertInto("text_chunks")
+        .values({
+          chunk_id: contentChunk.id,
+          content: "Test chunk text",
+        })
+        .execute();
+
+      await repository.deleteByUser(bookmark.id, testUserId);
+
+      const chunks = await db
+        .selectFrom("content_chunks")
+        .selectAll()
+        .where("scraped_content_id", "=", scrapedContent.id)
+        .execute();
+      expect(chunks).toHaveLength(0);
+
+      const textChunks = await db
+        .selectFrom("text_chunks")
+        .selectAll()
+        .where("chunk_id", "=", contentChunk.id)
+        .execute();
+      expect(textChunks).toHaveLength(0);
+    });
+
+    it("should cascade delete bookmark_likes when bookmark is deleted", async () => {
+      const db = getTestDatabase();
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+      });
+      const bookmark = await repository.create(bookmarkData);
+
+      const likerUserId = TestDataFactory.generateUserId();
+      await db
+        .insertInto("bookmark_likes")
+        .values({
+          user_id: likerUserId,
+          bookmark_id: bookmark.id,
+        })
+        .execute();
+
+      await repository.deleteByUser(bookmark.id, testUserId);
+
+      const likes = await db
+        .selectFrom("bookmark_likes")
+        .selectAll()
+        .where("bookmark_id", "=", bookmark.id)
+        .execute();
+      expect(likes).toHaveLength(0);
     });
   });
 

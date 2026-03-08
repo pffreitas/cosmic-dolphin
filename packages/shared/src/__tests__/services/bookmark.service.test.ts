@@ -23,13 +23,15 @@ describe("BookmarkService", () => {
       fullTextSearch: jest.fn(),
       vectorSearch: jest.fn(),
       update: jest.fn(),
-      delete: jest.fn(),
+      deleteByUser: jest.fn(),
+      findByShareSlug: jest.fn(),
     } as jest.Mocked<BookmarkRepository>;
 
     mockWebScrapingService = {
       scrape: jest.fn(),
       isValidUrl: jest.fn(),
       scrapeContent: jest.fn(),
+      extractMetadataFromUrl: jest.fn(),
     } as jest.Mocked<WebScrapingService>;
 
     service = new BookmarkServiceImpl(mockRepository, mockWebScrapingService);
@@ -125,6 +127,63 @@ describe("BookmarkService", () => {
       expect(mappedBookmark.title).toBe(dbBookmark.title);
       expect(mappedBookmark.userId).toBe(dbBookmark.user_id);
       expect(mappedBookmark).not.toHaveProperty("content");
+    });
+  });
+
+  describe("delete", () => {
+    it("should call repository.deleteByUser with correct id and userId", async () => {
+      const bookmarkId = "test-bookmark-id";
+      mockRepository.deleteByUser.mockResolvedValue(true);
+
+      await service.delete(bookmarkId, testUserId);
+
+      expect(mockRepository.deleteByUser).toHaveBeenCalledWith(
+        bookmarkId,
+        testUserId
+      );
+    });
+
+    it("should resolve without error when deletion succeeds", async () => {
+      mockRepository.deleteByUser.mockResolvedValue(true);
+
+      await expect(
+        service.delete("test-bookmark-id", testUserId)
+      ).resolves.toBeUndefined();
+    });
+
+    it("should throw 'Bookmark not found' when repository returns false (bookmark does not exist)", async () => {
+      mockRepository.deleteByUser.mockResolvedValue(false);
+
+      await expect(
+        service.delete("non-existent-id", testUserId)
+      ).rejects.toThrow("Bookmark not found");
+    });
+
+    it("should throw 'Bookmark not found' when repository returns false (wrong user)", async () => {
+      const otherUserId = TestDataFactory.generateUserId();
+      mockRepository.deleteByUser.mockResolvedValue(false);
+
+      await expect(
+        service.delete("test-bookmark-id", otherUserId)
+      ).rejects.toThrow("Bookmark not found");
+    });
+
+    it("should propagate repository errors", async () => {
+      const error = new Error("Database connection failed");
+      mockRepository.deleteByUser.mockRejectedValue(error);
+
+      await expect(
+        service.delete("test-bookmark-id", testUserId)
+      ).rejects.toThrow("Database connection failed");
+    });
+
+    it("should not catch unexpected errors from the repository", async () => {
+      const error = new TypeError("Unexpected type error");
+      mockRepository.deleteByUser.mockRejectedValue(error);
+
+      await expect(
+        service.delete("test-bookmark-id", testUserId)
+      ).rejects.toThrow(TypeError);
     });
   });
 });
