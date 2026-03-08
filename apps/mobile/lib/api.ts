@@ -45,6 +45,13 @@ export interface Bookmark {
   userId: string;
   createdAt: string;
   updatedAt: string;
+  likeCount?: number;
+  isLikedByCurrentUser?: boolean;
+}
+
+export interface LikeResponse {
+  likeCount: number;
+  isLikedByCurrentUser: boolean;
 }
 
 export interface GetBookmarksResponse {
@@ -221,6 +228,48 @@ export namespace BookmarksAPI {
       return data.metadata;
     } catch (error) {
       console.error('Error fetching URL preview:', error);
+      throw error;
+    }
+  }
+
+  export async function like(id: string): Promise<LikeResponse> {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/bookmarks/${id}/like`, {
+        method: 'PUT',
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error liking bookmark:', error);
+      throw error;
+    }
+  }
+
+  export async function unlike(id: string): Promise<LikeResponse> {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/bookmarks/${id}/like`, {
+        method: 'DELETE',
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error unliking bookmark:', error);
       throw error;
     }
   }
