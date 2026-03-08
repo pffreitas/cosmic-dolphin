@@ -1,9 +1,13 @@
 import {
   Configuration,
   BookmarksApi,
+  CollectionsApi,
   Bookmark,
+  Collection,
   CreateBookmarkRequest,
   CreateBookmarkResponse,
+  PreviewResponse,
+  GetCollectionsResponse,
   SearchBookmarksResponse,
   LikeResponse,
   ShareBookmarkResponse,
@@ -21,20 +25,22 @@ function getApiBasePath(): string {
   return basePath;
 }
 
+async function getConfiguration(): Promise<Configuration> {
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const accessToken = session?.access_token || "";
+
+  return new Configuration({
+    basePath: getApiBasePath(),
+    accessToken,
+  });
+}
+
 export namespace BookmarksClientAPI {
   async function getApiInstance(): Promise<BookmarksApi> {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const accessToken = session?.access_token || "";
-
-    return new BookmarksApi(
-      new Configuration({
-        basePath: getApiBasePath(),
-        accessToken,
-      })
-    );
+    return new BookmarksApi(await getConfiguration());
   }
 
   export async function list(query?: {
@@ -154,6 +160,32 @@ export namespace BookmarksClientAPI {
         throw new Error(error.response.data.error);
       }
       throw error;
+    }
+  }
+
+  export async function preview(url: string): Promise<PreviewResponse> {
+    const bookmarksApi = await getApiInstance();
+    try {
+      return await bookmarksApi.bookmarksPreview({
+        previewRequest: { url },
+      });
+    } catch (error: any) {
+      console.error("Error previewing URL", error);
+      if (error?.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw error;
+    }
+  }
+
+  export async function listCollections(): Promise<Collection[]> {
+    const collectionsApi = new CollectionsApi(await getConfiguration());
+    try {
+      const response = await collectionsApi.collectionsList();
+      return response.collections || [];
+    } catch (error) {
+      console.error("Error fetching collections", error);
+      return [];
     }
   }
 }

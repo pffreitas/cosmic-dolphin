@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import {
   Bookmark,
   CreateBookmarkRequest,
+  PreviewResponse,
   SearchBookmarksResponse,
 } from "@cosmic-dolphin/api-client";
 import { SearchBookmarksQuery } from "@/lib/types/bookmark";
@@ -13,6 +14,8 @@ interface BookmarksState {
   error: string | null;
   createLoading: boolean;
   createError: string | null;
+  previewLoading: boolean;
+  previewError: string | null;
   searchResults: Bookmark[];
   searchLoading: boolean;
   searchError: string | null;
@@ -25,6 +28,8 @@ const initialState: BookmarksState = {
   error: null,
   createLoading: false,
   createError: null,
+  previewLoading: false,
+  previewError: null,
   searchResults: [],
   searchLoading: false,
   searchError: null,
@@ -39,6 +44,18 @@ export const createBookmark = createAsyncThunk(
       return bookmarkId;
     } catch (error: any) {
       return rejectWithValue(error.message || "Failed to create bookmark");
+    }
+  }
+);
+
+export const previewUrl = createAsyncThunk(
+  "bookmarks/preview",
+  async (url: string, { rejectWithValue }) => {
+    try {
+      const response = await BookmarksClientAPI.preview(url);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.message || "Failed to preview URL");
     }
   }
 );
@@ -74,6 +91,7 @@ const bookmarksSlice = createSlice({
     clearErrors: (state) => {
       state.error = null;
       state.createError = null;
+      state.previewError = null;
       state.searchError = null;
     },
     clearSearchResults: (state) => {
@@ -103,6 +121,21 @@ const bookmarksSlice = createSlice({
         state.createLoading = false;
         console.log("createBookmark.rejected", action.payload);
         state.createError = action.payload as string;
+      })
+      // Preview URL
+      .addCase(previewUrl.pending, (state) => {
+        state.previewLoading = true;
+        state.previewError = null;
+      })
+      .addCase(
+        previewUrl.fulfilled,
+        (state, _action: PayloadAction<PreviewResponse>) => {
+          state.previewLoading = false;
+        }
+      )
+      .addCase(previewUrl.rejected, (state, action) => {
+        state.previewLoading = false;
+        state.previewError = action.payload as string;
       })
       // Fetch bookmarks
       .addCase(fetchBookmarks.pending, (state) => {

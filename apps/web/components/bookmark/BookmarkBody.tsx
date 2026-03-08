@@ -15,6 +15,8 @@ import {
   Loader2Icon,
   CopyIcon,
   CheckIcon,
+  ExternalLinkIcon,
+  LockIcon,
 } from "lucide-react";
 import { Action, Actions } from "@/components/ai-elements/actions";
 import { Separator } from "@/components/ui/separator";
@@ -273,13 +275,38 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
         </Card>
       )}
 
-      {bookmark.metadata?.openGraph && (
+      {bookmark.title && (
+        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+          {bookmark.isPrivateLink && (
+            <LockIcon className="size-5 shrink-0 text-muted-foreground" />
+          )}
+          {bookmark.title}
+        </h1>
+      )}
+
+      {bookmark.metadata?.openGraph ? (
         <OpenGraphWebpage
           title={bookmark.metadata.openGraph.title || ""}
           description={bookmark.metadata.openGraph.description || ""}
           image={bookmark.metadata.openGraph.image || ""}
           url={bookmark.metadata.openGraph.url || ""}
         />
+      ) : (
+        <a
+          href={bookmark.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 rounded-lg border px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-muted/50"
+        >
+          <ExternalLinkIcon className="size-4 shrink-0" />
+          <span className="truncate">{bookmark.sourceUrl}</span>
+        </a>
+      )}
+
+      {!bookmark.cosmicSummary && bookmark.cosmicBriefSummary && (
+        <p className="text-base leading-relaxed text-muted-foreground">
+          {bookmark.cosmicBriefSummary}
+        </p>
       )}
 
       {bookmark.cosmicTags && bookmark.cosmicTags.length > 0 && (
@@ -292,7 +319,6 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
         </div>
       )}
 
-      {/* Show streaming summary content */}
       {bookmark.cosmicSummary && (
         <div className="relative">
           <CosmicMarkdown body={bookmark.cosmicSummary} />
@@ -302,7 +328,6 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
         </div>
       )}
 
-      {/* Placeholder while waiting for summary */}
       {!bookmark.cosmicSummary && processingStatus === "processing" && (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2Icon className="size-4 animate-spin" />

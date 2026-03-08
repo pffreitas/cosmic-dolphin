@@ -3,7 +3,7 @@ import { Bookmark } from "@cosmic-dolphin/api-client";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Bookmark as BookmarkIcon } from "lucide-react";
+import { Bookmark as BookmarkIcon, LockIcon } from "lucide-react";
 
 function extractDomain(url: string): string {
   try {
@@ -57,7 +57,10 @@ const BookmarkCard = ({ bookmark }: { bookmark: Bookmark }) => {
 
           {/* Title */}
           <Link href={`/bookmarks/${bookmark.id}`} className="block">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 leading-tight line-clamp-2 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors">
+            <h2 className="flex items-start gap-1.5 text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 leading-tight line-clamp-2 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors">
+              {bookmark.isPrivateLink && (
+                <LockIcon className="mt-1 size-4 shrink-0 text-gray-400 dark:text-gray-500" />
+              )}
               {bookmark.title}
             </h2>
           </Link>
