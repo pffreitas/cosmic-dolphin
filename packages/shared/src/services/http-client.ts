@@ -15,6 +15,7 @@ export interface HttpResponse {
   statusText: string;
   headers: HttpHeaders;
   body: string;
+  redirectUrl?: string;
   arrayBuffer(): Promise<ArrayBuffer>;
 }
 
@@ -93,6 +94,7 @@ export class CosmicHttpClient implements HttpClient {
         },
       });
 
+      const finalUrl = response.url || response.requestUrl;
       return {
         ok: response.statusCode >= 200 && response.statusCode < 300,
         status: response.statusCode,
@@ -101,6 +103,7 @@ export class CosmicHttpClient implements HttpClient {
           get: (name: string) => response.headers[name.toLowerCase()] || null,
         },
         body: response.body,
+        redirectUrl: finalUrl !== url ? finalUrl : undefined,
         arrayBuffer: async () => Buffer.from(response.body).buffer,
       };
     } catch (error) {

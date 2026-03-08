@@ -3,6 +3,7 @@ import {
   OpenGraphMetadata,
   BookmarkMetadata,
   ScrapedUrlContents,
+  PreviewMetadata,
 } from "../types";
 import * as cheerio from "cheerio";
 import { HttpClient, CosmicHttpClient } from "./http-client";
@@ -18,6 +19,7 @@ export interface WebScrapingService {
     url: string,
     content: string
   ): Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">;
+  extractMetadataFromUrl(url: string): PreviewMetadata;
 }
 
 export class WebScrapingServiceImpl implements WebScrapingService {
@@ -42,6 +44,10 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     try {
       const response = await this.httpClient.fetch(url);
 
+      if (response.redirectUrl) {
+        this.detectAuthRedirect(url, response.redirectUrl);
+      }
+
       const contentType = response.headers.get("content-type") || "";
 
       if (
@@ -55,6 +61,45 @@ export class WebScrapingServiceImpl implements WebScrapingService {
       return scrapedUrlContents;
     } catch (error) {
       throw error;
+    }
+  }
+
+  private detectAuthRedirect(originalUrl: string, finalUrl: string): void {
+    const originalHost = new URL(originalUrl).hostname;
+    const finalHost = new URL(finalUrl).hostname;
+    const finalPath = new URL(finalUrl).pathname.toLowerCase();
+
+    const authPathPatterns = [
+      "/login", "/signin", "/sign-in", "/sign_in",
+      "/auth", "/oauth", "/sso",
+      "/accounts/login", "/session/new",
+      "/cas/login", "/saml",
+    ];
+
+    const ssoProviders = [
+      "login.microsoftonline.com", "accounts.google.com",
+      "auth0.com", "okta.com", "onelogin.com",
+      "login.salesforce.com", "idp.",
+    ];
+
+    if (originalHost !== finalHost) {
+      const isSsoRedirect = ssoProviders.some(
+        (provider) => finalHost.includes(provider)
+      );
+      if (isSsoRedirect) {
+        throw new Error(
+          `Auth redirect detected: redirected to SSO provider ${finalHost}`
+        );
+      }
+    }
+
+    const isAuthPath = authPathPatterns.some((pattern) =>
+      finalPath.startsWith(pattern)
+    );
+    if (isAuthPath) {
+      throw new Error(
+        `Auth redirect detected: redirected to login page ${finalUrl}`
+      );
     }
   }
 
@@ -128,6 +173,31 @@ export class WebScrapingServiceImpl implements WebScrapingService {
       openGraph: ogData,
       wordCount,
       readingTime,
+    };
+  }
+
+  extractMetadataFromUrl(url: string): PreviewMetadata {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.replace(/^www\./, "");
+    const siteName = hostname.split(".")[0].charAt(0).toUpperCase() + hostname.split(".")[0].slice(1);
+
+    const pathSegments = urlObj.pathname.split("/").filter(Boolean);
+    let title: string | undefined;
+    if (pathSegments.length > 0) {
+      title = pathSegments
+        .map((seg) =>
+          seg
+            .replace(/[-_]/g, " ")
+            .replace(/\b\w/g, (c) => c.toUpperCase())
+        )
+        .join(" / ");
+    }
+
+    return {
+      title: title || siteName,
+      favicon: `${urlObj.protocol}//${urlObj.host}/favicon.ico`,
+      siteName,
+      url,
     };
   }
 

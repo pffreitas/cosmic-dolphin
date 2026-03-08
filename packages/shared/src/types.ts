@@ -96,6 +96,7 @@ export interface Bookmark extends BaseEntity {
   userId: string;
   quickAccess?: string;
   searchDocument?: string;
+  isPrivateLink: boolean;
   likeCount?: number;
   isLikedByCurrentUser?: boolean;
   isPublic: boolean;
@@ -156,6 +157,27 @@ export interface BookmarkQueuePayload extends QueueTaskPayload {
 
 export interface CreateBookmarkRequest {
   source_url: string;
+  collection_id?: string;
+  title?: string;
+  description?: string;
+  tags?: string[];
+  is_private_link?: boolean;
+}
+
+export interface PreviewMetadata {
+  title?: string;
+  description?: string;
+  image?: string;
+  favicon?: string;
+  siteName?: string;
+  url: string;
+}
+
+export interface PreviewResponse {
+  metadata: PreviewMetadata;
+  scrapable: boolean;
+  suggestedTags?: string[];
+  suggestedDescription?: string;
 }
 
 export interface CreateBookmarkResponse {

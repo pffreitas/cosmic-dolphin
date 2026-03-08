@@ -15,12 +15,48 @@ import {
 } from "../repositories";
 import { WebScrapingService } from "./web-scraping.service";
 import { NewBookmark, BookmarkUpdate } from "../database/schema";
+import { AI } from "../ai";
+import { z } from "zod";
+
+export interface PrivateLinkMetadata {
+  title?: string;
+  description?: string;
+  tags?: string[];
+  collectionId?: string;
+}
+
+const PRIVATE_LINK_INFERENCE_PROMPT = `You are analyzing a URL that cannot be fully scraped (it's behind authentication or otherwise inaccessible).
+Based on the URL and any metadata available, infer a short description and relevant tags.
+
+URL: {{URL}}
+Title: {{TITLE}}
+Site: {{SITE_NAME}}
+
+Return a JSON object with:
+- "description": A brief, useful description of what this link likely contains (1-2 sentences)
+- "tags": An array of 2-5 relevant tags (lowercase, no spaces, use hyphens for multi-word tags)
+
+Be specific based on URL patterns. For example:
+- GitHub URLs: infer repo name, whether it's a PR, issue, etc.
+- Jira/Linear URLs: infer it's a ticket/task
+- Google Docs: infer it's a document
+- Figma: infer it's a design file`;
 
 export interface BookmarkService {
   findByUserAndUrl(userId: string, sourceUrl: string): Promise<Bookmark | null>;
   findByIdAndUser(id: string, userId: string): Promise<Bookmark | null>;
   getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
   create(url: string, userId: string): Promise<Bookmark>;
+  createPrivateLink(
+    url: string,
+    userId: string,
+    metadata: PrivateLinkMetadata
+  ): Promise<Bookmark>;
+  inferPrivateLinkMetadata(
+    url: string,
+    title?: string,
+    siteName?: string
+  ): Promise<{ tags: string[]; description: string }>;
   findByUser(userId: string, options?: FindByUserOptions): Promise<Bookmark[]>;
   searchByQuickAccess(
     userId: string,
@@ -43,7 +79,8 @@ export class BookmarkServiceImpl implements BookmarkService {
   constructor(
     private bookmarkRepository: BookmarkRepository,
     private webScrapingService: WebScrapingService,
-    private collectionRepository?: CollectionRepository
+    private collectionRepository?: CollectionRepository,
+    private ai?: AI
   ) {}
 
   async findByUserAndUrl(
@@ -84,6 +121,56 @@ export class BookmarkServiceImpl implements BookmarkService {
     );
 
     return this.mapDatabaseToBookmark(bookmark);
+  }
+
+  async createPrivateLink(
+    url: string,
+    userId: string,
+    metadata: PrivateLinkMetadata
+  ): Promise<Bookmark> {
+    const title = metadata.title || url;
+    const newBookmark: NewBookmark = {
+      source_url: url,
+      title,
+      user_id: userId,
+      collection_id: metadata.collectionId || null,
+      cosmic_brief_summary: metadata.description || null,
+      cosmic_tags: metadata.tags || null,
+      quick_access: `${title} ${url}`,
+      processing_status: "completed",
+      processing_completed_at: new Date(),
+      is_private_link: true,
+    };
+
+    const bookmark = await this.bookmarkRepository.create(newBookmark);
+    return this.mapDatabaseToBookmark(bookmark);
+  }
+
+  async inferPrivateLinkMetadata(
+    url: string,
+    title?: string,
+    siteName?: string
+  ): Promise<{ tags: string[]; description: string }> {
+    if (!this.ai) {
+      return { tags: [], description: "" };
+    }
+
+    const prompt = PRIVATE_LINK_INFERENCE_PROMPT
+      .replace("{{URL}}", url)
+      .replace("{{TITLE}}", title || "Unknown")
+      .replace("{{SITE_NAME}}", siteName || "Unknown");
+
+    const result = await this.ai.generateObject({
+      sessionID: "private-link-inference",
+      modelId: "google/gemini-2.5-flash",
+      prompt,
+      schema: z.object({
+        description: z.string().describe("Brief description of the link"),
+        tags: z.array(z.string()).describe("Relevant tags for the link"),
+      }),
+    });
+
+    return result;
   }
 
   async getScrapedUrlContent(
@@ -308,6 +395,7 @@ export class BookmarkServiceImpl implements BookmarkService {
       cosmicLinks: data.cosmic_links,
       quickAccess: data.quick_access,
       searchDocument: data.search_document,
+      isPrivateLink: data.is_private_link ?? false,
       likeCount: data.like_count ?? 0,
       isPublic: data.is_public ?? false,
       shareSlug: data.share_slug ?? undefined,
