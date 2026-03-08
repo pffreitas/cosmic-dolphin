@@ -61,7 +61,7 @@ describe("BookmarkRepository", () => {
       const created = await repository.create(bookmarkData);
       const found = await repository.findByUserAndUrl(testUserId, url);
 
-      expect(found).toBeDefined();
+      expect(found).not.toBeNull();
       expect(found!.id).toBe(created.id);
       expect(found!.source_url).toBe(url);
       expect(found!.user_id).toBe(testUserId);
@@ -99,7 +99,7 @@ describe("BookmarkRepository", () => {
 
       const found = await repository.findByIdAndUser(created.id, testUserId);
 
-      expect(found).toBeDefined();
+      expect(found).not.toBeNull();
       expect(found!.id).toBe(created.id);
       expect(found!.user_id).toBe(testUserId);
     });

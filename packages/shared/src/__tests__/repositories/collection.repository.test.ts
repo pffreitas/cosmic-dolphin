@@ -76,7 +76,7 @@ describe('CollectionRepository', () => {
 
       const found = await repository.findByIdAndUser(created.id, testUserId);
 
-      expect(found).toBeDefined();
+      expect(found).not.toBeNull();
       expect(found!.id).toBe(created.id);
       expect(found!.user_id).toBe(testUserId);
       expect(found!.name).toBe(created.name);

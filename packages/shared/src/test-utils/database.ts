@@ -1,4 +1,4 @@
-import { Kysely } from 'kysely';
+import { Kysely, sql } from 'kysely';
 import { Database } from '../database/schema';
 import { createDatabase } from '../database/connection';
 
@@ -19,14 +19,7 @@ export function getTestDatabase(): Kysely<Database> {
 }
 
 export async function clearDatabase(db: Kysely<Database>): Promise<void> {
-  // Clear tables in reverse FK dependency order
-  await db.deleteFrom('image_chunks').execute();
-  await db.deleteFrom('text_chunks').execute();
-  await db.deleteFrom('content_chunks').execute();
-  await db.deleteFrom('bookmark_likes').execute();
-  await db.deleteFrom('scraped_url_contents').execute();
-  await db.deleteFrom('bookmarks').execute();
-  await db.deleteFrom('collections').execute();
+  await sql`TRUNCATE image_chunks, text_chunks, content_chunks, bookmark_likes, scraped_url_contents, bookmarks, collections CASCADE`.execute(db);
 }
 
 export async function closeTestDatabase(): Promise<void> {

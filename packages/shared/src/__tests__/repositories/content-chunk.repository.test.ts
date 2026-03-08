@@ -35,7 +35,10 @@ describe("ContentChunkRepository", () => {
     });
 
     const retrievedContent = await bookmarkRepository.getScrapedUrlContent(bookmark.id);
-    testScrapedContentId = retrievedContent!.id;
+    if (!retrievedContent) {
+      throw new Error(`Failed to retrieve scraped content for bookmark ${bookmark.id} - database may have been modified by a concurrent process`);
+    }
+    testScrapedContentId = retrievedContent.id;
   });
 
   describe("createTextChunk", () => {
@@ -285,7 +288,7 @@ describe("ContentChunkRepository", () => {
 
       const found = await repository.findById(created.id);
 
-      expect(found).toBeDefined();
+      expect(found).not.toBeNull();
       expect(found!.id).toBe(created.id);
       expect(found!.chunkType).toBe("text");
       expect((found as TextChunk).content).toBe(textChunkData.content);
@@ -299,7 +302,7 @@ describe("ContentChunkRepository", () => {
 
       const found = await repository.findById(created.id);
 
-      expect(found).toBeDefined();
+      expect(found).not.toBeNull();
       expect(found!.id).toBe(created.id);
       expect(found!.chunkType).toBe("image");
       expect((found as ImageChunk).imageData).toEqual(imageChunkData.imageData);
