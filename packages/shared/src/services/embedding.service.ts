@@ -32,7 +32,7 @@ export class EmbeddingServiceImpl implements EmbeddingService {
         const openrouter = createOpenRouter({
           apiKey: process.env.OPENROUTER_API_KEY,
         });
-        return openrouter.embedding(modelId);
+        return openrouter.textEmbeddingModel(modelId);
       }
       default:
         throw new Error(`Unsupported embedding provider: ${provider}`);
