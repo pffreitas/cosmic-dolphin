@@ -8,6 +8,7 @@ import {
   Image,
   Pressable,
   Linking,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -216,6 +217,11 @@ export default function BookmarkDetailScreen() {
       console.error('Failed to toggle like:', error);
       setIsLiked(previousIsLiked);
       setLikeCount(previousLikeCount);
+      Alert.alert(
+        "Error",
+        "Failed to update like status. Please try again later.",
+        [{ text: "OK" }]
+      );
     } finally {
       setIsLikeLoading(false);
     }
