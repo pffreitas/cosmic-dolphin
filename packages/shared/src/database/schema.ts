@@ -41,6 +41,7 @@ export interface BookmarksTable extends BaseTable {
   processing_started_at: Date | null;
   processing_completed_at: Date | null;
   processing_error: string | null;
+  is_private_link: Generated<boolean>;
   like_count: Generated<number>;
   is_public: Generated<boolean>;
   share_slug: string | null;
