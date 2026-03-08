@@ -9,7 +9,10 @@ import {
   Pressable,
   Linking,
   Alert,
+  Modal,
+  Share,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -54,6 +57,11 @@ export default function BookmarkDetailScreen() {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [isLikeLoading, setIsLikeLoading] = useState(false);
+  const [isShared, setIsShared] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [isShareModalVisible, setIsShareModalVisible] = useState(false);
+  const [isShareLoading, setIsShareLoading] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   // Markdown styles based on color scheme - must be called before any early returns
   const markdownStyles = useMemo(() => ({
@@ -175,6 +183,7 @@ export default function BookmarkDetailScreen() {
         setBookmark(data);
         setIsLiked(data.isLikedByCurrentUser ?? false);
         setLikeCount(data.likeCount ?? 0);
+        setIsShared(data.isPublic ?? false);
       } else {
         setError('Bookmark not found');
       }
@@ -224,6 +233,57 @@ export default function BookmarkDetailScreen() {
       );
     } finally {
       setIsLikeLoading(false);
+    }
+  };
+
+  const handleShareToggle = async () => {
+    if (!bookmark || isShareLoading) return;
+
+    if (isShared) {
+      setIsShareModalVisible(true);
+      return;
+    }
+
+    setIsShareLoading(true);
+    try {
+      const result = await BookmarksAPI.share(bookmark.id);
+      setIsShared(result.isPublic);
+      setShareUrl(result.shareUrl);
+      setIsShareModalVisible(true);
+    } catch (err) {
+      Alert.alert('Error', 'Failed to share bookmark. Please try again.');
+    } finally {
+      setIsShareLoading(false);
+    }
+  };
+
+  const handleUnshare = async () => {
+    if (!bookmark || isShareLoading) return;
+
+    setIsShareLoading(true);
+    try {
+      const result = await BookmarksAPI.unshare(bookmark.id);
+      setIsShared(result.isPublic);
+      setShareUrl('');
+      setIsShareModalVisible(false);
+    } catch (err) {
+      Alert.alert('Error', 'Failed to unshare bookmark. Please try again.');
+    } finally {
+      setIsShareLoading(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    await Clipboard.setStringAsync(shareUrl);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const handleNativeShare = async () => {
+    try {
+      await Share.share({ url: shareUrl, message: shareUrl });
+    } catch {
+      // user cancelled
     }
   };
 
@@ -293,6 +353,17 @@ export default function BookmarkDetailScreen() {
                 {likeCount}
               </Text>
             )}
+          </Pressable>
+          <Pressable
+            onPress={handleShareToggle}
+            style={styles.headerButton}
+            disabled={isShareLoading}
+          >
+            <Ionicons
+              name={isShared ? "share" : "share-outline"}
+              size={22}
+              color={isShared ? colors.tint : colors.textSecondary}
+            />
           </Pressable>
           <Pressable onPress={handleOpenUrl} style={styles.headerButton}>
             <Ionicons name="open-outline" size={22} color={colors.tint} />
@@ -391,6 +462,74 @@ export default function BookmarkDetailScreen() {
         
         </View>
       </ScrollView>
+
+      <Modal
+        visible={isShareModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsShareModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setIsShareModalVisible(false)}
+        >
+          <Pressable
+            style={[styles.modalContent, { backgroundColor: colors.background }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              Share bookmark
+            </Text>
+            <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
+              Anyone with this link can view this bookmark.
+            </Text>
+
+            <View style={[styles.linkContainer, { backgroundColor: colors.backgroundSecondary }]}>
+              <Text
+                style={[styles.linkText, { color: colors.text }]}
+                numberOfLines={1}
+                ellipsizeMode="middle"
+              >
+                {shareUrl}
+              </Text>
+            </View>
+
+            <View style={styles.modalActions}>
+              <Pressable
+                onPress={handleCopyLink}
+                style={[styles.modalButton, { backgroundColor: colors.tint }]}
+              >
+                <Ionicons
+                  name={isCopied ? 'checkmark' : 'copy-outline'}
+                  size={18}
+                  color="#fff"
+                />
+                <Text style={styles.modalButtonText}>
+                  {isCopied ? 'Copied!' : 'Copy Link'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={handleNativeShare}
+                style={[styles.modalButtonOutline, { borderColor: colors.border }]}
+              >
+                <Ionicons name="share-outline" size={18} color={colors.tint} />
+                <Text style={[styles.modalButtonOutlineText, { color: colors.tint }]}>
+                  Share via...
+                </Text>
+              </Pressable>
+            </View>
+
+            <Pressable
+              onPress={handleUnshare}
+              disabled={isShareLoading}
+              style={styles.unshareButton}
+            >
+              <Text style={styles.unshareButtonText}>Stop sharing</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -552,5 +691,76 @@ const styles = StyleSheet.create({
   urlText: {
     flex: 1,
     fontSize: 13,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    width: '100%',
+    borderRadius: 16,
+    padding: 24,
+    gap: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    marginTop: -8,
+  },
+  linkContainer: {
+    padding: 12,
+    borderRadius: 8,
+  },
+  linkText: {
+    fontSize: 14,
+    fontFamily: 'SpaceMono',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  modalButtonOutline: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  modalButtonOutlineText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  unshareButton: {
+    alignSelf: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  unshareButtonText: {
+    color: '#ef4444',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

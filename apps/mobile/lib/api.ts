@@ -47,6 +47,8 @@ export interface Bookmark {
   updatedAt: string;
   likeCount?: number;
   isLikedByCurrentUser?: boolean;
+  isPublic?: boolean;
+  shareSlug?: string;
 }
 
 export interface LikeResponse {
@@ -85,6 +87,11 @@ export interface UrlPreviewMetadata {
 
 export interface PreviewUrlResponse {
   metadata: UrlPreviewMetadata;
+}
+
+export interface ShareBookmarkResponse {
+  isPublic: boolean;
+  shareUrl: string;
 }
 
 export interface HybridSearchResultItem {
@@ -270,6 +277,48 @@ export namespace BookmarksAPI {
       return await response.json();
     } catch (error) {
       console.error('Error unliking bookmark:', error);
+      throw error;
+    }
+  }
+
+  export async function share(id: string): Promise<ShareBookmarkResponse> {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/bookmarks/${id}/share`, {
+        method: 'PUT',
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error sharing bookmark:', error);
+      throw error;
+    }
+  }
+
+  export async function unshare(id: string): Promise<ShareBookmarkResponse> {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/bookmarks/${id}/share`, {
+        method: 'DELETE',
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error unsharing bookmark:', error);
       throw error;
     }
   }
