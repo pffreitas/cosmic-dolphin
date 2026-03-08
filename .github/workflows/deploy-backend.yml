@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  BUN_VERSION: "1.2"
+  BUN_VERSION: "1.2.20"
   REGISTRY_NAME: ${{ secrets.DIGITALOCEAN_REGISTRY_NAME }}
   IMAGE_NAME_API: cosmic-dolphin-api
   IMAGE_NAME_WORKER: cosmic-dolphin-worker
