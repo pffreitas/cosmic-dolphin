@@ -281,6 +281,7 @@ export default function BookmarkDetailScreen() {
             onPress={handleLikeToggle}
             style={styles.likeButton}
             disabled={isLikeLoading}
+            testID="like-button"
           >
             <Ionicons
               name={isLiked ? "heart" : "heart-outline"}
