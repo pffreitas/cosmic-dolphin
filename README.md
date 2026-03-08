@@ -301,7 +301,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 **`apps/worker/.env`:**
 ```env
 OPENROUTER_API_KEY=your-openrouter-key
-OPENAI_API_KEY=your-openai-key
 ```
 
 ### Using Staging/Production APIs
