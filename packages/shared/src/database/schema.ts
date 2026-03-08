@@ -42,6 +42,8 @@ export interface BookmarksTable extends BaseTable {
   processing_completed_at: Date | null;
   processing_error: string | null;
   like_count: Generated<number>;
+  is_public: Generated<boolean>;
+  share_slug: string | null;
 }
 
 // Bookmark likes table (user x bookmark junction)

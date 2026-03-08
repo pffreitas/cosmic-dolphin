@@ -39,6 +39,8 @@ model Bookmark {
     userId: string;
     likeCount?: int32;
     isLikedByCurrentUser?: boolean;
+    isPublic?: boolean;
+    shareSlug?: string;
 }
 
 model BookmarkImage {
@@ -129,6 +131,11 @@ model LikeResponse {
     isLikedByCurrentUser: boolean;
 }
 
+model ShareBookmarkResponse {
+    isPublic: boolean;
+    shareUrl: string;
+}
+
 model BookmarkError {
     error: string;
 }
@@ -207,6 +214,44 @@ interface Bookmarks {
     @delete
     @route("/{id}/like")
     unlike(@path id: string): LikeResponse | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+
+    @doc("Share a bookmark (make it public)")
+    @useAuth(BearerAuth)
+    @put
+    @route("/{id}/share")
+    share(@path id: string): ShareBookmarkResponse | {
+        @statusCode statusCode: 404;
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+
+    @doc("Unshare a bookmark (make it private)")
+    @useAuth(BearerAuth)
+    @delete
+    @route("/{id}/share")
+    unshare(@path id: string): ShareBookmarkResponse | {
+        @statusCode statusCode: 404;
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+}
+
+@route("/bookmarks/shared")
+@tag("SharedBookmarks")
+interface SharedBookmarks {
+    @doc("Get a publicly shared bookmark by its share slug")
+    @get
+    findBySlug(@path slug: string): Bookmark | {
+        @statusCode statusCode: 404;
+        @body body: BookmarkError;
+    } | {
         @statusCode statusCode: 500;
         @body body: BookmarkError;
     };

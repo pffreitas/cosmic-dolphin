@@ -98,6 +98,8 @@ export interface Bookmark extends BaseEntity {
   searchDocument?: string;
   likeCount?: number;
   isLikedByCurrentUser?: boolean;
+  isPublic: boolean;
+  shareSlug?: string;
   processingStatus: ProcessingStatus;
   processingStartedAt?: Date;
   processingCompletedAt?: Date;
@@ -180,6 +182,11 @@ export interface SearchBookmarksQuery {
 export interface SearchBookmarksResponse {
   bookmarks: Bookmark[];
   total?: number;
+}
+
+export interface ShareBookmarkResponse {
+  isPublic: boolean;
+  shareUrl: string;
 }
 
 export interface ErrorResponse {
