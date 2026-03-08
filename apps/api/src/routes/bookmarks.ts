@@ -295,6 +295,30 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     }
   );
 
+  fastify.delete<{
+    Params: { id: string };
+    Reply: { message: string } | { error: string };
+  }>(
+    "/bookmarks/:id",
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const user_id = request.userId!;
+
+        await services.bookmark.delete(id, user_id);
+
+        return reply.send({ message: "Bookmark deleted successfully" });
+      } catch (error) {
+        if (error instanceof Error && error.message === "Bookmark not found") {
+          return reply.status(404).send({ error: "Bookmark not found" });
+        }
+        fastify.log.error({ error }, "Delete bookmark error");
+        return reply.status(500).send({ error: "Internal server error" });
+      }
+    }
+  );
+
   fastify.put<{
     Params: { id: string };
     Reply: { likeCount: number; isLikedByCurrentUser: boolean } | { error: string };
