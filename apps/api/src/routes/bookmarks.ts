@@ -6,6 +6,7 @@ import {
   GetBookmarksResponse,
   SearchBookmarksQuery,
   SearchBookmarksResponse,
+  ShareBookmarkResponse,
   ServiceContainer,
   createServiceContainer,
   Bookmark,
@@ -319,6 +320,79 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         return reply.send(result);
       } catch (error) {
         fastify.log.error({ error }, "Unlike bookmark error");
+        return reply.status(500).send({ error: "Internal server error" });
+      }
+    }
+  );
+
+  fastify.put<{
+    Params: { id: string };
+    Reply: ShareBookmarkResponse | { error: string };
+  }>(
+    "/bookmarks/:id/share",
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const user_id = request.userId!;
+
+        const result = await services.bookmark.share(id, user_id);
+
+        return reply.send(result);
+      } catch (error) {
+        if (error instanceof Error && error.message === "Bookmark not found") {
+          return reply.status(404).send({ error: "Bookmark not found" });
+        }
+        fastify.log.error({ error }, "Share bookmark error");
+        return reply.status(500).send({ error: "Internal server error" });
+      }
+    }
+  );
+
+  fastify.delete<{
+    Params: { id: string };
+    Reply: ShareBookmarkResponse | { error: string };
+  }>(
+    "/bookmarks/:id/share",
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const user_id = request.userId!;
+
+        const result = await services.bookmark.unshare(id, user_id);
+
+        return reply.send(result);
+      } catch (error) {
+        if (error instanceof Error && error.message === "Bookmark not found") {
+          return reply.status(404).send({ error: "Bookmark not found" });
+        }
+        fastify.log.error({ error }, "Unshare bookmark error");
+        return reply.status(500).send({ error: "Internal server error" });
+      }
+    }
+  );
+
+  fastify.get<{
+    Params: { slug: string };
+    Reply: Bookmark | { error: string };
+  }>(
+    "/bookmarks/shared/:slug",
+    async (request, reply) => {
+      try {
+        const { slug } = request.params;
+
+        const bookmark = await services.bookmark.findByShareSlug(slug);
+
+        if (!bookmark) {
+          return reply.status(404).send({ error: "Bookmark not found" });
+        }
+
+        const { quickAccess, searchDocument, userId, processingStatus, processingStartedAt, processingCompletedAt, processingError, ...publicBookmark } = bookmark;
+
+        return reply.send(publicBookmark as Bookmark);
+      } catch (error) {
+        fastify.log.error({ error }, "Get shared bookmark error");
         return reply.status(500).send({ error: "Internal server error" });
       }
     }

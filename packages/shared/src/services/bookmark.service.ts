@@ -2,9 +2,11 @@ import {
   Bookmark,
   ScrapedUrlContents,
   SearchBookmarksQuery,
+  ShareBookmarkResponse,
   ProcessingStatus,
   CollectionPathItem,
 } from "../types";
+import { nanoid } from "nanoid";
 import {
   BookmarkRepository,
   CollectionRepository,
@@ -31,6 +33,9 @@ export interface BookmarkService {
     status: ProcessingStatus,
     error?: string
   ): Promise<Bookmark>;
+  share(bookmarkId: string, userId: string): Promise<ShareBookmarkResponse>;
+  unshare(bookmarkId: string, userId: string): Promise<ShareBookmarkResponse>;
+  findByShareSlug(slug: string): Promise<Bookmark | null>;
   delete(id: string): Promise<void>;
 }
 
@@ -157,6 +162,60 @@ export class BookmarkServiceImpl implements BookmarkService {
     return this.mapDatabaseToBookmark(bookmark);
   }
 
+  async share(
+    bookmarkId: string,
+    userId: string
+  ): Promise<ShareBookmarkResponse> {
+    const bookmark = await this.bookmarkRepository.findByIdAndUser(
+      bookmarkId,
+      userId
+    );
+    if (!bookmark) {
+      throw new Error("Bookmark not found");
+    }
+
+    const shareSlug = bookmark.share_slug || nanoid(10);
+    await this.bookmarkRepository.update(bookmarkId, {
+      is_public: true,
+      share_slug: shareSlug,
+    });
+
+    const webAppUrl = process.env.WEB_APP_URL || "https://cosmicdolphin.com";
+    return {
+      isPublic: true,
+      shareUrl: `${webAppUrl}/s/${shareSlug}`,
+    };
+  }
+
+  async unshare(
+    bookmarkId: string,
+    userId: string
+  ): Promise<ShareBookmarkResponse> {
+    const bookmark = await this.bookmarkRepository.findByIdAndUser(
+      bookmarkId,
+      userId
+    );
+    if (!bookmark) {
+      throw new Error("Bookmark not found");
+    }
+
+    await this.bookmarkRepository.update(bookmarkId, {
+      is_public: false,
+    });
+
+    return {
+      isPublic: false,
+      shareUrl: "",
+    };
+  }
+
+  async findByShareSlug(slug: string): Promise<Bookmark | null> {
+    const bookmark = await this.bookmarkRepository.findByShareSlug(slug);
+    if (!bookmark) return null;
+    const mapped = this.mapDatabaseToBookmark(bookmark);
+    return this.enrichWithCollectionPath(mapped);
+  }
+
   async searchByQuickAccess(
     userId: string,
     query: string,
@@ -250,6 +309,8 @@ export class BookmarkServiceImpl implements BookmarkService {
       quickAccess: data.quick_access,
       searchDocument: data.search_document,
       likeCount: data.like_count ?? 0,
+      isPublic: data.is_public ?? false,
+      shareSlug: data.share_slug ?? undefined,
       processingStatus: data.processing_status || "idle",
       processingStartedAt: data.processing_started_at
         ? new Date(data.processing_started_at)

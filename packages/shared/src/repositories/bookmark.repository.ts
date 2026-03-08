@@ -61,6 +61,7 @@ export interface BookmarkRepository {
     queryEmbedding: number[],
     options?: SearchOptions
   ): Promise<VectorSearchResult[]>;
+  findByShareSlug(slug: string): Promise<Bookmark | null>;
   update(id: string, data: BookmarkUpdate): Promise<Bookmark>;
   delete(id: string): Promise<void>;
 }
@@ -194,6 +195,19 @@ export class BookmarkRepositoryImpl
 
       return await query.execute();
     }, "findByUser");
+  }
+
+  async findByShareSlug(slug: string): Promise<Bookmark | null> {
+    return this.executeQuery(async () => {
+      const result = await this.db
+        .selectFrom("bookmarks")
+        .selectAll()
+        .where("share_slug", "=", slug)
+        .where("is_public", "=", true)
+        .executeTakeFirst();
+
+      return result || null;
+    }, "findByShareSlug");
   }
 
   async update(id: string, data: BookmarkUpdate): Promise<Bookmark> {
