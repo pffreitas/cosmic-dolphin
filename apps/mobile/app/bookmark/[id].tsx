@@ -8,6 +8,7 @@ import {
   Image,
   Pressable,
   Linking,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -49,6 +50,10 @@ export default function BookmarkDetailScreen() {
   const [bookmark, setBookmark] = useState<Bookmark | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [isLikeLoading, setIsLikeLoading] = useState(false);
 
   // Markdown styles based on color scheme - must be called before any early returns
   const markdownStyles = useMemo(() => ({
@@ -168,6 +173,8 @@ export default function BookmarkDetailScreen() {
       const data = await BookmarksAPI.findById(bookmarkId);
       if (data) {
         setBookmark(data);
+        setIsLiked(data.isLikedByCurrentUser ?? false);
+        setLikeCount(data.likeCount ?? 0);
       } else {
         setError('Bookmark not found');
       }
@@ -187,6 +194,37 @@ export default function BookmarkDetailScreen() {
 
   const handleBack = () => {
     router.back();
+  };
+
+  const handleLikeToggle = async () => {
+    if (!bookmark || isLikeLoading) return;
+
+    const previousIsLiked = isLiked;
+    const previousLikeCount = likeCount;
+
+    setIsLiked(!isLiked);
+    setLikeCount(isLiked ? Math.max(likeCount - 1, 0) : likeCount + 1);
+    setIsLikeLoading(true);
+
+    try {
+      const result = isLiked
+        ? await BookmarksAPI.unlike(bookmark.id)
+        : await BookmarksAPI.like(bookmark.id);
+
+      setLikeCount(result.likeCount);
+      setIsLiked(result.isLikedByCurrentUser);
+    } catch (error) {
+      console.error('Failed to toggle like:', error);
+      setIsLiked(previousIsLiked);
+      setLikeCount(previousLikeCount);
+      Alert.alert(
+        "Error",
+        "Failed to update like status. Please try again later.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setIsLikeLoading(false);
+    }
   };
 
   if (isLoading) {
@@ -239,6 +277,23 @@ export default function BookmarkDetailScreen() {
           <Ionicons name="chevron-back" size={28} color={colors.text} />
         </Pressable>
         <View style={styles.headerActions}>
+          <Pressable
+            onPress={handleLikeToggle}
+            style={styles.likeButton}
+            disabled={isLikeLoading}
+            testID="like-button"
+          >
+            <Ionicons
+              name={isLiked ? "heart" : "heart-outline"}
+              size={22}
+              color={isLiked ? '#ef4444' : colors.textSecondary}
+            />
+            {likeCount > 0 && (
+              <Text style={[styles.likeCountText, { color: isLiked ? '#ef4444' : colors.textSecondary }]}>
+                {likeCount}
+              </Text>
+            )}
+          </Pressable>
           <Pressable onPress={handleOpenUrl} style={styles.headerButton}>
             <Ionicons name="open-outline" size={22} color={colors.tint} />
           </Pressable>
@@ -362,6 +417,16 @@ const styles = StyleSheet.create({
   },
   headerButton: {
     padding: 8,
+  },
+  likeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    gap: 4,
+  },
+  likeCountText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,
