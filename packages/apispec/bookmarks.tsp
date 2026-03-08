@@ -37,6 +37,7 @@ model Bookmark {
     cosmicTags?: string[];
     metadata?: BookmarkMetadata;
     userId: string;
+    isPrivateLink?: boolean;
     likeCount?: int32;
     isLikedByCurrentUser?: boolean;
     isPublic?: boolean;
@@ -82,6 +83,18 @@ model CreateBookmarkRequest {
 
     @doc("Optional collection ID to add the bookmark to")
     collection_id?: string;
+
+    @doc("Optional title for the bookmark")
+    title?: string;
+
+    @doc("Optional description for the bookmark")
+    description?: string;
+
+    @doc("Optional tags for the bookmark")
+    tags?: string[];
+
+    @doc("Whether this is a private link that cannot be scraped")
+    is_private_link?: boolean;
 }
 
 model CreateBookmarkResponse {
@@ -134,6 +147,31 @@ model LikeResponse {
 model ShareBookmarkResponse {
     isPublic: boolean;
     shareUrl: string;
+}
+
+model PreviewMetadata {
+    title?: string;
+    description?: string;
+    image?: string;
+    favicon?: string;
+    siteName?: string;
+    url: string;
+}
+
+model PreviewRequest {
+    @doc("The URL to preview")
+    url: string;
+}
+
+model PreviewResponse {
+    metadata: PreviewMetadata;
+    scrapable: boolean;
+    suggestedTags?: string[];
+    suggestedDescription?: string;
+}
+
+model GetCollectionsResponse {
+    collections: Collection[];
 }
 
 model BookmarkError {
@@ -238,6 +276,30 @@ interface Bookmarks {
         @statusCode statusCode: 404;
         @body body: BookmarkError;
     } | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+
+    @doc("Preview a URL and get metadata without saving")
+    @useAuth(BearerAuth)
+    @post
+    @route("/preview")
+    preview(@body request: PreviewRequest): PreviewResponse | {
+        @statusCode statusCode: 400;
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+}
+
+@route("/collections")
+@tag("Collections")
+interface Collections {
+    @doc("Get user's collections")
+    @useAuth(BearerAuth)
+    @get
+    list(): GetCollectionsResponse | {
         @statusCode statusCode: 500;
         @body body: BookmarkError;
     };
