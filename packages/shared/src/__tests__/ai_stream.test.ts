@@ -5,17 +5,8 @@ import { Identifier } from "../ai/id";
 import { jest, describe, it, expect, beforeAll } from '@jest/globals';
 
 // Mock dependencies
-jest.mock("@ai-sdk/openai", () => ({
-  createOpenAI: jest.fn(() => jest.fn()),
-}));
-jest.mock("@ai-sdk/azure", () => ({
-  createAzure: jest.fn(() => jest.fn()),
-}));
 jest.mock("@openrouter/ai-sdk-provider", () => ({
   createOpenRouter: jest.fn(() => jest.fn()),
-}));
-jest.mock("ollama-ai-provider-v2", () => ({
-  createOllama: jest.fn(() => jest.fn()),
 }));
 
 // Mock Identifier
@@ -41,7 +32,7 @@ describe("AI Stream", () => {
       sessionID: "session-1",
       taskID: "task-1",
       messageID: "message-1",
-      modelId: "openai:gpt-4",
+      modelId: "openai/gpt-4",
       context: [],
       tools: [],
       message: { role: "user", content: "hello" },
