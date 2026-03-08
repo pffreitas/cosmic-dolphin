@@ -7,9 +7,11 @@ import {
   SearchBookmarksQuery,
   SearchBookmarksResponse,
   ShareBookmarkResponse,
+  PreviewResponse,
   ServiceContainer,
   createServiceContainer,
   Bookmark,
+  Collection,
   createDatabase,
 } from "@cosmic-dolphin/shared";
 import { createClient } from "@supabase/supabase-js";
@@ -36,13 +38,17 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
       reply: FastifyReply
     ) => {
       try {
-        const { source_url } = request.body as Omit<
-          CreateBookmarkRequest,
-          "user_id"
-        >;
+        const {
+          source_url,
+          is_private_link,
+          title,
+          description,
+          tags,
+          collection_id,
+        } = request.body as Omit<CreateBookmarkRequest, "user_id">;
         const user_id = request.userId!;
 
-        fastify.log.info({ source_url, user_id }, "Create bookmark request");
+        fastify.log.info({ source_url, user_id, is_private_link }, "Create bookmark request");
 
         if (!source_url) {
           return reply.status(400).send({ error: "source_url is required" });
@@ -60,6 +66,18 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           return reply.status(201).send({
             bookmark: existingBookmark,
             message: "Bookmark created successfully",
+          });
+        }
+
+        if (is_private_link) {
+          const bookmark = await services.bookmark.createPrivateLink(
+            source_url,
+            user_id,
+            { title, description, tags, collectionId: collection_id }
+          );
+          return reply.status(201).send({
+            bookmark,
+            message: "Private link saved successfully",
           });
         }
 
@@ -183,38 +201,29 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     }
   );
 
-  // Preview endpoint - fetches OpenGraph metadata for a URL without saving
+  // Preview endpoint - fetches OpenGraph metadata for a URL without saving.
+  // On scraping failure (private/authenticated links), returns partial metadata
+  // derived from the URL structure along with AI-suggested tags and description.
   fastify.post<{
     Body: { url: string };
-    Reply:
-      | {
-          metadata: {
-            title?: string;
-            description?: string;
-            image?: string;
-            favicon?: string;
-            siteName?: string;
-            url?: string;
-          };
-        }
-      | { error: string };
+    Reply: PreviewResponse | { error: string };
   }>(
     "/bookmarks/preview",
     { preHandler: authMiddleware },
     async (request, reply) => {
+      const { url } = request.body;
+
+      fastify.log.info({ url }, "Preview URL request");
+
+      if (!url) {
+        return reply.status(400).send({ error: "url is required" });
+      }
+
+      if (!services.webScraping.isValidUrl(url)) {
+        return reply.status(400).send({ error: "Invalid URL format" });
+      }
+
       try {
-        const { url } = request.body;
-
-        fastify.log.info({ url }, "Preview URL request");
-
-        if (!url) {
-          return reply.status(400).send({ error: "url is required" });
-        }
-
-        if (!services.webScraping.isValidUrl(url)) {
-          return reply.status(400).send({ error: "Invalid URL format" });
-        }
-
         const scrapedContent = await services.webScraping.scrape(url);
         const openGraph = scrapedContent.metadata?.openGraph;
 
@@ -227,30 +236,33 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
             siteName: openGraph?.site_name,
             url: openGraph?.url || url,
           },
+          scrapable: true,
         });
       } catch (error) {
-        fastify.log.error({ error }, "Preview URL error");
+        fastify.log.info({ error, url }, "URL not scrapable, extracting metadata from URL structure");
 
-        if (error instanceof Error) {
-          if (
-            error.message.includes("timeout") ||
-            error.message.includes("Request timeout")
-          ) {
-            return reply.status(408).send({ error: "URL request timeout" });
-          }
+        const partialMetadata = services.webScraping.extractMetadataFromUrl(url);
 
-          if (error.message.includes("HTTP")) {
-            return reply
-              .status(422)
-              .send({ error: `URL not accessible: ${error.message}` });
-          }
-
-          if (error.message.includes("Unsupported content type")) {
-            return reply.status(422).send({ error: error.message });
-          }
+        let suggestedTags: string[] | undefined;
+        let suggestedDescription: string | undefined;
+        try {
+          const aiSuggestions = await services.bookmark.inferPrivateLinkMetadata(
+            url,
+            partialMetadata.title,
+            partialMetadata.siteName
+          );
+          suggestedTags = aiSuggestions.tags;
+          suggestedDescription = aiSuggestions.description;
+        } catch (aiError) {
+          fastify.log.warn({ aiError }, "AI metadata inference failed, returning without suggestions");
         }
 
-        return reply.status(500).send({ error: "Internal server error" });
+        return reply.send({
+          metadata: partialMetadata,
+          scrapable: false,
+          suggestedTags,
+          suggestedDescription,
+        });
       }
     }
   );
@@ -372,6 +384,19 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
       }
     }
   );
+
+  fastify.get<{
+    Reply: { collections: Collection[] } | { error: string };
+  }>("/collections", { preHandler: authMiddleware }, async (request, reply) => {
+    try {
+      const user_id = request.userId!;
+      const collections = await services.collection.findByUser(user_id);
+      return reply.send({ collections });
+    } catch (error) {
+      fastify.log.error({ error }, "Get collections error");
+      return reply.status(500).send({ error: "Internal server error" });
+    }
+  });
 
   fastify.get<{
     Params: { slug: string };
