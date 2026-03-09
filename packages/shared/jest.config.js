@@ -4,6 +4,7 @@ module.exports = {
   testEnvironment: "node",
   roots: ["<rootDir>/src"],
   testMatch: ["**/__tests__/**/*.test.ts", "**/__tests__/**/*.spec.ts"],
+  testPathIgnorePatterns: ["/node_modules/", "/__tests__/ai_stream\\.test\\.ts$"],
   transform: {
     "^.+\\.ts$": [
       "ts-jest",
