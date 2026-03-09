@@ -25,7 +25,7 @@ envs:
   value: ${SUPABASE_SERVICE_ROLE_KEY}
 - key: API_PORT
   scope: RUN_AND_BUILD_TIME
-  value: 3000
+  value: "3000"
 
 ingress:
   rules:
