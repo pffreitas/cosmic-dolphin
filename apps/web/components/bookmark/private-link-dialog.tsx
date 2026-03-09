@@ -182,7 +182,8 @@ export default function PrivateLinkDialog({
                   <button
                     type="button"
                     onClick={() => handleRemoveTag(tag)}
-                    className="rounded-full p-0.5 hover:bg-muted-foreground/20"
+                    aria-label="Remove tag"
+                    className="rounded-full p-0.5 hover:bg-muted-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
                   >
                     <X className="h-3 w-3" />
                   </button>
