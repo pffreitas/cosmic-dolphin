@@ -158,13 +158,17 @@ jobs:
           app_spec_location: .do/api-app.yml
 
       - name: Deploy Worker to DigitalOcean App Platform
-        uses: digitalocean/app_action/deploy@v2
         env:
           IMAGE_TAG: ${{ github.sha }}
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        with:
-          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-          app_spec_location: .do/worker-app.yml
+        run: |
+          envsubst '${IMAGE_TAG} ${DATABASE_URL} ${SUPABASE_URL} ${SUPABASE_SERVICE_ROLE_KEY} ${OPENROUTER_API_KEY}' < .do/worker-app.yml > /tmp/worker-app-resolved.yml
+          APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep cosmic-dolphin-worker-nodejs | awk '{print $1}')
+          if [ -n "$APP_ID" ]; then
+            doctl apps update "$APP_ID" --spec /tmp/worker-app-resolved.yml --wait
+          else
+            doctl apps create --spec /tmp/worker-app-resolved.yml --wait
+          fi
