@@ -487,6 +487,7 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
               variant="outline"
               size="icon"
               onClick={handleCopyLink}
+              aria-label="Copy link"
               className="shrink-0"
             >
               {isCopied ? (
