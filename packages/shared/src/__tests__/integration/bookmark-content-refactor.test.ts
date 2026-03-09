@@ -48,6 +48,7 @@ describe("Bookmark Content Refactor Integration", () => {
       scrape: jest.fn(),
       isValidUrl: jest.fn(),
       scrapeContent: jest.fn(),
+      extractMetadataFromUrl: jest.fn(),
     } as jest.Mocked<WebScrapingService>;
 
     mockContentChunkRepository = {

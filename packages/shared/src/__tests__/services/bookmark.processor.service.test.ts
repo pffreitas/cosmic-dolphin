@@ -46,9 +46,14 @@ describe("BookmarkProcessorService", () => {
       update: jest.fn(),
       updateProcessingStatus: jest.fn(),
       create: jest.fn(),
+      createPrivateLink: jest.fn(),
+      inferPrivateLinkMetadata: jest.fn(),
       findByUserAndUrl: jest.fn(),
       findByUser: jest.fn(),
       searchByQuickAccess: jest.fn(),
+      share: jest.fn(),
+      unshare: jest.fn(),
+      findByShareSlug: jest.fn(),
       delete: jest.fn(),
     } as jest.Mocked<BookmarkService>;
 
@@ -183,6 +188,8 @@ describe("BookmarkProcessorService", () => {
       cosmicTags: undefined,
       cosmicImages: undefined,
       cosmicLinks: undefined,
+      isPrivateLink: false,
+      isPublic: false,
       processingStatus: "idle",
       createdAt: new Date(),
       updatedAt: new Date(),

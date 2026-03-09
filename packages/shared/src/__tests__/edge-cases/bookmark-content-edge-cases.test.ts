@@ -19,6 +19,7 @@ describe("Bookmark Content Edge Cases", () => {
       scrape: jest.fn(),
       isValidUrl: jest.fn(),
       scrapeContent: jest.fn(),
+      extractMetadataFromUrl: jest.fn(),
     } as jest.Mocked<WebScrapingService>;
 
     service = new BookmarkServiceImpl(repository, mockWebScrapingService);
