@@ -424,7 +424,6 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
 
   fastify.get<{
     Params: { slug: string };
-    Reply: Bookmark | { error: string };
   }>(
     "/bookmarks/shared/:slug",
     async (request, reply) => {
@@ -439,9 +438,19 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
 
         const { quickAccess, searchDocument, userId, processingStatus, processingStartedAt, processingCompletedAt, processingError, ...publicBookmark } = bookmark;
 
-        return reply.send(publicBookmark as Bookmark);
+        let sharedByUserName: string | undefined;
+        try {
+          const profile = await services.profile.findById(userId);
+          if (profile) {
+            sharedByUserName = profile.name || profile.email?.split("@")[0];
+          }
+        } catch {
+          // Profile lookup is best-effort
+        }
+
+        return reply.send({ ...publicBookmark, sharedByUserName });
       } catch (error) {
-        fastify.log.error({ error }, "Get shared bookmark error");
+        fastify.log.error(error, "Get shared bookmark error");
         return reply.status(500).send({ error: "Internal server error" });
       }
     }

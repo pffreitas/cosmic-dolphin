@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import { config } from './config/environment';
 import bookmarkRoutes from './routes/bookmarks';
 import searchRoutes from './routes/search';
+import profileRoutes from './routes/profile';
 
 const server = Fastify({
   logger: config.NODE_ENV === 'development' ? {
@@ -44,9 +45,10 @@ server.register(async function (fastify) {
     return { message: 'Cosmic Dolphin API is running', version: '1.0.0' };
   });
   
-  // Register bookmark routes with /api/v1 prefix
+  // Register routes with /api/v1 prefix
   await fastify.register(bookmarkRoutes, { prefix: '/api/v1' });
   await fastify.register(searchRoutes, { prefix: '/api/v1' });
+  await fastify.register(profileRoutes, { prefix: '/api/v1' });
 });
 
 // Start server
