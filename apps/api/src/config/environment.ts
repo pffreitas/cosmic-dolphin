@@ -17,4 +17,9 @@ export const config = {
 
   // JWT
   JWT_SECRET: process.env.JWT_SECRET || "your-secret-key",
+
+  // CORS
+  CORS_ORIGIN: process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(",").map((origin) => origin.trim())
+    : true,
 };
