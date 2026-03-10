@@ -46,9 +46,9 @@ export default async function ProfilePage() {
   };
 
   return (
-    <div className="flex-1 w-full flex flex-col gap-8">
+    <div className="flex-1 w-full flex flex-col gap-6 max-w-2xl mx-auto py-6 sm:py-8 px-4 sm:px-0">
       <div>
-        <h1 className="font-bold text-2xl">Profile</h1>
+        <h1 className="font-bold text-2xl text-foreground">Profile</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Manage your profile information
         </p>
