@@ -25,3 +25,7 @@ export type {
   CreateTextChunkData,
   CreateImageChunkData,
 } from "./content-chunk.repository";
+export {
+  ProfileRepository,
+  ProfileRepositoryImpl,
+} from "./profile.repository";

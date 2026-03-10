@@ -25,6 +25,16 @@ export interface QueueTaskPayload {
   };
 }
 
+// Profile interface
+export interface Profile {
+  id: string;
+  name?: string;
+  email?: string;
+  pictureUrl?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Collection interface
 export interface Collection extends BaseEntity {
   name: string;

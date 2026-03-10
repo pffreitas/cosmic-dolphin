@@ -91,6 +91,16 @@ export interface ImageChunksTable {
   original_url: string | null;
 }
 
+// Profiles table
+export interface ProfilesTable {
+  id: string;
+  name: string | null;
+  email: string | null;
+  picture_url: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
 // Database schema interface
 export interface Database {
   collections: CollectionsTable;
@@ -100,6 +110,7 @@ export interface Database {
   content_chunks: ContentChunksTable;
   text_chunks: TextChunksTable;
   image_chunks: ImageChunksTable;
+  profiles: ProfilesTable;
 }
 
 // Type helpers for each table
@@ -129,3 +140,7 @@ export type TextChunkUpdate = Updateable<TextChunksTable>;
 export type ImageChunk = Selectable<ImageChunksTable>;
 export type NewImageChunk = Insertable<ImageChunksTable>;
 export type ImageChunkUpdate = Updateable<ImageChunksTable>;
+
+export type Profile = Selectable<ProfilesTable>;
+export type NewProfile = Insertable<ProfilesTable>;
+export type ProfileUpdate = Updateable<ProfilesTable>;
