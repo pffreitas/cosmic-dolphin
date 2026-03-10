@@ -14,27 +14,18 @@ import {
 import OpenGraphImage from "@/components/opengraph/OpenGraphImage";
 import Link from "next/link";
 
-export function SharedBookmarkView({ bookmark }: { bookmark: Bookmark }) {
-  const siteName =
-    bookmark.metadata?.openGraph?.siteName ||
-    (bookmark.sourceUrl
-      ? new URL(bookmark.sourceUrl).hostname.replace("www.", "")
-      : "");
-
+export function SharedBookmarkView({
+  bookmark,
+  sharedByUserName,
+}: {
+  bookmark: Bookmark;
+  sharedByUserName?: string;
+}) {
   return (
     <div className="flex flex-col gap-8 max-w-screen-md mx-auto py-8 px-4">
-      <div className="flex items-center gap-2">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="text-2xl">🐬</span>
-          <span className="font-noto text-lg text-gray-800">
-            Cosmic Dolphin
-          </span>
-        </Link>
-      </div>
-
-      {siteName && (
+      {sharedByUserName && (
         <div className="flex items-center gap-2 text-sm text-gray-500">
-          <span>Shared from {siteName}</span>
+          <span>Shared by {sharedByUserName}</span>
         </div>
       )}
 

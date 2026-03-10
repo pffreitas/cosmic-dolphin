@@ -1,35 +1,59 @@
 import { createClient } from "@/utils/supabase/server";
-import { InfoIcon } from "lucide-react";
 import { redirect } from "next/navigation";
+import { ProfileForm } from "./ProfileForm";
 
-export default async function ProtectedPage() {
+function getApiBasePath(): string {
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+}
+
+async function getProfile(accessToken: string) {
+  try {
+    const res = await fetch(`${getApiBasePath()}/profile`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export default async function ProfilePage() {
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  if (!user) {
+  if (!user || !session) {
     return redirect("/sign-in");
   }
 
+  const profile = await getProfile(session.access_token);
+
+  const profileData = profile ?? {
+    id: user.id,
+    name:
+      user.user_metadata?.full_name ??
+      user.user_metadata?.name ??
+      user.email?.split("@")[0],
+    email: user.email,
+    pictureUrl:
+      user.user_metadata?.avatar_url ?? user.user_metadata?.picture,
+  };
+
   return (
-    <div className="flex-1 w-full flex flex-col gap-12">
-      <div className="w-full">
-        <div className="bg-accent text-sm p-3 px-5 rounded-md text-foreground flex gap-3 items-center">
-          <InfoIcon size="16" strokeWidth={2} />
-          This is a protected page that you can only see as an authenticated
-          user
-        </div>
+    <div className="flex-1 w-full flex flex-col gap-8">
+      <div>
+        <h1 className="font-bold text-2xl">Profile</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Manage your profile information
+        </p>
       </div>
-      <div className="flex flex-col gap-2 items-start">
-        <h2 className="font-bold text-2xl mb-4">Your user details</h2>
-        <div className="flex gap-2">
-          <pre className="text-xs font-mono flex-1 p-3 rounded border max-h-32 overflow-auto">
-            {JSON.stringify(user, null, 2)}
-          </pre>
-          <textarea className="text-xs flex-1 font-mono p-3 rounded border" readOnly value={session?.access_token} />
-        </div>
-      </div>
+      <ProfileForm profile={profileData} />
     </div>
   );
 }

@@ -3,18 +3,25 @@ import { SharedBookmarkView } from "./SharedBookmarkView";
 import {
   Configuration,
   SharedBookmarksApi,
+  Bookmark,
 } from "@cosmic-dolphin/api-client";
 
 function getApiBasePath(): string {
   return process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 }
 
-async function getSharedBookmark(slug: string) {
-  const api = new SharedBookmarksApi(
-    new Configuration({ basePath: getApiBasePath() })
-  );
+type SharedBookmarkResponse = Bookmark & { sharedByUserName?: string };
+
+async function getSharedBookmark(
+  slug: string,
+): Promise<SharedBookmarkResponse | null> {
   try {
-    return await api.sharedBookmarksFindBySlug({ slug });
+    const api = new SharedBookmarksApi(
+      new Configuration({ basePath: getApiBasePath() })
+    );
+    const response = await api.sharedBookmarksFindBySlugRaw({ slug });
+    const json = await response.raw.json();
+    return json as SharedBookmarkResponse;
   } catch {
     return null;
   }
@@ -80,5 +87,10 @@ export default async function SharedBookmarkPage({ params }: PageProps) {
     );
   }
 
-  return <SharedBookmarkView bookmark={bookmark} />;
+  return (
+    <SharedBookmarkView
+      bookmark={bookmark}
+      sharedByUserName={bookmark.sharedByUserName}
+    />
+  );
 }
