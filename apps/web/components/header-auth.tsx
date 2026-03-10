@@ -31,6 +31,7 @@ function ProfileDropDown({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
+          aria-label="Profile menu"
           className="cursor-pointer rounded-full ring-offset-background transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Avatar className="h-8 w-8">
