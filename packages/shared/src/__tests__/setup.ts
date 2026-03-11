@@ -7,7 +7,14 @@ config({ path: join(process.cwd(), '.env.test') });
 
 let dbUtils: DatabaseTestUtils | null = null;
 
+const skipDb = process.env.SKIP_DB === 'true';
+
 beforeAll(async () => {
+  if (skipDb) {
+    console.log('Skipping database connection (SKIP_DB=true)');
+    return;
+  }
+
   // Initialize test database connection
   const db = getTestDatabase();
   dbUtils = new DatabaseTestUtils(db);
@@ -19,6 +26,10 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  if (skipDb) {
+    return;
+  }
+
   // Clean database before each test
   if (dbUtils) {
     await dbUtils.truncateAll();
@@ -26,6 +37,10 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  if (skipDb) {
+    return;
+  }
+
   // Close database connection after all tests
   await closeTestDatabase();
   console.log('Test database connection closed');
