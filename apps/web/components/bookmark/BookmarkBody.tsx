@@ -23,14 +23,7 @@ import { Action, Actions } from "@/components/ai-elements/actions";
 import { Separator } from "@/components/ui/separator";
 import { useSessionByBookmark } from "@/lib/store/realtimeSelectors";
 import { Badge } from "@/components/ui/badge";
-import {
-  Carousel,
-  CarouselItem,
-  CarouselNext,
-  CarouselContent,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
-import OpenGraphImage from "@/components/opengraph/OpenGraphImage";
+import { BookmarkImageGallery } from "@/components/bookmark/BookmarkImageGallery";
 import {
   Dialog,
   DialogContent,
@@ -65,16 +58,18 @@ const ProcessingStatusBanner = ({ status, error }: ProcessingStatusProps) => {
 
   if (status === "failed") {
     return (
-      <Card className="border-red-200 bg-red-50">
+      <Card className="border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-950/30">
         <CardContent className="px-5 py-3">
           <div className="flex flex-row gap-3 items-center">
-            <AlertCircleIcon className="size-5 text-red-500" />
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-red-700">
+            <AlertCircleIcon className="size-5 text-red-500 shrink-0" />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium text-red-700 dark:text-red-400">
                 Processing failed
               </span>
               {error && (
-                <span className="text-xs text-red-600">{error}</span>
+                <span className="text-xs text-red-600 dark:text-red-500">
+                  {error}
+                </span>
               )}
             </div>
           </div>
@@ -83,17 +78,16 @@ const ProcessingStatusBanner = ({ status, error }: ProcessingStatusProps) => {
     );
   }
 
-  // Processing status
   return (
-    <Card className="border-blue-200 bg-blue-50">
+    <Card className="border-blue-200 bg-blue-50 dark:border-blue-900/50 dark:bg-blue-950/30">
       <CardContent className="px-5 py-3">
         <div className="flex flex-row gap-3 items-center">
-          <Loader2Icon className="size-5 text-blue-500 animate-spin" />
-          <div className="flex flex-col">
-            <span className="text-sm font-medium text-blue-700">
+          <Loader2Icon className="size-5 text-blue-500 animate-spin shrink-0" />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium text-blue-700 dark:text-blue-400">
               Processing bookmark...
             </span>
-            <span className="text-xs text-blue-600">
+            <span className="text-xs text-blue-600 dark:text-blue-500">
               AI is analyzing and summarizing the content
             </span>
           </div>
@@ -106,7 +100,6 @@ const ProcessingStatusBanner = ({ status, error }: ProcessingStatusProps) => {
 export const BookmarkBody = (props: { bookmark: Bookmark }) => {
   const dispatch = useAppDispatch();
   const { currentBookmark } = useAppSelector((state) => state.realtime);
-  const [isImageGaleryDialogOpen, setIsImageGaleryDialogOpen] = useState(false);
   const [isLiked, setIsLiked] = useState(
     () => (props.bookmark as any).isLikedByCurrentUser ?? false
   );
@@ -126,14 +119,14 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const router = useRouter();
 
-  // Subscribe to realtime updates for this specific bookmark
-  const { isConnected, isProcessing } = useBookmarkRealtime(props.bookmark.id, {
-    enabled: true,
-  });
+  const { isConnected, isProcessing } = useBookmarkRealtime(
+    props.bookmark.id,
+    {
+      enabled: true,
+    }
+  );
 
   const activeSession = useSessionByBookmark(props.bookmark.id);
-  console.log("session for bookmark", activeSession);
-  console.log("realtime connection:", { isConnected, isProcessing });
 
   useEffect(() => {
     if (
@@ -146,7 +139,6 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
 
   const bookmark = currentBookmark || props.bookmark;
 
-  // Determine processing status - check both the bookmark field and active session
   const processingStatus =
     (bookmark as any).processingStatus ||
     (activeSession?.isLoading ? "processing" : "idle");
@@ -241,8 +233,11 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
     }
   };
 
+  const imageCount = bookmark.cosmicImages?.length ?? 0;
+
   return (
-    <div className="flex flex-col gap-8">
+    <article className="flex flex-col gap-8 animate-in fade-in duration-300">
+      {/* Breadcrumb Navigation */}
       {bookmark.collectionPath && bookmark.collectionPath.length > 0 && (
         <Breadcrumb>
           <BreadcrumbList>
@@ -277,13 +272,12 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
 
       <ConnectionStatus />
 
-      {/* Processing Status Banner */}
       <ProcessingStatusBanner
         status={processingStatus}
         error={(bookmark as any).processingError}
       />
 
-      {/* Legacy loading indicator - show if session is loading but no processing status */}
+      {/* Legacy loading indicator */}
       {activeSession?.isLoading && processingStatus === "idle" && (
         <Card>
           <CardContent className="px-5 py-2">
@@ -292,21 +286,73 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
                 <CosmicLoading />
               </div>
               <Separator orientation="vertical" className="w-px" />
-              <div className="flex-1 flex align-center"></div>
+              <div className="flex-1 flex align-center" />
             </div>
           </CardContent>
         </Card>
       )}
 
-      {bookmark.title && (
-        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-          {bookmark.isPrivateLink && (
-            <LockIcon className="size-5 shrink-0 text-muted-foreground" />
+      {/* Header: Title + Actions */}
+      <header>
+        <div className="flex items-start gap-4">
+          {bookmark.title && (
+            <h1 className="flex-1 min-w-0 text-2xl sm:text-3xl font-semibold tracking-tight leading-tight" style={{ fontFamily: 'Georgia, "Times New Roman", Times, serif' }}>
+              {bookmark.isPrivateLink && (
+                <LockIcon className="inline-block size-5 mr-2 align-baseline text-muted-foreground" />
+              )}
+              {bookmark.title}
+            </h1>
           )}
-          {bookmark.title}
-        </h1>
-      )}
 
+          <Actions className="shrink-0 mt-1">
+            <Action
+              label={isLiked ? "Unlike" : "Like"}
+              tooltip={isLiked ? "Unlike" : "Like"}
+              onClick={handleLikeToggle}
+              disabled={isLikeLoading}
+              variant="outline"
+              className={
+                isLiked
+                  ? "text-red-500 hover:text-red-600 border-red-200 bg-red-50/50 hover:bg-red-50 dark:border-red-900/50 dark:bg-red-950/30 dark:hover:bg-red-950/50 w-auto px-3 gap-2 cursor-pointer"
+                  : "text-muted-foreground hover:text-red-500 w-auto px-3 gap-2 cursor-pointer"
+              }
+            >
+              <HeartIcon
+                className="size-4"
+                fill={isLiked ? "currentColor" : "none"}
+              />
+              {likeCount > 0 && (
+                <span className="text-sm font-medium">{likeCount}</span>
+              )}
+            </Action>
+            <Action
+              label={isShared ? "Shared" : "Share"}
+              tooltip={isShared ? "Manage share link" : "Share bookmark"}
+              onClick={handleShareToggle}
+              disabled={isShareLoading}
+              variant="outline"
+              className={
+                isShared
+                  ? "text-blue-500 hover:text-blue-600 border-blue-200 bg-blue-50/50 hover:bg-blue-50 dark:border-blue-900/50 dark:bg-blue-950/30 dark:hover:bg-blue-950/50 w-auto px-3 gap-2 cursor-pointer"
+                  : "text-muted-foreground hover:text-blue-500 w-auto px-3 gap-2 cursor-pointer"
+              }
+            >
+              <ShareIcon className="size-4" />
+            </Action>
+            <Action
+              label="Delete"
+              tooltip="Delete bookmark"
+              onClick={() => setIsDeleteDialogOpen(true)}
+              variant="outline"
+              className="text-muted-foreground hover:text-red-500 w-auto px-3 gap-2 cursor-pointer"
+            >
+              <Trash2Icon className="size-4" />
+            </Action>
+          </Actions>
+        </div>
+      </header>
+
+      {/* Source Link */}
       {bookmark.metadata?.openGraph ? (
         <OpenGraphWebpage
           title={bookmark.metadata.openGraph.title || ""}
@@ -319,36 +365,43 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
           href={bookmark.sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-3 rounded-lg border px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-muted/50"
+          className="group flex items-center gap-3 rounded-lg border px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-muted/50 cursor-pointer"
         >
-          <ExternalLinkIcon className="size-4 shrink-0" />
+          <ExternalLinkIcon className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
           <span className="truncate">{bookmark.sourceUrl}</span>
         </a>
       )}
 
+      {/* Brief Summary (when full summary is not available) */}
       {!bookmark.cosmicSummary && bookmark.cosmicBriefSummary && (
         <p className="text-base leading-relaxed text-muted-foreground">
           {bookmark.cosmicBriefSummary}
         </p>
       )}
 
+      {/* Tags */}
       {bookmark.cosmicTags && bookmark.cosmicTags.length > 0 && (
         <div className="flex flex-row flex-wrap gap-2">
           {bookmark.cosmicTags.map((tag) => (
-            <Badge key={tag} variant="outline">
+            <Badge
+              key={tag}
+              variant="outline"
+              className="cursor-default transition-colors hover:bg-muted"
+            >
               {tag}
             </Badge>
           ))}
         </div>
       )}
 
+      {/* Full Summary */}
       {bookmark.cosmicSummary && (
-        <div className="relative">
+        <section className="relative">
           <CosmicMarkdown body={bookmark.cosmicSummary} />
           {processingStatus === "processing" && (
-            <span className="inline-block w-2 h-4 bg-blue-500 animate-pulse ml-1" />
+            <span className="inline-block w-2 h-4 bg-blue-500 animate-pulse ml-1 rounded-sm" />
           )}
-        </div>
+        </section>
       )}
 
       {!bookmark.cosmicSummary && processingStatus === "processing" && (
@@ -358,117 +411,12 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
         </div>
       )}
 
-      {bookmark.cosmicImages && bookmark.cosmicImages.length > 0 && (
-        <div className="w-full">
-          <Carousel className="w-full max-w-full">
-            <CarouselContent className="-ml-1">
-              {bookmark.cosmicImages.map((image, index) => (
-                <CarouselItem key={index} className="pl-1 basis-full">
-                  <OpenGraphImage
-                    imageUrl={image.url}
-                    title={image.title}
-                    description={image.description}
-                    onClick={() => setIsImageGaleryDialogOpen(true)}
-                  />
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <CarouselPrevious className="hidden sm:flex" />
-            <CarouselNext className="hidden sm:flex" />
-          </Carousel>
-
-          <Dialog
-            open={isImageGaleryDialogOpen}
-            onOpenChange={setIsImageGaleryDialogOpen}
-          >
-            <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-hidden">
-              <DialogHeader>
-                <DialogTitle>Image Gallery</DialogTitle>
-              </DialogHeader>
-              <div className="relative flex justify-center overflow-hidden">
-                <Carousel className="w-full max-w-3xl">
-                  <CarouselContent>
-                    {bookmark.cosmicImages.map((image, index) => (
-                      <CarouselItem key={index}>
-                        <div className="h-full flex flex-col items-center p-1 gap-2 sm:gap-4">
-                          <img
-                            src={image.url}
-                            alt={image.title}
-                            className="flex-1 w-full max-h-[60vh] sm:max-h-[70vh] object-contain"
-                          />
-
-                          <div className="mt-auto flex flex-col gap-1 px-2">
-                            {image.title && (
-                              <h4 className="text-sm font-medium text-gray-900 mb-1 text-center">
-                                {image.title}
-                              </h4>
-                            )}
-                            {image.description && (
-                              <p className="text-xs text-gray-600 line-clamp-2 text-center">
-                                {image.description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </CarouselItem>
-                    ))}
-                  </CarouselContent>
-                  <CarouselPrevious className="hidden sm:flex" />
-                  <CarouselNext className="hidden sm:flex" />
-                </Carousel>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+      {/* Image Gallery */}
+      {bookmark.cosmicImages && imageCount > 0 && (
+        <BookmarkImageGallery images={bookmark.cosmicImages} />
       )}
-      <Actions>
-        <Action
-          label={isLiked ? "Unlike" : "Like"}
-          tooltip={isLiked ? "Unlike" : "Like"}
-          onClick={handleLikeToggle}
-          disabled={isLikeLoading}
-          variant="outline"
-          className={
-            isLiked
-              ? "text-red-500 hover:text-red-600 border-red-200 bg-red-50/50 hover:bg-red-50 w-auto px-3 gap-2"
-              : "text-muted-foreground hover:text-red-500 w-auto px-3 gap-2"
-          }
-        >
-          <HeartIcon
-            className="size-4"
-            fill={isLiked ? "currentColor" : "none"}
-          />
-          {likeCount > 0 && (
-            <span className="text-sm font-medium">
-              {likeCount}
-            </span>
-          )}
-        </Action>
-        <Action
-          label={isShared ? "Shared" : "Share"}
-          tooltip={isShared ? "Manage share link" : "Share bookmark"}
-          onClick={handleShareToggle}
-          disabled={isShareLoading}
-          variant="outline"
-          className={
-            isShared
-              ? "text-blue-500 hover:text-blue-600 border-blue-200 bg-blue-50/50 hover:bg-blue-50 w-auto px-3 gap-2"
-              : "text-muted-foreground hover:text-blue-500 w-auto px-3 gap-2"
-          }
-        >
-          <ShareIcon className="size-4" />
-        </Action>
-        <Action
-          label="Delete"
-          tooltip="Delete bookmark"
-          onClick={() => setIsDeleteDialogOpen(true)}
-          variant="outline"
-          className="text-muted-foreground hover:text-red-500 w-auto px-3 gap-2"
-        >
-          <Trash2Icon className="size-4" />
-        </Action>
-      </Actions>
 
+      {/* Share Dialog */}
       <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -478,17 +426,13 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center gap-2">
-            <Input
-              value={shareUrl}
-              readOnly
-              className="flex-1"
-            />
+            <Input value={shareUrl} readOnly className="flex-1" />
             <Button
               variant="outline"
               size="icon"
               onClick={handleCopyLink}
               aria-label="Copy link"
-              className="shrink-0"
+              className="shrink-0 cursor-pointer"
             >
               {isCopied ? (
                 <CheckIcon className="size-4 text-green-500" />
@@ -503,7 +447,7 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
               size="sm"
               onClick={handleUnshare}
               disabled={isShareLoading}
-              className="text-red-500 hover:text-red-600 hover:bg-red-50"
+              className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer"
             >
               Stop sharing
             </Button>
@@ -511,22 +455,27 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isDeleteDialogOpen} onOpenChange={(open) => {
-        if (!isDeleteLoading) {
-          setIsDeleteDialogOpen(open);
-          if (!open) setDeleteError(null);
-        }
-      }}>
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!isDeleteLoading) {
+            setIsDeleteDialogOpen(open);
+            if (!open) setDeleteError(null);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete bookmark</DialogTitle>
             <DialogDescription>
               This will permanently delete this bookmark and all associated data
-              including summaries, tags, and images. This action cannot be undone.
+              including summaries, tags, and images. This action cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
           {deleteError && (
-            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 rounded-md px-3 py-2">
+            <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded-md px-3 py-2">
               <AlertCircleIcon className="size-4 shrink-0" />
               <span>{deleteError}</span>
             </div>
@@ -537,6 +486,7 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
               size="sm"
               onClick={() => setIsDeleteDialogOpen(false)}
               disabled={isDeleteLoading}
+              className="cursor-pointer"
             >
               Cancel
             </Button>
@@ -545,6 +495,7 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
               size="sm"
               onClick={handleDelete}
               disabled={isDeleteLoading}
+              className="cursor-pointer"
             >
               {isDeleteLoading ? (
                 <>
@@ -558,6 +509,6 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </article>
   );
 };
