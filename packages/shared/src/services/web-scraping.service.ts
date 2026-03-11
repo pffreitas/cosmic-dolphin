@@ -1,4 +1,5 @@
 import { CheerioAPI } from "cheerio";
+import { isIP } from "node:net";
 import {
   OpenGraphMetadata,
   BookmarkMetadata,
@@ -28,7 +29,58 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   isValidUrl(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      return urlObj.protocol === "http:" || urlObj.protocol === "https:";
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return false;
+      }
+
+      const hostname = urlObj.hostname;
+
+      // Reject localhost
+      if (hostname === "localhost") return false;
+
+      // Remove brackets for IPv6
+      const hostnameToCheck =
+        hostname.startsWith("[") && hostname.endsWith("]")
+          ? hostname.slice(1, -1)
+          : hostname;
+
+      // Check for IP address
+      const ipType = isIP(hostnameToCheck);
+
+      if (ipType === 4) {
+        // Parse IPv4
+        const parts = hostnameToCheck.split(".").map(Number);
+        if (parts.length !== 4) return false;
+
+        // 0.0.0.0/8
+        if (parts[0] === 0) return false;
+        // 10.0.0.0/8
+        if (parts[0] === 10) return false;
+        // 127.0.0.0/8 (Loopback)
+        if (parts[0] === 127) return false;
+        // 169.254.0.0/16 (Link-local)
+        if (parts[0] === 169 && parts[1] === 254) return false;
+        // 172.16.0.0/12 (172.16.x.x - 172.31.x.x)
+        if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return false;
+        // 192.168.0.0/16
+        if (parts[0] === 192 && parts[1] === 168) return false;
+      } else if (ipType === 6) {
+        // Loopback ::1
+        if (hostnameToCheck === "::1") return false;
+
+        // Normalize IPv6 to check prefixes
+        const normalized = hostnameToCheck.toLowerCase();
+
+        // Link-local fe80::/10
+        if (normalized.startsWith("fe80:")) return false;
+        // Unique local fc00::/7 (starts with fc or fd)
+        if (normalized.startsWith("fc") || normalized.startsWith("fd"))
+          return false;
+        // IPv4-mapped ::ffff:0:0/96
+        if (normalized.startsWith("::ffff:")) return false;
+      }
+
+      return true;
     } catch {
       return false;
     }
