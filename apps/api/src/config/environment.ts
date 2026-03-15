@@ -11,10 +11,13 @@ export const config = {
   // Database
   DATABASE_URL: process.env.DATABASE_URL || "",
 
+  // CORS
+  CORS_ORIGIN: process.env.CORS_ORIGIN || "",
+
   // Supabase
   SUPABASE_URL: process.env.SUPABASE_URL || "",
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
 
   // JWT
-  JWT_SECRET: process.env.JWT_SECRET || "your-secret-key",
+  JWT_SECRET: process.env.JWT_SECRET || "",
 };
