@@ -67,6 +67,9 @@ export interface OpenGraphMetadata {
   article_modified_time?: string;
   article_section?: string;
   article_tag?: string[];
+  video_channel?: string;
+  video_channel_url?: string;
+  video_duration?: string;
 }
 
 // Bookmark metadata interface
