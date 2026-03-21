@@ -7,6 +7,8 @@ import {
   FILTER_IMAGES_PROMPT,
   SUMMARIZE_PROMPT,
   BRIEF_SUMMARY_PROMPT,
+  SUMMARIZE_YOUTUBE_PROMPT,
+  BRIEF_SUMMARY_YOUTUBE_PROMPT,
 } from "../services/bookmark.processor.prompt";
 import { Session } from "../ai/types";
 import { Identifier } from "../ai/id";
@@ -170,6 +172,10 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     }
   }
 
+  private isYouTubeBookmark(bookmark: Bookmark): boolean {
+    return bookmark.metadata?.openGraph?.site_name === "YouTube";
+  }
+
   private async summarizeContent(
     session: Session,
     bookmark: Bookmark,
@@ -177,6 +183,10 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
   ): Promise<{ summary: string; briefSummary: string }> {
     let summary = "";
     let briefSummary = "";
+
+    const isYouTube = this.isYouTubeBookmark(bookmark);
+    const summarizePrompt = isYouTube ? SUMMARIZE_YOUTUBE_PROMPT : SUMMARIZE_PROMPT;
+    const briefPrompt = isYouTube ? BRIEF_SUMMARY_YOUTUBE_PROMPT : BRIEF_SUMMARY_PROMPT;
 
     const task = await this.ai.newTask(
       session.sessionID,
@@ -196,7 +206,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         tools: [],
         message: {
           role: "user",
-          content: SUMMARIZE_PROMPT.replace(
+          content: summarizePrompt.replace(
             "{{CONTENT}}",
             content.content ?? ""
           ),
@@ -218,7 +228,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       briefSummary = await this.ai.generateObject({
         sessionID: session.sessionID,
         modelId: "google/gemini-2.5-flash",
-        prompt: BRIEF_SUMMARY_PROMPT.replace(
+        prompt: briefPrompt.replace(
           "{{CONTENT}}",
           content.content ?? ""
         ),

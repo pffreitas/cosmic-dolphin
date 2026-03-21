@@ -7,6 +7,7 @@ import {
 } from "../types";
 import * as cheerio from "cheerio";
 import { HttpClient, CosmicHttpClient } from "./http-client";
+import { YouTubeService, YouTubeServiceImpl } from "./youtube.service";
 
 export interface WebScrapingService {
   isValidUrl(url: string): boolean;
@@ -23,7 +24,14 @@ export interface WebScrapingService {
 }
 
 export class WebScrapingServiceImpl implements WebScrapingService {
-  constructor(private httpClient: HttpClient = new CosmicHttpClient()) {}
+  private youtubeService: YouTubeService;
+
+  constructor(
+    private httpClient: HttpClient = new CosmicHttpClient(),
+    youtubeService?: YouTubeService
+  ) {
+    this.youtubeService = youtubeService ?? new YouTubeServiceImpl(httpClient);
+  }
 
   isValidUrl(url: string): boolean {
     try {
@@ -40,6 +48,11 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
   > {
     console.log("Scraping URL:", url);
+
+    if (this.youtubeService.isYouTubeUrl(url)) {
+      console.log("Detected YouTube URL, using YouTube-specific scraping");
+      return this.youtubeService.scrape(url);
+    }
 
     try {
       const response = await this.httpClient.fetch(url);
