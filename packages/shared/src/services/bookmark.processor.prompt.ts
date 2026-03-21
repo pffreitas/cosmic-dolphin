@@ -196,6 +196,102 @@ Your task is to generate a compelling brief summary that helps users decide if t
 3. Output ONLY the summary text. Do NOT include any labels, prefixes, or formatting. Just the plain summary paragraph.
 `;
 
+export const SUMMARIZE_YOUTUBE_PROMPT = `
+You will be creating a comprehensive summary of a YouTube video transcript. Follow these instructions carefully:
+
+<transcript>
+{{CONTENT}}
+</transcript>
+
+Your task is to analyze the above video transcript and create a structured summary following these steps:
+
+1. **Read and Analyze**: Carefully read through the entire transcript to understand the main themes, key concepts, and overall message of the video.
+
+2. **Identify Core Elements**: Determine what specific elements are central to the video (e.g., if it's a tutorial covering "5 Design Patterns," ensure all 5 patterns are captured; if it's a walkthrough, capture all steps).
+
+3. **Create Summary Sections**: Generate the following required sections:
+   - **Title**: Use the video's original title or create a concise, descriptive title that captures the essence of the video
+   - **Summary**: Write 2-3 sentences providing a brief overview of what the video covers
+   - **Key Topics**: List 3-5 bullet points highlighting the most important topics discussed in the video
+   - **Takeaways**: Identify 2-3 main lessons or insights from the video
+   - **Practical Applications**: List 3 numbered ways this knowledge can be applied in real-world situations
+
+4. **Add Content-Specific Sections**: Based on your analysis, include additional sections that are relevant to the video's message. For example:
+   - If the video covers multiple tools or frameworks, create a section listing them
+   - If there are sequential steps or a tutorial flow, create a section outlining them
+   - If there are comparisons being made, organize them in a table
+   - If the speaker references resources or links, list them
+   - Use tables or lists when they would present the information more clearly
+
+5. **Format Requirements**:
+   - Output ONLY in markdown format
+   - Do NOT include any text other than the markdown content
+   - Do NOT wrap the output in code blocks
+   - Use ## for main section headers
+   - Use bullet points (-) for Key Topics and Takeaways
+   - Use numbered lists (1., 2., 3.) for Practical Applications
+
+Your output should follow this structure:
+
+## [Title]
+
+[Summary paragraph]
+
+## Key Topics
+
+- [Topic 1]
+- [Topic 2]
+- [Topic 3]
+
+## Takeaways
+
+- [Takeaway 1]
+- [Takeaway 2]
+
+## Practical Applications
+
+1. [Application 1]
+2. [Application 2]
+3. [Application 3]
+
+## [Any Additional Content-Specific Sections]
+
+[Relevant content organized appropriately]
+
+Begin your response immediately with the markdown content.
+`;
+
+export const BRIEF_SUMMARY_YOUTUBE_PROMPT = `
+Your task is to generate a compelling brief summary of a YouTube video that helps users decide if they want to watch it.
+
+1. Read and analyze the following video transcript:
+
+<transcript>
+{{CONTENT}}
+</transcript>
+
+2. Generate a brief summary following these guidelines:
+
+**Purpose:** Create a preview that hooks the reader and highlights the value proposition of the video.
+
+**Requirements:**
+- Length: 2-4 sentences (approximately 50-100 words)
+- Tone: Engaging, informative, and compelling
+- Content: Include the key takeaway and why this video is worth watching
+
+**What to include:**
+- The main topic or problem being addressed in the video
+- The key insight, solution, or value the video provides
+- Why this is relevant or useful to the viewer
+
+**What to avoid:**
+- Generic phrases like "This video discusses..." or "In this video..."
+- Overly technical jargon unless essential
+- Spoiling all the details (leave something to discover)
+
+3. Output ONLY the summary text. Do NOT include any labels, prefixes, or formatting. Just the plain summary paragraph.
+`;
+
 export const FILTER_IMAGES_PROMPT = `
 Your task is to filter the images that are not relevant to the content. Follow the instructions below step by step:
 
