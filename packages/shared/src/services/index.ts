@@ -1,4 +1,5 @@
 export * from "./web-scraping.service";
+export * from "./youtube.service";
 export * from "./queue.service";
 export * from "./bookmark.service";
 export * from "./bookmark-like.service";
