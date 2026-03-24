@@ -46,6 +46,7 @@ export default function ForgotPassword() {
           name="email"
           type="email"
           placeholder="Email"
+          aria-label="Email address"
           required
           className="h-11 rounded-full border-gray-300 px-5 text-sm placeholder:text-gray-400 focus:border-gray-400 focus:ring-0"
         />
