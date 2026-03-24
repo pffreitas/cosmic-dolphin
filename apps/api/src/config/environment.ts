@@ -7,6 +7,7 @@ export const config = {
   PORT: parseInt(process.env.API_PORT || "3001", 10),
   HOST: process.env.HOST || "0.0.0.0",
   LOG_LEVEL: process.env.LOG_LEVEL || "info",
+  CORS_ORIGIN: process.env.CORS_ORIGIN || "",
 
   // Database
   DATABASE_URL: process.env.DATABASE_URL || "",
@@ -16,5 +17,5 @@ export const config = {
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
 
   // JWT
-  JWT_SECRET: process.env.JWT_SECRET || "your-secret-key",
+  JWT_SECRET: process.env.JWT_SECRET || "",
 };
