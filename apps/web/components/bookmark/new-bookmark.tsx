@@ -81,13 +81,16 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
         event.preventDefault();
         handleNewBookmark();
       }
+      if (event.key === "Escape" && showOverlay) {
+        handleOverlayClick();
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [showOverlay, dispatch]);
 
   const displayError = createError || previewError;
 
@@ -95,7 +98,7 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
     <>
       {showOverlay && (
         <div className="fixed inset-0 bg-slate-200 bg-opacity-50 backdrop-blur-sm z-50">
-          <div className="fixed inset-0" onClick={handleOverlayClick}></div>
+          <div className="fixed inset-0" onClick={handleOverlayClick} aria-hidden="true"></div>
           <div>
             <div className="absolute w-1/2 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
               {isLoading && (
@@ -104,6 +107,7 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
               <div className="relative bg-white rounded-lg p-4 shadow-2xl shadow-teal-300">
                 <input
                   type="text"
+                  aria-label="Bookmark URL"
                   className="w-full p-2 focus:outline-none "
                   value={url}
                   autoFocus={true}
