@@ -1,3 +1,4 @@
+import { safeLookup } from "../security";
 const got = require("got").default || require("got");
 
 export interface HttpClient {
@@ -32,6 +33,7 @@ export class CosmicHttpClient implements HttpClient {
   async fetch(url: string): Promise<HttpResponse> {
     try {
       const response = await got(url, {
+        dnsLookup: safeLookup,
         timeout: { request: this.requestTimeout },
         retry: {
           limit: 3,
