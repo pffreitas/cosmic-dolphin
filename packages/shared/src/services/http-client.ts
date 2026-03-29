@@ -1,4 +1,5 @@
 const got = require("got").default || require("got");
+import { safeLookup } from "../security";
 
 export interface HttpClient {
   /**
@@ -33,6 +34,7 @@ export class CosmicHttpClient implements HttpClient {
     try {
       const response = await got(url, {
         timeout: { request: this.requestTimeout },
+        dnsLookup: safeLookup,
         retry: {
           limit: 3,
           methods: ["GET"],
