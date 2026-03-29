@@ -17,7 +17,8 @@ export function CommandDialogTrigger() {
   return (
     <button
       onClick={toggle}
-      className="flex items-center gap-2 w-48 px-3 py-2 text-sm text-muted-foreground bg-white border border-gray-300 rounded-lg hover:border-gray-400 transition-colors cursor-text"
+      aria-label="Open search command"
+      className="flex items-center gap-2 w-48 px-3 py-2 text-sm text-muted-foreground bg-white border border-gray-300 rounded-lg hover:border-gray-400 transition-colors cursor-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <Search size={16} className="text-gray-400" />
       <span>Search</span>
