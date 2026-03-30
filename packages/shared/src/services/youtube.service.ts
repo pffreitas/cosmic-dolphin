@@ -1,4 +1,4 @@
-import { YoutubeTranscript, TranscriptResponse } from "youtube-transcript";
+import { YoutubeTranscript, TranscriptResponse, YoutubeTranscriptNotAvailableLanguageError } from "youtube-transcript";
 import { HttpClient, CosmicHttpClient } from "./http-client";
 import { OpenGraphMetadata, BookmarkMetadata, ScrapedUrlContents } from "../types";
 
@@ -136,8 +136,18 @@ export class YouTubeServiceImpl implements YouTubeService {
   }
 
   private async fetchTranscript(videoId: string): Promise<string> {
-    const segments: TranscriptResponse[] =
-      await YoutubeTranscript.fetchTranscript(videoId, { lang: "en" });
+    let segments: TranscriptResponse[];
+
+    try {
+      segments = await YoutubeTranscript.fetchTranscript(videoId, { lang: "en" });
+    } catch (error) {
+      if (error instanceof YoutubeTranscriptNotAvailableLanguageError) {
+        // English transcript not available — fall back to the default language
+        segments = await YoutubeTranscript.fetchTranscript(videoId);
+      } else {
+        throw error;
+      }
+    }
 
     if (!segments || segments.length === 0) {
       throw new Error(`No transcript available for video: ${videoId}`);
