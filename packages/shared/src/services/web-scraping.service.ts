@@ -8,6 +8,7 @@ import {
 import * as cheerio from "cheerio";
 import { HttpClient, CosmicHttpClient } from "./http-client";
 import { YouTubeService, YouTubeServiceImpl } from "./youtube.service";
+import { TwitterService, TwitterServiceImpl } from "./twitter.service";
 
 export interface WebScrapingService {
   isValidUrl(url: string): boolean;
@@ -25,12 +26,15 @@ export interface WebScrapingService {
 
 export class WebScrapingServiceImpl implements WebScrapingService {
   private youtubeService: YouTubeService;
+  private twitterService: TwitterService;
 
   constructor(
     private httpClient: HttpClient = new CosmicHttpClient(),
-    youtubeService?: YouTubeService
+    youtubeService?: YouTubeService,
+    twitterService?: TwitterService
   ) {
     this.youtubeService = youtubeService ?? new YouTubeServiceImpl(httpClient);
+    this.twitterService = twitterService ?? new TwitterServiceImpl(httpClient);
   }
 
   isValidUrl(url: string): boolean {
@@ -52,6 +56,11 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     if (this.youtubeService.isYouTubeUrl(url)) {
       console.log("Detected YouTube URL, using YouTube-specific scraping");
       return this.youtubeService.scrape(url);
+    }
+
+    if (this.twitterService.isTwitterUrl(url)) {
+      console.log("Detected Twitter/X URL, using Twitter-specific scraping");
+      return this.twitterService.scrape(url);
     }
 
     try {
