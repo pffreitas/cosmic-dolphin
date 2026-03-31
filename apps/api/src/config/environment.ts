@@ -8,6 +8,9 @@ export const config = {
   HOST: process.env.HOST || "0.0.0.0",
   LOG_LEVEL: process.env.LOG_LEVEL || "info",
 
+  // Security
+  CORS_ORIGIN: process.env.CORS_ORIGIN || "*",
+
   // Database
   DATABASE_URL: process.env.DATABASE_URL || "",
 
