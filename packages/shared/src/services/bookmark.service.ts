@@ -45,6 +45,10 @@ Be specific based on URL patterns. For example:
 export interface BookmarkService {
   findByUserAndUrl(userId: string, sourceUrl: string): Promise<Bookmark | null>;
   findByIdAndUser(id: string, userId: string): Promise<Bookmark | null>;
+  findByIdAndUserWithLikeStatus(
+    id: string,
+    userId: string
+  ): Promise<{ bookmark: Bookmark; isLikedByCurrentUser: boolean } | null>;
   getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
   create(url: string, userId: string): Promise<Bookmark>;
   createPrivateLink(
@@ -101,6 +105,18 @@ export class BookmarkServiceImpl implements BookmarkService {
     if (!bookmark) return null;
     const mapped = this.mapDatabaseToBookmark(bookmark);
     return this.enrichWithCollectionPath(mapped);
+  }
+
+  async findByIdAndUserWithLikeStatus(
+    id: string,
+    userId: string
+  ): Promise<{ bookmark: Bookmark; isLikedByCurrentUser: boolean } | null> {
+    const result =
+      await this.bookmarkRepository.findByIdAndUserWithLikeStatus(id, userId);
+    if (!result) return null;
+    const mapped = this.mapDatabaseToBookmark(result.bookmark);
+    const bookmark = await this.enrichWithCollectionPath(mapped);
+    return { bookmark, isLikedByCurrentUser: result.isLikedByCurrentUser };
   }
 
   async create(url: string, userId: string): Promise<Bookmark> {

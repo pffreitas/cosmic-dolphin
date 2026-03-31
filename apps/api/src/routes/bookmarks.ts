@@ -278,16 +278,19 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         const { id } = request.params;
         const user_id = request.userId!;
 
-        const bookmark = await services.bookmark.findByIdAndUser(id, user_id);
+        const result = await services.bookmark.findByIdAndUserWithLikeStatus(
+          id,
+          user_id
+        );
 
-        if (!bookmark) {
+        if (!result) {
           return reply.status(404).send({ error: "Bookmark not found" });
         }
 
-        const isLikedByCurrentUser =
-          await services.bookmarkLike.isLikedByUser(user_id, id);
-
-        return reply.send({ ...bookmark, isLikedByCurrentUser });
+        return reply.send({
+          ...result.bookmark,
+          isLikedByCurrentUser: result.isLikedByCurrentUser,
+        });
       } catch (error) {
         fastify.log.error({ error }, "Get bookmark by ID error");
         return reply.status(500).send({ error: "Internal server error" });

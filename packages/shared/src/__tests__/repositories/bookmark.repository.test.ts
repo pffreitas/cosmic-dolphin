@@ -125,6 +125,90 @@ describe("BookmarkRepository", () => {
     });
   });
 
+  describe("findByIdAndUserWithLikeStatus", () => {
+    it("should return bookmark with isLikedByCurrentUser false when no like exists", async () => {
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+      });
+      const created = await repository.create(bookmarkData);
+
+      const result = await repository.findByIdAndUserWithLikeStatus(
+        created.id,
+        testUserId
+      );
+
+      expect(result).not.toBeNull();
+      expect(result!.bookmark.id).toBe(created.id);
+      expect(result!.isLikedByCurrentUser).toBe(false);
+    });
+
+    it("should return isLikedByCurrentUser true when user has liked the bookmark", async () => {
+      const db = getTestDatabase();
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+      });
+      const created = await repository.create(bookmarkData);
+
+      await db
+        .insertInto("bookmark_likes")
+        .values({ user_id: testUserId, bookmark_id: created.id })
+        .execute();
+
+      const result = await repository.findByIdAndUserWithLikeStatus(
+        created.id,
+        testUserId
+      );
+
+      expect(result).not.toBeNull();
+      expect(result!.isLikedByCurrentUser).toBe(true);
+    });
+
+    it("should not count likes from other users", async () => {
+      const db = getTestDatabase();
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+      });
+      const created = await repository.create(bookmarkData);
+      const otherUserId = TestDataFactory.generateUserId();
+
+      await db
+        .insertInto("bookmark_likes")
+        .values({ user_id: otherUserId, bookmark_id: created.id })
+        .execute();
+
+      const result = await repository.findByIdAndUserWithLikeStatus(
+        created.id,
+        testUserId
+      );
+
+      expect(result).not.toBeNull();
+      expect(result!.isLikedByCurrentUser).toBe(false);
+    });
+
+    it("should return null when bookmark ID is not found", async () => {
+      const result = await repository.findByIdAndUserWithLikeStatus(
+        "00000000-0000-0000-0000-000000000000",
+        testUserId
+      );
+      expect(result).toBeNull();
+    });
+
+    it("should not find bookmark for different user", async () => {
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+      });
+      const created = await repository.create(bookmarkData);
+      const otherUserId = TestDataFactory.generateUserId();
+
+      const result = await repository.findByIdAndUserWithLikeStatus(
+        created.id,
+        otherUserId
+      );
+
+      expect(result).toBeNull();
+    });
+  });
+
   describe("findByUser", () => {
     it("should find all bookmarks for a user", async () => {
       const bookmarks = TestDataFactory.createMultipleBookmarks(3, testUserId);
