@@ -36,6 +36,10 @@ export interface VectorSearchResult {
 export interface BookmarkRepository {
   findByUserAndUrl(userId: string, sourceUrl: string): Promise<Bookmark | null>;
   findByIdAndUser(id: string, userId: string): Promise<Bookmark | null>;
+  findByIdAndUserWithLikeStatus(
+    id: string,
+    userId: string
+  ): Promise<{ bookmark: Bookmark; isLikedByCurrentUser: boolean } | null>;
   create(data: NewBookmark): Promise<Bookmark>;
   insertScrapedUrlContents(
     bookmarkId: string,
@@ -101,6 +105,31 @@ export class BookmarkRepositoryImpl
 
       return result || null;
     }, "findByIdAndUser");
+  }
+
+  async findByIdAndUserWithLikeStatus(
+    id: string,
+    userId: string
+  ): Promise<{ bookmark: Bookmark; isLikedByCurrentUser: boolean } | null> {
+    return this.executeQuery(async () => {
+      const result = await this.db
+        .selectFrom("bookmarks")
+        .leftJoin("bookmark_likes", (join) =>
+          join
+            .onRef("bookmark_likes.bookmark_id", "=", "bookmarks.id")
+            .on("bookmark_likes.user_id", "=", userId)
+        )
+        .selectAll("bookmarks")
+        .select("bookmark_likes.id as like_id")
+        .where("bookmarks.id", "=", id)
+        .where("bookmarks.user_id", "=", userId)
+        .executeTakeFirst();
+
+      if (!result) return null;
+
+      const { like_id, ...bookmark } = result;
+      return { bookmark, isLikedByCurrentUser: like_id !== null };
+    }, "findByIdAndUserWithLikeStatus");
   }
 
   async create(data: NewBookmark): Promise<Bookmark> {
