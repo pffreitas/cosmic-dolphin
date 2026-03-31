@@ -6,6 +6,7 @@ import {
   Inject,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import pLimit from "p-limit";
 import { QueueService } from "./queue.service";
 import { MessageHandler } from "./interfaces/message-handler.interface";
 import {
@@ -47,11 +48,13 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
     const options = this.getProcessorOptions();
 
     this.logger.log(
-      `Starting queue processor with ${options.queues.length} queues`,
+      `Starting queue processor with ${options.queues.length} queues, concurrency=${options.concurrency}`,
     );
 
+    const limit = pLimit(options.concurrency);
+
     for (const queueConfig of options.queues) {
-      const promise = this.processQueue(queueConfig);
+      const promise = this.processQueue(queueConfig, limit);
       this.processingPromises.push(promise);
     }
   }
@@ -87,7 +90,10 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
     this.logger.log("Queue processor stopped");
   }
 
-  private async processQueue(config: QueueConfig): Promise<void> {
+  private async processQueue(
+    config: QueueConfig,
+    limit: ReturnType<typeof pLimit>,
+  ): Promise<void> {
     this.logger.log(`Starting to process queue: ${config.name}`);
 
     while (this.isProcessing) {
@@ -106,9 +112,8 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
           `Processing ${messages.length} messages from queue ${config.name}`,
         );
 
-        // Process messages concurrently but respect concurrency limit
         const processPromises = messages.map((message) =>
-          this.processMessage(message, config),
+          limit(() => this.processMessage(message, config)),
         );
         await Promise.allSettled(processPromises);
       } catch (error) {
