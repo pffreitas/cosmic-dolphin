@@ -16,14 +16,12 @@ export class BookmarkLikeServiceImpl implements BookmarkLikeService {
   constructor(private bookmarkLikeRepository: BookmarkLikeRepository) {}
 
   async like(userId: string, bookmarkId: string): Promise<LikeResult> {
-    await this.bookmarkLikeRepository.like(userId, bookmarkId);
-    const likeCount = await this.bookmarkLikeRepository.getLikeCount(bookmarkId);
+    const likeCount = await this.bookmarkLikeRepository.like(userId, bookmarkId);
     return { likeCount, isLikedByCurrentUser: true };
   }
 
   async unlike(userId: string, bookmarkId: string): Promise<LikeResult> {
-    await this.bookmarkLikeRepository.unlike(userId, bookmarkId);
-    const likeCount = await this.bookmarkLikeRepository.getLikeCount(bookmarkId);
+    const likeCount = await this.bookmarkLikeRepository.unlike(userId, bookmarkId);
     return { likeCount, isLikedByCurrentUser: false };
   }
 
