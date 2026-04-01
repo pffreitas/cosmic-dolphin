@@ -571,7 +571,12 @@ export const PromptInputActionMenuTrigger = ({
   ...props
 }: PromptInputActionMenuTriggerProps) => (
   <DropdownMenuTrigger asChild>
-    <PromptInputButton className={className} {...props}>
+    <PromptInputButton
+      aria-label="Add attachment"
+      className={className}
+      title="Add attachment"
+      {...props}
+    >
       {children ?? <PlusIcon className="size-4" />}
     </PromptInputButton>
   </DropdownMenuTrigger>
@@ -613,19 +618,25 @@ export const PromptInputSubmit = ({
   ...props
 }: PromptInputSubmitProps) => {
   let Icon = <SendIcon className="size-4" />;
+  let label = "Send message";
 
   if (status === "submitted") {
     Icon = <Loader2Icon className="size-4 animate-spin" />;
+    label = "Sending message";
   } else if (status === "streaming") {
     Icon = <SquareIcon className="size-4" />;
+    label = "Stop generation";
   } else if (status === "error") {
     Icon = <XIcon className="size-4" />;
+    label = "Clear error";
   }
 
   return (
     <Button
+      aria-label={label}
       className={cn("gap-1.5 rounded-lg", className)}
       size={size}
+      title={label}
       type="submit"
       variant={variant}
       {...props}
