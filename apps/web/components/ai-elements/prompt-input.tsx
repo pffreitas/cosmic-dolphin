@@ -622,8 +622,11 @@ export const PromptInputSubmit = ({
     Icon = <XIcon className="size-4" />;
   }
 
+  const ariaLabel = status === "streaming" ? "Stop generation" : "Send prompt";
+
   return (
     <Button
+      aria-label={ariaLabel}
       className={cn("gap-1.5 rounded-lg", className)}
       size={size}
       type="submit"
