@@ -80,6 +80,9 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
       if (event.metaKey && event.key === "k") {
         event.preventDefault();
         handleNewBookmark();
+      } else if (event.key === "Escape") {
+        setShowOverlay(false);
+        dispatch(clearErrors());
       }
     };
 
@@ -87,7 +90,7 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [dispatch]);
 
   const displayError = createError || previewError;
 
@@ -95,7 +98,7 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
     <>
       {showOverlay && (
         <div className="fixed inset-0 bg-slate-200 bg-opacity-50 backdrop-blur-sm z-50">
-          <div className="fixed inset-0" onClick={handleOverlayClick}></div>
+          <div className="fixed inset-0" onClick={handleOverlayClick} aria-hidden="true"></div>
           <div>
             <div className="absolute w-1/2 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
               {isLoading && (
@@ -104,6 +107,7 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
               <div className="relative bg-white rounded-lg p-4 shadow-2xl shadow-teal-300">
                 <input
                   type="text"
+                  aria-label="Bookmark URL"
                   className="w-full p-2 focus:outline-none "
                   value={url}
                   autoFocus={true}
@@ -143,7 +147,12 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
         }}
       >
         <Bookmark size={16} />
-        Save Bookmark
+        <span className="flex items-center">
+          Save Bookmark
+          <span className="hidden sm:inline-flex ml-2 text-[10px] bg-blue-700/50 text-blue-100 px-1.5 py-0.5 rounded border border-blue-500/30 font-medium">
+            ⌘K
+          </span>
+        </span>
       </button>
     </>
   );
