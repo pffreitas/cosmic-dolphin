@@ -64,7 +64,7 @@ export default async function searchRoutes(fastify: FastifyInstance) {
           "Cache-Control": "no-cache",
           Connection: "keep-alive",
           "X-Accel-Buffering": "no",
-          "Access-Control-Allow-Origin": request.headers.origin || "*",
+          "Access-Control-Allow-Origin": config.CORS_ORIGIN && request.headers.origin && config.CORS_ORIGIN.split(',').map(o => o.trim()).includes(request.headers.origin) ? request.headers.origin : "",
           "Access-Control-Allow-Credentials": "true",
         });
 
