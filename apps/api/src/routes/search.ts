@@ -59,14 +59,23 @@ export default async function searchRoutes(fastify: FastifyInstance) {
           return reply.status(400).send({ error: "Search query is required" });
         }
 
-        reply.raw.writeHead(200, {
+        const allowedOrigins = config.CORS_ORIGIN.split(',').map(o => o.trim());
+        const origin = request.headers.origin;
+        const isAllowedOrigin = origin && allowedOrigins.includes(origin);
+
+        const headers: Record<string, string> = {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-cache",
           Connection: "keep-alive",
           "X-Accel-Buffering": "no",
-          "Access-Control-Allow-Origin": request.headers.origin || "*",
-          "Access-Control-Allow-Credentials": "true",
-        });
+        };
+
+        if (isAllowedOrigin) {
+          headers["Access-Control-Allow-Origin"] = origin;
+          headers["Access-Control-Allow-Credentials"] = "true";
+        }
+
+        reply.raw.writeHead(200, headers);
 
         const sendSSE = (event: string, data: any) => {
           reply.raw.write(`event: ${event}\n`);
