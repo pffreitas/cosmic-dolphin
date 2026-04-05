@@ -86,6 +86,7 @@ export function MobileHeader({
             <Button
               variant="ghost"
               size="sm"
+              aria-label="Search bookmarks"
               className="w-10 h-10 rounded-full bg-white/50 dark:bg-stone-800/50 backdrop-blur-sm shadow-sm cursor-pointer"
             >
               <Search size={18} className="text-gray-700 dark:text-gray-300" />
@@ -97,6 +98,7 @@ export function MobileHeader({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
+                  aria-label="Profile menu"
                   className="cursor-pointer rounded-full ring-offset-background transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <Avatar className="h-9 w-9 shadow-sm">
@@ -142,6 +144,7 @@ export function MobileHeader({
               <Button
                 variant="ghost"
                 size="sm"
+                aria-label="Sign in"
                 className="w-10 h-10 rounded-full bg-white/50 dark:bg-stone-800/50 backdrop-blur-sm border border-gray-200 dark:border-stone-700 shadow-sm cursor-pointer"
               >
                 <User size={18} className="text-gray-700 dark:text-gray-300" />
