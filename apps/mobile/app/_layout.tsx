@@ -47,8 +47,11 @@ function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const router = useRouter();
   const pathname = usePathname();
+  const { session, isLoading } = useAuth();
+  
+  // Track if we've already initiated navigation to share screen for the current intent
   const hasNavigatedToShare = useRef(false);
-  const { isLoading } = useAuth();
+  const navigationInProgress = useRef(false);
 
   // Handle protected routes
   useProtectedRoute();
@@ -59,12 +62,21 @@ function RootLayoutNav() {
     resetOnBackground: true,
   });
 
+  // Reset navigation state when share intent is cleared
+  useEffect(() => {
+    if (!hasShareIntent) {
+      hasNavigatedToShare.current = false;
+      navigationInProgress.current = false;
+    }
+  }, [hasShareIntent]);
+
   // Navigate to share screen when a link is shared
   useEffect(() => {
     // Only navigate if:
     // 1. We have a share intent with actual data
     // 2. We haven't already navigated to share screen for this intent
     // 3. We're not already on the share screen
+    // 4. Navigation is not already in progress
     const isOnShareScreen = pathname === '/share';
     const hasValidIntent = hasShareIntent && shareIntent && Object.keys(shareIntent).length > 0;
     
@@ -73,20 +85,27 @@ function RootLayoutNav() {
       hasValidIntent,
       pathname,
       isOnShareScreen,
-      hasNavigatedToShare: hasNavigatedToShare.current 
+      hasNavigatedToShare: hasNavigatedToShare.current,
+      navigationInProgress: navigationInProgress.current
     });
     
-    if (hasValidIntent && !hasNavigatedToShare.current && !isOnShareScreen) {
+    if (hasValidIntent && !hasNavigatedToShare.current && !isOnShareScreen && !navigationInProgress.current) {
+      // If not authenticated, the protected route will handle redirecting to sign-in.
+      // Once signed in, this effect will re-run and trigger navigation.
+      if (!session) return;
+
       console.log('🐬 Cosmic Dolphin received a shared link!');
       console.log('📎 Share Intent Data:', JSON.stringify(shareIntent, null, 2));
       
       // Mark that we've navigated
       hasNavigatedToShare.current = true;
+      navigationInProgress.current = true;
       
       // Navigate to the share screen to display the link
+      // Use replace to avoid stacking modals
       router.replace('/share');
     }
-  }, [hasShareIntent, shareIntent, pathname]);
+  }, [hasShareIntent, shareIntent, pathname, session]);
 
   // Log any errors with share intent
   useEffect(() => {
