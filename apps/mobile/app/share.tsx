@@ -14,8 +14,11 @@ import { BookmarksAPI, UrlPreviewMetadata } from '@/lib/api';
 function extractUrl(shareIntent: any): string | null {
   if (!shareIntent) return null;
   
+  // URL detection regex
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  
   // Try various possible fields where URL might be stored
-  const possibleUrls = [
+  const possibleValues = [
     shareIntent.url,
     shareIntent.webUrl, 
     shareIntent.text,
@@ -25,17 +28,16 @@ function extractUrl(shareIntent: any): string | null {
     shareIntent.data,
   ];
   
-  for (const value of possibleUrls) {
+  for (const value of possibleValues) {
     if (typeof value === 'string' && value.length > 0) {
-      // Check if it looks like a URL
-      if (value.startsWith('http://') || value.startsWith('https://')) {
-        return value;
+      const match = value.match(urlRegex);
+      if (match && match[0]) {
+        return match[0];
       }
     }
   }
   
-  // If no URL found, return any text that might be there
-  return shareIntent.text || shareIntent.data || null;
+  return null;
 }
 
 // Helper to extract domain from URL
