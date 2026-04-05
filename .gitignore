@@ -59,4 +59,4 @@ apps/mobile/android/build/
 *.key
 *.mobileprovision
 *.orig.*
-web-build/
+web-build/.worktrees/
