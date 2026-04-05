@@ -44,6 +44,7 @@ export function SearchInput({
         <Input
           type="text"
           placeholder="Ask a question about your bookmarks..."
+          aria-label="Search bookmarks"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
