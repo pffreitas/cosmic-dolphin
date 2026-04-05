@@ -18,8 +18,8 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 function extractUrl(shareIntent: any): string | null {
   if (!shareIntent) return null;
   
-  // URL detection regex
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  // URL detection regex - avoiding trailing punctuation
+  const urlRegex = /(https?:\/\/[^\s,;)]+)/g;
   
   // Try various possible fields where URL might be stored
   const possibleValues = [
