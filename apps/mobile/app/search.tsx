@@ -76,7 +76,7 @@ export default function SearchScreen() {
               <Ionicons name="sparkles" size={14} color="#fff" />
             </View>
             <Text style={[styles.aiSearchText, { color: colors.text }]} numberOfLines={1}>
-              AI Search: <Text style={{ fontWeight: '400', color: colors.textSecondary }}>"{query.trim()}"</Text>
+              AI Search: <Text style={{ fontWeight: '400', color: colors.textSecondary }}>{query.trim()}</Text>
             </Text>
             <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
           </Pressable>

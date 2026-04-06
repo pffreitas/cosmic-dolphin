@@ -16,6 +16,7 @@ describe("BookmarkService", () => {
       create: jest.fn(),
       findByUserAndUrl: jest.fn(),
       findByIdAndUser: jest.fn(),
+      findByIdAndUserWithLikeStatus: jest.fn(),
       insertScrapedUrlContents: jest.fn(),
       getScrapedUrlContent: jest.fn(),
       findByUser: jest.fn(),

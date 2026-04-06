@@ -35,6 +35,7 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
+    "eslint": "^9.39.4",
     "turbo": "^2.3.0"
   },
   "dependencies": {

@@ -42,6 +42,7 @@ describe("BookmarkProcessorService", () => {
 
     mockBookmarkService = {
       findByIdAndUser: jest.fn(),
+      findByIdAndUserWithLikeStatus: jest.fn(),
       getScrapedUrlContent: jest.fn(),
       update: jest.fn(),
       updateProcessingStatus: jest.fn(),
