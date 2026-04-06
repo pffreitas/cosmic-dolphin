@@ -16,6 +16,46 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
     npx expo start
    ```
 
+## Test, lint, build, and publish commands
+
+From `apps/mobile`:
+
+- Run tests: `npm run test`
+- Run lint: `npm run lint`
+- Build internal Android dev client: `npm run build:dev:android`
+- Build internal iOS dev client: `npm run build:dev:ios`
+- Trigger internal preview build manually (Android): `eas build --platform android --profile preview --non-interactive`
+- Trigger internal preview build manually (iOS): `eas build --platform ios --profile preview --non-interactive`
+
+This app currently uses EAS Build for continuous delivery of internal binaries. Store submission (`eas submit`) is not part of the default push pipeline.
+
+## CI/CD (push to main)
+
+GitHub Actions workflow: `.github/workflows/deploy-mobile.yml`
+
+Behavior:
+
+- Triggers on pushes to `main` when mobile-relevant paths change.
+- Runs quality checks first (`lint` + `test`).
+- If checks pass, triggers EAS internal preview builds for both Android and iOS.
+- Adds generated build IDs and links to the GitHub workflow job summary.
+
+Required GitHub secret:
+
+- `EXPO_TOKEN`: used by `expo/expo-github-action` to authenticate EAS CLI in CI.
+
+One-time EAS prerequisites:
+
+- Configure iOS and Android signing credentials for non-interactive internal builds.
+- Ensure required mobile runtime variables are available in EAS for the build profile/environment:
+  - `EXPO_PUBLIC_API_URL`
+  - `EXPO_PUBLIC_SUPABASE_URL`
+  - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+
+Manual rerun:
+
+- Open GitHub Actions and run the **Deploy Mobile (Internal Builds)** workflow via `workflow_dispatch`.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)
