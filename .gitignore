@@ -60,3 +60,4 @@ apps/mobile/android/build/
 *.mobileprovision
 *.orig.*
 web-build/.worktrees/
+.worktrees/
