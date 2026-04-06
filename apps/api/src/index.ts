@@ -16,8 +16,12 @@ const server = Fastify({
 });
 
 // Register plugins
+const corsOrigin = config.CORS_ORIGIN
+  ? config.CORS_ORIGIN.split(',').map((o) => o.trim())
+  : ['http://localhost:3000'];
+
 server.register(require('@fastify/cors'), {
-  origin: true
+  origin: corsOrigin
 });
 
 server.register(require('@fastify/helmet'));
