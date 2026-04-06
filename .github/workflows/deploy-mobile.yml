@@ -51,6 +51,8 @@ jobs:
       fail-fast: false
       matrix:
         platform: [ios, android]
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
     steps:
       - name: Checkout code
@@ -62,16 +64,19 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
 
       - name: Setup Expo and EAS CLI
+        if: env.EXPO_TOKEN != ''
         uses: expo/expo-github-action@v8
         with:
           eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+          token: ${{ env.EXPO_TOKEN }}
           packager: bun
 
       - name: Install dependencies
+        if: env.EXPO_TOKEN != ''
         run: bun install --frozen-lockfile
 
       - name: Trigger EAS preview build
+        if: env.EXPO_TOKEN != ''
         id: eas_build
         working-directory: apps/mobile
         run: |
@@ -100,7 +105,14 @@ jobs:
           echo "build_url=$BUILD_URL" >> "$GITHUB_OUTPUT"
 
       - name: Publish build link in job summary
+        if: env.EXPO_TOKEN != ''
         run: |
           echo "### Internal build (${{ matrix.platform }})" >> "$GITHUB_STEP_SUMMARY"
           echo "- Build ID: \`${{ steps.eas_build.outputs.build_id }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- URL: ${{ steps.eas_build.outputs.build_url }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Skip internal build when Expo token is missing
+        if: env.EXPO_TOKEN == ''
+        run: |
+          echo "### Internal build (${{ matrix.platform }}) skipped" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Reason: \`EXPO_TOKEN\` secret is not configured." >> "$GITHUB_STEP_SUMMARY"
