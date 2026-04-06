@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, View, Pressable, ScrollView, ActivityIndicator, Image, Dimensions } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useShareIntent } from 'expo-share-intent';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -86,6 +86,7 @@ function ShimmerPlaceholder() {
 
 export default function ShareScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ url?: string }>();
   const insets = useSafeAreaInsets();
   const { shareIntent, resetShareIntent, hasShareIntent } = useShareIntent();
   
@@ -104,13 +105,18 @@ export default function ShareScreen() {
   const secondaryBackgroundColor = useThemeColor({}, 'backgroundSecondary');
   const borderColor = useThemeColor({}, 'border');
 
-  // Extract URL from share intent - check multiple possible fields
-  const sharedUrl = extractUrl(shareIntent);
+  // Extract URL from share intent - check multiple possible fields, then fall back to deep link params
+  const sharedUrl = extractUrl(shareIntent) || params.url || null;
 
-  // Debug logging
-  console.log('📱 Share Screen Debug:');
-  console.log('  hasShareIntent:', hasShareIntent);
-  console.log('  Extracted URL:', sharedUrl);
+  // Reset share intent on unmount if it's still present
+  useEffect(() => {
+    return () => {
+      // We only want to reset it if we're actually leaving the screen
+      // and not just because of a re-render.
+      // However, since this is a top-level route, unmount is usually final.
+      resetShareIntent();
+    };
+  }, []);
 
   // Fetch preview when URL is available
   useEffect(() => {
