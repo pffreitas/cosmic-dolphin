@@ -104,6 +104,7 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
               <div className="relative bg-white rounded-lg p-4 shadow-2xl shadow-teal-300">
                 <input
                   type="text"
+                  aria-label="Bookmark URL"
                   className="w-full p-2 focus:outline-none "
                   value={url}
                   autoFocus={true}
