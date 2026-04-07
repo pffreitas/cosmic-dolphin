@@ -8,6 +8,8 @@ import { createClient } from "@supabase/supabase-js";
 import { config } from "../config/environment";
 import { authMiddleware } from "../middleware/auth";
 
+const allowedOrigins = config.CORS_ORIGIN.split(",").map(o => o.trim());
+
 export default async function searchRoutes(fastify: FastifyInstance) {
   const supabase = createClient(
     config.SUPABASE_URL,
@@ -59,12 +61,15 @@ export default async function searchRoutes(fastify: FastifyInstance) {
           return reply.status(400).send({ error: "Search query is required" });
         }
 
+        const requestOrigin = request.headers.origin || "";
+        const isAllowedOrigin = allowedOrigins.includes(requestOrigin);
+
         reply.raw.writeHead(200, {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-cache",
           Connection: "keep-alive",
           "X-Accel-Buffering": "no",
-          "Access-Control-Allow-Origin": request.headers.origin || "*",
+          "Access-Control-Allow-Origin": isAllowedOrigin ? requestOrigin : allowedOrigins[0],
           "Access-Control-Allow-Credentials": "true",
         });
 
