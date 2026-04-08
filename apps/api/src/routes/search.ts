@@ -59,12 +59,20 @@ export default async function searchRoutes(fastify: FastifyInstance) {
           return reply.status(400).send({ error: "Search query is required" });
         }
 
+        const allowedOrigins = config.CORS_ORIGIN ? config.CORS_ORIGIN.split(',').map(o => o.trim()) : [];
+        const requestOrigin = request.headers.origin;
+        const isAllowed = !requestOrigin || allowedOrigins.includes(requestOrigin);
+        if (!isAllowed) {
+          return reply.status(403).send({ error: "Not allowed by CORS" });
+        }
+        const safeOrigin = requestOrigin || (allowedOrigins[0] || "*");
+
         reply.raw.writeHead(200, {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-cache",
           Connection: "keep-alive",
           "X-Accel-Buffering": "no",
-          "Access-Control-Allow-Origin": request.headers.origin || "*",
+          "Access-Control-Allow-Origin": safeOrigin,
           "Access-Control-Allow-Credentials": "true",
         });
 
