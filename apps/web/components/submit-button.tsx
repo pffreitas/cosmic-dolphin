@@ -17,7 +17,7 @@ export function SubmitButton({
 }: Props) {
   const { pending } = useFormStatus();
   const formContext = useFormContext(); // Get form context
-  const isValid = formContext ? formContext.formState.isValid : false; // Check if formContext is not null
+  const isValid = formContext ? formContext.formState.isValid : true; // Check if formContext is not null
 
   return (
     <Button
@@ -27,7 +27,7 @@ export function SubmitButton({
       {...props}
       className="rounded-full p-2"
     >
-      {pending ? pendingText : <ArrowUp className="h-5 w-5" />}
+      {pending ? pendingText : children || <ArrowUp className="h-5 w-5" />}
     </Button>
   );
 }

@@ -53,7 +53,8 @@ export default function Signup() {
         <Input
           name="email"
           type="email"
-          placeholder="Email"
+          aria-label="Email address"
+          placeholder="Email address"
           required
           className="h-11 rounded-full border-gray-300 px-5 text-sm placeholder:text-gray-400 focus:border-gray-400 focus:ring-0"
         />
@@ -63,6 +64,7 @@ export default function Signup() {
           <Input
             type={showPassword ? "text" : "password"}
             name="password"
+            aria-label="Password"
             placeholder="Password"
             minLength={6}
             required

@@ -1,0 +1,29 @@
+$ turbo run dev --filter=@cosmic-dolphin/web -- --port "3001"
+• turbo 2.7.5
+• Packages in scope: @cosmic-dolphin/web
+• Running dev in 1 packages
+• Remote caching disabled
+@cosmic-dolphin/api-client:build: cache miss, executing ea8aceb34cc0f48b
+@cosmic-dolphin/api-client:build: $ tsc && tsc -p tsconfig.esm.json
+@cosmic-dolphin/web:dev: cache bypass, force executing 600ec76bee594319
+@cosmic-dolphin/web:dev: $ next dev --port 3001 --port "3001"
+@cosmic-dolphin/web:dev: ▲ Next.js 16.1.6 (Turbopack)
+@cosmic-dolphin/web:dev: - Local:         http://localhost:3001
+@cosmic-dolphin/web:dev: - Network:       http://192.168.0.2:3001
+@cosmic-dolphin/web:dev:
+@cosmic-dolphin/web:dev: ✓ Starting...
+@cosmic-dolphin/web:dev: Attention: Next.js now collects completely anonymous telemetry regarding usage.
+@cosmic-dolphin/web:dev: This information is used to shape Next.js' roadmap and prioritize features.
+@cosmic-dolphin/web:dev: You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+@cosmic-dolphin/web:dev: https://nextjs.org/telemetry
+@cosmic-dolphin/web:dev:
+@cosmic-dolphin/web:dev: ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+@cosmic-dolphin/web:dev: ✓ Ready in 1566ms
+@cosmic-dolphin/web:dev: ○ Compiling /sign-in ...
+@cosmic-dolphin/web:dev:  GET /sign-in 200 in 10.6s (compile: 9.2s, proxy.ts: 174ms, render: 1266ms)
+@cosmic-dolphin/web:dev:  GET /sign-in 200 in 214ms (compile: 18ms, proxy.ts: 8ms, render: 188ms)
+@cosmic-dolphin/web:dev: [?25h
+
+ Tasks:    2 successful, 2 total
+Cached:    0 cached, 2 total
+  Time:    2m40.174s
