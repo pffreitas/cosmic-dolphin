@@ -1,0 +1,3 @@
+## 2024-10-25 - Custom Modal Accessibility Patterns
+**Learning:** Custom overlay modals without `role="dialog"` and `aria-modal="true"` are invisible to screen readers, and global Escape key support requires dedicated document-level event listeners rather than `onKeyDown` attributes on static `div`s. Inputs without visible labels must have `aria-label`.
+**Action:** Always implement global Escape handling via `useEffect` for custom modals, apply `aria-hidden="true"` to visual backdrop overlays, assign `role="dialog"`, `aria-label`, and `aria-modal="true"` to the interactive modal container, and ensure all inputs have `aria-label` if not labeled visibly.
