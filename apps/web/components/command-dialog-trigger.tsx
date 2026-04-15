@@ -14,13 +14,25 @@ export function CommandDialogTrigger() {
     return null;
   }
 
+  const [isMac, setIsMac] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMac(navigator.platform.toUpperCase().indexOf("MAC") >= 0);
+  }, []);
+
   return (
     <button
       onClick={toggle}
-      className="flex items-center gap-2 w-48 px-3 py-2 text-sm text-muted-foreground bg-white border border-gray-300 rounded-lg hover:border-gray-400 transition-colors cursor-text"
+      aria-label="Search"
+      className="flex items-center gap-2 w-64 px-3 py-2 text-sm text-muted-foreground bg-white border border-gray-300 rounded-lg hover:border-gray-400 transition-colors cursor-text justify-between"
     >
-      <Search size={16} className="text-gray-400" />
-      <span>Search</span>
+      <div className="flex items-center gap-2">
+        <Search size={16} className="text-gray-400" />
+        <span>Search</span>
+      </div>
+      <kbd className="hidden sm:inline-block items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+        <span className="text-xs">{isMac ? "⌘" : "Ctrl"}</span> /
+      </kbd>
     </button>
   );
 }
