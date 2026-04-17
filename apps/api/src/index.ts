@@ -16,8 +16,10 @@ const server = Fastify({
 });
 
 // Register plugins
+// 🛡️ Sentinel: Enforce strict CORS validation against designated frontend to prevent cross-origin resource sharing vulnerabilities
 server.register(require('@fastify/cors'), {
-  origin: true
+  origin: config.FRONTEND_URL,
+  credentials: true
 });
 
 server.register(require('@fastify/helmet'));
