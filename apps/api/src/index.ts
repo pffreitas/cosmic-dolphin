@@ -1,62 +1,65 @@
-import Fastify from 'fastify';
-import { config } from './config/environment';
-import bookmarkRoutes from './routes/bookmarks';
-import searchRoutes from './routes/search';
-import profileRoutes from './routes/profile';
+import Fastify from "fastify";
+import { config } from "./config/environment";
+import bookmarkRoutes from "./routes/bookmarks";
+import searchRoutes from "./routes/search";
+import profileRoutes from "./routes/profile";
 
 const server = Fastify({
-  logger: config.NODE_ENV === 'development' ? {
-    level: config.LOG_LEVEL,
-    transport: {
-      target: 'pino-pretty'
-    }
-  } : {
-    level: config.LOG_LEVEL
-  }
+  logger:
+    config.NODE_ENV === "development"
+      ? {
+          level: config.LOG_LEVEL,
+          transport: {
+            target: "pino-pretty",
+          },
+        }
+      : {
+          level: config.LOG_LEVEL,
+        },
 });
 
 // Register plugins
-server.register(require('@fastify/cors'), {
-  origin: true
+server.register(require("@fastify/cors"), {
+  origin: config.FRONTEND_URL,
 });
 
-server.register(require('@fastify/helmet'));
+server.register(require("@fastify/helmet"));
 
-server.register(require('@fastify/env'), {
+server.register(require("@fastify/env"), {
   dotenv: true,
   schema: {
-    type: 'object',
-    required: ['PORT'],
+    type: "object",
+    required: ["PORT"],
     properties: {
-      PORT: { type: 'string', default: '3000' },
-      NODE_ENV: { type: 'string', default: 'development' }
-    }
-  }
+      PORT: { type: "string", default: "3000" },
+      NODE_ENV: { type: "string", default: "development" },
+    },
+  },
 });
 
 // Health check route
-server.get('/health', async () => {
-  return { status: 'ok', timestamp: new Date().toISOString() };
+server.get("/health", async () => {
+  return { status: "ok", timestamp: new Date().toISOString() };
 });
 
 // API routes
 server.register(async function (fastify) {
-  fastify.get('/api/v1/status', async () => {
-    return { message: 'Cosmic Dolphin API is running', version: '1.0.0' };
+  fastify.get("/api/v1/status", async () => {
+    return { message: "Cosmic Dolphin API is running", version: "1.0.0" };
   });
-  
+
   // Register routes with /api/v1 prefix
-  await fastify.register(bookmarkRoutes, { prefix: '/api/v1' });
-  await fastify.register(searchRoutes, { prefix: '/api/v1' });
-  await fastify.register(profileRoutes, { prefix: '/api/v1' });
+  await fastify.register(bookmarkRoutes, { prefix: "/api/v1" });
+  await fastify.register(searchRoutes, { prefix: "/api/v1" });
+  await fastify.register(profileRoutes, { prefix: "/api/v1" });
 });
 
 // Start server
 const start = async () => {
   try {
-    await server.listen({ 
-      port: config.PORT, 
-      host: config.HOST 
+    await server.listen({
+      port: config.PORT,
+      host: config.HOST,
     });
     server.log.info(`Server listening on ${config.HOST}:${config.PORT}`);
   } catch (err) {
