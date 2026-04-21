@@ -16,8 +16,8 @@ export class BookmarkProcessorHandler implements MessageHandler {
     private readonly bookmarkProcessorService: BookmarkProcessorService,
   ) {}
 
-  canHandle(): boolean {
-    return true;
+  canHandle(messageType: string): boolean {
+    return messageType === "bookmark_process";
   }
 
   async handle(message: QueueMessage): Promise<void> {

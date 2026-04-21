@@ -9,6 +9,8 @@ import {
   BRIEF_SUMMARY_PROMPT,
   SUMMARIZE_YOUTUBE_PROMPT,
   BRIEF_SUMMARY_YOUTUBE_PROMPT,
+  SUMMARIZE_TWEET_PROMPT,
+  BRIEF_SUMMARY_TWEET_PROMPT,
 } from "../services/bookmark.processor.prompt";
 import { Session } from "../ai/types";
 import { Identifier } from "../ai/id";
@@ -120,7 +122,10 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         bookmark
       );
 
-      const images = await this.processImages(session, bookmark, content);
+      // Tweet images are author-attached and always relevant — skip AI filtering.
+      const images = this.isTwitterBookmark(bookmark)
+        ? this.promoteTweetImages(content)
+        : await this.processImages(session, bookmark, content);
       bookmark.cosmicImages = images;
 
       bookmark = await this.bookmarkService.update(bookmark.id, bookmark);
@@ -176,6 +181,18 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     return bookmark.metadata?.openGraph?.site_name === "YouTube";
   }
 
+  private isTwitterBookmark(bookmark: Bookmark): boolean {
+    return bookmark.metadata?.openGraph?.site_name === "X (formerly Twitter)";
+  }
+
+  private promoteTweetImages(content: ScrapedUrlContents): BookmarkImage[] {
+    return (content.images ?? []).map((img) => ({
+      url: img.url,
+      title: img.alt ?? "Tweet media",
+      description: img.alt ?? "Media attached to the tweet",
+    }));
+  }
+
   private async summarizeContent(
     session: Session,
     bookmark: Bookmark,
@@ -185,8 +202,26 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     let briefSummary = "";
 
     const isYouTube = this.isYouTubeBookmark(bookmark);
-    const summarizePrompt = isYouTube ? SUMMARIZE_YOUTUBE_PROMPT : SUMMARIZE_PROMPT;
-    const briefPrompt = isYouTube ? BRIEF_SUMMARY_YOUTUBE_PROMPT : BRIEF_SUMMARY_PROMPT;
+    const isTwitter = this.isTwitterBookmark(bookmark);
+
+    let summarizePrompt: string;
+    let briefPrompt: string;
+    if (isTwitter) {
+      summarizePrompt = SUMMARIZE_TWEET_PROMPT;
+      briefPrompt = BRIEF_SUMMARY_TWEET_PROMPT;
+    } else if (isYouTube) {
+      summarizePrompt = SUMMARIZE_YOUTUBE_PROMPT;
+      briefPrompt = BRIEF_SUMMARY_YOUTUBE_PROMPT;
+    } else {
+      summarizePrompt = SUMMARIZE_PROMPT;
+      briefPrompt = BRIEF_SUMMARY_PROMPT;
+    }
+
+    // Twitter content is already plain text. YouTube transcripts are plain text.
+    // Generic pages store raw HTML body — strip it before sending to the AI.
+    const textContent = isTwitter || isYouTube
+      ? (content.content ?? "")
+      : this.chunkingService.stripHtml(content.content ?? "");
 
     const task = await this.ai.newTask(
       session.sessionID,
@@ -206,10 +241,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         tools: [],
         message: {
           role: "user",
-          content: summarizePrompt.replace(
-            "{{CONTENT}}",
-            content.content ?? ""
-          ),
+          content: summarizePrompt.replace("{{CONTENT}}", textContent),
         },
       })) {
         if (part.type === "text") {
@@ -228,10 +260,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       briefSummary = await this.ai.generateObject({
         sessionID: session.sessionID,
         modelId: "google/gemini-2.5-flash",
-        prompt: briefPrompt.replace(
-          "{{CONTENT}}",
-          content.content ?? ""
-        ),
+        prompt: briefPrompt.replace("{{CONTENT}}", textContent),
         schema: z.string().describe("The summary of the content"),
       });
     } catch (error) {
@@ -276,7 +305,9 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
           role: "user",
           content: GENERATE_TAGS_PROMPT.replace(
             "{{CONTENT}}",
-            content.content ?? ""
+            this.isTwitterBookmark(bookmark) || this.isYouTubeBookmark(bookmark)
+              ? (content.content ?? "")
+              : this.chunkingService.stripHtml(content.content ?? "")
           ),
         },
       })) {

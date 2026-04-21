@@ -292,6 +292,62 @@ Your task is to generate a compelling brief summary of a YouTube video that help
 3. Output ONLY the summary text. Do NOT include any labels, prefixes, or formatting. Just the plain summary paragraph.
 `;
 
+export const SUMMARIZE_TWEET_PROMPT = `
+You will be creating a concise, insightful summary of a tweet or Twitter thread. Follow these instructions carefully:
+
+<tweet>
+{{CONTENT}}
+</tweet>
+
+Your task is to analyze the tweet and create a compact structured summary:
+
+1. **Read and Analyze**: Understand what the author is saying, arguing, or sharing. Note the author, any quoted content, and engagement context.
+
+2. **Create the Summary**: Generate the following sections:
+   - **Topic**: A short descriptive title (5-10 words) capturing what the tweet is about
+   - **Summary**: 1-2 sentences describing what the author says or argues
+   - **Context**: 1-2 sentences on why this is notable — who said it, what it references, or why it matters
+   - **Key takeaway**: A single sentence with the main insight or claim
+
+3. **Format Requirements**:
+   - Output ONLY in markdown format
+   - Do NOT include any text other than the markdown content
+   - Do NOT wrap the output in code blocks
+   - Use ## for section headers
+
+Your output should follow this structure:
+
+## [Topic]
+
+[Summary sentence(s)]
+
+## Context
+
+[Context sentence(s)]
+
+## Key Takeaway
+
+[Single sentence]
+
+Begin your response immediately with the markdown content.
+`;
+
+export const BRIEF_SUMMARY_TWEET_PROMPT = `
+Your task is to generate a single compelling sentence that captures the essence of this tweet and why it matters.
+
+<tweet>
+{{CONTENT}}
+</tweet>
+
+Requirements:
+- One sentence only (20-40 words)
+- Mention the author or context if it adds value
+- Focus on the core claim, insight, or news
+- Avoid starting with "This tweet..."
+
+Output ONLY the sentence. No labels, prefixes, or formatting.
+`;
+
 export const FILTER_IMAGES_PROMPT = `
 Your task is to filter the images that are not relevant to the content. Follow the instructions below step by step:
 
