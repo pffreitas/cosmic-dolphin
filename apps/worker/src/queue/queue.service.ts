@@ -42,20 +42,27 @@ export class QueueService {
   }
 
   async popMessages(queueName: string, count: number): Promise<QueueMessage[]> {
+    // Use `read` instead of `pop` so messages stay in the queue with a visibility
+    // timeout. If the worker crashes mid-processing they become visible again
+    // automatically, enabling true retry. Explicit `deleteMessage` / `archiveMessage`
+    // after processing removes them from the queue.
+    const VISIBILITY_TIMEOUT_SECONDS = 300; // 5 min — enough for a full bookmark run
     try {
       const { data, error } = await this.supabaseClient
         .getClient()
         .schema("pgmq_public")
-        .rpc("pop", {
+        .rpc("read", {
           queue_name: queueName,
+          sleep_seconds: VISIBILITY_TIMEOUT_SECONDS,
+          n: count,
         });
 
       if (error) {
         this.logger.error(
-          `Failed to pop messages from queue ${queueName}`,
+          `Failed to read messages from queue ${queueName}`,
           error,
         );
-        throw new Error(`Queue pop failed: ${error.message}`);
+        throw new Error(`Queue read failed: ${error.message}`);
       }
 
       if (!data || data.length === 0) {
@@ -71,7 +78,7 @@ export class QueueService {
       }));
     } catch (error) {
       this.logger.error(
-        `Error popping messages from queue ${queueName}`,
+        `Error reading messages from queue ${queueName}`,
         error,
       );
       throw error;

@@ -22,6 +22,14 @@ model CollectionPathItem {
     name: string;
 }
 
+@doc("Processing state of AI pipeline for a bookmark")
+enum ProcessingStatus {
+    idle,
+    processing,
+    completed,
+    failed,
+}
+
 model Bookmark {
     id: string;
     sourceUrl: string;
@@ -42,6 +50,10 @@ model Bookmark {
     isLikedByCurrentUser?: boolean;
     isPublic?: boolean;
     shareSlug?: string;
+    processingStatus?: ProcessingStatus;
+    processingStartedAt?: utcDateTime;
+    processingCompletedAt?: utcDateTime;
+    processingError?: string;
 }
 
 model BookmarkImage {

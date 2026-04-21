@@ -51,6 +51,13 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
       `Starting queue processor with ${options.queues.length} queues, concurrency=${options.concurrency}`,
     );
 
+    const configuredNames = options.queues.map((q) => q.name);
+    if (!configuredNames.includes("bookmarks")) {
+      this.logger.warn(
+        `"bookmarks" queue is not in QUEUE_NAMES (${configuredNames.join(", ")}). Bookmark AI processing will not run.`,
+      );
+    }
+
     const limit = pLimit(options.concurrency);
 
     for (const queueConfig of options.queues) {
@@ -225,7 +232,7 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
 
   private getProcessorOptions(): ProcessorOptions {
     const queueNames = this.configService
-      .get<string>("QUEUE_NAMES", "default")
+      .get<string>("QUEUE_NAMES", "bookmarks")
       .split(",");
     const defaultPollInterval = this.configService.get<number>(
       "QUEUE_POLL_INTERVAL",
