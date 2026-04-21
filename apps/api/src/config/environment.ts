@@ -11,6 +11,9 @@ export const config = {
   // Database
   DATABASE_URL: process.env.DATABASE_URL || "",
 
+  // Frontend
+  FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:3001",
+
   // Supabase
   SUPABASE_URL: process.env.SUPABASE_URL || "",
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
