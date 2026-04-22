@@ -38,13 +38,13 @@ export class CosmicHttpClient implements HttpClient {
           methods: ["GET"],
           statusCodes: [408, 413, 429, 500, 502, 503, 504, 521, 522, 524],
           calculateDelay: function ({ attemptCount }: any) {
-            // Exponential backoff with jitter: base delay * 2^(attempt-1) + random jitter
-            const baseDelay = 1000; // 1 second base
+            const baseDelay = 1000;
             const exponentialDelay = baseDelay * Math.pow(2, attemptCount - 1);
-            const jitter = Math.random() * 1000; // Up to 1 second jitter
-            return exponentialDelay + jitter;
+            const jitter = Math.random() * 1000;
+            // backoffLimit is ignored when calculateDelay is provided, so cap explicitly
+            return Math.min(exponentialDelay + jitter, 10000);
           },
-          backoffLimit: 10000, // Max 10 seconds between retries
+          backoffLimit: 10000,
         },
         headers: {
           "User-Agent": this.getRandomUserAgent(),

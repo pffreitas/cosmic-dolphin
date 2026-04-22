@@ -471,6 +471,21 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
           );
 
           try {
+            // Skip relative/invalid URLs — got retries these indefinitely and blocks the queue
+            let parsedUrl: URL;
+            try {
+              parsedUrl = new URL(image.url);
+            } catch {
+              task.subTasks[imageSubTask.taskID].status = "failed";
+              await this.eventBus.publishToBookmark(bookmark.id, "task.updated", task);
+              return null;
+            }
+            if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+              task.subTasks[imageSubTask.taskID].status = "failed";
+              await this.eventBus.publishToBookmark(bookmark.id, "task.updated", task);
+              return null;
+            }
+
             const response = await this.httpClient.fetch(image.url);
             if (!response.ok) {
               throw new Error(
