@@ -59,12 +59,15 @@ export default async function searchRoutes(fastify: FastifyInstance) {
           return reply.status(400).send({ error: "Search query is required" });
         }
 
+        const origin = request.headers.origin;
+        const allowedOrigin = origin === config.FRONTEND_URL ? origin : config.FRONTEND_URL;
+
         reply.raw.writeHead(200, {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-cache",
           Connection: "keep-alive",
           "X-Accel-Buffering": "no",
-          "Access-Control-Allow-Origin": request.headers.origin || "*",
+          "Access-Control-Allow-Origin": allowedOrigin,
           "Access-Control-Allow-Credentials": "true",
         });
 
