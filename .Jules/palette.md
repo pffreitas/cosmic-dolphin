@@ -1,0 +1,3 @@
+## 2026-04-26 - Add Keyboard Shortcut Hint to Search Trigger
+**Learning:** Users often miss global keyboard shortcuts (like `⌘/` for search) if they aren't explicitly surfaced in the UI. Adding a semantic `<kbd>` hint directly within the visual trigger button improves discoverability and accessibility. Handling `navigator.platform` carefully inside a `useEffect` is critical to prevent SSR hydration mismatch errors between server and client.
+**Action:** When adding global keyboard shortcuts, always include a visual `<kbd>` hint in the corresponding UI element, and implement platform detection (Mac vs Windows) using an initial default state and a `useEffect` hook to ensure safe hydration.
