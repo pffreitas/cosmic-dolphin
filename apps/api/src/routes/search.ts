@@ -59,12 +59,14 @@ export default async function searchRoutes(fastify: FastifyInstance) {
           return reply.status(400).send({ error: "Search query is required" });
         }
 
+        // 🛡️ Sentinel: Raw Fastify responses bypass standard CORS plugins.
+        // Explicitly restrict allowed origins to trusted FRONTEND_URL to prevent unauthorized cross-origin connections.
         reply.raw.writeHead(200, {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-cache",
           Connection: "keep-alive",
           "X-Accel-Buffering": "no",
-          "Access-Control-Allow-Origin": request.headers.origin || "*",
+          "Access-Control-Allow-Origin": config.FRONTEND_URL,
           "Access-Control-Allow-Credentials": "true",
         });
 
