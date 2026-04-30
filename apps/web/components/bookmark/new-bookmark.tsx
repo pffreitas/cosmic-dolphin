@@ -19,6 +19,7 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
   const [url, setUrl] = useState("");
   const [privateLinkDialogOpen, setPrivateLinkDialogOpen] = useState(false);
   const [previewData, setPreviewData] = useState<PreviewResponse | null>(null);
+  const [isMac, setIsMac] = useState(false);
   const dispatch = useAppDispatch();
   const router = useRouter();
   const createLoading = useAppSelector(
@@ -31,6 +32,10 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
   const previewError = useAppSelector((state) => state.bookmarks.previewError);
 
   const isLoading = createLoading || previewLoading;
+
+  useEffect(() => {
+    setIsMac(navigator.platform.toUpperCase().indexOf("MAC") >= 0);
+  }, []);
 
   const handleSubmit = async () => {
     dispatch(clearErrors());
@@ -77,7 +82,7 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.metaKey && event.key === "k") {
+      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
         event.preventDefault();
         handleNewBookmark();
       }
@@ -137,13 +142,19 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
 
       <button
         id="new-bookmark-button"
-        className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-noto text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
+        className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-noto text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         onClick={() => {
           handleNewBookmark();
         }}
+        aria-label="Save a new bookmark"
       >
-        <Bookmark size={16} />
-        Save Bookmark
+        <Bookmark size={16} aria-hidden="true" />
+        <span className="flex items-center gap-2">
+          Save Bookmark
+          <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border border-blue-400 bg-blue-500/50 px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex text-white" aria-hidden="true">
+            <span className="text-xs">{isMac ? "⌘" : "Ctrl"}</span> K
+          </kbd>
+        </span>
       </button>
     </>
   );
