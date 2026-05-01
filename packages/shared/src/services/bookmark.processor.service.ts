@@ -89,25 +89,25 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         session
       );
 
-      const { summary, briefSummary } = await this.summarizeContent(
-        session,
-        bookmark,
-        content
-      );
+      // Start independent AI tasks in parallel to minimize total processing time
+      const summarizePromise = this.summarizeContent(session, bookmark, content);
+      const metadataPromise = this.generateMetadata(session, bookmark, content);
+      const imagesPromise = this.isTwitterBookmark(bookmark)
+        ? Promise.resolve(this.promoteTweetImages(content))
+        : this.processImages(session, bookmark, content);
+      const embeddingPromise = this.chunkAndEmbed(session, bookmark, content);
+
+      // Categorization requires summary and tags, so we wait for those first
+      const [{ summary, briefSummary }, tags] = await Promise.all([
+        summarizePromise,
+        metadataPromise,
+      ]);
+
       bookmark.cosmicSummary = summary;
       bookmark.cosmicBriefSummary = briefSummary;
-
-      const tags = await this.generateMetadata(session, bookmark, content);
       bookmark.cosmicTags = tags;
 
-      bookmark = await this.bookmarkService.update(bookmark.id, bookmark);
-      await this.eventBus.publishToBookmark(
-        bookmark.id,
-        "bookmark.updated",
-        bookmark
-      );
-
-      // Categorize the bookmark using AI
+      // Categorize based on the generated summary and tags
       const categorization = await this.categorizerService.categorize(
         session,
         bookmark,
@@ -115,31 +115,22 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       );
       bookmark.collectionId = categorization.categoryId;
 
-      bookmark = await this.bookmarkService.update(bookmark.id, bookmark);
-      await this.eventBus.publishToBookmark(
-        bookmark.id,
-        "bookmark.updated",
-        bookmark
-      );
-
-      // Tweet images are author-attached and always relevant — skip AI filtering.
-      const images = this.isTwitterBookmark(bookmark)
-        ? this.promoteTweetImages(content)
-        : await this.processImages(session, bookmark, content);
+      // Wait for images and embeddings to finish
+      const images = await imagesPromise;
       bookmark.cosmicImages = images;
+      await embeddingPromise;
 
-      bookmark = await this.bookmarkService.update(bookmark.id, bookmark);
-      await this.eventBus.publishToBookmark(
-        bookmark.id,
-        "bookmark.updated",
-        bookmark
-      );
-
-      await this.chunkAndEmbed(session, bookmark, content);
-
+      // Final construction of search document
       const searchDocument = this.buildSearchDocument(bookmark, content);
       bookmark.searchDocument = searchDocument;
+
+      // Batch update the bookmark with all AI-generated content in one DB call
       bookmark = await this.bookmarkService.update(bookmark.id, bookmark);
+      await this.eventBus.publishToBookmark(
+        bookmark.id,
+        "bookmark.updated",
+        bookmark
+      );
 
       // Update processing status to 'completed'
       bookmark = await this.bookmarkService.updateProcessingStatus(
@@ -232,6 +223,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     await this.eventBus.publishToBookmark(bookmark.id, "task.started", task);
 
     try {
+      let tokenCount = 0;
       for await (const part of this.ai.prompt({
         sessionID: session.sessionID,
         taskID: task.taskID,
@@ -247,13 +239,16 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         if (part.type === "text") {
           summary = part.part.text;
           bookmark.cosmicSummary = summary;
+          tokenCount++;
 
-          // Stream the updated bookmark content to the client
-          await this.eventBus.publishToBookmark(
-            bookmark.id,
-            "bookmark.updated",
-            bookmark
-          );
+          // Stream the updated bookmark content to the client every 10 tokens to reduce noise
+          if (tokenCount % 10 === 0) {
+            await this.eventBus.publishToBookmark(
+              bookmark.id,
+              "bookmark.updated",
+              bookmark
+            );
+          }
         }
       }
 
