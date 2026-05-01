@@ -136,24 +136,114 @@ export class YouTubeServiceImpl implements YouTubeService {
   }
 
   private async fetchTranscript(videoId: string): Promise<string> {
-    let segments: TranscriptResponse[];
+    const libraryResult = await this.tryFetchTranscriptViaLibrary(videoId);
+    if (libraryResult) return libraryResult;
 
+    const innerTubeResult = await this.tryFetchTranscriptViaInnerTube(videoId);
+    if (innerTubeResult) return innerTubeResult;
+
+    throw new Error(`No transcript available for video: ${videoId}`);
+  }
+
+  // Tries the youtube-transcript library (InnerTube + web scraping). Returns null on any failure.
+  private async tryFetchTranscriptViaLibrary(videoId: string): Promise<string | null> {
     try {
-      segments = await YoutubeTranscript.fetchTranscript(videoId, { lang: "en" });
-    } catch (error) {
-      if (error instanceof YoutubeTranscriptNotAvailableLanguageError) {
-        // English transcript not available — fall back to the default language
-        segments = await YoutubeTranscript.fetchTranscript(videoId);
-      } else {
-        throw error;
+      let segments: TranscriptResponse[];
+      try {
+        segments = await YoutubeTranscript.fetchTranscript(videoId, { lang: "en" });
+      } catch (error) {
+        if (error instanceof YoutubeTranscriptNotAvailableLanguageError) {
+          segments = await YoutubeTranscript.fetchTranscript(videoId);
+        } else {
+          return null;
+        }
+      }
+      if (!segments || segments.length === 0) return null;
+      return segments.map((s) => s.text).join(" ");
+    } catch {
+      return null;
+    }
+  }
+
+  // Direct InnerTube API call using the MWEB client as a fallback when the library fails.
+  private async tryFetchTranscriptViaInnerTube(videoId: string): Promise<string | null> {
+    try {
+      const response = await fetch("https://www.youtube.com/youtubei/v1/player?prettyPrint=false", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          context: {
+            client: {
+              clientName: "MWEB",
+              clientVersion: "2.20231220.01.00",
+              hl: "en",
+              gl: "US",
+            },
+          },
+          videoId,
+          contentCheckOk: true,
+          racyCheckOk: true,
+        }),
+      });
+
+      if (!response.ok) return null;
+
+      const data = (await response.json()) as any;
+      const tracks = data?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+
+      if (!Array.isArray(tracks) || tracks.length === 0) return null;
+
+      const track = tracks.find((t: any) => t.languageCode === "en") ?? tracks[0];
+      if (!track?.baseUrl) return null;
+
+      const trackUrl = new URL(track.baseUrl);
+      if (!trackUrl.hostname.endsWith(".youtube.com")) return null;
+
+      const captionResponse = await this.httpClient.fetch(track.baseUrl);
+      if (!captionResponse.ok) return null;
+
+      return this.parseTranscriptXml(captionResponse.body);
+    } catch {
+      return null;
+    }
+  }
+
+  private parseTranscriptXml(xml: string): string | null {
+    const segments: string[] = [];
+
+    // srv3 format: <p t="ms" d="ms">...</p> (with optional <s> children)
+    const srv3Regex = /<p\s+t="(\d+)"\s+d="(\d+)"[^>]*>([\s\S]*?)<\/p>/g;
+    let match: RegExpExecArray | null;
+    while ((match = srv3Regex.exec(xml)) !== null) {
+      let text = match[3];
+      const sText = [...text.matchAll(/<s[^>]*>([^<]*)<\/s>/g)].map((m) => m[1]).join("");
+      text = sText || text.replace(/<[^>]+>/g, "");
+      text = this.decodeHtmlEntities(text).trim();
+      if (text) segments.push(text);
+    }
+
+    // Classic format fallback: <text start="s" dur="s">...</text>
+    if (segments.length === 0) {
+      const classicRegex = /<text start="([^"]*)" dur="([^"]*)">([^<]*)<\/text>/g;
+      while ((match = classicRegex.exec(xml)) !== null) {
+        const text = this.decodeHtmlEntities(match[3]).trim();
+        if (text) segments.push(text);
       }
     }
 
-    if (!segments || segments.length === 0) {
-      throw new Error(`No transcript available for video: ${videoId}`);
-    }
+    return segments.length > 0 ? segments.join(" ") : null;
+  }
 
-    return segments.map((segment) => segment.text).join(" ");
+  private decodeHtmlEntities(text: string): string {
+    return text
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&apos;/g, "'")
+      .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+      .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)));
   }
 
   private getHighResThumbnail(
