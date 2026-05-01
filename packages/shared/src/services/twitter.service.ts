@@ -13,31 +13,55 @@ export class TwitterScrapingError extends Error {
   }
 }
 
-interface VxTwitterMedia {
-  type: "image" | "video" | "gif";
+// FxTwitter API v2 response types
+interface FxTwitterAuthor {
+  name?: string;
+  screen_name?: string;
+}
+
+interface FxTwitterPhoto {
+  type: "photo" | "gif";
   url: string;
-  thumbnail_url?: string;
   altText?: string;
 }
 
-interface VxTwitterQuote {
-  text?: string;
-  user_name?: string;
-  user_screen_name?: string;
+interface FxTwitterVideo {
+  type: "video" | "gif";
+  url: string;
+  thumbnail_url?: string;
 }
 
-interface VxTwitterResponse {
+interface FxTwitterMedia {
+  photos?: FxTwitterPhoto[];
+  videos?: FxTwitterVideo[];
+}
+
+interface FxTwitterStatus {
   text?: string;
-  user_name?: string;
-  user_screen_name?: string;
-  date?: string;
-  date_epoch?: number;
+  author?: FxTwitterAuthor;
+  created_at?: string;
+  created_timestamp?: number;
   likes?: number;
-  retweets?: number;
+  reposts?: number;
   replies?: number;
-  media_extended?: VxTwitterMedia[];
-  qrt?: VxTwitterQuote;
-  thread?: Array<{ text?: string }>;
+  media?: FxTwitterMedia;
+  quote?: {
+    text?: string;
+    author?: FxTwitterAuthor;
+  } | null;
+}
+
+interface FxTwitterResponse {
+  code: number;
+  status?: FxTwitterStatus | null;
+  thread?: Array<FxTwitterStatus> | null;
+}
+
+interface OEmbedResponse {
+  author_name?: string;
+  author_url?: string;
+  html?: string;
+  provider_name?: string;
 }
 
 export interface TwitterService {
@@ -68,46 +92,63 @@ export class TwitterServiceImpl implements TwitterService {
     url: string
   ): Promise<Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">> {
     try {
-      return await this.scrapeViaVxTwitter(url);
+      return await this.scrapeViaFxTwitter(url);
     } catch (primaryError) {
       console.warn(
-        `[TwitterService] vxTwitter failed for ${url}, trying OG fallback:`,
+        `[TwitterService] fxTwitter failed for ${url}, trying oEmbed fallback:`,
         primaryError instanceof Error ? primaryError.message : primaryError
       );
       try {
-        return await this.scrapeViaOgFallback(url);
-      } catch (fallbackError) {
-        throw new TwitterScrapingError(
-          `Unable to scrape tweet — vxTwitter API and OG fallback both failed. The tweet may be private or deleted.`,
-          url,
-          fallbackError
+        return await this.scrapeViaOEmbed(url);
+      } catch (secondaryError) {
+        console.warn(
+          `[TwitterService] oEmbed failed for ${url}, trying OG fallback:`,
+          secondaryError instanceof Error ? secondaryError.message : secondaryError
         );
+        try {
+          return await this.scrapeViaOgFallback(url);
+        } catch (fallbackError) {
+          throw new TwitterScrapingError(
+            `Unable to scrape tweet — fxTwitter API, oEmbed, and OG fallback all failed. The tweet may be private or deleted.`,
+            url,
+            fallbackError
+          );
+        }
       }
     }
   }
 
-  private async scrapeViaVxTwitter(
+  private extractStatusId(url: string): string | null {
+    const match = url.match(/\/status\/(\d+)/);
+    return match ? match[1] : null;
+  }
+
+  private async scrapeViaFxTwitter(
     url: string
   ): Promise<Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">> {
-    const apiUrl = new URL(url);
-    apiUrl.hostname = "api.vxtwitter.com";
+    const statusId = this.extractStatusId(url);
+    if (!statusId) {
+      throw new Error("Could not extract tweet ID from URL");
+    }
 
-    const response = await this.httpClient.fetch(apiUrl.toString());
+    const apiUrl = `https://api.fxtwitter.com/2/${statusId}`;
+    const response = await this.httpClient.fetch(apiUrl);
 
     if (!response.ok) {
-      throw new Error(`vxTwitter returned ${response.status}: ${response.statusText}`);
+      throw new Error(`fxTwitter returned ${response.status}: ${response.statusText}`);
     }
 
-    const data: VxTwitterResponse = JSON.parse(response.body);
+    const data: FxTwitterResponse = JSON.parse(response.body);
 
-    if (!data.user_screen_name) {
-      throw new Error("vxTwitter response missing user data — tweet may be private or deleted");
+    if (!data.status?.author?.screen_name) {
+      throw new Error("fxTwitter response missing user data — tweet may be private or deleted");
     }
 
-    const title = `Tweet by ${data.user_name ?? data.user_screen_name} (@${data.user_screen_name})`;
+    const status = data.status;
+    const title = `Tweet by ${status.author!.name ?? status.author!.screen_name} (@${status.author!.screen_name})`;
     const content = this.buildStructuredContent(url, data);
-    const images = this.extractMedia(data);
-    const links = this.extractLinks(data);
+    const images = this.extractMedia(status);
+    const links = this.extractLinks(status);
 
     return {
       title,
@@ -117,35 +158,36 @@ export class TwitterServiceImpl implements TwitterService {
       metadata: {
         openGraph: {
           title,
-          description: data.text ?? "",
+          description: status.text ?? "",
           url,
           site_name: "X (formerly Twitter)",
         },
-        wordCount: (data.text ?? "").split(/\s+/).filter(Boolean).length,
+        wordCount: (status.text ?? "").split(/\s+/).filter(Boolean).length,
         readingTime: 1,
       },
     };
   }
 
-  private buildStructuredContent(url: string, data: VxTwitterResponse): string {
+  private buildStructuredContent(url: string, data: FxTwitterResponse): string {
     const parts: string[] = [];
+    const status = data.status!;
 
-    const authorLine = data.user_name
-      ? `${data.user_name} (@${data.user_screen_name})`
-      : `@${data.user_screen_name}`;
-    const dateLine = data.date ? ` · ${data.date}` : "";
+    const authorLine = status.author?.name
+      ? `${status.author.name} (@${status.author.screen_name})`
+      : `@${status.author?.screen_name ?? "unknown"}`;
+    const dateLine = status.created_at ? ` · ${status.created_at}` : "";
     parts.push(`${authorLine}${dateLine}`);
     parts.push("");
 
-    parts.push(data.text ?? "");
+    parts.push(status.text ?? "");
 
-    if (data.qrt?.text) {
-      const quotedAuthor = data.qrt.user_name
-        ? `${data.qrt.user_name} (@${data.qrt.user_screen_name})`
-        : `@${data.qrt.user_screen_name ?? "unknown"}`;
+    if (status.quote?.text) {
+      const quotedAuthor = status.quote.author?.name
+        ? `${status.quote.author.name} (@${status.quote.author.screen_name})`
+        : `@${status.quote.author?.screen_name ?? "unknown"}`;
       parts.push("");
       parts.push(`[Quoted tweet by ${quotedAuthor}]`);
-      parts.push(data.qrt.text);
+      parts.push(status.quote.text);
     }
 
     if (data.thread && data.thread.length > 0) {
@@ -159,9 +201,9 @@ export class TwitterServiceImpl implements TwitterService {
     }
 
     const engagementParts: string[] = [];
-    if (typeof data.likes === "number") engagementParts.push(`${data.likes} likes`);
-    if (typeof data.retweets === "number") engagementParts.push(`${data.retweets} retweets`);
-    if (typeof data.replies === "number") engagementParts.push(`${data.replies} replies`);
+    if (typeof status.likes === "number") engagementParts.push(`${status.likes} likes`);
+    if (typeof status.reposts === "number") engagementParts.push(`${status.reposts} retweets`);
+    if (typeof status.replies === "number") engagementParts.push(`${status.replies} replies`);
     if (engagementParts.length > 0) {
       parts.push("");
       parts.push(`Engagement: ${engagementParts.join(" · ")}`);
@@ -173,22 +215,24 @@ export class TwitterServiceImpl implements TwitterService {
     return parts.join("\n");
   }
 
-  private extractMedia(
-    data: VxTwitterResponse
-  ): Array<{ url: string; alt: string }> {
-    if (!data.media_extended) return [];
-
+  private extractMedia(status: FxTwitterStatus): Array<{ url: string; alt: string }> {
     const images: Array<{ url: string; alt: string }> = [];
 
-    for (const media of data.media_extended) {
-      if (media.type === "image") {
-        images.push({ url: media.url, alt: media.altText ?? "Tweet image" });
-      } else if (media.type === "video" || media.type === "gif") {
-        // Use thumbnail as a representative image; store video URL as a link
-        if (media.thumbnail_url) {
+    if (status.media?.photos) {
+      for (const photo of status.media.photos) {
+        images.push({
+          url: photo.url,
+          alt: photo.altText ?? (photo.type === "gif" ? "Tweet GIF" : "Tweet image"),
+        });
+      }
+    }
+
+    if (status.media?.videos) {
+      for (const video of status.media.videos) {
+        if (video.thumbnail_url) {
           images.push({
-            url: media.thumbnail_url,
-            alt: media.type === "gif" ? "Tweet GIF thumbnail" : "Tweet video thumbnail",
+            url: video.thumbnail_url,
+            alt: "Tweet video thumbnail",
           });
         }
       }
@@ -197,20 +241,69 @@ export class TwitterServiceImpl implements TwitterService {
     return images;
   }
 
-  private extractLinks(
-    data: VxTwitterResponse
-  ): Array<{ url: string; text: string }> {
+  private extractLinks(status: FxTwitterStatus): Array<{ url: string; text: string }> {
     const links: Array<{ url: string; text: string }> = [];
 
-    if (!data.media_extended) return links;
-
-    for (const media of data.media_extended) {
-      if (media.type === "video" || media.type === "gif") {
-        links.push({ url: media.url, text: `Tweet ${media.type}` });
+    if (status.media?.videos) {
+      for (const video of status.media.videos) {
+        links.push({ url: video.url, text: `Tweet ${video.type}` });
       }
     }
 
     return links;
+  }
+
+  private async scrapeViaOEmbed(
+    url: string
+  ): Promise<Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">> {
+    const statusId = this.extractStatusId(url);
+    if (!statusId) {
+      throw new Error("Could not extract tweet ID from URL for oEmbed");
+    }
+
+    const oEmbedUrl = `https://publish.twitter.com/oembed?url=${encodeURIComponent(url)}&omit_script=true`;
+    const response = await this.httpClient.fetch(oEmbedUrl);
+
+    if (!response.ok) {
+      throw new Error(`oEmbed returned ${response.status}`);
+    }
+
+    const data: OEmbedResponse = JSON.parse(response.body);
+
+    if (!data.author_name) {
+      throw new Error("oEmbed response missing author data");
+    }
+
+    // Extract tweet text from the blockquote HTML
+    const $ = cheerio.load(data.html ?? "");
+    const tweetText = $("blockquote p").first().text().trim();
+    const dateText = $("blockquote a").last().text().trim();
+
+    const title = `Tweet by ${data.author_name}`;
+    const content = [
+      `${data.author_name}${dateText ? ` · ${dateText}` : ""}`,
+      "",
+      tweetText || "",
+      "",
+      `Source: ${url}`,
+    ].join("\n");
+
+    return {
+      title,
+      content,
+      images: [],
+      links: [],
+      metadata: {
+        openGraph: {
+          title,
+          description: tweetText,
+          url,
+          site_name: "X (formerly Twitter)",
+        },
+        wordCount: tweetText.split(/\s+/).filter(Boolean).length,
+        readingTime: 1,
+      },
+    };
   }
 
   private async scrapeViaOgFallback(
