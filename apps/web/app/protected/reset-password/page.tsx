@@ -18,6 +18,7 @@ export default async function ResetPassword(props: {
       <Input
         type="password"
         name="password"
+        id="password"
         placeholder="New password"
         required
       />
@@ -25,6 +26,7 @@ export default async function ResetPassword(props: {
       <Input
         type="password"
         name="confirmPassword"
+        id="confirmPassword"
         placeholder="Confirm password"
         required
       />

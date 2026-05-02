@@ -196,6 +196,7 @@ export default function PrivateLinkDialog({
                 onKeyDown={handleTagKeyDown}
                 onBlur={handleAddTag}
                 placeholder={tags.length === 0 ? "Add tags..." : ""}
+                aria-label="Add tags"
                 className="min-w-[80px] flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               />
             </div>
