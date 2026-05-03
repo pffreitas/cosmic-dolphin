@@ -64,7 +64,8 @@ export default async function searchRoutes(fastify: FastifyInstance) {
           "Cache-Control": "no-cache",
           Connection: "keep-alive",
           "X-Accel-Buffering": "no",
-          "Access-Control-Allow-Origin": request.headers.origin || "*",
+          // 🛡️ Sentinel: Restrict SSE CORS to explicit trusted frontend url instead of arbitrary origin
+          "Access-Control-Allow-Origin": config.FRONTEND_URL,
           "Access-Control-Allow-Credentials": "true",
         });
 
