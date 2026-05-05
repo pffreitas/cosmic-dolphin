@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, View, Pressable, ScrollView, ActivityIndicator, Image, Dimensions } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useShareIntent } from 'expo-share-intent';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
@@ -13,36 +12,6 @@ import { useThemeColor } from '@/hooks/useThemeColor';
 import { BookmarksAPI, UrlPreviewMetadata } from '@/lib/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-// Helper to extract URL from various share intent structures
-function extractUrl(shareIntent: any): string | null {
-  if (!shareIntent) return null;
-  
-  // URL detection regex - avoiding trailing punctuation
-  const urlRegex = /(https?:\/\/[^\s,;)]+)/g;
-  
-  // Try various possible fields where URL might be stored
-  const possibleValues = [
-    shareIntent.url,
-    shareIntent.webUrl, 
-    shareIntent.text,
-    shareIntent.meta?.url,
-    shareIntent.meta?.webUrl,
-    shareIntent.uri,
-    shareIntent.data,
-  ];
-  
-  for (const value of possibleValues) {
-    if (typeof value === 'string' && value.length > 0) {
-      const match = value.match(urlRegex);
-      if (match && match[0]) {
-        return match[0];
-      }
-    }
-  }
-  
-  return null;
-}
 
 // Helper to extract domain from URL
 function extractDomain(url: string): string {
@@ -88,42 +57,33 @@ export default function ShareScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ url?: string }>();
   const insets = useSafeAreaInsets();
-  const { shareIntent, resetShareIntent, hasShareIntent } = useShareIntent();
-  
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
-  
+
+  // Capture the URL once on mount from route params so it stays stable for the
+  // entire lifetime of this screen, regardless of any share intent resets that
+  // happen in _layout.tsx or elsewhere.
+  const [sharedUrl] = useState<string | null>(() => params.url ?? null);
+
   // Preview state
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [previewData, setPreviewData] = useState<UrlPreviewMetadata | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  
+
   const tintColor = useThemeColor({}, 'tint');
   const iconColor = useThemeColor({}, 'icon');
   const backgroundColor = useThemeColor({}, 'background');
   const secondaryBackgroundColor = useThemeColor({}, 'backgroundSecondary');
   const borderColor = useThemeColor({}, 'border');
 
-  // Extract URL from share intent - check multiple possible fields, then fall back to deep link params
-  const sharedUrl = extractUrl(shareIntent) || params.url || null;
-
-  // Reset share intent on unmount if it's still present
-  useEffect(() => {
-    return () => {
-      // We only want to reset it if we're actually leaving the screen
-      // and not just because of a re-render.
-      // However, since this is a top-level route, unmount is usually final.
-      resetShareIntent();
-    };
-  }, []);
-
-  // Fetch preview when URL is available
+  // Fetch preview once when the screen mounts (sharedUrl is stable)
   useEffect(() => {
     if (sharedUrl) {
       fetchPreview(sharedUrl);
     }
-  }, [sharedUrl]);
+  }, []);
 
   const fetchPreview = async (url: string) => {
     setIsLoadingPreview(true);
@@ -142,18 +102,15 @@ export default function ShareScreen() {
   };
 
   const navigateAway = () => {
-    // Reset share intent first, then navigate after a small delay
-    resetShareIntent();
-    
-    setTimeout(() => {
-      // Use replace if we can, but since this is usually a modal, 
-      // sometimes we need to just go back or to home
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.replace('/(tabs)');
-      }
-    }, 50);
+    // Navigate immediately — do NOT reset the share intent here because that
+    // clears shareIntent in the provider synchronously, causing a re-render that
+    // shows the empty state while the screen is still visible. _layout.tsx owns
+    // the share intent lifecycle and will reset it via its own effects.
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
   };
 
   const handleClose = () => {
@@ -172,11 +129,9 @@ export default function ShareScreen() {
     try {
       await BookmarksAPI.create({ source_url: sharedUrl });
       setIsSaved(true);
-      
+
       // Brief delay to show success state before closing
-      setTimeout(() => {
-        navigateAway();
-      }, 800);
+      setTimeout(navigateAway, 800);
     } catch (error) {
       console.error('Error saving bookmark:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to save bookmark';
