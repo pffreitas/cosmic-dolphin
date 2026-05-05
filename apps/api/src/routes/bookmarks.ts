@@ -70,10 +70,24 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         }
 
         if (is_private_link) {
+          let metadata = { title, description, tags, collectionId: collection_id };
+
+          // If user provided a description, use it for better metadata inference
+          if (description && !tags?.length) {
+            const partialMetadata = services.webScraping.extractMetadataFromUrl(source_url);
+            const inference = await services.bookmark.inferPrivateLinkMetadata(
+              source_url,
+              partialMetadata.title,
+              partialMetadata.siteName,
+              description
+            );
+            metadata.tags = inference.tags;
+          }
+
           const bookmark = await services.bookmark.createPrivateLink(
             source_url,
             user_id,
-            { title, description, tags, collectionId: collection_id }
+            metadata
           );
           return reply.status(201).send({
             bookmark,

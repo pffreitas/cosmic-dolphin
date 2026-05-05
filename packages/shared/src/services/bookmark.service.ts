@@ -26,17 +26,20 @@ export interface PrivateLinkMetadata {
 }
 
 const PRIVATE_LINK_INFERENCE_PROMPT = `You are analyzing a URL that cannot be fully scraped (it's behind authentication or otherwise inaccessible).
-Based on the URL and any metadata available, infer a short description and relevant tags.
+Use ALL available information to generate accurate metadata.
 
 URL: {{URL}}
-Title: {{TITLE}}
+Title (from URL structure): {{TITLE}}
 Site: {{SITE_NAME}}
+{{USER_DESCRIPTION_MARKER}}
 
 Return a JSON object with:
 - "description": A brief, useful description of what this link likely contains (1-2 sentences)
 - "tags": An array of 2-5 relevant tags (lowercase, no spaces, use hyphens for multi-word tags)
 
-Be specific based on URL patterns. For example:
+Priority: If user description is provided, prioritize it for tag inference as it contains
+the most accurate information about the link's content. Be specific based on URL patterns
+and any user-provided context. For example:
 - GitHub URLs: infer repo name, whether it's a PR, issue, etc.
 - Jira/Linear URLs: infer it's a ticket/task
 - Google Docs: infer it's a document
@@ -59,7 +62,8 @@ export interface BookmarkService {
   inferPrivateLinkMetadata(
     url: string,
     title?: string,
-    siteName?: string
+    siteName?: string,
+    userDescription?: string
   ): Promise<{ tags: string[]; description: string }>;
   findByUser(userId: string, options?: FindByUserOptions): Promise<Bookmark[]>;
   searchByQuickAccess(
@@ -165,16 +169,23 @@ export class BookmarkServiceImpl implements BookmarkService {
   async inferPrivateLinkMetadata(
     url: string,
     title?: string,
-    siteName?: string
+    siteName?: string,
+    userDescription?: string
   ): Promise<{ tags: string[]; description: string }> {
     if (!this.ai) {
       return { tags: [], description: "" };
     }
 
-    const prompt = PRIVATE_LINK_INFERENCE_PROMPT
+    let prompt = PRIVATE_LINK_INFERENCE_PROMPT
       .replace("{{URL}}", url)
       .replace("{{TITLE}}", title || "Unknown")
       .replace("{{SITE_NAME}}", siteName || "Unknown");
+
+    if (userDescription) {
+      prompt = prompt.replace("{{USER_DESCRIPTION_MARKER}}", `User's description: ${userDescription}`);
+    } else {
+      prompt = prompt.replace("{{USER_DESCRIPTION_MARKER}}", "");
+    }
 
     const result = await this.ai.generateObject({
       sessionID: "private-link-inference",

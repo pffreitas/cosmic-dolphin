@@ -10,28 +10,28 @@ import Animated, { FadeIn, FadeInDown, useSharedValue, useAnimatedStyle, withRep
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { BookmarksAPI, UrlPreviewMetadata } from '@/lib/api';
+import { BookmarksAPI, PreviewUrlResponse, UrlPreviewMetadata } from '@/lib/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Helper to extract URL from various share intent structures
 function extractUrl(shareIntent: any): string | null {
   if (!shareIntent) return null;
-  
+
   // URL detection regex - avoiding trailing punctuation
   const urlRegex = /(https?:\/\/[^\s,;)]+)/g;
-  
+
   // Try various possible fields where URL might be stored
   const possibleValues = [
     shareIntent.url,
-    shareIntent.webUrl, 
+    shareIntent.webUrl,
     shareIntent.text,
     shareIntent.meta?.url,
     shareIntent.meta?.webUrl,
     shareIntent.uri,
     shareIntent.data,
   ];
-  
+
   for (const value of possibleValues) {
     if (typeof value === 'string' && value.length > 0) {
       const match = value.match(urlRegex);
@@ -40,7 +40,7 @@ function extractUrl(shareIntent: any): string | null {
       }
     }
   }
-  
+
   return null;
 }
 
@@ -56,7 +56,7 @@ function extractDomain(url: string): string {
 
 function ShimmerPlaceholder() {
   const opacity = useSharedValue(0.3);
-  
+
   useEffect(() => {
     opacity.value = withRepeat(
       withSequence(
@@ -89,16 +89,16 @@ export default function ShareScreen() {
   const params = useLocalSearchParams<{ url?: string }>();
   const insets = useSafeAreaInsets();
   const { shareIntent, resetShareIntent, hasShareIntent } = useShareIntent();
-  
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
-  
+
   // Preview state
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-  const [previewData, setPreviewData] = useState<UrlPreviewMetadata | null>(null);
+  const [previewData, setPreviewData] = useState<PreviewUrlResponse | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  
+
   const tintColor = useThemeColor({}, 'tint');
   const iconColor = useThemeColor({}, 'icon');
   const backgroundColor = useThemeColor({}, 'background');
@@ -128,10 +128,10 @@ export default function ShareScreen() {
   const fetchPreview = async (url: string) => {
     setIsLoadingPreview(true);
     setPreviewError(null);
-    
+
     try {
-      const metadata = await BookmarksAPI.preview(url);
-      setPreviewData(metadata);
+      const response = await BookmarksAPI.preview(url);
+      setPreviewData(response);
     } catch (error) {
       console.error('Error fetching preview:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to load preview';
@@ -144,9 +144,9 @@ export default function ShareScreen() {
   const navigateAway = () => {
     // Reset share intent first, then navigate after a small delay
     resetShareIntent();
-    
+
     setTimeout(() => {
-      // Use replace if we can, but since this is usually a modal, 
+      // Use replace if we can, but since this is usually a modal,
       // sometimes we need to just go back or to home
       if (router.canGoBack()) {
         router.back();
@@ -166,13 +166,29 @@ export default function ShareScreen() {
       return;
     }
 
+    // If URL is not scrapable, route to private link entry screen
+    if (previewData && !previewData.scrapable) {
+      const suggestedTags = previewData.suggestedTags || [];
+      const suggestedDescription = previewData.suggestedDescription || '';
+
+      router.push({
+        pathname: '/private-link',
+        params: {
+          url: sharedUrl,
+          suggestedTags: JSON.stringify(suggestedTags),
+          suggestedDescription,
+        },
+      });
+      return;
+    }
+
     setIsSaving(true);
     setSaveError(null);
 
     try {
       await BookmarksAPI.create({ source_url: sharedUrl });
       setIsSaved(true);
-      
+
       // Brief delay to show success state before closing
       setTimeout(() => {
         navigateAway();
@@ -186,11 +202,11 @@ export default function ShareScreen() {
   };
 
   // Get display values from preview data or fallbacks
-  const displayTitle = previewData?.title || extractDomain(sharedUrl || '');
-  const displayDescription = previewData?.description;
-  const displayImage = previewData?.image;
-  const displayFavicon = previewData?.favicon;
-  const displaySiteName = previewData?.siteName || (sharedUrl ? extractDomain(sharedUrl) : '');
+  const displayTitle = previewData?.metadata?.title || extractDomain(sharedUrl || '');
+  const displayDescription = previewData?.metadata?.description;
+  const displayImage = previewData?.metadata?.image;
+  const displayFavicon = previewData?.metadata?.favicon;
+  const displaySiteName = previewData?.metadata?.siteName || (sharedUrl ? extractDomain(sharedUrl) : '');
 
   return (
     <ThemedView style={styles.container}>
@@ -211,8 +227,8 @@ export default function ShareScreen() {
       </View>
 
       {/* Content */}
-      <ScrollView 
-        style={styles.scrollContent} 
+      <ScrollView
+        style={styles.scrollContent}
         contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 120 }]}
         showsVerticalScrollIndicator={false}
       >
@@ -227,14 +243,14 @@ export default function ShareScreen() {
                 <View style={styles.imageContainer}>
                   {displayImage ? (
                     <>
-                      <Image 
-                        source={{ uri: displayImage }} 
+                      <Image
+                        source={{ uri: displayImage }}
                         style={StyleSheet.absoluteFill}
                         blurRadius={20}
                       />
                       <BlurView intensity={20} style={StyleSheet.absoluteFill} />
-                      <Image 
-                        source={{ uri: displayImage }} 
+                      <Image
+                        source={{ uri: displayImage }}
                         style={styles.previewImage}
                         resizeMode="contain"
                       />
@@ -251,8 +267,8 @@ export default function ShareScreen() {
                   {/* Site info */}
                   <View style={styles.siteInfo}>
                     {displayFavicon ? (
-                      <Image 
-                        source={{ uri: displayFavicon }} 
+                      <Image
+                        source={{ uri: displayFavicon }}
                         style={styles.favicon}
                       />
                     ) : (
@@ -312,13 +328,13 @@ export default function ShareScreen() {
       <BlurView intensity={80} style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
         {sharedUrl ? (
           <View style={styles.buttonGroup}>
-            <Pressable 
+            <Pressable
               onPress={handleSaveAndClose}
               disabled={isSaving || isSaved}
               style={({ pressed }) => [
                 styles.saveButton,
-                { 
-                  backgroundColor: isSaved ? '#22c55e' : (isSaving ? tintColor + '80' : tintColor), 
+                {
+                  backgroundColor: isSaved ? '#22c55e' : (isSaving ? tintColor + '80' : tintColor),
                   transform: [{ scale: pressed ? 0.98 : 1 }]
                 }
               ]}
@@ -337,9 +353,9 @@ export default function ShareScreen() {
                 </View>
               )}
             </Pressable>
-            
+
             {!isSaved && (
-              <Pressable 
+              <Pressable
                 onPress={handleClose}
                 disabled={isSaving}
                 style={({ pressed }) => [
@@ -354,7 +370,7 @@ export default function ShareScreen() {
             )}
           </View>
         ) : (
-          <Pressable 
+          <Pressable
             onPress={handleClose}
             style={({ pressed }) => [
               styles.doneButton,

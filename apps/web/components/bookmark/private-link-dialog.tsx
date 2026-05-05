@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Link as LinkIcon, Loader2 } from "lucide-react";
+import { X, Link as LinkIcon, Loader2, Sparkles } from "lucide-react";
 import { PreviewResponse, Collection } from "@cosmic-dolphin/api-client";
 import {
   Dialog,
@@ -58,6 +58,8 @@ export default function PrivateLinkDialog({
   const [collections, setCollections] = useState<Collection[]>([]);
   const [collectionsLoading, setCollectionsLoading] = useState(true);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [generatingTags, setGeneratingTags] = useState(false);
+  const [tagsGenerated, setTagsGenerated] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -69,6 +71,8 @@ export default function PrivateLinkDialog({
       setTagInput("");
       setCollectionId("");
       setSaveError(null);
+      setGeneratingTags(false);
+      setTagsGenerated(false);
 
       setCollectionsLoading(true);
       BookmarksClientAPI.listCollections()
@@ -99,6 +103,24 @@ export default function PrivateLinkDialog({
     }
   };
 
+  const handleGenerateTags = async () => {
+    // Tags will be generated from the user's description at save time.
+    // This button just confirms that the description is ready for generation.
+    if (!description.trim()) {
+      return;
+    }
+
+    setGeneratingTags(true);
+
+    // Simulate a brief "generation" feedback while the actual inference
+    // happens server-side during save. In the future, this could call
+    // an inference endpoint to show tags before saving.
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    setGeneratingTags(false);
+    setTagsGenerated(true);
+  };
+
   const handleSave = async () => {
     dispatch(clearErrors());
     setSaveError(null);
@@ -123,6 +145,8 @@ export default function PrivateLinkDialog({
     }
   };
 
+  const hasDescription = description.trim().length > 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-xl">
@@ -130,7 +154,8 @@ export default function PrivateLinkDialog({
           <DialogTitle>Save Private Link</DialogTitle>
           <DialogDescription>
             This link is behind authentication and can&apos;t be fully
-            processed. You can save it for quick access with the details below.
+            scraped. Briefly describe what it contains so we can generate
+            tags and categories for you.
           </DialogDescription>
         </DialogHeader>
 
@@ -146,36 +171,77 @@ export default function PrivateLinkDialog({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="private-link-title" className="text-sm font-medium">
-              Title
-            </label>
-            <Input
-              id="private-link-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter a title"
-            />
-          </div>
-
-          <div className="space-y-1.5">
             <label
               htmlFor="private-link-description"
               className="text-sm font-medium"
             >
-              Description
+              What is this link about?
             </label>
             <Textarea
               id="private-link-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Enter a description"
-              rows={3}
+              placeholder="e.g., A tutorial on React hooks with code examples and best practices"
+              rows={4}
+              className="resize-none"
+            />
+            <p className="text-xs text-muted-foreground">
+              The more detail you provide, the better tags and categories we can generate.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="private-link-title" className="text-sm font-medium">
+              Title <span className="text-muted-foreground">(optional)</span>
+            </label>
+            <Input
+              id="private-link-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Leave blank to auto-generate from URL"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Tags</label>
+            <label className="text-sm font-medium">
+              Tags{" "}
+              <span className="text-muted-foreground">
+                {hasDescription ? "(generated from your description)" : "(auto-generated from URL)"}
+              </span>
+            </label>
+            {hasDescription && (
+              <div className="flex items-center gap-2 mb-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs gap-1"
+                  onClick={handleGenerateTags}
+                  disabled={generatingTags || !hasDescription}
+                >
+                  {generatingTags ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3 w-3" />
+                      Generate tags from description
+                    </>
+                  )}
+                </Button>
+                {tagsGenerated && (
+                  <span className="text-xs text-green-600">✓ Tags ready</span>
+                )}
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-1.5 rounded-md border px-2 py-2">
+              {hasDescription && !tagsGenerated && tags.length === 0 && (
+                <div className="mb-1 text-xs text-muted-foreground">
+                  Tags will be generated from your description when you save
+                </div>
+              )}
               {tags.map((tag) => (
                 <Badge key={tag} variant="secondary" className="gap-1 pr-1">
                   {tag}
@@ -228,6 +294,12 @@ export default function PrivateLinkDialog({
               </Select>
             )}
           </div>
+
+          {hasDescription && (
+            <div className="text-xs text-muted-foreground bg-blue-50 border border-blue-200 rounded-md p-2">
+              💡 Your description will be used to generate tags and categories automatically when you save.
+            </div>
+          )}
 
           {saveError && (
             <div className="text-sm text-red-600">{saveError}</div>

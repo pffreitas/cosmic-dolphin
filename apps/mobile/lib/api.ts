@@ -14,6 +14,17 @@ export interface CollectionPathItem {
   name: string;
 }
 
+export interface Collection {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  parentId?: string;
+  userId: string;
+  isPublic?: boolean;
+}
+
 export interface OpenGraphMetadata {
   favicon?: string;
   title?: string;
@@ -69,6 +80,10 @@ export interface GetBookmarksParams {
 export interface CreateBookmarkParams {
   source_url: string;
   collection_id?: string;
+  title?: string;
+  description?: string;
+  tags?: string[];
+  is_private_link?: boolean;
 }
 
 export interface CreateBookmarkResponse {
@@ -87,6 +102,9 @@ export interface UrlPreviewMetadata {
 
 export interface PreviewUrlResponse {
   metadata: UrlPreviewMetadata;
+  scrapable?: boolean;
+  suggestedTags?: string[];
+  suggestedDescription?: string;
 }
 
 export interface ShareBookmarkResponse {
@@ -113,7 +131,7 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 export namespace BookmarksAPI {
   export async function list(params: GetBookmarksParams = {}): Promise<Bookmark[]> {
     const { limit = 20, offset = 0, collection_id } = params;
-    
+
     try {
       const headers = await getAuthHeaders();
       const queryParams = new URLSearchParams();
@@ -216,7 +234,7 @@ export namespace BookmarksAPI {
     }
   }
 
-  export async function preview(url: string): Promise<UrlPreviewMetadata> {
+  export async function preview(url: string): Promise<PreviewUrlResponse> {
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}/bookmarks/preview`, {
@@ -232,7 +250,7 @@ export namespace BookmarksAPI {
       }
 
       const data: PreviewUrlResponse = await response.json();
-      return data.metadata;
+      return data;
     } catch (error) {
       console.error('Error fetching URL preview:', error);
       throw error;
@@ -319,6 +337,28 @@ export namespace BookmarksAPI {
       return await response.json();
     } catch (error) {
       console.error('Error unsharing bookmark:', error);
+      throw error;
+    }
+  }
+
+  export async function getCollections(): Promise<Collection[]> {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/collections`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      return data.collections || [];
+    } catch (error) {
+      console.error('Error fetching collections:', error);
       throw error;
     }
   }
