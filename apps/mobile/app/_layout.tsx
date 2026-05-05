@@ -96,14 +96,36 @@ function RootLayoutNav() {
 
       console.log('🐬 Cosmic Dolphin received a shared link!');
       console.log('📎 Share Intent Data:', JSON.stringify(shareIntent, null, 2));
-      
+
+      // Extract URL from the intent before resetting it
+      const urlRegex = /(https?:\/\/[^\s,;)]+)/g;
+      const possibleValues = [
+        (shareIntent as any).url,
+        (shareIntent as any).webUrl,
+        (shareIntent as any).text,
+        (shareIntent as any).meta?.url,
+        (shareIntent as any).meta?.webUrl,
+        (shareIntent as any).uri,
+        (shareIntent as any).data,
+      ];
+      let extractedUrl: string | null = null;
+      for (const value of possibleValues) {
+        if (typeof value === 'string' && value.length > 0) {
+          const match = value.match(urlRegex);
+          if (match?.[0]) { extractedUrl = match[0]; break; }
+        }
+      }
+
       // Mark that we've navigated
       hasNavigatedToShare.current = true;
       navigationInProgress.current = true;
-      
-      // Navigate to the share screen to display the link
-      // Use replace to avoid stacking modals
-      router.replace('/share');
+
+      // Navigate to the share screen, passing the URL as a stable param so
+      // share.tsx doesn't need to re-read (and race with) the share intent.
+      const target = extractedUrl
+        ? `/share?url=${encodeURIComponent(extractedUrl)}`
+        : '/share';
+      router.replace(target as any);
     }
   }, [hasShareIntent, shareIntent, pathname, session]);
 
