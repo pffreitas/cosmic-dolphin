@@ -17,7 +17,9 @@ const server = Fastify({
 
 // Register plugins
 server.register(require('@fastify/cors'), {
-  origin: true
+  // 🛡️ Sentinel: Restrict CORS to explicit trusted frontend origin instead of allowing all origins
+  origin: config.FRONTEND_URL,
+  credentials: true
 });
 
 server.register(require('@fastify/helmet'));
