@@ -49,6 +49,7 @@ export function SearchResultCard({ result }: SearchResultCardProps) {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label="Open original source in new tab"
               >
                 <ExternalLink className="h-3 w-3" />
               </a>
