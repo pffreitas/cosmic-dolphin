@@ -23,6 +23,12 @@ server.register(require('@fastify/cors'), {
 
 server.register(require('@fastify/helmet'));
 
+// 🛡️ Sentinel: Add global rate limiting to prevent brute-force and DoS attacks.
+server.register(require('@fastify/rate-limit'), {
+  max: 100,
+  timeWindow: '1 minute'
+});
+
 server.register(require('@fastify/env'), {
   dotenv: true,
   schema: {
