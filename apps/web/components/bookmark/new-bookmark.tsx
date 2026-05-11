@@ -19,18 +19,23 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
   const [url, setUrl] = useState("");
   const [privateLinkDialogOpen, setPrivateLinkDialogOpen] = useState(false);
   const [previewData, setPreviewData] = useState<PreviewResponse | null>(null);
+  const [isMac, setIsMac] = useState<boolean | null>(null);
   const dispatch = useAppDispatch();
   const router = useRouter();
   const createLoading = useAppSelector(
-    (state) => state.bookmarks.createLoading
+    (state) => state.bookmarks.createLoading,
   );
   const previewLoading = useAppSelector(
-    (state) => state.bookmarks.previewLoading
+    (state) => state.bookmarks.previewLoading,
   );
   const createError = useAppSelector((state) => state.bookmarks.createError);
   const previewError = useAppSelector((state) => state.bookmarks.previewError);
 
   const isLoading = createLoading || previewLoading;
+
+  useEffect(() => {
+    setIsMac(navigator.platform.toUpperCase().indexOf("MAC") >= 0);
+  }, []);
 
   const handleSubmit = async () => {
     dispatch(clearErrors());
@@ -41,9 +46,7 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
       const preview = result.payload as PreviewResponse;
 
       if (preview.scrapable) {
-        const createResult = await dispatch(
-          createBookmark({ sourceUrl: url })
-        );
+        const createResult = await dispatch(createBookmark({ sourceUrl: url }));
         if (createBookmark.fulfilled.match(createResult)) {
           setShowOverlay(false);
           setUrl("");
@@ -77,7 +80,7 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.metaKey && event.key === "k") {
+      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
         event.preventDefault();
         handleNewBookmark();
       }
@@ -143,7 +146,19 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
         }}
       >
         <Bookmark size={16} />
-        Save Bookmark
+        <div className="flex items-center gap-2">
+          <span>Save Bookmark</span>
+          {isMac !== null && (
+            <span className="flex items-center gap-1 text-xs text-white/70">
+              <kbd className="font-sans px-1.5 py-0.5 rounded-md border border-white/20 bg-white/10">
+                {isMac ? "⌘" : "Ctrl"}
+              </kbd>
+              <kbd className="font-sans px-1.5 py-0.5 rounded-md border border-white/20 bg-white/10">
+                K
+              </kbd>
+            </span>
+          )}
+        </div>
       </button>
     </>
   );
