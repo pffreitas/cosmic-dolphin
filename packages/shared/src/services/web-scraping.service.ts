@@ -13,13 +13,13 @@ import { TwitterService, TwitterServiceImpl } from "./twitter.service";
 export interface WebScrapingService {
   isValidUrl(url: string): boolean;
   scrape(
-    url: string
+    url: string,
   ): Promise<
     Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
   >;
   scrapeContent(
     url: string,
-    content: string
+    content: string,
   ): Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">;
   extractMetadataFromUrl(url: string): PreviewMetadata;
 }
@@ -31,23 +31,58 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   constructor(
     private httpClient: HttpClient = new CosmicHttpClient(),
     youtubeService?: YouTubeService,
-    twitterService?: TwitterService
+    twitterService?: TwitterService,
   ) {
     this.youtubeService = youtubeService ?? new YouTubeServiceImpl(httpClient);
     this.twitterService = twitterService ?? new TwitterServiceImpl(httpClient);
   }
 
+  // 🛡️ Sentinel: Prevent Server-Side Request Forgery (SSRF) by blocking internal network access
+  private isInternalHostname(hostname: string): boolean {
+    if (!hostname) return true;
+
+    const normalized = hostname.toLowerCase().replace(/\.$/, "");
+
+    if (
+      normalized === "localhost" ||
+      normalized.endsWith(".localhost") ||
+      normalized === "0.0.0.0" ||
+      normalized === "[::]" ||
+      normalized === "[::1]" ||
+      normalized.endsWith(".local") ||
+      normalized.endsWith(".internal")
+    ) {
+      return true;
+    }
+
+    if (/^127\.\d+\.\d+\.\d+$/.test(normalized)) return true;
+    if (/^10\.\d+\.\d+\.\d+$/.test(normalized)) return true;
+    if (/^172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+$/.test(normalized)) return true;
+    if (/^192\.168\.\d+\.\d+$/.test(normalized)) return true;
+    if (/^169\.254\.\d+\.\d+$/.test(normalized)) return true;
+
+    if (normalized.startsWith("[fd") || normalized.startsWith("[fc"))
+      return true; // ULA
+    if (normalized.startsWith("[fe80")) return true; // Link-local
+    if (normalized === "[::1]") return true;
+
+    return false;
+  }
+
   isValidUrl(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      return urlObj.protocol === "http:" || urlObj.protocol === "https:";
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return false;
+      }
+      return !this.isInternalHostname(urlObj.hostname);
     } catch {
       return false;
     }
   }
 
   async scrape(
-    url: string
+    url: string,
   ): Promise<
     Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
   > {
@@ -92,43 +127,53 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     const finalPath = new URL(finalUrl).pathname.toLowerCase();
 
     const authPathPatterns = [
-      "/login", "/signin", "/sign-in", "/sign_in",
-      "/auth", "/oauth", "/sso",
-      "/accounts/login", "/session/new",
-      "/cas/login", "/saml",
+      "/login",
+      "/signin",
+      "/sign-in",
+      "/sign_in",
+      "/auth",
+      "/oauth",
+      "/sso",
+      "/accounts/login",
+      "/session/new",
+      "/cas/login",
+      "/saml",
     ];
 
     const ssoProviders = [
-      "login.microsoftonline.com", "accounts.google.com",
-      "auth0.com", "okta.com", "onelogin.com",
-      "login.salesforce.com", "idp.",
+      "login.microsoftonline.com",
+      "accounts.google.com",
+      "auth0.com",
+      "okta.com",
+      "onelogin.com",
+      "login.salesforce.com",
+      "idp.",
     ];
 
     if (originalHost !== finalHost) {
-      const isSsoRedirect = ssoProviders.some(
-        (provider) => finalHost.includes(provider)
+      const isSsoRedirect = ssoProviders.some((provider) =>
+        finalHost.includes(provider),
       );
       if (isSsoRedirect) {
         throw new Error(
-          `Auth redirect detected: redirected to SSO provider ${finalHost}`
+          `Auth redirect detected: redirected to SSO provider ${finalHost}`,
         );
       }
     }
 
     const isAuthPath = authPathPatterns.some((pattern) =>
-      finalPath.startsWith(pattern)
+      finalPath.startsWith(pattern),
     );
     if (isAuthPath) {
       throw new Error(
-        `Auth redirect detected: redirected to login page ${finalUrl}`
+        `Auth redirect detected: redirected to login page ${finalUrl}`,
       );
     }
   }
 
-
   scrapeContent(
     url: string,
-    content: string
+    content: string,
   ): Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId"> {
     const $ = cheerio.load(content);
     $("script").remove();
@@ -201,16 +246,16 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   extractMetadataFromUrl(url: string): PreviewMetadata {
     const urlObj = new URL(url);
     const hostname = urlObj.hostname.replace(/^www\./, "");
-    const siteName = hostname.split(".")[0].charAt(0).toUpperCase() + hostname.split(".")[0].slice(1);
+    const siteName =
+      hostname.split(".")[0].charAt(0).toUpperCase() +
+      hostname.split(".")[0].slice(1);
 
     const pathSegments = urlObj.pathname.split("/").filter(Boolean);
     let title: string | undefined;
     if (pathSegments.length > 0) {
       title = pathSegments
         .map((seg) =>
-          seg
-            .replace(/[-_]/g, " ")
-            .replace(/\b\w/g, (c) => c.toUpperCase())
+          seg.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
         )
         .join(" / ");
     }
@@ -225,7 +270,7 @@ export class WebScrapingServiceImpl implements WebScrapingService {
 
   private extractOpenGraphMetadata(
     sourceUrl: string,
-    $: CheerioAPI
+    $: CheerioAPI,
   ): OpenGraphMetadata {
     const ogData: OpenGraphMetadata = {};
 

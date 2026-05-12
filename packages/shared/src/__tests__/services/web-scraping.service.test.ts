@@ -25,19 +25,54 @@ describe("WebScrapingService", () => {
     webScrapingService = new WebScrapingServiceImpl(
       mockHttpClient,
       mockYouTubeService,
-      mockTwitterService
+      mockTwitterService,
     );
+  });
+
+  describe("isValidUrl", () => {
+    it("should accept valid external URLs", () => {
+      expect(webScrapingService.isValidUrl("https://example.com")).toBe(true);
+      expect(webScrapingService.isValidUrl("http://8.8.8.8")).toBe(true);
+    });
+
+    it("should reject internal SSRF URLs", () => {
+      const internalUrls = [
+        "http://localhost",
+        "http://127.0.0.1",
+        "http://0.0.0.0",
+        "http://169.254.169.254",
+        "http://2130706433",
+        "http://0x7f.0.0.1",
+        "http://[::1]",
+      ];
+      internalUrls.forEach((url) => {
+        expect(webScrapingService.isValidUrl(url)).toBe(false);
+      });
+    });
+
+    it("should reject invalid protocols", () => {
+      expect(webScrapingService.isValidUrl("ftp://example.com")).toBe(false);
+      expect(webScrapingService.isValidUrl("file:///etc/passwd")).toBe(false);
+    });
   });
 
   describe("scrape", () => {
     it("should route twitter URLs to TwitterService", async () => {
       mockTwitterService.isTwitterUrl.mockReturnValue(true);
-      mockTwitterService.scrape.mockResolvedValue({ title: "Twitter Test" } as any);
+      mockTwitterService.scrape.mockResolvedValue({
+        title: "Twitter Test",
+      } as any);
 
-      const result = await webScrapingService.scrape("https://x.com/user/status/123");
+      const result = await webScrapingService.scrape(
+        "https://x.com/user/status/123",
+      );
 
-      expect(mockTwitterService.isTwitterUrl).toHaveBeenCalledWith("https://x.com/user/status/123");
-      expect(mockTwitterService.scrape).toHaveBeenCalledWith("https://x.com/user/status/123");
+      expect(mockTwitterService.isTwitterUrl).toHaveBeenCalledWith(
+        "https://x.com/user/status/123",
+      );
+      expect(mockTwitterService.scrape).toHaveBeenCalledWith(
+        "https://x.com/user/status/123",
+      );
       expect(result.title).toBe("Twitter Test");
     });
 
@@ -53,8 +88,12 @@ describe("WebScrapingService", () => {
 
       const result = await webScrapingService.scrape("https://example.com");
 
-      expect(mockYouTubeService.isYouTubeUrl).toHaveBeenCalledWith("https://example.com");
-      expect(mockTwitterService.isTwitterUrl).toHaveBeenCalledWith("https://example.com");
+      expect(mockYouTubeService.isYouTubeUrl).toHaveBeenCalledWith(
+        "https://example.com",
+      );
+      expect(mockTwitterService.isTwitterUrl).toHaveBeenCalledWith(
+        "https://example.com",
+      );
       expect(result.title).toBe("Regular Page");
     });
   });
