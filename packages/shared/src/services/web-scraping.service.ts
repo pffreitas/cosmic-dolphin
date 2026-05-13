@@ -40,7 +40,41 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   isValidUrl(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      return urlObj.protocol === "http:" || urlObj.protocol === "https:";
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return false;
+      }
+
+      // 🛡️ Sentinel: Block internal/private IP addresses to prevent Server-Side Request Forgery (SSRF) when scraping
+      const hostname = urlObj.hostname;
+
+      // First check for exact localhost/metadata matches
+      if (
+        hostname === "localhost" ||
+        hostname === "[::1]" ||
+        hostname === "169.254.169.254" ||
+        hostname === "0.0.0.0"
+      ) {
+        return false;
+      }
+
+      // If the hostname is an IPv4 address, check for private and loopback ranges
+      const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+      const match = hostname.match(ipv4Regex);
+      if (match) {
+        const octet1 = parseInt(match[1], 10);
+        const octet2 = parseInt(match[2], 10);
+
+        if (
+          octet1 === 127 || // 127.0.0.0/8 (Loopback)
+          octet1 === 10 || // 10.0.0.0/8
+          (octet1 === 172 && octet2 >= 16 && octet2 <= 31) || // 172.16.0.0/12
+          (octet1 === 192 && octet2 === 168) // 192.168.0.0/16
+        ) {
+          return false;
+        }
+      }
+
+      return true;
     } catch {
       return false;
     }
