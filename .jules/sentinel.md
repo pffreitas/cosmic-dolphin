@@ -7,3 +7,8 @@
 **Vulnerability:** Fastify CORS was set to `origin: true` (reflecting arbitrary origins) and the SSE endpoint manually set `Access-Control-Allow-Origin` to `request.headers.origin || "*"` while allowing credentials, risking unauthorized cross-origin access.
 **Learning:** Manual HTTP responses (like `reply.raw.writeHead` for Server-Sent Events) bypass global plugin protections like `@fastify/cors`. Developers must manually apply security headers on these raw endpoints.
 **Prevention:** Restrict CORS origins explicitly using a `FRONTEND_URL` environment variable for both global CORS plugins and manual HTTP endpoints, avoiding reflection of arbitrary request origins.
+
+## 2026-05-15 - Missing Global Rate Limiting Enables Brute-Force and DDoS Attacks
+**Vulnerability:** The `apps/api` lacked any form of global rate limiting.
+**Learning:** Fastify applications are vulnerable to brute-force attacks on authentication endpoints and application-layer DDoS attacks without global rate limiting.
+**Prevention:** Implement global rate limiting using `@fastify/rate-limit` in the main application entry point to provide a baseline defense.

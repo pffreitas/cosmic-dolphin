@@ -20,6 +20,7 @@
     "@fastify/env": "^4.2.0",
     "@fastify/helmet": "^11.1.1",
     "@fastify/jwt": "^7.2.4",
+    "@fastify/rate-limit": "^10.3.0",
     "@supabase/supabase-js": "^2.57.2",
     "@types/cheerio": "^0.22.35",
     "@types/node": "^20.10.4",
