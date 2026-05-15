@@ -19,13 +19,14 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
   const [url, setUrl] = useState("");
   const [privateLinkDialogOpen, setPrivateLinkDialogOpen] = useState(false);
   const [previewData, setPreviewData] = useState<PreviewResponse | null>(null);
+  const [isMac, setIsMac] = useState<boolean | null>(null);
   const dispatch = useAppDispatch();
   const router = useRouter();
   const createLoading = useAppSelector(
-    (state) => state.bookmarks.createLoading
+    (state) => state.bookmarks.createLoading,
   );
   const previewLoading = useAppSelector(
-    (state) => state.bookmarks.previewLoading
+    (state) => state.bookmarks.previewLoading,
   );
   const createError = useAppSelector((state) => state.bookmarks.createError);
   const previewError = useAppSelector((state) => state.bookmarks.previewError);
@@ -41,9 +42,7 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
       const preview = result.payload as PreviewResponse;
 
       if (preview.scrapable) {
-        const createResult = await dispatch(
-          createBookmark({ sourceUrl: url })
-        );
+        const createResult = await dispatch(createBookmark({ sourceUrl: url }));
         if (createBookmark.fulfilled.match(createResult)) {
           setShowOverlay(false);
           setUrl("");
@@ -76,8 +75,10 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
   };
 
   useEffect(() => {
+    setIsMac(navigator.platform.toUpperCase().indexOf("MAC") >= 0);
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.metaKey && event.key === "k") {
+      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
         event.preventDefault();
         handleNewBookmark();
       }
@@ -108,6 +109,7 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
                   value={url}
                   autoFocus={true}
                   disabled={isLoading}
+                  aria-label="Bookmark URL"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !isLoading) {
                       handleSubmit();
@@ -142,8 +144,20 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
           handleNewBookmark();
         }}
       >
-        <Bookmark size={16} />
-        Save Bookmark
+        <div className="flex items-center gap-2">
+          <Bookmark size={16} />
+          <span>Save Bookmark</span>
+        </div>
+        {isMac !== null && (
+          <span className="flex items-center gap-1 text-xs text-blue-200 ml-2">
+            <kbd className="font-sans px-1.5 py-0.5 rounded-md bg-blue-700/50">
+              {isMac ? "⌘" : "Ctrl"}
+            </kbd>
+            <kbd className="font-sans px-1.5 py-0.5 rounded-md bg-blue-700/50">
+              K
+            </kbd>
+          </span>
+        )}
       </button>
     </>
   );
