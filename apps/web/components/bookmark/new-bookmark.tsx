@@ -22,13 +22,14 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const createLoading = useAppSelector(
-    (state) => state.bookmarks.createLoading
+    (state) => state.bookmarks.createLoading,
   );
   const previewLoading = useAppSelector(
-    (state) => state.bookmarks.previewLoading
+    (state) => state.bookmarks.previewLoading,
   );
   const createError = useAppSelector((state) => state.bookmarks.createError);
   const previewError = useAppSelector((state) => state.bookmarks.previewError);
+  const [isMac, setIsMac] = useState<boolean | null>(null);
 
   const isLoading = createLoading || previewLoading;
 
@@ -41,9 +42,7 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
       const preview = result.payload as PreviewResponse;
 
       if (preview.scrapable) {
-        const createResult = await dispatch(
-          createBookmark({ sourceUrl: url })
-        );
+        const createResult = await dispatch(createBookmark({ sourceUrl: url }));
         if (createBookmark.fulfilled.match(createResult)) {
           setShowOverlay(false);
           setUrl("");
@@ -76,8 +75,10 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
   };
 
   useEffect(() => {
+    setIsMac(navigator.platform.toUpperCase().indexOf("MAC") >= 0);
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.metaKey && event.key === "k") {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         handleNewBookmark();
       }
@@ -137,13 +138,25 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
 
       <button
         id="new-bookmark-button"
-        className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-noto text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
+        className="flex items-center justify-between gap-2 rounded-lg bg-blue-600 px-4 py-2 font-noto text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
         onClick={() => {
           handleNewBookmark();
         }}
       >
-        <Bookmark size={16} />
-        Save Bookmark
+        <div className="flex items-center gap-2">
+          <Bookmark size={16} />
+          <span>Save Bookmark</span>
+        </div>
+        {isMac !== null && (
+          <span className="hidden md:flex items-center gap-0.5 ml-2 text-[10px] text-white/70">
+            <kbd className="font-sans px-1.5 py-0.5 rounded-md bg-white/20 border border-white/10">
+              {isMac ? "⌘" : "Ctrl"}
+            </kbd>
+            <kbd className="font-sans px-1.5 py-0.5 rounded-md bg-white/20 border border-white/10">
+              K
+            </kbd>
+          </span>
+        )}
       </button>
     </>
   );
