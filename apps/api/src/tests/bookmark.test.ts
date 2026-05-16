@@ -29,6 +29,23 @@ describe("Bookmark Feature Validation", () => {
         expect(webScrapingService.isValidUrl(url)).toBe(false);
       });
     });
+
+    it("should reject internal network URLs (SSRF protection)", () => {
+      const internalUrls = [
+        "http://localhost/",
+        "http://127.0.0.1/",
+        "http://10.0.0.1/",
+        "http://172.16.0.1/",
+        "http://192.168.1.1/",
+        "http://169.254.169.254/",
+        "http://2130706433/", // 127.0.0.1 encoded
+        "http://0.0.0.0/",
+      ];
+
+      internalUrls.forEach((url) => {
+        expect(webScrapingService.isValidUrl(url)).toBe(false);
+      });
+    });
   });
 
   describe("Open Graph metadata extraction", () => {
@@ -53,14 +70,14 @@ describe("Bookmark Feature Validation", () => {
 
       const scrapedUrlContents = webScrapingService.scrapeContent(
         "https://example.com",
-        sampleHtml
+        sampleHtml,
       );
       expect(scrapedUrlContents.title).toBe("OG Title");
       expect(scrapedUrlContents.metadata.openGraph?.description).toBe(
-        "OG Description"
+        "OG Description",
       );
       expect(scrapedUrlContents.metadata.openGraph?.url).toBe(
-        "https://example.com"
+        "https://example.com",
       );
     });
 
@@ -80,11 +97,11 @@ describe("Bookmark Feature Validation", () => {
 
       const scrapedUrlContents = webScrapingService.scrapeContent(
         "https://example.com",
-        sampleHtml
+        sampleHtml,
       );
       expect(scrapedUrlContents.title).toBe("Test Page Title");
       expect(scrapedUrlContents.metadata.openGraph?.description).toBe(
-        "Meta Description"
+        "Meta Description",
       );
     });
   });

@@ -13,13 +13,13 @@ import { TwitterService, TwitterServiceImpl } from "./twitter.service";
 export interface WebScrapingService {
   isValidUrl(url: string): boolean;
   scrape(
-    url: string
+    url: string,
   ): Promise<
     Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
   >;
   scrapeContent(
     url: string,
-    content: string
+    content: string,
   ): Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">;
   extractMetadataFromUrl(url: string): PreviewMetadata;
 }
@@ -31,7 +31,7 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   constructor(
     private httpClient: HttpClient = new CosmicHttpClient(),
     youtubeService?: YouTubeService,
-    twitterService?: TwitterService
+    twitterService?: TwitterService,
   ) {
     this.youtubeService = youtubeService ?? new YouTubeServiceImpl(httpClient);
     this.twitterService = twitterService ?? new TwitterServiceImpl(httpClient);
@@ -40,14 +40,39 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   isValidUrl(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      return urlObj.protocol === "http:" || urlObj.protocol === "https:";
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return false;
+      }
+
+      const hostname = urlObj.hostname;
+      // Check against common internal IP ranges
+      const internalRanges = [
+        /^127\./, // IPv4 Loopback
+        /^10\./, // IPv4 Private Network (RFC 1918)
+        /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
+        /^192\.168\./,
+        /^169\.254\./, // IPv4 Link-Local (RFC 3927)
+        /^\[::1\]$/, // IPv6 Loopback
+        /^::1$/,
+        /^0\./, // Current network (RFC 1122)
+      ];
+
+      if (
+        internalRanges.some((regex) => regex.test(hostname)) ||
+        hostname === "localhost"
+      ) {
+        // 🛡️ Sentinel: Block SSRF attempts to internal networks
+        return false;
+      }
+
+      return true;
     } catch {
       return false;
     }
   }
 
   async scrape(
-    url: string
+    url: string,
   ): Promise<
     Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
   > {
@@ -92,43 +117,53 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     const finalPath = new URL(finalUrl).pathname.toLowerCase();
 
     const authPathPatterns = [
-      "/login", "/signin", "/sign-in", "/sign_in",
-      "/auth", "/oauth", "/sso",
-      "/accounts/login", "/session/new",
-      "/cas/login", "/saml",
+      "/login",
+      "/signin",
+      "/sign-in",
+      "/sign_in",
+      "/auth",
+      "/oauth",
+      "/sso",
+      "/accounts/login",
+      "/session/new",
+      "/cas/login",
+      "/saml",
     ];
 
     const ssoProviders = [
-      "login.microsoftonline.com", "accounts.google.com",
-      "auth0.com", "okta.com", "onelogin.com",
-      "login.salesforce.com", "idp.",
+      "login.microsoftonline.com",
+      "accounts.google.com",
+      "auth0.com",
+      "okta.com",
+      "onelogin.com",
+      "login.salesforce.com",
+      "idp.",
     ];
 
     if (originalHost !== finalHost) {
-      const isSsoRedirect = ssoProviders.some(
-        (provider) => finalHost.includes(provider)
+      const isSsoRedirect = ssoProviders.some((provider) =>
+        finalHost.includes(provider),
       );
       if (isSsoRedirect) {
         throw new Error(
-          `Auth redirect detected: redirected to SSO provider ${finalHost}`
+          `Auth redirect detected: redirected to SSO provider ${finalHost}`,
         );
       }
     }
 
     const isAuthPath = authPathPatterns.some((pattern) =>
-      finalPath.startsWith(pattern)
+      finalPath.startsWith(pattern),
     );
     if (isAuthPath) {
       throw new Error(
-        `Auth redirect detected: redirected to login page ${finalUrl}`
+        `Auth redirect detected: redirected to login page ${finalUrl}`,
       );
     }
   }
 
-
   scrapeContent(
     url: string,
-    content: string
+    content: string,
   ): Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId"> {
     const $ = cheerio.load(content);
     $("script").remove();
@@ -201,16 +236,16 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   extractMetadataFromUrl(url: string): PreviewMetadata {
     const urlObj = new URL(url);
     const hostname = urlObj.hostname.replace(/^www\./, "");
-    const siteName = hostname.split(".")[0].charAt(0).toUpperCase() + hostname.split(".")[0].slice(1);
+    const siteName =
+      hostname.split(".")[0].charAt(0).toUpperCase() +
+      hostname.split(".")[0].slice(1);
 
     const pathSegments = urlObj.pathname.split("/").filter(Boolean);
     let title: string | undefined;
     if (pathSegments.length > 0) {
       title = pathSegments
         .map((seg) =>
-          seg
-            .replace(/[-_]/g, " ")
-            .replace(/\b\w/g, (c) => c.toUpperCase())
+          seg.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
         )
         .join(" / ");
     }
@@ -225,7 +260,7 @@ export class WebScrapingServiceImpl implements WebScrapingService {
 
   private extractOpenGraphMetadata(
     sourceUrl: string,
-    $: CheerioAPI
+    $: CheerioAPI,
   ): OpenGraphMetadata {
     const ogData: OpenGraphMetadata = {};
 
