@@ -39,8 +39,38 @@ export class WebScrapingServiceImpl implements WebScrapingService {
 
   isValidUrl(url: string): boolean {
     try {
-      const urlObj = new URL(url);
-      return urlObj.protocol === "http:" || urlObj.protocol === "https:";
+      let urlToParse = url;
+      try {
+        new URL(url);
+      } catch {
+        // Handle unbracketed IPv6 if initial parse fails
+        const match = url.match(/^(https?:\/\/(?:[^@\/]+@)?)([^\[\]\/:]+(?::[^\[\]\/:]+){2,})((?::\d+)?(?:[\/\?#].*)?)$/i);
+        if (match) {
+          urlToParse = `${match[1]}[${match[2]}]${match[3]}`;
+        }
+      }
+
+      const urlObj = new URL(urlToParse);
+
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return false;
+      }
+
+      // 🛡️ Sentinel: SSRF prevention - Block internal/private network access
+      const hostname = urlObj.hostname;
+
+      const isLocalhost = hostname === "localhost" || /^127\.\d+\.\d+\.\d+$/.test(hostname) || hostname === "[::1]" || hostname === "[::]" || /^\[::ffff:7f00:1\]$/i.test(hostname) || hostname === "0.0.0.0";
+      const isPrivateIPv4 = /^10\.\d+\.\d+\.\d+$/.test(hostname) ||
+                            /^192\.168\.\d+\.\d+$/.test(hostname) ||
+                            /^172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+$/.test(hostname) ||
+                            /^169\.254\.\d+\.\d+$/.test(hostname);
+      const isPrivateIPv6 = /^\[(fc|fd|fe80)/i.test(hostname);
+
+      if (isLocalhost || isPrivateIPv4 || isPrivateIPv6) {
+        return false;
+      }
+
+      return true;
     } catch {
       return false;
     }

@@ -29,6 +29,34 @@ describe("WebScrapingService", () => {
     );
   });
 
+  describe("isValidUrl", () => {
+    it("should return true for valid public URLs", () => {
+      expect(webScrapingService.isValidUrl("http://google.com")).toBe(true);
+      expect(webScrapingService.isValidUrl("https://example.com/path?foo=bar")).toBe(true);
+      expect(webScrapingService.isValidUrl("http://user:pass@example.com:8080/")).toBe(true);
+      expect(webScrapingService.isValidUrl("http://10.example.com")).toBe(true);
+      expect(webScrapingService.isValidUrl("http://192.168.com")).toBe(true);
+    });
+
+    it("should return false for SSRF targets (localhost, private IPs)", () => {
+      expect(webScrapingService.isValidUrl("http://localhost")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://127.0.0.1")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://127.0.0.2")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://0.0.0.0")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://2130706433/")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://0x7f000001")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://10.0.0.1")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://192.168.1.1")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://172.16.0.1")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://169.254.169.254")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://::1")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://[::1]")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://[::]")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://[::ffff:127.0.0.1]")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://[fe80::1]")).toBe(false);
+    });
+  });
+
   describe("scrape", () => {
     it("should route twitter URLs to TwitterService", async () => {
       mockTwitterService.isTwitterUrl.mockReturnValue(true);
