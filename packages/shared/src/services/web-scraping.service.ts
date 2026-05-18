@@ -40,7 +40,34 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   isValidUrl(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      return urlObj.protocol === "http:" || urlObj.protocol === "https:";
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return false;
+      }
+
+      // 🛡️ Sentinel: Prevent Server-Side Request Forgery (SSRF) by blocking internal network addresses and private IP ranges
+      const hostname = urlObj.hostname;
+
+      const internalHosts = ["localhost", "127.0.0.1", "0.0.0.0", "[::1]", "169.254.169.254"];
+      if (internalHosts.includes(hostname)) {
+        return false;
+      }
+
+      if (hostname.endsWith(".local") || hostname.endsWith(".internal")) {
+        return false;
+      }
+
+      const ipRegex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+      const match = hostname.match(ipRegex);
+      if (match) {
+        const p1 = parseInt(match[1], 10);
+        const p2 = parseInt(match[2], 10);
+        if (p1 === 127) return false; // Loopback range 127.0.0.0/8
+        if (p1 === 10) return false;
+        if (p1 === 172 && p2 >= 16 && p2 <= 31) return false;
+        if (p1 === 192 && p2 === 168) return false;
+      }
+
+      return true;
     } catch {
       return false;
     }
