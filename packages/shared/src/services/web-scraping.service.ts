@@ -40,8 +40,28 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   isValidUrl(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      return urlObj.protocol === "http:" || urlObj.protocol === "https:";
+
+      // 🛡️ Sentinel: Restrict SSRF by blocking internal networks and localhost
+      const isHttp = urlObj.protocol === "http:" || urlObj.protocol === "https:";
+      if (!isHttp) return false;
+
+      const hostname = urlObj.hostname;
+
+      const isBlocked = [
+        /^localhost$/i,
+        /^127(\.\d+){3}$/,
+        /^\[::1\]$/,
+        /^::1$/,
+        /^169\.254(\.\d+){2}$/,
+        /^10(\.\d+){3}$/,
+        /^172\.(1[6-9]|2[0-9]|3[0-1])(\.\d+){2}$/,
+        /^192\.168(\.\d+){2}$/,
+        /^0\.0\.0\.0$/,
+      ].some(pattern => pattern.test(hostname));
+
+      return !isBlocked;
     } catch {
+      // 🛡️ Sentinel: Safe default - reject unparseable URLs (e.g. unbracketed IPv6)
       return false;
     }
   }

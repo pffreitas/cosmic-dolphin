@@ -29,6 +29,30 @@ describe("WebScrapingService", () => {
     );
   });
 
+  describe("isValidUrl (SSRF Protection)", () => {
+    it("should accept valid external URLs", () => {
+      expect(webScrapingService.isValidUrl("https://example.com")).toBe(true);
+      expect(webScrapingService.isValidUrl("http://google.com")).toBe(true);
+    });
+
+    it("should reject invalid protocols", () => {
+      expect(webScrapingService.isValidUrl("file:///etc/passwd")).toBe(false);
+      expect(webScrapingService.isValidUrl("ftp://example.com")).toBe(false);
+    });
+
+    it("should reject internal IP addresses and localhost (SSRF)", () => {
+      expect(webScrapingService.isValidUrl("http://localhost:3000")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://127.0.0.1")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://[::1]")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://169.254.169.254")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://10.0.0.1")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://192.168.1.1")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://172.16.0.1")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://0.0.0.0")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://2130706433")).toBe(false); // 127.0.0.1 in decimal
+    });
+  });
+
   describe("scrape", () => {
     it("should route twitter URLs to TwitterService", async () => {
       mockTwitterService.isTwitterUrl.mockReturnValue(true);
