@@ -5,6 +5,7 @@ import { FormMessage, Message } from "@/components/form-message";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { AuthSubmitButton } from "@/components/auth-submit-button";
 
 export default function ForgotPassword() {
   const searchParams = useSearchParams();
@@ -51,12 +52,9 @@ export default function ForgotPassword() {
         />
 
         {/* Reset button */}
-        <button
-          type="submit"
-          className="w-full h-11 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-full text-sm transition-colors"
-        >
+        <AuthSubmitButton>
           Reset Password
-        </button>
+        </AuthSubmitButton>
 
         {message && <FormMessage message={message} />}
       </form>

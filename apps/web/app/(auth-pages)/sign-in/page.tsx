@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { SignInWith } from "./sign-in-with";
 import { useSearchParams } from "next/navigation";
+import { AuthSubmitButton } from "@/components/auth-submit-button";
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -81,12 +82,9 @@ export default function Login() {
           </div>
 
           {/* Login button */}
-          <button
-            type="submit"
-            className="w-full h-11 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-full text-sm transition-colors"
-          >
+          <AuthSubmitButton>
             Login
-          </button>
+          </AuthSubmitButton>
         </form>
 
         {/* Divider */}
