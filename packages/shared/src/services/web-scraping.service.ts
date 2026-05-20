@@ -40,7 +40,35 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   isValidUrl(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      return urlObj.protocol === "http:" || urlObj.protocol === "https:";
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return false;
+      }
+
+      const hostname = urlObj.hostname;
+
+      // 🛡️ Sentinel: Restrict SSRF by rejecting internal/private IP addresses and hostnames
+      if (
+        hostname === "localhost" ||
+        hostname === "0.0.0.0" ||
+        /^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/.test(hostname) ||
+        /^10(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/.test(hostname) ||
+        /^172\.(?:1[6-9]|2[0-9]|3[0-1])(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}$/.test(hostname) ||
+        /^192\.168(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}$/.test(hostname) ||
+        hostname === "169.254.169.254" ||
+        (hostname.includes(":") && (
+          hostname === "[::1]" ||
+          hostname.startsWith("[fc") ||
+          hostname.startsWith("[fd") ||
+          hostname.startsWith("[fe8") ||
+          hostname.startsWith("[fe9") ||
+          hostname.startsWith("[fea") ||
+          hostname.startsWith("[feb")
+        ))
+      ) {
+        return false;
+      }
+
+      return true;
     } catch {
       return false;
     }

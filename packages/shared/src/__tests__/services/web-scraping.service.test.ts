@@ -29,6 +29,28 @@ describe("WebScrapingService", () => {
     );
   });
 
+  describe("isValidUrl", () => {
+    it("should allow external http and https URLs", () => {
+      expect(webScrapingService.isValidUrl("https://example.com")).toBe(true);
+      expect(webScrapingService.isValidUrl("http://example.com")).toBe(true);
+    });
+
+    it("should reject non-http/https protocols", () => {
+      expect(webScrapingService.isValidUrl("ftp://example.com")).toBe(false);
+      expect(webScrapingService.isValidUrl("file:///etc/passwd")).toBe(false);
+    });
+
+    it("should reject internal network hostnames and IPs (SSRF)", () => {
+      expect(webScrapingService.isValidUrl("http://localhost")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://127.0.0.1")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://2130706433/")).toBe(false); // 127.0.0.1 integer parsing
+      expect(webScrapingService.isValidUrl("http://10.0.0.1")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://192.168.1.1")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://169.254.169.254/latest/meta-data")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://[::1]/")).toBe(false);
+    });
+  });
+
   describe("scrape", () => {
     it("should route twitter URLs to TwitterService", async () => {
       mockTwitterService.isTwitterUrl.mockReturnValue(true);
