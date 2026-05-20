@@ -63,12 +63,13 @@ export function BottomNavigation() {
               <button
                 key={item.label}
                 onClick={handleAddClick}
+                aria-label="Add new bookmark"
                 className="flex flex-col items-center justify-center py-2 px-3 min-w-0 flex-1"
               >
                 <div
                   className={cn(
                     "flex items-center justify-center w-6 h-6 mb-1",
-                    "text-gray-600"
+                    "text-gray-600",
                   )}
                 >
                   {item.icon}
@@ -89,7 +90,7 @@ export function BottomNavigation() {
               <div
                 className={cn(
                   "flex items-center justify-center w-4 h-4 mb-1",
-                  isActive ? "text-blue-600" : "text-gray-600"
+                  isActive ? "text-blue-600" : "text-gray-600",
                 )}
               >
                 {item.icon}
@@ -97,7 +98,7 @@ export function BottomNavigation() {
               <span
                 className={cn(
                   "text-xs font-medium",
-                  isActive ? "text-blue-600" : "text-gray-600"
+                  isActive ? "text-blue-600" : "text-gray-600",
                 )}
               >
                 {item.label}
