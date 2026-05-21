@@ -58,4 +58,28 @@ describe("WebScrapingService", () => {
       expect(result.title).toBe("Regular Page");
     });
   });
+
+  describe("isValidUrl", () => {
+    it("should return true for valid external URLs", () => {
+      expect(webScrapingService.isValidUrl("https://example.com")).toBe(true);
+      expect(webScrapingService.isValidUrl("http://google.com")).toBe(true);
+    });
+
+    it("should return false for invalid protocols", () => {
+      expect(webScrapingService.isValidUrl("ftp://example.com")).toBe(false);
+      expect(webScrapingService.isValidUrl("file:///etc/passwd")).toBe(false);
+    });
+
+    it("should block internal hostnames and IPs (SSRF protection)", () => {
+      expect(webScrapingService.isValidUrl("http://localhost")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://127.0.0.1")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://[::1]")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://0.0.0.0")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://169.254.169.254/latest/meta-data")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://10.0.0.1")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://192.168.1.1")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://172.16.0.1")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://2130706433/")).toBe(false); // 127.0.0.1 normalized
+    });
+  });
 });

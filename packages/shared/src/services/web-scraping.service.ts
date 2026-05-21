@@ -40,7 +40,26 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   isValidUrl(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      return urlObj.protocol === "http:" || urlObj.protocol === "https:";
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return false;
+      }
+
+      // 🛡️ Sentinel: Block internal and local network requests to prevent Server-Side Request Forgery (SSRF)
+      const hostname = urlObj.hostname;
+      if (
+        hostname === "localhost" ||
+        hostname === "127.0.0.1" ||
+        hostname === "[::1]" ||
+        hostname === "0.0.0.0" ||
+        hostname.startsWith("169.254.") ||
+        hostname.startsWith("10.") ||
+        hostname.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./) ||
+        hostname.startsWith("192.168.")
+      ) {
+        return false;
+      }
+
+      return true;
     } catch {
       return false;
     }
