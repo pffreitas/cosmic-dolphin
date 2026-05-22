@@ -7,3 +7,8 @@
 **Vulnerability:** Fastify CORS was set to `origin: true` (reflecting arbitrary origins) and the SSE endpoint manually set `Access-Control-Allow-Origin` to `request.headers.origin || "*"` while allowing credentials, risking unauthorized cross-origin access.
 **Learning:** Manual HTTP responses (like `reply.raw.writeHead` for Server-Sent Events) bypass global plugin protections like `@fastify/cors`. Developers must manually apply security headers on these raw endpoints.
 **Prevention:** Restrict CORS origins explicitly using a `FRONTEND_URL` environment variable for both global CORS plugins and manual HTTP endpoints, avoiding reflection of arbitrary request origins.
+
+## 2024-05-24 - Unrestricted Web Scraper SSRF Vulnerability
+**Vulnerability:** The bookmark preview endpoint and web scraper accepted any valid HTTP/HTTPS URL, including internal IP addresses and `localhost`, leading to Server-Side Request Forgery (SSRF) risks.
+**Learning:** In Node.js, `new URL(url).hostname` automatically normalizes alternative IP representations (e.g., parsing `http://2130706433/` to `127.0.0.1`), making it a reliable mechanism for implementing SSRF blocklists against internal network addresses.
+**Prevention:** Always validate user-provided URLs against an explicit blocklist of private/internal network patterns (e.g., `127.0.0.1`, `10.*`, `169.254.*`, `localhost`) before passing them to server-side HTTP clients.
