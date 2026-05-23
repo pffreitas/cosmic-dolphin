@@ -1,0 +1,18 @@
+• turbo 2.7.5
+• Packages in scope: @cosmic-dolphin/web
+• Running dev in 1 packages
+• Remote caching disabled
+@cosmic-dolphin/api-client:build: cache hit, replaying logs b824aa6e02750861
+@cosmic-dolphin/api-client:build: $ tsc && tsc -p tsconfig.esm.json
+@cosmic-dolphin/web:dev: cache bypass, force executing ad20cc6bd8e1cc7d
+@cosmic-dolphin/web:dev: $ next dev --port 3001
+@cosmic-dolphin/web:dev: ▲ Next.js 16.1.6 (Turbopack)
+@cosmic-dolphin/web:dev: - Local:         http://localhost:3001
+@cosmic-dolphin/web:dev: - Network:       http://192.168.0.2:3001
+@cosmic-dolphin/web:dev:
+@cosmic-dolphin/web:dev: ✓ Starting...
+@cosmic-dolphin/web:dev: ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+@cosmic-dolphin/web:dev: ✓ Ready in 1483ms
+@cosmic-dolphin/web:dev: ○ Compiling / ...
+@cosmic-dolphin/web:dev:  GET / 200 in 7.5s (compile: 6.7s, proxy.ts: 141ms, render: 651ms)
+@cosmic-dolphin/web:dev:  GET /test-component 200 in 2.1s (compile: 1598ms, proxy.ts: 36ms, render: 468ms)
