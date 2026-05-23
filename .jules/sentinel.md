@@ -7,3 +7,8 @@
 **Vulnerability:** Fastify CORS was set to `origin: true` (reflecting arbitrary origins) and the SSE endpoint manually set `Access-Control-Allow-Origin` to `request.headers.origin || "*"` while allowing credentials, risking unauthorized cross-origin access.
 **Learning:** Manual HTTP responses (like `reply.raw.writeHead` for Server-Sent Events) bypass global plugin protections like `@fastify/cors`. Developers must manually apply security headers on these raw endpoints.
 **Prevention:** Restrict CORS origins explicitly using a `FRONTEND_URL` environment variable for both global CORS plugins and manual HTTP endpoints, avoiding reflection of arbitrary request origins.
+
+## 2024-11-20 - SSRF Vulnerability in Web Scraping
+**Vulnerability:** The `isValidUrl` method only checked for HTTP/HTTPS protocols, allowing attackers to provide internal IP addresses (e.g., `localhost`, `127.0.0.1`, `169.254.169.254`) that would be fetched by the server, leading to Server-Side Request Forgery (SSRF).
+**Learning:** Using `new URL(url).hostname` automatically normalizes alternative IP representations (e.g., parsing integer IPs like `2130706433` to `127.0.0.1`), making it a reliable mechanism to check against a blocklist of internal network addresses. Furthermore, when using `startsWith` for blocklisting (like `10.`), it's critical to first ensure the hostname is strictly an IP address to avoid blocking legitimate domains like `10.example.com`.
+**Prevention:** Always validate and block internal network ranges, loopback addresses, and metadata server IPs before fetching user-provided URLs. Use strict regex or IP format validation before applying substring checks.

@@ -29,6 +29,23 @@ describe("WebScrapingService", () => {
     );
   });
 
+  describe("isValidUrl", () => {
+    it("should allow public URLs", () => {
+      expect(webScrapingService.isValidUrl("https://example.com")).toBe(true);
+      expect(webScrapingService.isValidUrl("http://10.example.com")).toBe(true);
+    });
+
+    it("should block internal network and loopback addresses (SSRF protection)", () => {
+      expect(webScrapingService.isValidUrl("http://localhost")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://127.0.0.1")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://10.0.0.1")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://192.168.1.1")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://169.254.169.254")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://[::1]")).toBe(false);
+      expect(webScrapingService.isValidUrl("http://2130706433")).toBe(false); // 127.0.0.1 as integer
+    });
+  });
+
   describe("scrape", () => {
     it("should route twitter URLs to TwitterService", async () => {
       mockTwitterService.isTwitterUrl.mockReturnValue(true);
