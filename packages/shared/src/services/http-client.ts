@@ -1,4 +1,18 @@
 const got = require("got").default || require("got");
+import { promises as dns } from "dns";
+import * as net from "net";
+
+function isPrivateIp(ip: string): boolean {
+  if (!net.isIP(ip)) return false;
+  if (ip === "127.0.0.1" || ip === "::1" || ip.startsWith("::ffff:127.")) return true;
+  if (ip.startsWith("10.")) return true;
+  if (ip.startsWith("192.168.")) return true;
+  if (ip.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./)) return true;
+  if (ip.startsWith("169.254.")) return true;
+  if (ip.startsWith("fc00:") || ip.startsWith("fd00:")) return true;
+  if (ip.startsWith("fe80:")) return true;
+  return false;
+}
 
 export interface HttpClient {
   /**
@@ -70,7 +84,20 @@ export class CosmicHttpClient implements HttpClient {
         throwHttpErrors: true,
         hooks: {
           beforeRequest: [
-            (options: any) => {
+            async (options: any) => {
+              const hostname = options.url.hostname;
+              if (isPrivateIp(hostname)) {
+                throw new Error(`SSRF Attempt blocked: ${hostname}`);
+              }
+              try {
+                const lookup = await dns.lookup(hostname);
+                if (isPrivateIp(lookup.address)) {
+                  throw new Error(`SSRF Attempt blocked (DNS resolution): ${lookup.address}`);
+                }
+              } catch (e: any) {
+                if (e.message.includes("SSRF Attempt blocked")) throw e;
+              }
+
               console.log(
                 `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`
               );
