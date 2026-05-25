@@ -54,7 +54,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           return reply.status(400).send({ error: "source_url is required" });
         }
 
-        if (!services.webScraping.isValidUrl(source_url)) {
+        if (!(await services.webScraping.isValidUrl(source_url))) {
           return reply.status(400).send({ error: "Invalid URL format" });
         }
 
@@ -219,7 +219,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: "url is required" });
       }
 
-      if (!services.webScraping.isValidUrl(url)) {
+      if (!(await services.webScraping.isValidUrl(url))) {
         return reply.status(400).send({ error: "Invalid URL format" });
       }
 

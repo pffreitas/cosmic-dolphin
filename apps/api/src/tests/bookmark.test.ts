@@ -5,29 +5,32 @@ describe("Bookmark Feature Validation", () => {
   describe("URL validation", () => {
     const webScrapingService = new WebScrapingServiceImpl();
 
-    it("should validate valid URLs", () => {
+    it("should validate valid URLs", async () => {
       const validUrls = [
         "https://example.com",
         "http://test.org",
         "https://www.domain.com/path?query=1",
       ];
 
-      validUrls.forEach((url) => {
-        expect(webScrapingService.isValidUrl(url)).toBe(true);
-      });
+      for (const url of validUrls) {
+        expect(await webScrapingService.isValidUrl(url)).toBe(true);
+      }
     });
 
-    it("should reject invalid URLs", () => {
+    it("should reject invalid URLs", async () => {
       const invalidUrls = [
         "not-a-url",
         "ftp://invalid-protocol.com",
         "invalid://test.com",
         "",
+        "http://localhost:3000",
+        "http://127.0.0.1",
+        "http://169.254.169.254"
       ];
 
-      invalidUrls.forEach((url) => {
-        expect(webScrapingService.isValidUrl(url)).toBe(false);
-      });
+      for (const url of invalidUrls) {
+        expect(await webScrapingService.isValidUrl(url)).toBe(false);
+      }
     });
   });
 

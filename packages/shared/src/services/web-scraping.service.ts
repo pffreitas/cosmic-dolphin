@@ -11,7 +11,7 @@ import { YouTubeService, YouTubeServiceImpl } from "./youtube.service";
 import { TwitterService, TwitterServiceImpl } from "./twitter.service";
 
 export interface WebScrapingService {
-  isValidUrl(url: string): boolean;
+  isValidUrl(url: string): Promise<boolean>;
   scrape(
     url: string
   ): Promise<
@@ -37,10 +37,41 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     this.twitterService = twitterService ?? new TwitterServiceImpl(httpClient);
   }
 
-  isValidUrl(url: string): boolean {
+  async isValidUrl(url: string): Promise<boolean> {
     try {
       const urlObj = new URL(url);
-      return urlObj.protocol === "http:" || urlObj.protocol === "https:";
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return false;
+      }
+      const hostname = urlObj.hostname;
+
+      if (hostname === "localhost" || hostname.endsWith(".local")) {
+        return false;
+      }
+
+      const isInternalIp = (ip: string) => {
+        return (
+          ip === "127.0.0.1" ||
+          ip === "::1" ||
+          ip.startsWith("10.") ||
+          ip.startsWith("192.168.") ||
+          /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip) ||
+          ip === "0.0.0.0" ||
+          ip.startsWith("169.254.")
+        );
+      };
+
+      if (isInternalIp(hostname)) return false;
+
+      try {
+        const dns = require("node:dns/promises");
+        const lookup = await dns.lookup(hostname);
+        if (isInternalIp(lookup.address)) return false;
+      } catch (e) {
+        // DNS lookup failure
+      }
+
+      return true;
     } catch {
       return false;
     }
