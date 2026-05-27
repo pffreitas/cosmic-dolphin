@@ -1,4 +1,19 @@
 const got = require("got").default || require("got");
+import * as dns from "dns";
+import { promisify } from "util";
+
+const lookupAsync = promisify(dns.lookup);
+
+function isInternalIp(ip: string): boolean {
+  if (ip === "127.0.0.1" || ip === "::1" || ip === "0.0.0.0") return true;
+  if (ip.startsWith("10.")) return true;
+  if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip)) return true;
+  if (ip.startsWith("192.168.")) return true;
+  if (ip.startsWith("169.254.")) return true;
+  if (ip.startsWith("fc") || ip.startsWith("fd")) return true;
+  if (ip.startsWith("fe80:")) return true;
+  return false;
+}
 
 export interface HttpClient {
   /**
@@ -70,7 +85,22 @@ export class CosmicHttpClient implements HttpClient {
         throwHttpErrors: true,
         hooks: {
           beforeRequest: [
-            (options: any) => {
+            async (options: any) => {
+              const hostname = options.url.hostname;
+
+              // 🛡️ Sentinel: Block SSRF vulnerabilities by ensuring resolving to an IP isn't internal
+              if (isInternalIp(hostname)) {
+                throw new Error("SSRF Blocked: URL resolved to an internal IP address");
+              }
+              try {
+                const { address } = await lookupAsync(hostname);
+                if (isInternalIp(address)) {
+                  throw new Error(`SSRF Blocked: URL resolved to an internal IP address`);
+                }
+              } catch (e: any) {
+                if (e.message.includes("SSRF")) throw e;
+              }
+
               console.log(
                 `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`
               );
