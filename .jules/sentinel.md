@@ -7,3 +7,8 @@
 **Vulnerability:** Fastify CORS was set to `origin: true` (reflecting arbitrary origins) and the SSE endpoint manually set `Access-Control-Allow-Origin` to `request.headers.origin || "*"` while allowing credentials, risking unauthorized cross-origin access.
 **Learning:** Manual HTTP responses (like `reply.raw.writeHead` for Server-Sent Events) bypass global plugin protections like `@fastify/cors`. Developers must manually apply security headers on these raw endpoints.
 **Prevention:** Restrict CORS origins explicitly using a `FRONTEND_URL` environment variable for both global CORS plugins and manual HTTP endpoints, avoiding reflection of arbitrary request origins.
+
+## 2024-05-24 - DNS-based SSRF Bypasses String Validation
+**Vulnerability:** The web scraping service lacked robust validation against Server-Side Request Forgery (SSRF). While basic string validation blocked raw internal IPs, it failed to prevent bypasses using DNS rebinding or custom domains that resolve to loopback addresses (like `localtest.me` resolving to `127.0.0.1`).
+**Learning:** Relying solely on static string or Regex checks against `new URL(url).hostname` is vulnerable to DNS-based bypasses. An attacker can easily register a domain that resolves to an internal network address to exploit the application.
+**Prevention:** Comprehensive SSRF prevention requires resolving the hostname to its IP address (`dns.lookup`) prior to making the outgoing HTTP request and rejecting the request if the resolved IP falls within a private or internal range.

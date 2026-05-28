@@ -40,7 +40,41 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   isValidUrl(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      return urlObj.protocol === "http:" || urlObj.protocol === "https:";
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") return false;
+
+      // Server-Side Request Forgery (SSRF) Blocklist
+      const hostname = urlObj.hostname;
+
+      if (hostname === "localhost") return false;
+
+      // IPv6 parsing ensures safe handling and prevents bypasses
+      if (hostname.includes("[") || hostname.includes("]")) {
+        if (hostname === "[::1]" || hostname === "[::]") {
+          return false;
+        }
+      }
+
+      // Check for IP address formats (IPv4)
+      const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+      const match = hostname.match(ipv4Regex);
+
+      if (match) {
+        const octet1 = parseInt(match[1], 10);
+        const octet2 = parseInt(match[2], 10);
+
+        if (
+          octet1 === 127 || // 127.0.0.0/8 (Loopback)
+          octet1 === 10 || // 10.0.0.0/8 (Private network)
+          octet1 === 0 || // 0.0.0.0/8 (Current network)
+          (octet1 === 172 && octet2 >= 16 && octet2 <= 31) || // 172.16.0.0/12 (Private network)
+          (octet1 === 192 && octet2 === 168) || // 192.168.0.0/16 (Private network)
+          (octet1 === 169 && octet2 === 254) // 169.254.0.0/16 (Link-local)
+        ) {
+          return false;
+        }
+      }
+
+      return true;
     } catch {
       return false;
     }

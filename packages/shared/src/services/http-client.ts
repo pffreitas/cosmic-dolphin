@@ -1,4 +1,5 @@
 const got = require("got").default || require("got");
+import { lookup } from "node:dns/promises";
 
 export interface HttpClient {
   /**
@@ -31,7 +32,53 @@ export class CosmicHttpClient implements HttpClient {
 
   async fetch(url: string): Promise<HttpResponse> {
     try {
-      const response = await got(url, {
+      const urlObj = new URL(url);
+      const hostname = urlObj.hostname;
+
+      if (hostname === "localhost" || hostname.includes("[") || hostname.includes("]")) {
+        if (hostname === "localhost" || hostname === "[::1]" || hostname === "[::]") {
+          throw new Error("SSRF prevention: Internal hostnames are not allowed");
+        }
+      }
+
+      let resolvedIp = "";
+
+      try {
+        const records = await lookup(hostname, { all: true });
+        for (const record of records) {
+          if (record.family === 4) {
+            const parts = record.address.split('.').map(Number);
+            const octet1 = parts[0];
+            const octet2 = parts[1];
+            if (
+              octet1 === 127 || octet1 === 10 || octet1 === 0 ||
+              (octet1 === 172 && octet2 >= 16 && octet2 <= 31) ||
+              (octet1 === 192 && octet2 === 168) ||
+              (octet1 === 169 && octet2 === 254)
+            ) {
+              throw new Error("SSRF prevention: Internal IP addresses are not allowed");
+            }
+            if (!resolvedIp) resolvedIp = record.address;
+          } else if (record.family === 6) {
+            const addr = record.address.toLowerCase();
+            if (addr === '::1' || addr === '::' || addr.startsWith('fc') || addr.startsWith('fd') || addr.startsWith('fe8') || addr.startsWith('fe9') || addr.startsWith('fea') || addr.startsWith('feb')) {
+              throw new Error("SSRF prevention: Internal IPv6 addresses are not allowed");
+            }
+            if (!resolvedIp) resolvedIp = `[${record.address}]`;
+          }
+        }
+      } catch (dnsError: any) {
+        if (dnsError.message.includes("SSRF prevention")) throw dnsError;
+        // If DNS fails (e.g. bracketed IP), throw SSRF error to prevent bypasses
+        throw new Error("SSRF prevention: DNS resolution failed or invalid hostname");
+      }
+
+      // Reconstruct URL with the resolved IP to prevent DNS rebinding (TOCTOU)
+      urlObj.hostname = resolvedIp;
+      // Also update the 'Host' header to the original hostname so the server routes correctly
+      const targetUrl = urlObj.toString();
+
+      const response = await got(targetUrl, {
         timeout: { request: this.requestTimeout },
         retry: {
           limit: 3,
@@ -47,6 +94,7 @@ export class CosmicHttpClient implements HttpClient {
           backoffLimit: 10000,
         },
         headers: {
+          Host: hostname,
           "User-Agent": this.getRandomUserAgent(),
           Accept:
             "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
