@@ -1,3 +1,6 @@
+import * as net from "net";
+import * as dns from "dns";
+
 const got = require("got").default || require("got");
 
 export interface HttpClient {
@@ -70,10 +73,51 @@ export class CosmicHttpClient implements HttpClient {
         throwHttpErrors: true,
         hooks: {
           beforeRequest: [
-            (options: any) => {
+            async (options: any) => {
               console.log(
                 `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`
               );
+
+              const hostname = options.url.hostname;
+              const isInternalIp = (ip: string): boolean => {
+                if (!net.isIP(ip)) return false;
+                if (ip.startsWith("127.")) return true;
+                if (ip.startsWith("10.")) return true;
+                if (ip.startsWith("192.168.")) return true;
+                if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip)) return true;
+                if (ip === "0.0.0.0") return true;
+                if (ip === "::1") return true;
+                if (ip.toLowerCase().startsWith("fc") || ip.toLowerCase().startsWith("fd")) return true;
+                if (ip.toLowerCase().startsWith("fe8") || ip.toLowerCase().startsWith("fe9") ||
+                    ip.toLowerCase().startsWith("fea") || ip.toLowerCase().startsWith("feb")) return true;
+                if (ip.toLowerCase().startsWith("::ffff:")) {
+                  const ipv4 = ip.split(":").pop();
+                  return ipv4 ? isInternalIp(ipv4) : false;
+                }
+                return false;
+              };
+
+              if (hostname === "localhost" || hostname.endsWith(".local") || hostname.includes("internal")) {
+                throw new Error("SSRF Prevention: Internal hostnames are not allowed");
+              }
+
+              try {
+                const cleanHost = hostname.replace(/^\[|\]$/g, "");
+                const lookupResult = await dns.promises.lookup(cleanHost);
+                if (isInternalIp(lookupResult.address)) {
+                  throw new Error("SSRF Prevention: Internal IPs are not allowed");
+                }
+
+                // Override the hostname to use the resolved IP to prevent DNS rebinding
+                // TOCTOU attacks
+                options.url.hostname = lookupResult.address;
+                options.headers.host = hostname; // preserve original host header
+              } catch (err: any) {
+                if (err.message.includes("SSRF Prevention")) throw err;
+
+                // If DNS lookup fails for other reasons, we fail closed
+                throw new Error(`SSRF Prevention: Failed to resolve hostname: ${err.message}`);
+              }
             },
           ],
           afterResponse: [
