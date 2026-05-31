@@ -70,10 +70,43 @@ export class CosmicHttpClient implements HttpClient {
         throwHttpErrors: true,
         hooks: {
           beforeRequest: [
-            (options: any) => {
+            async (options: any) => {
               console.log(
                 `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`
               );
+
+              const originalHostname = options.url.hostname;
+              const dns = require("dns");
+              try {
+                // Ensure raw IP addresses wrapped in brackets (e.g. [::1]) are handled correctly if passed,
+                // but new URL() mostly strips brackets.
+                const lookupResult = await dns.promises.lookup(originalHostname);
+
+                const isInternal = (ip: string) => {
+                  return (
+                    ip === '127.0.0.1' ||
+                    ip === '::1' ||
+                    ip === '0.0.0.0' ||
+                    ip.startsWith('10.') ||
+                    ip.startsWith('192.168.') ||
+                    ip.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./) ||
+                    ip.startsWith('169.254.') || // AWS Metadata
+                    ip.startsWith('fc00:') ||
+                    ip.startsWith('fe80:')
+                  );
+                };
+
+                if (isInternal(lookupResult.address)) {
+                  throw new Error(`SSRF blocked: Host resolves to internal IP ${lookupResult.address}`);
+                }
+
+                // Override to prevent DNS rebinding TOCTOU
+                options.url.hostname = lookupResult.address;
+                options.headers.host = originalHostname;
+              } catch (err: any) {
+                if (err.message.startsWith('SSRF blocked')) throw err;
+                throw new Error(`Failed to resolve hostname: ${err.message}`);
+              }
             },
           ],
           afterResponse: [
