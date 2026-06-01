@@ -1,4 +1,5 @@
 const got = require("got").default || require("got");
+import dns from "dns/promises";
 
 export interface HttpClient {
   /**
@@ -70,7 +71,52 @@ export class CosmicHttpClient implements HttpClient {
         throwHttpErrors: true,
         hooks: {
           beforeRequest: [
-            (options: any) => {
+            async (options: any) => {
+              let hostname = options.url.hostname;
+              if (hostname.startsWith("[") && hostname.endsWith("]")) {
+                hostname = hostname.slice(1, -1);
+              }
+              const lookupResult = await dns.lookup(hostname);
+              const ip = lookupResult.address;
+              let isPrivate = false;
+              if (
+                !ip ||
+                ip.startsWith("127.") ||
+                ip.startsWith("10.") ||
+                ip.startsWith("192.168.") ||
+                ip.startsWith("169.254.") ||
+                /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip) ||
+                ip === "::1" ||
+                ip.toLowerCase().startsWith("fc") ||
+                ip.toLowerCase().startsWith("fd") ||
+                /^fe[89ab]/i.test(ip) ||
+                ip === "0.0.0.0" ||
+                ip === "::"
+              ) {
+                isPrivate = true;
+              } else if (ip.startsWith("::ffff:")) {
+                const ipv4 = ip.replace("::ffff:", "");
+                if (
+                  ipv4.startsWith("127.") ||
+                  ipv4.startsWith("10.") ||
+                  ipv4.startsWith("192.168.") ||
+                  ipv4.startsWith("169.254.") ||
+                  /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ipv4) ||
+                  ipv4 === "0.0.0.0"
+                ) {
+                  isPrivate = true;
+                }
+              }
+
+              if (isPrivate) {
+                throw new Error(
+                  `SSRF Prevention: Access to private IP ${ip} is forbidden.`
+                );
+              }
+
+              options.url.hostname = ip;
+              options.headers.host = hostname;
+
               console.log(
                 `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`
               );
