@@ -1,4 +1,13 @@
 const got = require("got").default || require("got");
+const dns = require("dns");
+const { promisify } = require("util");
+const net = require("net");
+const lookup = promisify(dns.lookup);
+
+function isPrivateIP(ip: string): boolean {
+  const normalized = ip.replace(/^::ffff:/, '');
+  return /^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.|169\.254\.|::1|fd|fc00)/.test(normalized) || ip === '0.0.0.0' || ip === '::';
+}
 
 export interface HttpClient {
   /**
@@ -70,6 +79,23 @@ export class CosmicHttpClient implements HttpClient {
         throwHttpErrors: true,
         hooks: {
           beforeRequest: [
+            async (options: any) => {
+              const originalHostname = options.url.hostname;
+              const lookupResult = await lookup(originalHostname);
+              const ipAddress = lookupResult.address;
+
+              if (isPrivateIP(ipAddress)) {
+                throw new Error("SSRF Protection: Access to internal network is denied");
+              }
+
+              options.headers.host = options.url.host;
+              options.url.hostname = ipAddress;
+
+              if (options.url.protocol === 'https:' && !net.isIP(originalHostname)) {
+                  options.https = options.https || {};
+                  options.https.servername = originalHostname;
+              }
+            },
             (options: any) => {
               console.log(
                 `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`
