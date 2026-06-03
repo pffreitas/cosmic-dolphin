@@ -1,4 +1,63 @@
 const got = require("got").default || require("got");
+const dns = require("dns");
+const net = require("net");
+
+async function resolveAndValidateIp(hostname: string): Promise<string> {
+  // Strip brackets if it's an IPv6 literal before processing
+  const cleanHostname = hostname.startsWith('[') && hostname.endsWith(']')
+    ? hostname.slice(1, -1)
+    : hostname;
+
+  let ipToValidate = cleanHostname;
+
+  if (!net.isIP(cleanHostname)) {
+    try {
+      const lookupResult = await dns.promises.lookup(cleanHostname);
+      ipToValidate = lookupResult.address;
+    } catch (error) {
+      throw new Error(`DNS resolution failed for ${cleanHostname}`);
+    }
+  }
+
+  if (ipToValidate.startsWith('::ffff:')) {
+    ipToValidate = ipToValidate.substring(7);
+  }
+
+  if (ipToValidate === '::' || ipToValidate === '0.0.0.0') {
+    throw new Error(`SSRF Validation Failed: Internal IP address not allowed`);
+  }
+
+  const isIPv4 = net.isIPv4(ipToValidate);
+
+  if (isIPv4) {
+    const parts = ipToValidate.split('.').map(Number);
+    if (
+      parts[0] === 127 ||
+      parts[0] === 10 ||
+      (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+      (parts[0] === 192 && parts[1] === 168) ||
+      parts[0] === 169 && parts[1] === 254
+    ) {
+      throw new Error(`SSRF Validation Failed: Internal IP address not allowed`);
+    }
+  } else if (net.isIPv6(ipToValidate)) {
+    const normalized = ipToValidate.toLowerCase();
+    if (
+      normalized === '::1' ||
+      normalized.startsWith('fc') || normalized.startsWith('fd') ||
+      normalized.startsWith('fe8') || normalized.startsWith('fe9') || normalized.startsWith('fea') || normalized.startsWith('feb')
+    ) {
+      throw new Error(`SSRF Validation Failed: Internal IP address not allowed`);
+    }
+
+    // Add brackets for Node's URL parser if it doesn't already have them
+    if (!ipToValidate.startsWith('[')) {
+      ipToValidate = `[${ipToValidate}]`;
+    }
+  }
+
+  return ipToValidate;
+}
 
 export interface HttpClient {
   /**
@@ -70,10 +129,25 @@ export class CosmicHttpClient implements HttpClient {
         throwHttpErrors: true,
         hooks: {
           beforeRequest: [
-            (options: any) => {
+            async (options: any) => {
               console.log(
                 `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`
               );
+
+              const originalHostname = options.url.hostname;
+              const ip = await resolveAndValidateIp(originalHostname);
+
+              // Override hostname to prevent DNS rebinding
+              options.url.hostname = ip;
+
+              // Preserve original host header
+              options.headers.host = originalHostname;
+
+              // Fix SNI for HTTPS requests
+              if (options.url.protocol === 'https:' && !net.isIP(originalHostname)) {
+                options.https = options.https || {};
+                options.https.servername = originalHostname;
+              }
             },
           ],
           afterResponse: [
