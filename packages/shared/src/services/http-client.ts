@@ -1,11 +1,12 @@
 const got = require("got").default || require("got");
+import * as net from "net";
+import * as dns from "dns";
+import { promisify } from "util";
+
+const resolve4 = promisify(dns.resolve4);
+const resolve6 = promisify(dns.resolve6);
 
 export interface HttpClient {
-  /**
-   * Fetch data from a URL
-   * @param url The URL to fetch
-   * @returns Promise that resolves to an HttpResponse
-   */
   fetch(url: string): Promise<HttpResponse>;
 }
 
@@ -23,11 +24,8 @@ export interface HttpHeaders {
   get(name: string): string | null;
 }
 
-/**
- * Robust HTTP client implementation using Got with retry logic and proper error handling
- */
 export class CosmicHttpClient implements HttpClient {
-  private readonly requestTimeout = 30000; // 30 seconds for complex sites
+  private readonly requestTimeout = 30000;
 
   async fetch(url: string): Promise<HttpResponse> {
     try {
@@ -41,7 +39,6 @@ export class CosmicHttpClient implements HttpClient {
             const baseDelay = 1000;
             const exponentialDelay = baseDelay * Math.pow(2, attemptCount - 1);
             const jitter = Math.random() * 1000;
-            // backoffLimit is ignored when calculateDelay is provided, so cap explicitly
             return Math.min(exponentialDelay + jitter, 10000);
           },
           backoffLimit: 10000,
@@ -70,16 +67,92 @@ export class CosmicHttpClient implements HttpClient {
         throwHttpErrors: true,
         hooks: {
           beforeRequest: [
-            (options: any) => {
+            async (options: any) => {
+              const urlObj = options.url;
+
+              if (!options.context) {
+                options.context = {};
+              }
+              if (!options.context.originalHostname) {
+                options.context.originalHostname = urlObj.hostname;
+              }
+
+              let hostname = options.context.originalHostname;
+
+              if (hostname.startsWith("[") && hostname.endsWith("]")) {
+                hostname = hostname.slice(1, -1);
+              }
+
+              let ip: string | null = null;
+              if (net.isIP(hostname)) {
+                ip = hostname;
+              } else {
+                if (hostname === "localhost") {
+                  ip = "127.0.0.1";
+                } else {
+                  try {
+                    const ipv4s = await resolve4(hostname);
+                    ip = ipv4s[0];
+                  } catch {
+                    try {
+                      const ipv6s = await resolve6(hostname);
+                      ip = ipv6s[0];
+                    } catch {
+                      throw new Error(`DNS resolution failed for ${hostname}`);
+                    }
+                  }
+                }
+              }
+
+              if (ip) {
+                let normalizedIp = ip.toLowerCase();
+                if (normalizedIp.startsWith("::ffff:")) {
+                  normalizedIp = normalizedIp.replace("::ffff:", "");
+                }
+
+                // 🛡️ Sentinel: SSRF Protection
+                const isLocal =
+                  normalizedIp.startsWith("127.") ||
+                  normalizedIp === "::1" ||
+                  normalizedIp === "::" ||
+                  normalizedIp === "0.0.0.0" ||
+                  normalizedIp.startsWith("10.") ||
+                  normalizedIp.startsWith("192.168.") ||
+                  (normalizedIp.startsWith("172.") &&
+                    parseInt(normalizedIp.split(".")[1], 10) >= 16 &&
+                    parseInt(normalizedIp.split(".")[1], 10) <= 31) ||
+                  normalizedIp.startsWith("169.254.") ||
+                  normalizedIp.startsWith("fd") ||
+                  normalizedIp.startsWith("fc");
+
+                if (isLocal) {
+                  throw new Error(
+                    `SSRF blocked: Hostname resolves to internal/private IP (${ip})`,
+                  );
+                }
+
+                urlObj.hostname = ip;
+
+                if (!options.headers) {
+                  options.headers = {};
+                }
+                options.headers["host"] = hostname;
+
+                if (urlObj.protocol === "https:" && !net.isIP(hostname)) {
+                  options.https = options.https || {};
+                  options.https.servername = hostname;
+                }
+              }
+
               console.log(
-                `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`
+                `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`,
               );
             },
           ],
           afterResponse: [
             (response: any) => {
               console.log(
-                `✅ Response: ${response.statusCode} ${response.statusMessage}`
+                `✅ Response: ${response.statusCode} ${response.statusMessage}`,
               );
               return response;
             },
@@ -87,7 +160,7 @@ export class CosmicHttpClient implements HttpClient {
           beforeRetry: [
             (error: any, retryCount: number) => {
               console.log(
-                `🔄 Retry ${retryCount} for ${error.options?.url}: ${error.message}`
+                `🔄 Retry ${retryCount} for ${error.options?.url}: ${error.message}`,
               );
             },
           ],
@@ -113,7 +186,7 @@ export class CosmicHttpClient implements HttpClient {
       if (error instanceof (got as any).HTTPError) {
         const httpError = error as any;
         throw new Error(
-          `HTTP ${httpError.response.statusCode}: ${httpError.response.statusMessage}`
+          `HTTP ${httpError.response.statusCode}: ${httpError.response.statusMessage}`,
         );
       }
       throw error;
