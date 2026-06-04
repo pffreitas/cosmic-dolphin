@@ -9,6 +9,12 @@ import {
 } from "@/lib/store/slices/bookmarksSlice";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { Bookmark } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { PreviewResponse } from "@cosmic-dolphin/api-client";
 import PrivateLinkDialog from "./private-link-dialog";
 
@@ -22,10 +28,10 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const createLoading = useAppSelector(
-    (state) => state.bookmarks.createLoading
+    (state) => state.bookmarks.createLoading,
   );
   const previewLoading = useAppSelector(
-    (state) => state.bookmarks.previewLoading
+    (state) => state.bookmarks.previewLoading,
   );
   const createError = useAppSelector((state) => state.bookmarks.createError);
   const previewError = useAppSelector((state) => state.bookmarks.previewError);
@@ -41,9 +47,7 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
       const preview = result.payload as PreviewResponse;
 
       if (preview.scrapable) {
-        const createResult = await dispatch(
-          createBookmark({ sourceUrl: url })
-        );
+        const createResult = await dispatch(createBookmark({ sourceUrl: url }));
         if (createBookmark.fulfilled.match(createResult)) {
           setShowOverlay(false);
           setUrl("");
@@ -75,9 +79,13 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
     }
   };
 
+  const [isMac, setIsMac] = useState<boolean | null>(null);
+
   useEffect(() => {
+    setIsMac(navigator.platform.toUpperCase().indexOf("MAC") >= 0);
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.metaKey && event.key === "k") {
+      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
         event.preventDefault();
         handleNewBookmark();
       }
@@ -135,16 +143,37 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
         />
       )}
 
-      <button
-        id="new-bookmark-button"
-        className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-noto text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
-        onClick={() => {
-          handleNewBookmark();
-        }}
-      >
-        <Bookmark size={16} />
-        Save Bookmark
-      </button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              id="new-bookmark-button"
+              className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-noto text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
+              onClick={() => {
+                handleNewBookmark();
+              }}
+            >
+              <Bookmark size={16} />
+              Save Bookmark
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" sideOffset={8}>
+            <p className="flex items-center gap-1">
+              New bookmark
+              {isMac !== null && (
+                <span className="ml-2 flex items-center gap-1 text-[10px]">
+                  <kbd className="font-sans px-1 rounded-sm border bg-black/10 border-black/20 text-white/90">
+                    {isMac ? "⌘" : "Ctrl"}
+                  </kbd>
+                  <kbd className="font-sans px-1 rounded-sm border bg-black/10 border-black/20 text-white/90">
+                    K
+                  </kbd>
+                </span>
+              )}
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </>
   );
 }
