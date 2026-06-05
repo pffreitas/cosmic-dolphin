@@ -1,4 +1,37 @@
 const got = require("got").default || require("got");
+import * as dns from "dns";
+import * as net from "net";
+import { promisify } from "util";
+
+const lookup = promisify(dns.lookup);
+
+function isInternalIP(ip: string): boolean {
+  if (ip.startsWith("::ffff:")) ip = ip.substring(7);
+  if (net.isIPv4(ip)) {
+    const parts = ip.split(".").map(Number);
+    return (
+      parts[0] === 127 ||
+      parts[0] === 10 ||
+      (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+      (parts[0] === 192 && parts[1] === 168) ||
+      (parts[0] === 169 && parts[1] === 254) ||
+      parts[0] === 0
+    );
+  } else if (net.isIPv6(ip)) {
+    const lower = ip.toLowerCase();
+    return (
+      lower === "::1" ||
+      lower === "::" ||
+      lower.startsWith("fc") ||
+      lower.startsWith("fd") ||
+      lower.startsWith("fe8") ||
+      lower.startsWith("fe9") ||
+      lower.startsWith("fea") ||
+      lower.startsWith("feb")
+    );
+  }
+  return false;
+}
 
 export interface HttpClient {
   /**
@@ -70,10 +103,38 @@ export class CosmicHttpClient implements HttpClient {
         throwHttpErrors: true,
         hooks: {
           beforeRequest: [
-            (options: any) => {
+            async (options: any) => {
               console.log(
                 `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`
               );
+
+              let originalHostname = options.url.hostname;
+              if (originalHostname.startsWith('[') && originalHostname.endsWith(']')) {
+                originalHostname = originalHostname.slice(1, -1);
+              }
+
+              if (isInternalIP(originalHostname)) {
+                throw new Error("SSRF Protection: Access to internal IP blocked");
+              }
+
+              if (!net.isIP(originalHostname)) {
+                const { address } = await lookup(originalHostname);
+
+                if (isInternalIP(address)) {
+                  throw new Error("SSRF Protection: Access to internal IP blocked");
+                }
+
+                if (!options.headers.host && !options.headers.Host) {
+                  options.headers.host = options.url.host;
+                }
+
+                if (options.url.protocol === 'https:') {
+                  options.https = options.https || {};
+                  options.https.servername = originalHostname;
+                }
+
+                options.url.hostname = net.isIPv6(address) ? `[${address}]` : address;
+              }
             },
           ],
           afterResponse: [
