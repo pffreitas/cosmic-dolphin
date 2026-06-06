@@ -1,5 +1,16 @@
 // Mock implementation of got for testing
-const mockGot = jest.fn().mockImplementation((url: string, options?: any) => {
+const mockGot = jest.fn().mockImplementation(async (url: string, options?: any) => {
+  if (options && options.hooks && options.hooks.beforeRequest) {
+    const urlObj = new URL(url);
+    const requestOptions = {
+      url: urlObj,
+      headers: { host: urlObj.hostname },
+    };
+    for (const hook of options.hooks.beforeRequest) {
+      await hook(requestOptions);
+    }
+  }
+
   return Promise.resolve({
     statusCode: 200,
     statusMessage: "OK",
