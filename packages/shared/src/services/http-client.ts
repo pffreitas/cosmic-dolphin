@@ -1,4 +1,36 @@
+import dns from "dns";
+import net from "net";
+import { promisify } from "util";
+
 const got = require("got").default || require("got");
+const lookupAsync = promisify(dns.lookup);
+
+function isInternalIp(ip: string): boolean {
+  if (!ip) return false;
+
+  if (ip.startsWith("::ffff:")) {
+    ip = ip.substring(7);
+  }
+
+  if (ip === "::" || ip === "::1") {
+    return true;
+  }
+
+  if (net.isIPv4(ip)) {
+    const parts = ip.split(".").map(Number);
+    if (parts[0] === 127) return true; // localhost
+    if (parts[0] === 10) return true; // 10.x.x.x
+    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true; // 172.16.0.0/12
+    if (parts[0] === 192 && parts[1] === 168) return true; // 192.168.x.x
+    if (parts[0] === 169 && parts[1] === 254) return true; // AWS metadata
+    if (parts[0] === 0) return true; // 0.0.0.0
+  } else if (net.isIPv6(ip)) {
+    if (ip.toLowerCase().startsWith("fc") || ip.toLowerCase().startsWith("fd")) return true; // Unique local address
+    if (ip.toLowerCase().startsWith("fe8") || ip.toLowerCase().startsWith("fe9") || ip.toLowerCase().startsWith("fea") || ip.toLowerCase().startsWith("feb")) return true; // Link-local
+  }
+
+  return false;
+}
 
 export interface HttpClient {
   /**
@@ -70,7 +102,31 @@ export class CosmicHttpClient implements HttpClient {
         throwHttpErrors: true,
         hooks: {
           beforeRequest: [
-            (options: any) => {
+            async (options: any) => {
+              const hostname = options.url.hostname;
+
+              const lookupRes = await lookupAsync(hostname);
+              const ip = lookupRes.address;
+
+              if (isInternalIp(ip)) {
+                throw new Error(`SSRF blocked: Host resolves to internal IP ${ip}`);
+              }
+
+              if (net.isIPv6(ip)) {
+                options.url.hostname = `[${ip}]`;
+              } else {
+                options.url.hostname = ip;
+              }
+
+              if (!options.headers.host && !options.headers.Host) {
+                options.headers["Host"] = options.url.host || hostname;
+              }
+
+              if (!net.isIP(hostname)) {
+                options.https = options.https || {};
+                options.https.servername = hostname;
+              }
+
               console.log(
                 `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`
               );
