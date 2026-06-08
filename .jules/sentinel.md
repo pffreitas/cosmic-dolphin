@@ -7,3 +7,8 @@
 **Vulnerability:** Fastify CORS was set to `origin: true` (reflecting arbitrary origins) and the SSE endpoint manually set `Access-Control-Allow-Origin` to `request.headers.origin || "*"` while allowing credentials, risking unauthorized cross-origin access.
 **Learning:** Manual HTTP responses (like `reply.raw.writeHead` for Server-Sent Events) bypass global plugin protections like `@fastify/cors`. Developers must manually apply security headers on these raw endpoints.
 **Prevention:** Restrict CORS origins explicitly using a `FRONTEND_URL` environment variable for both global CORS plugins and manual HTTP endpoints, avoiding reflection of arbitrary request origins.
+
+## 2024-06-08 - SSRF Vulnerability in Got HTTP Client
+**Vulnerability:** The `CosmicHttpClient` used unconstrained requests via the `got` library, allowing users to provide URLs that map to internal services (e.g., `http://localhost:3000`, `http://127.0.0.1`), leading to Server-Side Request Forgery (SSRF) vulnerabilities.
+**Learning:** Relying solely on `new URL(url).hostname` checks is insufficient as it is vulnerable to DNS rebinding (Time-Of-Check to Time-Of-Use). You must resolve the IP address, validate it against a blocklist, and explicitly override the request URL's hostname with the validated IP while preserving the original `Host` and TLS `servername` to prevent SNI errors.
+**Prevention:** Implement a `beforeRequest` hook in the HTTP client to explicitly perform a DNS lookup, enforce an IP blocklist against private/internal IP ranges, and securely structure the request using the resolved IP.
