@@ -1,4 +1,6 @@
 const got = require("got").default || require("got");
+const dns = require("dns/promises");
+const net = require("net");
 
 export interface HttpClient {
   /**
@@ -70,10 +72,38 @@ export class CosmicHttpClient implements HttpClient {
         throwHttpErrors: true,
         hooks: {
           beforeRequest: [
-            (options: any) => {
+            async (options: any) => {
               console.log(
                 `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`
               );
+
+              const originalHostname = options.url.hostname;
+              try {
+                const { address } = await dns.lookup(originalHostname);
+
+                // SSRF protection: block private/internal IP ranges
+                const isBlockedIp = /^(127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|0\.0\.0\.0|::1|fd|fc|fe80|::ffff:)/.test(address) || address === "::";
+
+                if (isBlockedIp) {
+                  throw new Error(`SSRF Prevention: Access to internal IP (${address}) is blocked.`);
+                }
+
+                // Prevent DNS Rebinding (TOCTOU)
+                options.url.hostname = address;
+
+                // Preserve Original Host
+                if (!options.headers) options.headers = {};
+                options.headers["host"] = originalHostname;
+
+                // Retain SNI for HTTPS requests when switching to IP
+                if (options.url.protocol === "https:" && !net.isIP(originalHostname)) {
+                  options.https = { ...options.https, servername: originalHostname };
+                }
+              } catch (err: any) {
+                if (err.message && err.message.includes("SSRF Prevention")) throw err;
+                // Fail closed on DNS errors to prevent bypass
+                throw new Error(`SSRF Prevention: DNS resolution failed for ${originalHostname}`);
+              }
             },
           ],
           afterResponse: [
