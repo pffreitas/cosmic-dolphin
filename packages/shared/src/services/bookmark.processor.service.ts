@@ -293,7 +293,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         sessionID: session.sessionID,
         taskID: task.taskID,
         messageID: Identifier.ascending("message"),
-        modelId: "x-ai/grok-code-fast-1",
+        modelId: "qwen/qwen3.7-max",
         context: [],
         tools: [],
         message: {
@@ -437,7 +437,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     try {
       const relevantImages = await this.ai.generateObject({
         sessionID: session.sessionID,
-        modelId: "x-ai/grok-code-fast-1",
+        modelId: "qwen/qwen3.7-max",
         prompt: FILTER_IMAGES_PROMPT.replace(
           "{{CONTENT}}",
           content.content ?? ""

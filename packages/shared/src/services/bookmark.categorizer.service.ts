@@ -77,7 +77,7 @@ export class BookmarkCategorizerServiceImpl implements BookmarkCategorizerServic
       // Call LLM for categorization
       const response = await this.ai.generateObject({
         sessionID: session.sessionID,
-        modelId: "x-ai/grok-code-fast-1",
+        modelId: "qwen/qwen3.7-max",
         prompt,
         schema: CategorizationResponseSchema,
       });
