@@ -288,37 +288,21 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     await this.eventBus.publishToBookmark(bookmark.id, "task.started", task);
 
     try {
-      let output = "";
-      for await (const part of this.ai.prompt({
+      const response = await this.ai.generateObject({
         sessionID: session.sessionID,
-        taskID: task.taskID,
-        messageID: Identifier.ascending("message"),
         modelId: "qwen/qwen3.7-max",
-        context: [],
-        tools: [],
-        message: {
-          role: "user",
-          content: GENERATE_TAGS_PROMPT.replace(
-            "{{CONTENT}}",
-            this.isTwitterBookmark(bookmark) || this.isYouTubeBookmark(bookmark)
-              ? (content.content ?? "")
-              : this.chunkingService.stripHtml(content.content ?? "")
-          ),
-        },
-      })) {
-        if (part.type === "text") {
-          output = part.part.text;
-        }
-      }
-
-      // TODO: handle error and retry
-      const parsed = z
-        .object({
+        prompt: GENERATE_TAGS_PROMPT.replace(
+          "{{CONTENT}}",
+          this.isTwitterBookmark(bookmark) || this.isYouTubeBookmark(bookmark)
+            ? (content.content ?? "")
+            : this.chunkingService.stripHtml(content.content ?? "")
+        ),
+        schema: z.object({
           tags: z.array(z.string()).describe("The array of tag strings"),
-        })
-        .parse(JSON.parse(output));
+        }),
+      });
 
-      return parsed.tags;
+      return response.tags;
     } catch (error) {
       console.error("Failed to generate metadata", error);
       await this.eventBus.publishToBookmark(bookmark.id, "task.failed", task);
