@@ -1,4 +1,37 @@
 const got = require("got").default || require("got");
+import dns from "dns/promises";
+import net from "net";
+
+const isInternalIp = (ip: string) => {
+  const normalizedIp = ip.startsWith('::ffff:') ? ip.substring(7) : ip;
+  if (normalizedIp === '::') return true;
+  if (normalizedIp === '0.0.0.0') return true;
+  if (net.isIPv4(normalizedIp)) {
+    const parts = normalizedIp.split('.').map(Number);
+    if (
+      parts[0] === 127 ||
+      parts[0] === 10 ||
+      (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+      (parts[0] === 192 && parts[1] === 168) ||
+      (parts[0] === 169 && parts[1] === 254)
+    ) {
+      return true;
+    }
+  } else if (net.isIPv6(normalizedIp)) {
+    if (
+      normalizedIp === '::1' ||
+      normalizedIp.toLowerCase().startsWith('fc') ||
+      normalizedIp.toLowerCase().startsWith('fd') ||
+      normalizedIp.toLowerCase().startsWith('fe8') ||
+      normalizedIp.toLowerCase().startsWith('fe9') ||
+      normalizedIp.toLowerCase().startsWith('fea') ||
+      normalizedIp.toLowerCase().startsWith('feb')
+    ) {
+      return true;
+    }
+  }
+  return false;
+};
 
 export interface HttpClient {
   /**
@@ -70,10 +103,45 @@ export class CosmicHttpClient implements HttpClient {
         throwHttpErrors: true,
         hooks: {
           beforeRequest: [
-            (options: any) => {
+            async (options: any) => {
               console.log(
                 `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`
               );
+              const originalHostname = options.url.hostname;
+              try {
+                let resolvedIp = originalHostname;
+                let lookupHostname = originalHostname;
+                if (lookupHostname.startsWith('[') && lookupHostname.endsWith(']')) {
+                  lookupHostname = lookupHostname.slice(1, -1);
+                }
+                if (!net.isIP(lookupHostname)) {
+                  const { address } = await dns.lookup(lookupHostname);
+                  resolvedIp = address;
+                } else {
+                  resolvedIp = lookupHostname;
+                }
+
+                if (isInternalIp(resolvedIp)) {
+                  throw new Error(`SSRF Prevention: Access to internal IP ${resolvedIp} is blocked`);
+                }
+
+                if (net.isIPv6(resolvedIp)) {
+                  options.url.hostname = `[${resolvedIp}]`;
+                } else {
+                  options.url.hostname = resolvedIp;
+                }
+
+                options.headers['Host'] = originalHostname;
+
+                if (options.url.protocol === 'https:' && !net.isIP(lookupHostname)) {
+                  options.servername = originalHostname;
+                }
+              } catch (err: any) {
+                if (err.code === 'ENOTFOUND') {
+                  throw new Error(`SSRF Prevention: DNS resolution failed for ${originalHostname}`);
+                }
+                throw err;
+              }
             },
           ],
           afterResponse: [
