@@ -112,6 +112,13 @@ describe("Bookmark Content Refactor Integration", () => {
           };
         } else if (
           input.prompt &&
+          input.prompt.includes("Your task is to generate the tags")
+        ) {
+          return {
+            tags: ["ai", "processing"],
+          };
+        } else if (
+          input.prompt &&
           input.prompt.includes("bookmark categorization assistant")
         ) {
           // Categorization prompt - suggest a new category path

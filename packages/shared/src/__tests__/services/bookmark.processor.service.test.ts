@@ -105,6 +105,13 @@ describe("BookmarkProcessorService", () => {
               },
             ],
           };
+        } else if (
+          input.prompt &&
+          input.prompt.includes("Your task is to generate the tags")
+        ) {
+          return {
+            tags: ["test", "bookmark"],
+          };
         }
         return "Default generated object";
       }),
