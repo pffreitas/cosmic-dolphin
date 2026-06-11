@@ -81,6 +81,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       }
     );
 
+    const startedTasks: Promise<unknown>[] = [];
+
     try {
       const session = await this.ai.newSession(bookmark.id);
       await this.eventBus.publishToBookmark(
@@ -96,6 +98,12 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         ? Promise.resolve(this.promoteTweetImages(content))
         : this.processImages(session, bookmark, content);
       const embeddingPromise = this.chunkAndEmbed(session, bookmark, content);
+      startedTasks.push(
+        summarizePromise,
+        metadataPromise,
+        imagesPromise,
+        embeddingPromise
+      );
 
       // Categorization requires summary and tags, so we wait for those first
       const [{ summary, briefSummary }, tags] = await Promise.all([
@@ -145,6 +153,12 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         }
       );
     } catch (error) {
+      // If one parallel task fails, make sure every task that was already
+      // started has settled before rethrowing. Otherwise later rejections from
+      // the still-running tasks can surface as unhandled promise rejections in
+      // Node/Jest and fail CI after the expected error has already been caught.
+      await Promise.allSettled(startedTasks);
+
       // Update processing status to 'failed'
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
