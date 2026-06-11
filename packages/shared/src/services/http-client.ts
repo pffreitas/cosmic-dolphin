@@ -1,4 +1,6 @@
 const got = require("got").default || require("got");
+import { promises as dns } from "dns";
+import * as net from "net";
 
 export interface HttpClient {
   /**
@@ -70,10 +72,90 @@ export class CosmicHttpClient implements HttpClient {
         throwHttpErrors: true,
         hooks: {
           beforeRequest: [
-            (options: any) => {
+            async (options: any) => {
               console.log(
                 `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`
               );
+
+              const urlStr = options.url.toString();
+              let urlObj;
+              try {
+                urlObj = new URL(urlStr);
+              } catch (e) {
+                return;
+              }
+              let hostname = urlObj.hostname;
+              if (hostname.startsWith("[") && hostname.endsWith("]")) {
+                hostname = hostname.slice(1, -1);
+              }
+
+              let ip = hostname;
+              if (!net.isIP(hostname)) {
+                try {
+                  const lookup = await dns.lookup(hostname);
+                  ip = lookup.address;
+                } catch (error) {
+                  throw new Error(`DNS lookup failed: ${hostname}`);
+                }
+              }
+
+              let normalizedIp = ip;
+              if (normalizedIp.startsWith("::ffff:")) {
+                normalizedIp = normalizedIp.substring(7);
+              }
+
+              const blockedPrefixes = [
+                "127.",
+                "10.",
+                "192.168.",
+                "169.254.",
+                "172.16.",
+                "172.17.",
+                "172.18.",
+                "172.19.",
+                "172.20.",
+                "172.21.",
+                "172.22.",
+                "172.23.",
+                "172.24.",
+                "172.25.",
+                "172.26.",
+                "172.27.",
+                "172.28.",
+                "172.29.",
+                "172.30.",
+                "172.31.",
+                "0.0.0.0",
+                "::1",
+                "::",
+                "fc",
+                "fd",
+                "fe8",
+                "fe9",
+                "fea",
+                "feb",
+              ];
+
+              if (
+                blockedPrefixes.some(
+                  (prefix) =>
+                    normalizedIp === prefix || normalizedIp.startsWith(prefix)
+                )
+              ) {
+                throw new Error(`SSRF blocked: ${normalizedIp}`);
+              }
+
+              if (net.isIPv6(ip)) {
+                options.url.hostname = `[${ip}]`;
+              } else {
+                options.url.hostname = ip;
+              }
+
+              options.headers["Host"] = urlObj.host; // use host to preserve port
+              if (!net.isIP(hostname)) {
+                options.https = options.https || {};
+                options.https.servername = hostname;
+              }
             },
           ],
           afterResponse: [
