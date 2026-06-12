@@ -1,4 +1,10 @@
 const got = require("got").default || require("got");
+const dns = require("dns");
+const net = require("net");
+const { promisify } = require("util");
+
+const resolve4 = promisify(dns.resolve4);
+const resolve6 = promisify(dns.resolve6);
 
 export interface HttpClient {
   /**
@@ -70,10 +76,56 @@ export class CosmicHttpClient implements HttpClient {
         throwHttpErrors: true,
         hooks: {
           beforeRequest: [
-            (options: any) => {
+            async (options: any) => {
               console.log(
                 `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`
               );
+              const hostname = options.url.hostname;
+              let ip = hostname;
+
+              // Strip brackets from IPv6 hostnames like [::1] before checking
+              const hostnameWithoutBrackets = hostname.replace(/^\[(.*)\]$/, '$1');
+
+              if (!net.isIP(hostnameWithoutBrackets)) {
+                try {
+                  const addresses = await resolve4(hostnameWithoutBrackets);
+                  ip = addresses[0];
+                } catch (err) {
+                  try {
+                    const addresses6 = await resolve6(hostnameWithoutBrackets);
+                    ip = addresses6[0];
+                  } catch (err6) {
+                    throw new Error(`DNS lookup failed for ${hostname}`);
+                  }
+                }
+              } else {
+                ip = hostnameWithoutBrackets;
+              }
+
+              const normalizedIp = ip.toLowerCase().replace(/^::ffff:/, '');
+              const isInternal = [
+                '127.', '10.', '192.168.', '169.254.', '0.0.0.0'
+              ].some(prefix => normalizedIp.startsWith(prefix)) ||
+              Array.from({length: 16}, (_, i) => `172.${16+i}.`).some(prefix => normalizedIp.startsWith(prefix)) ||
+              ['::1', 'fe8', 'fc', 'fd'].some(prefix => normalizedIp.startsWith(prefix)) ||
+              normalizedIp === '::';
+
+              if (isInternal) {
+                throw new Error(`Security Error: Access to internal network is blocked`);
+              }
+
+              options.headers['Host'] = options.url.host;
+
+              if (net.isIPv6(ip)) {
+                options.url.hostname = `[${ip}]`;
+              } else {
+                options.url.hostname = ip;
+              }
+
+              if (options.url.protocol === 'https:' && !net.isIP(hostname)) {
+                options.https = options.https || {};
+                options.https.servername = hostname;
+              }
             },
           ],
           afterResponse: [
