@@ -1,5 +1,18 @@
 // Mock implementation of got for testing
-const mockGot = jest.fn().mockImplementation((url: string, options?: any) => {
+const mockGot = jest.fn().mockImplementation(async (url: string, options?: any) => {
+  if (options?.hooks?.beforeRequest && Array.isArray(options.hooks.beforeRequest)) {
+    // A rudimentary options object with a url object to support SSRF testing
+    const hookOptions = {
+      ...options,
+      url: new URL(url),
+      headers: options.headers || {},
+      https: options.https || {}
+    };
+    for (const hook of options.hooks.beforeRequest) {
+      await hook(hookOptions);
+    }
+  }
+
   return Promise.resolve({
     statusCode: 200,
     statusMessage: "OK",

@@ -1,4 +1,26 @@
+import * as net from "net";
+import * as dns from "dns";
 const got = require("got").default || require("got");
+
+function isInternalIP(ip: string): boolean {
+  if (ip === "0.0.0.0") return true;
+  if (ip.startsWith("127.")) return true;
+  if (ip.startsWith("10.")) return true;
+  if (ip.startsWith("192.168.")) return true;
+  if (ip.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./)) return true;
+  if (ip.startsWith("169.254.")) return true; // Cloud instance metadata
+
+  if (net.isIPv6(ip)) {
+    const ipv6 = ip.toLowerCase();
+    if (ipv6 === "::1" || ipv6 === "::") return true;
+    if (ipv6.startsWith("fc") || ipv6.startsWith("fd") || ipv6.startsWith("fe8")) return true;
+    if (ipv6.startsWith("::ffff:")) {
+      const ipv4 = ipv6.substring(7);
+      return isInternalIP(ipv4);
+    }
+  }
+  return false;
+}
 
 export interface HttpClient {
   /**
@@ -70,10 +92,35 @@ export class CosmicHttpClient implements HttpClient {
         throwHttpErrors: true,
         hooks: {
           beforeRequest: [
-            (options: any) => {
+            async (options: any) => {
               console.log(
                 `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`
               );
+              const hostname = options.url.hostname;
+              const rawHostname = hostname.replace(/^\[(.*)\]$/, "$1");
+
+              let ip = rawHostname;
+              if (!net.isIP(rawHostname)) {
+                try {
+                  const result = await dns.promises.lookup(rawHostname);
+                  ip = result.address;
+                } catch (err) {
+                  throw new Error(`DNS lookup failed for ${rawHostname}`);
+                }
+              }
+
+              if (isInternalIP(ip)) {
+                throw new Error("SSRF attempt blocked: Internal IP address detected");
+              }
+
+              options.url.hostname = net.isIPv6(ip) ? `[${ip}]` : ip;
+              options.headers = options.headers || {};
+              options.headers.Host = hostname;
+
+              if (!net.isIP(rawHostname)) {
+                options.https = options.https || {};
+                options.https.servername = hostname;
+              }
             },
           ],
           afterResponse: [
