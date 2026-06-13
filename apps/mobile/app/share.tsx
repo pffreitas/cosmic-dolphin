@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, View, Pressable, ScrollView, ActivityIndicator, Image, Dimensions } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useShareIntentContext } from 'expo-share-intent';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
@@ -57,6 +58,7 @@ export default function ShareScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ url?: string }>();
   const insets = useSafeAreaInsets();
+  const { resetShareIntent } = useShareIntentContext();
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -102,15 +104,8 @@ export default function ShareScreen() {
   };
 
   const navigateAway = () => {
-    // Navigate immediately — do NOT reset the share intent here because that
-    // clears shareIntent in the provider synchronously, causing a re-render that
-    // shows the empty state while the screen is still visible. _layout.tsx owns
-    // the share intent lifecycle and will reset it via its own effects.
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(tabs)');
-    }
+    resetShareIntent();
+    router.replace('/(tabs)');
   };
 
   const handleClose = () => {
