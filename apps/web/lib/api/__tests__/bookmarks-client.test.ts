@@ -1,26 +1,28 @@
-import { describe, it, expect, beforeEach, mock } from "bun:test";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 
-const mockBookmarksRemove = mock();
-const mockGetSession = mock();
+const { mockBookmarksRemove, mockGetSession } = vi.hoisted(() => ({
+  mockBookmarksRemove: vi.fn(),
+  mockGetSession: vi.fn(),
+}));
 
-mock.module("@cosmic-dolphin/api-client", () => {
+vi.mock("@cosmic-dolphin/api-client", () => {
   function MockConfiguration() {}
   function MockBookmarksApi() {
     return {
       bookmarksRemove: mockBookmarksRemove,
-      bookmarksList: mock(),
-      bookmarksCreate: mock(),
-      bookmarksFindById: mock(),
-      bookmarksSearch: mock(),
-      bookmarksLike: mock(),
-      bookmarksUnlike: mock(),
-      bookmarksShare: mock(),
-      bookmarksUnshare: mock(),
-      bookmarksPreview: mock(),
+      bookmarksList: vi.fn(),
+      bookmarksCreate: vi.fn(),
+      bookmarksFindById: vi.fn(),
+      bookmarksSearch: vi.fn(),
+      bookmarksLike: vi.fn(),
+      bookmarksUnlike: vi.fn(),
+      bookmarksShare: vi.fn(),
+      bookmarksUnshare: vi.fn(),
+      bookmarksPreview: vi.fn(),
     };
   }
   function MockCollectionsApi() {
-    return { collectionsList: mock() };
+    return { collectionsList: vi.fn() };
   }
   return {
     Configuration: MockConfiguration,
@@ -29,8 +31,8 @@ mock.module("@cosmic-dolphin/api-client", () => {
   };
 });
 
-mock.module("@/utils/supabase/client", () => ({
-  createClient: mock(() => ({
+vi.mock("@/utils/supabase/client", () => ({
+  createClient: vi.fn(() => ({
     auth: {
       getSession: mockGetSession,
     },

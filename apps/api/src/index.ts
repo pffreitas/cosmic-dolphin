@@ -1,4 +1,7 @@
 import Fastify from 'fastify';
+import cors from '@fastify/cors';
+import helmet from '@fastify/helmet';
+import env from '@fastify/env';
 import { config } from './config/environment';
 import bookmarkRoutes from './routes/bookmarks';
 import searchRoutes from './routes/search';
@@ -16,14 +19,14 @@ const server = Fastify({
 });
 
 // Register plugins
-server.register(require('@fastify/cors'), {
+server.register(cors, {
   // 🛡️ Sentinel: Restrict CORS to explicit trusted frontend origin
   origin: config.FRONTEND_URL,
 });
 
-server.register(require('@fastify/helmet'));
+server.register(helmet);
 
-server.register(require('@fastify/env'), {
+server.register(env, {
   dotenv: true,
   schema: {
     type: 'object',

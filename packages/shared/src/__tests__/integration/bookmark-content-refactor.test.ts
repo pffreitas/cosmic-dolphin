@@ -63,27 +63,18 @@ describe("Bookmark Content Refactor Integration", () => {
       delete: jest.fn(),
     } as jest.Mocked<ContentChunkRepository>;
 
-    let callCount = 0;
-    const mockPromptGenerator = async function* () {
-      if (callCount === 0) {
-        // First call is for summarization
-        yield { type: "text", part: { text: "Generated AI summary" } };
-      } else if (callCount === 1) {
-        // Second call is for tags generation (needs JSON)
+    const mockPromptGenerator = async function* (input: {
+      message?: { content?: string };
+    }) {
+      const message = input.message?.content ?? "";
+      if (message.includes("generate the tags")) {
         yield {
           type: "text",
           part: { text: '{"tags": ["ai", "processing"]}' },
         };
       } else {
-        // Third call is for image processing (needs JSON)
-        yield {
-          type: "text",
-          part: {
-            text: '{"images": [{"url": "https://example.com/image.jpg", "alt": "Test image"}]}',
-          },
-        };
+        yield { type: "text", part: { text: "Generated AI summary" } };
       }
-      callCount++;
     };
 
     mockAI = {
@@ -131,7 +122,7 @@ describe("Bookmark Content Refactor Integration", () => {
         }
         return "Default generated object";
       }),
-      prompt: jest.fn().mockImplementation(() => mockPromptGenerator()),
+      prompt: jest.fn().mockImplementation((input: any) => mockPromptGenerator(input)),
       processStream: jest.fn(),
     } as any;
 
