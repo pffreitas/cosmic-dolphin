@@ -3,13 +3,30 @@ import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
+const getWebStorage = () => {
+  if (typeof localStorage === 'undefined') {
+    return null;
+  }
+
+  if (
+    typeof localStorage.getItem !== 'function' ||
+    typeof localStorage.setItem !== 'function' ||
+    typeof localStorage.removeItem !== 'function'
+  ) {
+    return null;
+  }
+
+  return localStorage;
+};
+
 // Expo SecureStore adapter for Supabase auth
 const ExpoSecureStoreAdapter = {
   getItem: async (key: string) => {
     if (Platform.OS === 'web') {
       // Use localStorage for web
-      if (typeof localStorage !== 'undefined') {
-        return localStorage.getItem(key);
+      const storage = getWebStorage();
+      if (storage) {
+        return storage.getItem(key);
       }
       return null;
     }
@@ -17,8 +34,9 @@ const ExpoSecureStoreAdapter = {
   },
   setItem: async (key: string, value: string) => {
     if (Platform.OS === 'web') {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(key, value);
+      const storage = getWebStorage();
+      if (storage) {
+        storage.setItem(key, value);
       }
       return;
     }
@@ -26,8 +44,9 @@ const ExpoSecureStoreAdapter = {
   },
   removeItem: async (key: string) => {
     if (Platform.OS === 'web') {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.removeItem(key);
+      const storage = getWebStorage();
+      if (storage) {
+        storage.removeItem(key);
       }
       return;
     }
