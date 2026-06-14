@@ -1,4 +1,44 @@
 const got = require("got").default || require("got");
+import * as dns from 'dns';
+import * as net from 'net';
+import { promisify } from 'util';
+
+const lookupAsync = promisify(dns.lookup);
+
+function isAllowedIp(ip: string): boolean {
+  if (ip === "0.0.0.0") return false;
+  if (ip === "::1") return false;
+
+  if (ip.startsWith("127.")) return false;
+  if (ip.startsWith("10.")) return false;
+  if (ip.startsWith("192.168.")) return false;
+  if (ip.startsWith("169.254.")) return false;
+
+  for (let i = 16; i <= 31; i++) {
+    if (ip.startsWith(`172.${i}.`)) return false;
+  }
+
+  // IPv6 checks
+  const ipv6Normalized = ip.replace(/^::ffff:/, '').toLowerCase();
+
+  // Checking if IPv4 mapped representation was stripped but matched above
+  if (net.isIPv4(ipv6Normalized) && !isAllowedIp(ipv6Normalized)) {
+    return false;
+  }
+
+  // IPv6 ANY
+  if (ipv6Normalized === "::") return false;
+
+  if (ipv6Normalized.startsWith("fc") || ipv6Normalized.startsWith("fd")) return false;
+  if (
+    ipv6Normalized.startsWith("fe8") ||
+    ipv6Normalized.startsWith("fe9") ||
+    ipv6Normalized.startsWith("fea") ||
+    ipv6Normalized.startsWith("feb")
+  ) return false;
+
+  return true;
+}
 
 export interface HttpClient {
   /**
@@ -70,10 +110,37 @@ export class CosmicHttpClient implements HttpClient {
         throwHttpErrors: true,
         hooks: {
           beforeRequest: [
-            (options: any) => {
+            async (options: any) => {
               console.log(
                 `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`
               );
+
+              const originalHostname = options.url.hostname;
+
+              // Bypass DNS lookup for raw IPs since they are already resolved.
+              let addressToUse = originalHostname;
+              if (!net.isIP(originalHostname.replace(/^\[(.*)\]$/, '$1'))) {
+                try {
+                  const { address } = await lookupAsync(originalHostname);
+                  addressToUse = address;
+                } catch (err: any) {
+                  throw new Error(`DNS lookup failed for ${originalHostname}: ${err.message}`);
+                }
+              } else {
+                 addressToUse = originalHostname.replace(/^\[(.*)\]$/, '$1');
+              }
+
+              if (!isAllowedIp(addressToUse)) {
+                throw new Error(`Access to internal/private IP ${addressToUse} is forbidden.`);
+              }
+
+              options.url.hostname = net.isIPv6(addressToUse) ? `[${addressToUse}]` : addressToUse;
+              options.headers.host = originalHostname;
+
+              if (options.url.protocol === 'https:' && !net.isIP(originalHostname.replace(/^\[(.*)\]$/, '$1'))) {
+                  options.https = options.https || {};
+                  options.https.servername = originalHostname;
+              }
             },
           ],
           afterResponse: [
