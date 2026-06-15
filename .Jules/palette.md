@@ -1,3 +1,3 @@
-## 2026-05-03 - Added ARIA labels to Profile Dropdown Buttons
-**Learning:** Avatar-based profile menu triggers are often missing accessible names, leading to silent or confusing screen reader announcements.
-**Action:** Add `aria-label="Open profile menu"` to any icon-only or avatar-only dropdown triggers to improve keyboard and screen reader accessibility.
+## 2024-06-15 - Global Keyboard Shortcuts Discoverability
+**Learning:** We implemented a global keyboard shortcut (`Cmd/Ctrl + K`) for the 'New Bookmark' action, but realized that purely listening for the shortcut without visual affordances leaves the feature undiscoverable for new users. Furthermore, checking only `event.metaKey` excluded Windows/Linux users from utilizing the shortcut.
+**Action:** When adding global keyboard shortcuts to primary actions, ensure the button is wrapped in a Tooltip that explicitly displays the OS-appropriate shortcut using semantic `<kbd>` tags. Additionally, ensure cross-platform compatibility by checking `event.metaKey || event.ctrlKey`.

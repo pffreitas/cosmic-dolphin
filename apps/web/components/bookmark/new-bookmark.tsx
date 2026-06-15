@@ -9,6 +9,12 @@ import {
 } from "@/lib/store/slices/bookmarksSlice";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { Bookmark } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { PreviewResponse } from "@cosmic-dolphin/api-client";
 import PrivateLinkDialog from "./private-link-dialog";
 
@@ -19,6 +25,7 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
   const [url, setUrl] = useState("");
   const [privateLinkDialogOpen, setPrivateLinkDialogOpen] = useState(false);
   const [previewData, setPreviewData] = useState<PreviewResponse | null>(null);
+  const [isMac, setIsMac] = useState<boolean | null>(null);
   const dispatch = useAppDispatch();
   const router = useRouter();
   const createLoading = useAppSelector(
@@ -76,8 +83,10 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
   };
 
   useEffect(() => {
+    setIsMac(navigator.platform.toUpperCase().indexOf("MAC") >= 0);
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.metaKey && event.key === "k") {
+      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
         event.preventDefault();
         handleNewBookmark();
       }
@@ -135,16 +144,35 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
         />
       )}
 
-      <button
-        id="new-bookmark-button"
-        className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-noto text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
-        onClick={() => {
-          handleNewBookmark();
-        }}
-      >
-        <Bookmark size={16} />
-        Save Bookmark
-      </button>
+      <TooltipProvider>
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <button
+              id="new-bookmark-button"
+              className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-noto text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
+              onClick={() => {
+                handleNewBookmark();
+              }}
+            >
+              <Bookmark size={16} />
+              Save Bookmark
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="flex items-center gap-2">
+            <span>New Bookmark</span>
+            {isMac !== null && (
+              <span className="flex items-center gap-1 text-[10px]">
+                <kbd className="font-sans px-1 py-0.5 rounded-md border bg-gray-50/10 border-gray-200/20">
+                  {isMac ? "⌘" : "Ctrl"}
+                </kbd>
+                <kbd className="font-sans px-1 py-0.5 rounded-md border bg-gray-50/10 border-gray-200/20">
+                  K
+                </kbd>
+              </span>
+            )}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </>
   );
 }
