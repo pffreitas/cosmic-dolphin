@@ -1,4 +1,6 @@
 const got = require("got").default || require("got");
+import * as dns from "dns";
+import * as net from "net";
 
 export interface HttpClient {
   /**
@@ -70,10 +72,63 @@ export class CosmicHttpClient implements HttpClient {
         throwHttpErrors: true,
         hooks: {
           beforeRequest: [
-            (options: any) => {
+            async (options: any) => {
               console.log(
                 `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`
               );
+              const urlObj = new URL(options.url.toString());
+              let hostname = urlObj.hostname;
+
+              // Strip brackets from IPv6
+              hostname = hostname.replace(/^\[(.*)\]$/, '$1');
+
+              let resolvedIp = hostname;
+              if (!net.isIP(hostname)) {
+                try {
+                  const lookupResult = await dns.promises.lookup(hostname);
+                  resolvedIp = lookupResult.address;
+                } catch (error) {
+                  throw new Error(`DNS lookup failed for ${hostname}`);
+                }
+              }
+
+              const isInternalIp = (ip: string) => {
+                const normalizedIp = ip.replace(/^::ffff:/i, "");
+                if (normalizedIp === "0.0.0.0" || normalizedIp === "::") return true;
+                if (normalizedIp.startsWith("127.")) return true;
+                if (normalizedIp.startsWith("10.")) return true;
+                if (normalizedIp.startsWith("169.254.")) return true;
+                if (normalizedIp.startsWith("192.168.")) return true;
+
+                // 172.16.0.0/12
+                if (normalizedIp.startsWith("172.")) {
+                  const secondOctet = parseInt(normalizedIp.split(".")[1], 10);
+                  if (secondOctet >= 16 && secondOctet <= 31) return true;
+                }
+
+                // IPv6
+                if (normalizedIp === "::1") return true;
+                if (normalizedIp.toLowerCase().startsWith("fc") || normalizedIp.toLowerCase().startsWith("fd") || normalizedIp.toLowerCase().startsWith("fe8")) return true;
+
+                return false;
+              };
+
+              if (isInternalIp(resolvedIp)) {
+                throw new Error(`SSRF Prevention: Access to internal IP ${resolvedIp} is blocked.`);
+              }
+
+              // Prevent DNS rebinding by explicitly setting the connection URL to the resolved IP
+              // We must modify options.url because options.hostname is ignored by got
+              const ipHostname = net.isIPv6(resolvedIp) ? `[${resolvedIp}]` : resolvedIp;
+              urlObj.hostname = ipHostname;
+              options.url = urlObj;
+
+              options.headers.host = hostname; // Preserve original host header
+
+              if (urlObj.protocol === "https:") {
+                options.https = options.https || {};
+                options.https.servername = hostname; // SNI
+              }
             },
           ],
           afterResponse: [
