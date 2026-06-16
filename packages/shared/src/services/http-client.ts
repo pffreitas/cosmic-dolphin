@@ -1,4 +1,49 @@
 const got = require("got").default || require("got");
+import * as net from "net";
+import * as dns from "dns/promises";
+
+/**
+ * Checks if an IP address belongs to a private, loopback, or non-routable range.
+ */
+function isPrivateIP(ip: string): boolean {
+  if (ip.startsWith("::ffff:")) {
+    ip = ip.substring(7);
+    if (!ip.includes(".")) {
+      const parts = ip.split(":");
+      let v4 = "";
+      if (parts.length === 2) {
+        const p1 = parseInt(parts[0], 16);
+        const p2 = parseInt(parts[1], 16);
+        v4 = `${(p1 >> 8) & 0xff}.${p1 & 0xff}.${(p2 >> 8) & 0xff}.${p2 & 0xff}`;
+      } else if (parts.length === 1) {
+        const p = parseInt(parts[0], 16);
+        v4 = `${(p >> 24) & 0xff}.${(p >> 16) & 0xff}.${(p >> 8) & 0xff}.${p & 0xff}`;
+      }
+      if (v4) ip = v4;
+    }
+  }
+  if (ip === "::" || ip === "0.0.0.0") return true;
+
+  if (net.isIPv4(ip)) {
+    const parts = ip.split(".").map(Number);
+    if (parts[0] === 10) return true;
+    if (parts[0] === 127) return true;
+    if (parts[0] === 169 && parts[1] === 254) return true;
+    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+    if (parts[0] === 192 && parts[1] === 168) return true;
+    return false;
+  }
+
+  if (net.isIPv6(ip)) {
+    ip = ip.replace(/^\[(.*)\]$/, "$1");
+    if (ip === "::1") return true;
+    if (ip.toLowerCase().startsWith("fc") || ip.toLowerCase().startsWith("fd")) return true;
+    if (ip.toLowerCase().startsWith("fe8") || ip.toLowerCase().startsWith("fe9") || ip.toLowerCase().startsWith("fea") || ip.toLowerCase().startsWith("feb")) return true;
+    return false;
+  }
+
+  return false;
+}
 
 export interface HttpClient {
   /**
@@ -70,10 +115,39 @@ export class CosmicHttpClient implements HttpClient {
         throwHttpErrors: true,
         hooks: {
           beforeRequest: [
-            (options: any) => {
+            async (options: any) => {
               console.log(
                 `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`
               );
+              let hostname = options.url.hostname;
+              const cleanHostname = hostname.replace(/^\[(.*)\]$/, "$1");
+
+              let ip = cleanHostname;
+              if (!net.isIP(cleanHostname)) {
+                try {
+                  const lookup = await dns.lookup(cleanHostname);
+                  ip = lookup.address;
+                } catch (err) {
+                  throw new Error("DNS lookup failed: SSRF protection blocked the request.");
+                }
+              }
+
+              if (isPrivateIP(ip)) {
+                throw new Error("Security Error: Blocked access to private or internal IP address.");
+              }
+
+              // Override URL to connect to the resolved IP directly to prevent DNS rebinding TOCTOU
+              if (net.isIPv6(ip)) {
+                options.url.hostname = `[${ip}]`;
+              } else {
+                options.url.hostname = ip;
+              }
+              options.headers.host = hostname;
+
+              if (options.url.protocol === "https:" && !net.isIP(cleanHostname)) {
+                options.https = options.https || {};
+                options.https.servername = hostname;
+              }
             },
           ],
           afterResponse: [
