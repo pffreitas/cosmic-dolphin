@@ -8,7 +8,7 @@ import {
   clearErrors,
 } from "@/lib/store/slices/bookmarksSlice";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
-import { Bookmark } from "lucide-react";
+import { Bookmark, ArrowRight, Loader2 } from "lucide-react";
 import { PreviewResponse } from "@cosmic-dolphin/api-client";
 import PrivateLinkDialog from "./private-link-dialog";
 
@@ -32,7 +32,9 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
 
   const isLoading = createLoading || previewLoading;
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!url.trim()) return;
     dispatch(clearErrors());
 
     const result = await dispatch(previewUrl(url));
@@ -102,23 +104,39 @@ export default function NewBookmarkButton({}: NewBookmarkButtonProps) {
                 <div className="absolute w-full h-full blur rounded-lg bg-gradient-to-br from-pink-500 via-violet-500 to-cyan-500 animate-tilt"></div>
               )}
               <div className="relative bg-white rounded-lg p-4 shadow-2xl shadow-teal-300">
-                <input
-                  type="text"
-                  className="w-full p-2 focus:outline-none "
-                  value={url}
-                  autoFocus={true}
-                  disabled={isLoading}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !isLoading) {
-                      handleSubmit();
-                    }
-                  }}
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder="URL"
-                />
+                <form
+                  onSubmit={handleSubmit}
+                  className="flex items-center gap-2"
+                >
+                  <div className="relative flex-1">
+                    <input
+                      type="url"
+                      className="w-full p-2 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500/50 rounded-md transition-shadow"
+                      value={url}
+                      autoFocus={true}
+                      disabled={isLoading}
+                      onChange={(e) => setUrl(e.target.value)}
+                      placeholder="Paste a URL to save..."
+                      aria-label="Bookmark URL"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isLoading || !url.trim()}
+                    aria-label="Save bookmark"
+                    className="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <ArrowRight className="h-5 w-5" />
+                    )}
+                  </button>
+                </form>
 
                 {displayError && (
-                  <div className="text-red-600 p-2 text-sm">{displayError}</div>
+                  <div className="text-red-600 pt-2 text-sm">{displayError}</div>
                 )}
               </div>
             </div>
