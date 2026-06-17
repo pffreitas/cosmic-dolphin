@@ -33,6 +33,8 @@ enum ProcessingStatus {
 model Bookmark {
     id: string;
     sourceUrl: string;
+    createdAt: utcDateTime;
+    updatedAt: utcDateTime;
     collectionId?: string;
     collectionPath?: CollectionPathItem[];
     title?: string;

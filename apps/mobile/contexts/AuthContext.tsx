@@ -6,6 +6,7 @@ import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { Alert, Platform } from 'react-native';
+import { clearBookmarkCache } from '@/lib/bookmark-cache';
 
 // Required for web only
 WebBrowser.maybeCompleteAuthSession();
@@ -208,8 +209,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Sign out
   const signOut = async () => {
     try {
+      const signedInUserId = user?.id;
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+
+      if (signedInUserId) {
+        await clearBookmarkCache(signedInUserId);
+      }
     } catch (error: any) {
       console.error('Sign out error:', error);
       Alert.alert('Sign Out Error', error.message || 'Failed to sign out');
