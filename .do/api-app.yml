@@ -11,6 +11,9 @@ envs:
 - key: NODE_ENV
   scope: RUN_AND_BUILD_TIME
   value: production
+- key: FRONTEND_URL
+  scope: RUN_AND_BUILD_TIME
+  value: https://cosmic-dolphin.com,https://www.cosmic-dolphin.com
 - key: DATABASE_URL
   scope: RUN_AND_BUILD_TIME
   value: ${DATABASE_URL}
