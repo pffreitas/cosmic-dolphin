@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { BookmarksAPI, Bookmark } from '@/lib/api';
 import { useDebounce } from './useDebounce';
+import { useAuth } from '@/contexts/AuthContext';
+import { cacheBookmarksInBackground } from '@/lib/bookmark-cache';
 
 interface UseSearchResult {
   query: string;
@@ -11,6 +13,7 @@ interface UseSearchResult {
 }
 
 export function useSearch(): UseSearchResult {
+  const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Bookmark[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -35,6 +38,7 @@ export function useSearch(): UseSearchResult {
       .then((bookmarks) => {
         if (requestId === requestIdRef.current) {
           setResults(bookmarks);
+          cacheBookmarksInBackground(user?.id, bookmarks);
         }
       })
       .catch((err) => {
@@ -48,7 +52,7 @@ export function useSearch(): UseSearchResult {
           setIsLoading(false);
         }
       });
-  }, [debouncedQuery]);
+  }, [debouncedQuery, user?.id]);
 
   return { query, setQuery, results, isLoading, error };
 }

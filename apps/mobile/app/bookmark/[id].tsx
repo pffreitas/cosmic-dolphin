@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -19,6 +19,13 @@ import { Ionicons } from '@expo/vector-icons';
 import Markdown from 'react-native-markdown-display';
 
 import { Bookmark, BookmarksAPI } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  cacheBookmarksInBackground,
+  getCachedBookmark,
+  removeCachedBookmark,
+} from '@/lib/bookmark-cache';
+import { isAuthError } from '@/lib/api-errors';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
@@ -47,6 +54,7 @@ function formatDate(dateString: string): string {
 export default function BookmarkDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
 
@@ -167,33 +175,50 @@ export default function BookmarkDetailScreen() {
     },
   }), [colors]);
 
-  useEffect(() => {
-    if (id) {
-      fetchBookmark(id);
-    }
-  }, [id]);
+  const applyBookmark = useCallback((data: Bookmark) => {
+    setBookmark(data);
+    setIsLiked(data.isLikedByCurrentUser ?? false);
+    setLikeCount(data.likeCount ?? 0);
+    setIsShared(data.isPublic ?? false);
+  }, []);
 
-  const fetchBookmark = async (bookmarkId: string) => {
+  const fetchBookmark = useCallback(async (bookmarkId: string) => {
     setIsLoading(true);
     setError(null);
 
     try {
       const data = await BookmarksAPI.findById(bookmarkId);
       if (data) {
-        setBookmark(data);
-        setIsLiked(data.isLikedByCurrentUser ?? false);
-        setLikeCount(data.likeCount ?? 0);
-        setIsShared(data.isPublic ?? false);
+        applyBookmark(data);
+        cacheBookmarksInBackground(user?.id, [data]);
       } else {
+        if (user?.id) {
+          await removeCachedBookmark(user.id, bookmarkId);
+        }
         setError('Bookmark not found');
       }
     } catch (err) {
+      if (user?.id && !isAuthError(err)) {
+        const cachedBookmark = await getCachedBookmark(user.id, bookmarkId);
+        if (cachedBookmark) {
+          applyBookmark(cachedBookmark);
+          setError(null);
+          return;
+        }
+      }
+
       console.error('Error fetching bookmark:', err);
       setError(err instanceof Error ? err.message : 'Failed to load bookmark');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [applyBookmark, user?.id]);
+
+  useEffect(() => {
+    if (id) {
+      fetchBookmark(id);
+    }
+  }, [fetchBookmark, id]);
 
   const handleOpenUrl = () => {
     if (bookmark?.sourceUrl) {
@@ -250,7 +275,7 @@ export default function BookmarkDetailScreen() {
       setIsShared(result.isPublic);
       setShareUrl(result.shareUrl);
       setIsShareModalVisible(true);
-    } catch (err) {
+    } catch {
       Alert.alert('Error', 'Failed to share bookmark. Please try again.');
     } finally {
       setIsShareLoading(false);
@@ -266,7 +291,7 @@ export default function BookmarkDetailScreen() {
       setIsShared(result.isPublic);
       setShareUrl('');
       setIsShareModalVisible(false);
-    } catch (err) {
+    } catch {
       Alert.alert('Error', 'Failed to unshare bookmark. Please try again.');
     } finally {
       setIsShareLoading(false);
