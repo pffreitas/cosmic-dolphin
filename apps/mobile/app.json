@@ -9,20 +9,26 @@
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/images/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0a0a1a"
+      "resizeMode": "cover",
+      "backgroundColor": "#00021f"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.cosmicdolphin.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIStatusBarStyle": "UIStatusBarStyleLightContent"
       }
+    },
+    "androidStatusBar": {
+      "backgroundColor": "#00021f",
+      "barStyle": "light-content",
+      "translucent": false
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#0a0a1a"
+        "backgroundColor": "#00021f"
       },
       "package": "com.cosmicdolphin.app"
     },
@@ -33,6 +39,25 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash.png",
+          "resizeMode": "cover",
+          "backgroundColor": "#00021f",
+          "enableFullScreenImage_legacy": true,
+          "ios": {
+            "image": "./assets/images/splash.png",
+            "resizeMode": "cover",
+            "backgroundColor": "#00021f"
+          },
+          "android": {
+            "image": "./assets/images/splash.png",
+            "resizeMode": "cover",
+            "backgroundColor": "#00021f"
+          }
+        }
+      ],
       [
         "expo-share-intent",
         {

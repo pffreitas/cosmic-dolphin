@@ -2,13 +2,15 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
 import 'react-native-reanimated';
-import { ShareIntentProvider, useShareIntent } from 'expo-share-intent';
+import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
 import { View, ActivityIndicator } from 'react-native';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { buildShareRoute } from '@/lib/shareIntent';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -48,6 +50,8 @@ function RootLayoutNav() {
   const router = useRouter();
   const pathname = usePathname();
   const { session, isLoading } = useAuth();
+  const statusBarStyle = colorScheme === 'dark' ? 'light' : 'dark';
+  const statusBarBackground = colorScheme === 'dark' ? '#00021f' : '#ffffff';
   
   // Track if we've already initiated navigation to share screen for the current intent
   const hasNavigatedToShare = useRef(false);
@@ -57,10 +61,7 @@ function RootLayoutNav() {
   useProtectedRoute();
 
   // Handle incoming share intents from other apps
-  const { hasShareIntent, shareIntent, error } = useShareIntent({
-    debug: true,
-    resetOnBackground: true,
-  });
+  const { hasShareIntent, shareIntent, error, resetShareIntent } = useShareIntentContext();
 
   // Reset navigation state when share intent is cleared
   useEffect(() => {
@@ -78,7 +79,8 @@ function RootLayoutNav() {
     // 3. We're not already on the share screen
     // 4. Navigation is not already in progress
     const isOnShareScreen = pathname === '/share';
-    const hasValidIntent = hasShareIntent && shareIntent && Object.keys(shareIntent).length > 0;
+    const shareRoute = buildShareRoute(shareIntent);
+    const hasValidIntent = hasShareIntent && !!shareRoute;
     
     console.log('🔍 Share Intent Check:', { 
       hasShareIntent,
@@ -89,6 +91,12 @@ function RootLayoutNav() {
       navigationInProgress: navigationInProgress.current
     });
     
+    if (hasShareIntent && !shareRoute) {
+      console.log('Ignoring share intent without a URL');
+      resetShareIntent();
+      return;
+    }
+
     if (hasValidIntent && !hasNavigatedToShare.current && !isOnShareScreen && !navigationInProgress.current) {
       // If not authenticated, the protected route will handle redirecting to sign-in.
       // Once signed in, this effect will re-run and trigger navigation.
@@ -97,37 +105,15 @@ function RootLayoutNav() {
       console.log('🐬 Cosmic Dolphin received a shared link!');
       console.log('📎 Share Intent Data:', JSON.stringify(shareIntent, null, 2));
 
-      // Extract URL from the intent before resetting it
-      const urlRegex = /(https?:\/\/[^\s,;)]+)/g;
-      const possibleValues = [
-        (shareIntent as any).url,
-        (shareIntent as any).webUrl,
-        (shareIntent as any).text,
-        (shareIntent as any).meta?.url,
-        (shareIntent as any).meta?.webUrl,
-        (shareIntent as any).uri,
-        (shareIntent as any).data,
-      ];
-      let extractedUrl: string | null = null;
-      for (const value of possibleValues) {
-        if (typeof value === 'string' && value.length > 0) {
-          const match = value.match(urlRegex);
-          if (match?.[0]) { extractedUrl = match[0]; break; }
-        }
-      }
-
       // Mark that we've navigated
       hasNavigatedToShare.current = true;
       navigationInProgress.current = true;
 
       // Navigate to the share screen, passing the URL as a stable param so
       // share.tsx doesn't need to re-read (and race with) the share intent.
-      const target = extractedUrl
-        ? `/share?url=${encodeURIComponent(extractedUrl)}`
-        : '/share';
-      router.replace(target as any);
+      router.replace(shareRoute as any);
     }
-  }, [hasShareIntent, shareIntent, pathname, session]);
+  }, [hasShareIntent, shareIntent, pathname, resetShareIntent, router, session]);
 
   // Log any errors with share intent
   useEffect(() => {
@@ -139,42 +125,48 @@ function RootLayoutNav() {
   // Show loading screen while checking auth state
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colorScheme === 'dark' ? '#0a0a1a' : '#ffffff' }}>
-        <ActivityIndicator size="large" color={colorScheme === 'dark' ? '#ffffff' : '#111827'} />
-      </View>
+      <>
+        <StatusBar style={statusBarStyle} backgroundColor={statusBarBackground} translucent={false} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: statusBarBackground }}>
+          <ActivityIndicator size="large" color={colorScheme === 'dark' ? '#ffffff' : '#111827'} />
+        </View>
+      </>
     );
   }
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen 
-          name="bookmark/[id]" 
-          options={{ 
-            headerShown: false,
-            animation: 'slide_from_right',
-          }} 
-        />
-        <Stack.Screen 
-          name="search" 
-          options={{ 
-            headerShown: false,
-            presentation: 'modal',
-            animation: 'slide_from_bottom',
-          }} 
-        />
-        <Stack.Screen 
-          name="share" 
-          options={{ 
-            headerShown: false,
-            presentation: 'modal',
-            animation: 'slide_from_bottom',
-          }} 
-        />
-        <Stack.Screen name="+not-found" />
-      </Stack>
+      <>
+        <StatusBar style={statusBarStyle} backgroundColor={statusBarBackground} translucent={false} />
+        <Stack>
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="bookmark/[id]"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="search"
+            options={{
+              headerShown: false,
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
+            }}
+          />
+          <Stack.Screen
+            name="share"
+            options={{
+              headerShown: false,
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
+            }}
+          />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+      </>
     </ThemeProvider>
   );
 }

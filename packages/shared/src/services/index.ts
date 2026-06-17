@@ -7,6 +7,7 @@ export * from "./collection.service";
 export * from "./profile.service";
 export * from "./bookmark.processor.service";
 export * from "./bookmark.categorizer.service";
+export * from "./bookmark.model-ids";
 export * from "./chunking.service";
 export * from "./embedding.service";
 export * from "./search.service";

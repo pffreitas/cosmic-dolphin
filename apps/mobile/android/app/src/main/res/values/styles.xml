@@ -3,12 +3,17 @@
     <item name="android:enforceNavigationBarContrast" tools:targetApi="29">true</item>
     <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
     <item name="colorPrimary">@color/colorPrimary</item>
-    <item name="android:statusBarColor">#0a0a1a</item>
+    <item name="android:statusBarColor">@color/splashscreen_statusbar_color</item>
+    <item name="android:navigationBarColor">@color/splashscreen_navigationbar_color</item>
   </style>
   <style name="Theme.App.SplashScreen" parent="Theme.SplashScreen">
     <item name="windowSplashScreenBackground">@color/splashscreen_background</item>
     <item name="windowSplashScreenAnimatedIcon">@drawable/splashscreen_logo</item>
     <item name="postSplashScreenTheme">@style/AppTheme</item>
     <item name="android:windowSplashScreenBehavior">icon_preferred</item>
+    <item name="android:statusBarColor">@color/splashscreen_statusbar_color</item>
+    <item name="android:navigationBarColor">@color/splashscreen_navigationbar_color</item>
+    <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
+    <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
   </style>
 </resources>

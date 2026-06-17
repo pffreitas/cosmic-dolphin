@@ -1,9 +1,17 @@
 import { config } from 'dotenv';
+import { existsSync } from 'fs';
 import { join } from 'path';
 import { getTestDatabase, DatabaseTestUtils, closeTestDatabase } from '../test-utils/database';
 
 // Load .env.test for local development; in CI, env vars are injected by the workflow.
-config({ path: join(process.cwd(), '.env.test') });
+[
+  join(process.cwd(), '.env.test'),
+  join(process.cwd(), '../../.env.test'),
+].forEach((envPath) => {
+  if (existsSync(envPath)) {
+    config({ path: envPath });
+  }
+});
 
 let dbUtils: DatabaseTestUtils | null = null;
 

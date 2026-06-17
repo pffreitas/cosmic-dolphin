@@ -1,6 +1,22 @@
-const mockCreateClient = jest.fn(() => ({
-  auth: {},
-}));
+type StorageAdapter = {
+  getItem: (key: string) => Promise<string | null>;
+  setItem: (key: string, value: string) => Promise<void>;
+  removeItem: (key: string) => Promise<void>;
+};
+
+type SupabaseClientOptions = {
+  auth: {
+    storage: StorageAdapter;
+  };
+};
+
+type CreateClientCall = [string, string, SupabaseClientOptions];
+
+const mockCreateClient = jest.fn(
+  (_url: string, _key: string, _options: SupabaseClientOptions) => ({
+    auth: {},
+  })
+);
 
 jest.mock('@supabase/supabase-js', () => ({
   createClient: mockCreateClient,
@@ -28,7 +44,7 @@ describe('Supabase storage adapter', () => {
     if (originalLocalStorage) {
       Object.defineProperty(globalThis, 'localStorage', originalLocalStorage);
     } else {
-      delete (globalThis as typeof globalThis & { localStorage?: unknown }).localStorage;
+      Reflect.deleteProperty(globalThis, 'localStorage');
     }
   });
 
@@ -40,7 +56,9 @@ describe('Supabase storage adapter', () => {
 
     require('../supabase');
 
-    const storage = mockCreateClient.mock.calls[0][2].auth.storage;
+    const createClientCalls = mockCreateClient.mock.calls as CreateClientCall[];
+    expect(createClientCalls).toHaveLength(1);
+    const storage = createClientCalls[0]![2].auth.storage;
 
     await expect(storage.getItem('session')).resolves.toBeNull();
     await expect(storage.setItem('session', 'value')).resolves.toBeUndefined();

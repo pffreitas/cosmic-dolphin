@@ -97,6 +97,7 @@ export function MobileHeader({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
+                  aria-label="Open profile menu"
                   className="cursor-pointer rounded-full ring-offset-background transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <Avatar className="h-9 w-9 shadow-sm">

@@ -24,6 +24,7 @@ import {
 import { CollectionRepository } from "../repositories/collection.repository";
 import { ChunkingService, ChunkingServiceImpl } from "./chunking.service";
 import { EmbeddingService, EmbeddingServiceImpl } from "./embedding.service";
+import { BOOKMARK_MODEL_IDS } from "./bookmark.model-ids";
 
 export interface BookmarkProcessorService {
   process(id: string, userId: string): Promise<void>;
@@ -96,6 +97,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       }
     );
 
+    const startedTasks: Promise<unknown>[] = [];
+
     try {
       const session = await this.ai.newSession(bookmark.id);
       await this.eventBus.publishToBookmark(
@@ -147,6 +150,12 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         bookmark,
         scrapedContent
       );
+      startedTasks.push(
+        summarizePromise,
+        metadataPromise,
+        imagesPromise,
+        embeddingPromise
+      );
 
       // Categorization requires summary and tags, so we wait for those first
       const [{ summary, briefSummary }, tags] = await Promise.all([
@@ -196,6 +205,12 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         }
       );
     } catch (error) {
+      // If one parallel task fails, make sure every task that was already
+      // started has settled before rethrowing. Otherwise later rejections from
+      // the still-running tasks can surface as unhandled promise rejections in
+      // Node/Jest and fail CI after the expected error has already been caught.
+      await Promise.allSettled(startedTasks);
+
       // Update processing status to 'failed'
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
@@ -251,7 +266,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     try {
       const enrichment = await this.ai.generateObject({
         sessionID: session.sessionID,
-        modelId: "google/gemini-2.5-flash",
+        modelId: BOOKMARK_MODEL_IDS.small,
         prompt: PRIVATE_LINK_ENRICHMENT_PROMPT
           .replace("{{URL}}", bookmark.sourceUrl)
           .replace("{{TITLE}}", bookmark.title || "Untitled")
@@ -420,7 +435,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         sessionID: session.sessionID,
         taskID: task.taskID,
         messageID: Identifier.ascending("message"),
-        modelId: "google/gemini-2.5-pro",
+        modelId: BOOKMARK_MODEL_IDS.large,
         context: [],
         tools: [],
         message: {
@@ -446,7 +461,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
 
       briefSummary = await this.ai.generateObject({
         sessionID: session.sessionID,
-        modelId: "google/gemini-2.5-flash",
+        modelId: BOOKMARK_MODEL_IDS.small,
         prompt: briefPrompt.replace("{{CONTENT}}", textContent),
         schema: z.string().describe("The summary of the content"),
       });
@@ -480,37 +495,21 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     await this.eventBus.publishToBookmark(bookmark.id, "task.started", task);
 
     try {
-      let output = "";
-      for await (const part of this.ai.prompt({
+      const response = await this.ai.generateObject({
         sessionID: session.sessionID,
-        taskID: task.taskID,
-        messageID: Identifier.ascending("message"),
-        modelId: "x-ai/grok-code-fast-1",
-        context: [],
-        tools: [],
-        message: {
-          role: "user",
-          content: GENERATE_TAGS_PROMPT.replace(
-            "{{CONTENT}}",
-            this.isTwitterBookmark(bookmark) || this.isYouTubeBookmark(bookmark)
-              ? (content.content ?? "")
-              : this.chunkingService.stripHtml(content.content ?? "")
-          ),
-        },
-      })) {
-        if (part.type === "text") {
-          output = part.part.text;
-        }
-      }
-
-      // TODO: handle error and retry
-      const parsed = z
-        .object({
+        modelId: BOOKMARK_MODEL_IDS.small,
+        prompt: GENERATE_TAGS_PROMPT.replace(
+          "{{CONTENT}}",
+          this.isTwitterBookmark(bookmark) || this.isYouTubeBookmark(bookmark)
+            ? (content.content ?? "")
+            : this.chunkingService.stripHtml(content.content ?? "")
+        ),
+        schema: z.object({
           tags: z.array(z.string()).describe("The array of tag strings"),
-        })
-        .parse(JSON.parse(output));
+        }),
+      });
 
-      return parsed.tags;
+      return response.tags;
     } catch (error) {
       console.error("Failed to generate metadata", error);
       await this.eventBus.publishToBookmark(bookmark.id, "task.failed", task);
@@ -629,7 +628,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     try {
       const relevantImages = await this.ai.generateObject({
         sessionID: session.sessionID,
-        modelId: "x-ai/grok-code-fast-1",
+        modelId: BOOKMARK_MODEL_IDS.small,
         prompt: FILTER_IMAGES_PROMPT.replace(
           "{{CONTENT}}",
           content.content ?? ""

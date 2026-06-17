@@ -58,27 +58,18 @@ describe("BookmarkProcessorService", () => {
       delete: jest.fn(),
     } as jest.Mocked<BookmarkService>;
 
-    let callCount = 0;
-    const mockPromptGenerator = async function* () {
-      if (callCount === 0) {
-        // First call is for summarization
-        yield { type: "text", part: { text: "Generated summary" } };
-      } else if (callCount === 1) {
-        // Second call is for tags generation (needs JSON)
+    const mockPromptGenerator = async function* (input: {
+      message?: { content?: string };
+    }) {
+      const message = input.message?.content ?? "";
+      if (message.includes("generate the tags")) {
         yield {
           type: "text",
           part: { text: '{"tags": ["test", "bookmark"]}' },
         };
       } else {
-        // Third call is for image processing (needs JSON)
-        yield {
-          type: "text",
-          part: {
-            text: '{"images": [{"url": "https://example.com/image.jpg", "alt": "Test image"}]}',
-          },
-        };
+        yield { type: "text", part: { text: "Generated summary" } };
       }
-      callCount++;
     };
 
     mockAI = {
@@ -105,10 +96,17 @@ describe("BookmarkProcessorService", () => {
               },
             ],
           };
+        } else if (
+          input.prompt &&
+          input.prompt.includes("Your task is to generate the tags")
+        ) {
+          return {
+            tags: ["test", "bookmark"],
+          };
         }
         return "Default generated object";
       }),
-      prompt: jest.fn().mockImplementation(() => mockPromptGenerator()),
+      prompt: jest.fn().mockImplementation((input: any) => mockPromptGenerator(input)),
       processStream: jest.fn(),
     } as any;
 
@@ -434,6 +432,53 @@ describe("BookmarkProcessorService", () => {
       );
     });
 
+    it("uses the large model for full summaries and the small model for generated bookmark data", async () => {
+      const mockSession: Session = {
+        sessionID: "test-session-id",
+        refID: testBookmark.id,
+      };
+
+      const mockTask: Task = {
+        taskID: "test-task-id",
+        sessionID: mockSession.sessionID,
+        name: "test-task",
+        status: "pending",
+        subTasks: {},
+      };
+
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
+        testScrapedContent
+      );
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(
+        testBookmark
+      );
+      mockBookmarkService.update.mockResolvedValue(testBookmark);
+      mockAI.newSession.mockResolvedValue(mockSession);
+      mockAI.newTask.mockResolvedValue(mockTask);
+      mockAI.newSubTask.mockResolvedValue({
+        taskID: "subtask-id",
+        name: "test-subtask",
+        status: "pending",
+      });
+
+      await service.process(testBookmark.id, testBookmark.userId);
+
+      expect(mockAI.prompt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          modelId: "qwen/qwen3.7-plus",
+        })
+      );
+      expect(
+        mockAI.generateObject.mock.calls.map(([input]) => input.modelId)
+      ).toEqual([
+        "deepseek/deepseek-v4-flash",
+        "deepseek/deepseek-v4-flash",
+        "deepseek/deepseek-v4-flash",
+        "deepseek/deepseek-v4-flash",
+      ]);
+    });
+
     it("should handle AI processing errors gracefully", async () => {
       const mockSession: Session = {
         sessionID: "test-session-id",
@@ -453,7 +498,14 @@ describe("BookmarkProcessorService", () => {
         name: "test-subtask",
         status: "pending",
       });
-      mockAI.newTask.mockRejectedValue(new Error("AI service unavailable"));
+      mockAI.newTask.mockResolvedValue({
+        taskID: "test-task-id",
+        sessionID: mockSession.sessionID,
+        name: "test-task",
+        status: "pending",
+        subTasks: {},
+      });
+      mockAI.newTask.mockRejectedValueOnce(new Error("AI service unavailable"));
 
       await expect(
         service.process(testBookmark.id, testBookmark.userId)
