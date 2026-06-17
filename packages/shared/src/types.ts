@@ -77,6 +77,11 @@ export interface BookmarkMetadata {
   openGraph?: OpenGraphMetadata;
   wordCount?: number;
   readingTime?: number;
+  privateLink?: {
+    userDescription: string;
+    userProvidedTitle?: string;
+    enrichedAt?: string;
+  };
 }
 
 export interface BookmarkImage {
@@ -189,8 +194,6 @@ export interface PreviewMetadata {
 export interface PreviewResponse {
   metadata: PreviewMetadata;
   scrapable: boolean;
-  suggestedTags?: string[];
-  suggestedDescription?: string;
 }
 
 export interface CreateBookmarkResponse {

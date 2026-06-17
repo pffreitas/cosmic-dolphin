@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { WebScrapingServiceImpl } from "@cosmic-dolphin/shared";
+import { validateCreateBookmarkBody } from "../routes/bookmarks";
 
 describe("Bookmark Feature Validation", () => {
   describe("URL validation", () => {
@@ -110,6 +111,40 @@ describe("Bookmark Feature Validation", () => {
       expect(payload.data.sourceUrl).toBeTruthy();
       expect(payload.data.userId).toBeTruthy();
       expect(payload.metadata?.source).toBe("api");
+    });
+  });
+
+  describe("Private link create validation", () => {
+    const isValidUrl = (url: string) => url.startsWith("https://");
+
+    it("should require a description when creating a private link", () => {
+      const result = validateCreateBookmarkBody(
+        {
+          source_url: "https://figma.com/file/private",
+          is_private_link: true,
+          description: "   ",
+        },
+        isValidUrl
+      );
+
+      expect(result).toEqual({
+        ok: false,
+        status: 400,
+        error: "description is required for private links",
+      });
+    });
+
+    it("should accept a private link with a non-empty description", () => {
+      const result = validateCreateBookmarkBody(
+        {
+          source_url: "https://figma.com/file/private",
+          is_private_link: true,
+          description: "Design review for the checkout flow",
+        },
+        isValidUrl
+      );
+
+      expect(result).toEqual({ ok: true });
     });
   });
 

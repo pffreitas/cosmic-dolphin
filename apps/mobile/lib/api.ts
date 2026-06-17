@@ -49,6 +49,9 @@ export interface Bookmark {
   isLikedByCurrentUser?: boolean;
   isPublic?: boolean;
   shareSlug?: string;
+  isPrivateLink?: boolean;
+  processingStatus?: 'idle' | 'processing' | 'completed' | 'failed';
+  processingError?: string;
 }
 
 export interface LikeResponse {
@@ -69,6 +72,9 @@ export interface GetBookmarksParams {
 export interface CreateBookmarkParams {
   source_url: string;
   collection_id?: string;
+  title?: string;
+  description?: string;
+  is_private_link?: boolean;
 }
 
 export interface CreateBookmarkResponse {
@@ -87,6 +93,7 @@ export interface UrlPreviewMetadata {
 
 export interface PreviewUrlResponse {
   metadata: UrlPreviewMetadata;
+  scrapable: boolean;
 }
 
 export interface ShareBookmarkResponse {
@@ -216,7 +223,7 @@ export namespace BookmarksAPI {
     }
   }
 
-  export async function preview(url: string): Promise<UrlPreviewMetadata> {
+  export async function preview(url: string): Promise<PreviewUrlResponse> {
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}/bookmarks/preview`, {
@@ -231,8 +238,7 @@ export namespace BookmarksAPI {
         throw new Error(errorMessage);
       }
 
-      const data: PreviewUrlResponse = await response.json();
-      return data.metadata;
+      return await response.json();
     } catch (error) {
       console.error('Error fetching URL preview:', error);
       throw error;

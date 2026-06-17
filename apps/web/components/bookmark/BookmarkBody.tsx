@@ -49,9 +49,14 @@ import { BookmarksClientAPI } from "@/lib/api/bookmarks-client";
 interface ProcessingStatusProps {
   status: string;
   error?: string;
+  isPrivateLink?: boolean;
 }
 
-const ProcessingStatusBanner = ({ status, error }: ProcessingStatusProps) => {
+const ProcessingStatusBanner = ({
+  status,
+  error,
+  isPrivateLink,
+}: ProcessingStatusProps) => {
   if (status === "idle" || status === "completed") {
     return null;
   }
@@ -85,10 +90,14 @@ const ProcessingStatusBanner = ({ status, error }: ProcessingStatusProps) => {
           <Loader2Icon className="size-5 text-blue-500 animate-spin shrink-0" />
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-medium text-blue-700 dark:text-blue-400">
-              Processing bookmark...
+              {isPrivateLink
+                ? "Organizing for quick access..."
+                : "Processing bookmark..."}
             </span>
             <span className="text-xs text-blue-600 dark:text-blue-500">
-              AI is analyzing and summarizing the content
+              {isPrivateLink
+                ? "AI is creating tags and a category from your note"
+                : "AI is analyzing and summarizing the content"}
             </span>
           </div>
         </div>
@@ -275,6 +284,7 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
       <ProcessingStatusBanner
         status={processingStatus}
         error={(bookmark as any).processingError}
+        isPrivateLink={bookmark.isPrivateLink}
       />
 
       {/* Legacy loading indicator */}
@@ -407,7 +417,11 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
       {!bookmark.cosmicSummary && processingStatus === "processing" && (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2Icon className="size-4 animate-spin" />
-          <span className="text-sm">Generating summary...</span>
+          <span className="text-sm">
+            {bookmark.isPrivateLink
+              ? "Organizing for quick access..."
+              : "Generating summary..."}
+          </span>
         </div>
       )}
 

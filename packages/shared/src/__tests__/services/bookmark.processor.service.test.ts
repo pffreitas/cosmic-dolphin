@@ -48,7 +48,7 @@ describe("BookmarkProcessorService", () => {
       updateProcessingStatus: jest.fn(),
       create: jest.fn(),
       createPrivateLink: jest.fn(),
-      inferPrivateLinkMetadata: jest.fn(),
+      convertToPrivateLink: jest.fn(),
       findByUserAndUrl: jest.fn(),
       findByUser: jest.fn(),
       searchByQuickAccess: jest.fn(),
@@ -290,6 +290,105 @@ describe("BookmarkProcessorService", () => {
         testBookmark.id
       );
       expect(mockAI.newSession).not.toHaveBeenCalled();
+    });
+
+    it("should enrich private links without scraped content or chunks", async () => {
+      const privateBookmark: Bookmark = {
+        ...testBookmark,
+        isPrivateLink: true,
+        title: "Private Figma File",
+        sourceUrl: "https://figma.com/file/private-design",
+        cosmicBriefSummary: "Checkout design review",
+        metadata: {
+          openGraph: {
+            site_name: "Figma",
+            title: "Private Figma File",
+            url: "https://figma.com/file/private-design",
+          },
+          privateLink: {
+            userDescription: "Checkout design review",
+            userProvidedTitle: "Private Figma File",
+          },
+        } as any,
+      };
+      const mockSession: Session = {
+        sessionID: "test-session-id",
+        refID: privateBookmark.id,
+      };
+      const mockTask: Task = {
+        taskID: "test-task-id",
+        sessionID: mockSession.sessionID,
+        name: "test-task",
+        status: "pending",
+        subTasks: {},
+      };
+
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(privateBookmark);
+      mockBookmarkService.updateProcessingStatus.mockImplementation(
+        async (_id, status) => ({
+          ...privateBookmark,
+          processingStatus: status,
+        })
+      );
+      mockBookmarkService.update.mockImplementation(async (_id, data) => ({
+        ...privateBookmark,
+        ...data,
+      }));
+      mockAI.newSession.mockResolvedValue(mockSession);
+      mockAI.newTask.mockResolvedValue(mockTask);
+      mockAI.newSubTask.mockResolvedValue({
+        taskID: "subtask-id",
+        name: "test-subtask",
+        status: "pending",
+      });
+      (mockAI.generateObject as jest.Mock).mockImplementation(async (input: any) => {
+        if (input.prompt.includes("private link quick-access record")) {
+          return {
+            title: "Checkout Design Review",
+            description:
+              "Private Figma file for the checkout design review and payment polish handoff.",
+            tags: ["figma", "checkout", "design-review"],
+            quickAccessKeywords: ["payments polish", "handoff"],
+          };
+        }
+
+        return {
+          existingCategoryId: null,
+          newCategoryPath: ["Design", "Reviews"],
+          confidence: 0.91,
+          reasoning: "The description is about a design review.",
+        };
+      });
+      mockCollectionRepository.createPath.mockResolvedValue({
+        id: "design-reviews-id",
+        name: "Reviews",
+        parent_id: "design-id",
+        user_id: privateBookmark.userId,
+        created_at: new Date(),
+        updated_at: new Date(),
+      } as any);
+
+      await service.process(privateBookmark.id, privateBookmark.userId);
+
+      expect(mockBookmarkService.getScrapedUrlContent).not.toHaveBeenCalled();
+      expect(mockContentChunkRepository.createTextChunk).not.toHaveBeenCalled();
+      expect(mockContentChunkRepository.updateTextChunkEmbedding).not.toHaveBeenCalled();
+
+      const updateCall = mockBookmarkService.update.mock.calls[0];
+      expect(updateCall[0]).toBe(privateBookmark.id);
+      expect(updateCall[1]).toEqual(
+        expect.objectContaining({
+          title: "Checkout Design Review",
+          cosmicBriefSummary:
+            "Private Figma file for the checkout design review and payment polish handoff.",
+          cosmicTags: ["figma", "checkout", "design-review"],
+          collectionId: "design-reviews-id",
+        })
+      );
+      expect(updateCall[1].cosmicSummary).toBeUndefined();
+      expect(updateCall[1].searchDocument).toBeUndefined();
+      expect(updateCall[1].quickAccess).toContain("payments polish");
+      expect(updateCall[1].quickAccess).toContain("handoff");
     });
 
     it("should use scraped content for processing", async () => {

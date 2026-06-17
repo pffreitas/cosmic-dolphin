@@ -1,5 +1,6 @@
 import {
   Bookmark,
+  BookmarkMetadata,
   ScrapedUrlContents,
   SearchBookmarksQuery,
   ShareBookmarkResponse,
@@ -15,8 +16,6 @@ import {
 } from "../repositories";
 import { WebScrapingService } from "./web-scraping.service";
 import { NewBookmark, BookmarkUpdate } from "../database/schema";
-import { AI } from "../ai";
-import { z } from "zod";
 
 export interface PrivateLinkMetadata {
   title?: string;
@@ -24,23 +23,6 @@ export interface PrivateLinkMetadata {
   tags?: string[];
   collectionId?: string;
 }
-
-const PRIVATE_LINK_INFERENCE_PROMPT = `You are analyzing a URL that cannot be fully scraped (it's behind authentication or otherwise inaccessible).
-Based on the URL and any metadata available, infer a short description and relevant tags.
-
-URL: {{URL}}
-Title: {{TITLE}}
-Site: {{SITE_NAME}}
-
-Return a JSON object with:
-- "description": A brief, useful description of what this link likely contains (1-2 sentences)
-- "tags": An array of 2-5 relevant tags (lowercase, no spaces, use hyphens for multi-word tags)
-
-Be specific based on URL patterns. For example:
-- GitHub URLs: infer repo name, whether it's a PR, issue, etc.
-- Jira/Linear URLs: infer it's a ticket/task
-- Google Docs: infer it's a document
-- Figma: infer it's a design file`;
 
 export interface BookmarkService {
   findByUserAndUrl(userId: string, sourceUrl: string): Promise<Bookmark | null>;
@@ -56,11 +38,10 @@ export interface BookmarkService {
     userId: string,
     metadata: PrivateLinkMetadata
   ): Promise<Bookmark>;
-  inferPrivateLinkMetadata(
-    url: string,
-    title?: string,
-    siteName?: string
-  ): Promise<{ tags: string[]; description: string }>;
+  convertToPrivateLink(
+    bookmark: Bookmark,
+    metadata: PrivateLinkMetadata
+  ): Promise<Bookmark>;
   findByUser(userId: string, options?: FindByUserOptions): Promise<Bookmark[]>;
   searchByQuickAccess(
     userId: string,
@@ -83,8 +64,7 @@ export class BookmarkServiceImpl implements BookmarkService {
   constructor(
     private bookmarkRepository: BookmarkRepository,
     private webScrapingService: WebScrapingService,
-    private collectionRepository?: CollectionRepository,
-    private ai?: AI
+    private collectionRepository?: CollectionRepository
   ) {}
 
   async findByUserAndUrl(
@@ -144,49 +124,76 @@ export class BookmarkServiceImpl implements BookmarkService {
     userId: string,
     metadata: PrivateLinkMetadata
   ): Promise<Bookmark> {
-    const title = metadata.title || url;
-    const newBookmark: NewBookmark = {
-      source_url: url,
-      title,
-      user_id: userId,
-      collection_id: metadata.collectionId || null,
-      cosmic_brief_summary: metadata.description || null,
-      cosmic_tags: metadata.tags || null,
-      quick_access: `${title} ${url}`,
-      processing_status: "completed",
-      processing_completed_at: new Date(),
-      is_private_link: true,
-    };
+    const newBookmark = this.buildPrivateLinkBookmarkData(
+      url,
+      userId,
+      metadata
+    );
 
     const bookmark = await this.bookmarkRepository.create(newBookmark);
     return this.mapDatabaseToBookmark(bookmark);
   }
 
-  async inferPrivateLinkMetadata(
-    url: string,
-    title?: string,
-    siteName?: string
-  ): Promise<{ tags: string[]; description: string }> {
-    if (!this.ai) {
-      return { tags: [], description: "" };
-    }
+  async convertToPrivateLink(
+    bookmark: Bookmark,
+    metadata: PrivateLinkMetadata
+  ): Promise<Bookmark> {
+    const privateLinkData = this.buildPrivateLinkBookmarkData(
+      bookmark.sourceUrl,
+      bookmark.userId,
+      metadata,
+      bookmark.title
+    );
+    const { source_url, user_id, ...updateData } = privateLinkData;
 
-    const prompt = PRIVATE_LINK_INFERENCE_PROMPT
-      .replace("{{URL}}", url)
-      .replace("{{TITLE}}", title || "Unknown")
-      .replace("{{SITE_NAME}}", siteName || "Unknown");
-
-    const result = await this.ai.generateObject({
-      sessionID: "private-link-inference",
-      modelId: "google/gemini-2.5-flash",
-      prompt,
-      schema: z.object({
-        description: z.string().describe("Brief description of the link"),
-        tags: z.array(z.string()).describe("Relevant tags for the link"),
-      }),
+    await this.bookmarkRepository.deleteScrapedUrlContents(bookmark.id);
+    const updatedBookmark = await this.bookmarkRepository.update(bookmark.id, {
+      ...updateData,
+      processing_started_at: null,
+      processing_completed_at: null,
+      processing_error: null,
     });
 
-    return result;
+    return this.mapDatabaseToBookmark(updatedBookmark);
+  }
+
+  private buildPrivateLinkBookmarkData(
+    url: string,
+    userId: string,
+    metadata: PrivateLinkMetadata,
+    fallbackTitle?: string
+  ): NewBookmark {
+    const title = metadata.title || fallbackTitle || url;
+    const urlMetadata = this.webScrapingService.extractMetadataFromUrl(url);
+    const description = metadata.description?.trim() || "";
+    const bookmarkMetadata: BookmarkMetadata = {
+      openGraph: {
+        title,
+        description: description || undefined,
+        favicon: urlMetadata.favicon,
+        site_name: urlMetadata.siteName,
+        url,
+      },
+      privateLink: {
+        userDescription: description,
+        userProvidedTitle: metadata.title,
+      },
+    };
+
+    return {
+      source_url: url,
+      title,
+      metadata: bookmarkMetadata,
+      user_id: userId,
+      collection_id: metadata.collectionId || null,
+      cosmic_summary: null,
+      cosmic_brief_summary: description || null,
+      cosmic_tags: metadata.tags || null,
+      quick_access: [title, url, description].filter(Boolean).join(" "),
+      search_document: null,
+      processing_status: "idle",
+      is_private_link: true,
+    };
   }
 
   async getScrapedUrlContent(

@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Link as LinkIcon, Loader2 } from "lucide-react";
-import { PreviewResponse, Collection } from "@cosmic-dolphin/api-client";
+import { Link as LinkIcon, Loader2 } from "lucide-react";
+import { PreviewResponse } from "@cosmic-dolphin/api-client";
 import {
   Dialog,
   DialogContent,
@@ -12,20 +12,11 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { createBookmark, clearErrors } from "@/lib/store/slices/bookmarksSlice";
-import { BookmarksClientAPI } from "@/lib/api/bookmarks-client";
+import { buildPrivateLinkCreateRequest } from "./private-link-payload";
 
 interface PrivateLinkDialogProps {
   open: boolean;
@@ -46,72 +37,33 @@ export default function PrivateLinkDialog({
     (state) => state.bookmarks.createLoading
   );
 
-  const [title, setTitle] = useState(previewData.metadata.title || "");
-  const [description, setDescription] = useState(
-    previewData.suggestedDescription || previewData.metadata.description || ""
-  );
-  const [tags, setTags] = useState<string[]>(
-    previewData.suggestedTags || []
-  );
-  const [tagInput, setTagInput] = useState("");
-  const [collectionId, setCollectionId] = useState<string>("");
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [collectionsLoading, setCollectionsLoading] = useState(true);
+  const [description, setDescription] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
-      setTitle(previewData.metadata.title || "");
-      setDescription(
-        previewData.suggestedDescription || previewData.metadata.description || ""
-      );
-      setTags(previewData.suggestedTags || []);
-      setTagInput("");
-      setCollectionId("");
+      setDescription("");
       setSaveError(null);
-
-      setCollectionsLoading(true);
-      BookmarksClientAPI.listCollections()
-        .then(setCollections)
-        .finally(() => setCollectionsLoading(false));
     }
-  }, [open, previewData]);
-
-  const handleAddTag = () => {
-    const trimmed = tagInput.trim().toLowerCase().replace(/\s+/g, "-");
-    if (trimmed && !tags.includes(trimmed)) {
-      setTags([...tags, trimmed]);
-    }
-    setTagInput("");
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter((t) => t !== tagToRemove));
-  };
-
-  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleAddTag();
-    }
-    if (e.key === "Backspace" && tagInput === "" && tags.length > 0) {
-      setTags(tags.slice(0, -1));
-    }
-  };
+  }, [open]);
 
   const handleSave = async () => {
     dispatch(clearErrors());
     setSaveError(null);
 
+    if (!description.trim()) {
+      setSaveError("Add a brief description so this private link is findable later.");
+      return;
+    }
+
     const result = await dispatch(
-      createBookmark({
-        sourceUrl: url,
-        title: title || undefined,
-        description: description || undefined,
-        tags: tags.length > 0 ? tags : undefined,
-        collectionId: collectionId || undefined,
-        isPrivateLink: true,
-      })
+      createBookmark(
+        buildPrivateLinkCreateRequest({
+          url,
+          previewData,
+          description,
+        })
+      )
     );
 
     if (createBookmark.fulfilled.match(result)) {
@@ -127,10 +79,11 @@ export default function PrivateLinkDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Save Private Link</DialogTitle>
+          <DialogTitle>Save private link</DialogTitle>
           <DialogDescription>
-            This link is behind authentication and can&apos;t be fully
-            processed. You can save it for quick access with the details below.
+            We can&apos;t read or summarize this page, but we can keep it at
+            hand. Add a short note and Cosmic Dolphin will organize it for
+            quick access.
           </DialogDescription>
         </DialogHeader>
 
@@ -146,87 +99,19 @@ export default function PrivateLinkDialog({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="private-link-title" className="text-sm font-medium">
-              Title
-            </label>
-            <Input
-              id="private-link-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter a title"
-            />
-          </div>
-
-          <div className="space-y-1.5">
             <label
               htmlFor="private-link-description"
               className="text-sm font-medium"
             >
-              Description
+              Brief description
             </label>
             <Textarea
               id="private-link-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Enter a description"
+              placeholder="What is this link, and why will you need it?"
               rows={3}
             />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Tags</label>
-            <div className="flex flex-wrap items-center gap-1.5 rounded-md border px-2 py-2">
-              {tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="gap-1 pr-1">
-                  {tag}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveTag(tag)}
-                    aria-label="Remove tag"
-                    className="rounded-full p-0.5 hover:bg-muted-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-              <input
-                type="text"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={handleTagKeyDown}
-                onBlur={handleAddTag}
-                placeholder={tags.length === 0 ? "Add tags..." : ""}
-                className="min-w-[80px] flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Collection</label>
-            {collectionsLoading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading collections...
-              </div>
-            ) : (
-              <Select value={collectionId} onValueChange={setCollectionId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a collection (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {collections.map((collection) => (
-                    <SelectItem key={collection.id} value={collection.id}>
-                      {collection.name}
-                    </SelectItem>
-                  ))}
-                  {collections.length === 0 && (
-                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                      No collections yet
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
-            )}
           </div>
 
           {saveError && (
@@ -242,7 +127,7 @@ export default function PrivateLinkDialog({
           >
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={createLoading}>
+          <Button onClick={handleSave} disabled={createLoading || !description.trim()}>
             {createLoading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />

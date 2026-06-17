@@ -49,6 +49,7 @@ export interface BookmarkRepository {
     >
   ): Promise<void>;
   getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
+  deleteScrapedUrlContents(bookmarkId: string): Promise<void>;
   findByUser(userId: string, options?: FindByUserOptions): Promise<Bookmark[]>;
   searchByQuickAccess(
     userId: string,
@@ -194,6 +195,15 @@ export class BookmarkRepositoryImpl
     }, "getScrapedUrlContent");
   }
 
+  async deleteScrapedUrlContents(bookmarkId: string): Promise<void> {
+    return this.executeQuery(async () => {
+      await this.db
+        .deleteFrom("scraped_url_contents")
+        .where("bookmark_id", "=", bookmarkId)
+        .execute();
+    }, "deleteScrapedUrlContents");
+  }
+
   async findByUser(
     userId: string,
     options: FindByUserOptions = {}
@@ -316,6 +326,7 @@ export class BookmarkRepositoryImpl
         FROM bookmarks
         WHERE user_id = ${userId}
           AND search_document &@~ ${query}
+          AND is_private_link = false
           ${includeArchived ? sql`` : sql`AND is_archived = false`}
         ORDER BY pgroonga_score DESC
         LIMIT ${limit}
@@ -352,6 +363,7 @@ export class BookmarkRepositoryImpl
         INNER JOIN bookmarks b ON b.id = suc.bookmark_id
         WHERE b.user_id = ${userId}
           AND tc.embedding IS NOT NULL
+          AND b.is_private_link = false
           ${includeArchived ? sql`` : sql`AND b.is_archived = false`}
         ORDER BY tc.embedding <=> ${vectorStr}::vector
         LIMIT ${limit}`.execute(this.db);

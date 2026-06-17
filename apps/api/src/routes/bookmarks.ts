@@ -18,6 +18,33 @@ import { createClient } from "@supabase/supabase-js";
 import { config } from "../config/environment";
 import { authMiddleware } from "../middleware/auth";
 
+export type CreateBookmarkValidationResult =
+  | { ok: true }
+  | { ok: false; status: 400; error: string };
+
+export function validateCreateBookmarkBody(
+  body: Partial<Omit<CreateBookmarkRequest, "user_id">>,
+  isValidUrl: (url: string) => boolean
+): CreateBookmarkValidationResult {
+  if (!body.source_url) {
+    return { ok: false, status: 400, error: "source_url is required" };
+  }
+
+  if (!isValidUrl(body.source_url)) {
+    return { ok: false, status: 400, error: "Invalid URL format" };
+  }
+
+  if (body.is_private_link && !body.description?.trim()) {
+    return {
+      ok: false,
+      status: 400,
+      error: "description is required for private links",
+    };
+  }
+
+  return { ok: true };
+}
+
 export default async function bookmarkRoutes(fastify: FastifyInstance) {
   const supabase = createClient(
     config.SUPABASE_URL,
@@ -50,12 +77,14 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
 
         fastify.log.info({ source_url, user_id, is_private_link }, "Create bookmark request");
 
-        if (!source_url) {
-          return reply.status(400).send({ error: "source_url is required" });
-        }
-
-        if (!services.webScraping.isValidUrl(source_url)) {
-          return reply.status(400).send({ error: "Invalid URL format" });
+        const validation = validateCreateBookmarkBody(
+          request.body,
+          services.webScraping.isValidUrl.bind(services.webScraping)
+        );
+        if (!validation.ok) {
+          return reply.status(validation.status).send({
+            error: validation.error,
+          });
         }
 
         const existingBookmark = await services.bookmark.findByUserAndUrl(
@@ -63,6 +92,31 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           source_url
         );
         if (existingBookmark) {
+          if (is_private_link) {
+            const bookmark = await services.bookmark.convertToPrivateLink(
+              existingBookmark,
+              {
+                title,
+                description,
+                tags,
+                collectionId: collection_id,
+              }
+            );
+            try {
+              await services.queue.sendBookmarkProcessingMessage(
+                bookmark.id,
+                user_id
+              );
+            } catch (queueError) {
+              console.log("queueError", queueError);
+              fastify.log.error({ queueError }, "Queue post error");
+            }
+            return reply.status(201).send({
+              bookmark,
+              message: "Private link saved successfully",
+            });
+          }
+
           return reply.status(201).send({
             bookmark: existingBookmark,
             message: "Bookmark created successfully",
@@ -73,8 +127,22 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           const bookmark = await services.bookmark.createPrivateLink(
             source_url,
             user_id,
-            { title, description, tags, collectionId: collection_id }
+            {
+              title,
+              description,
+              tags,
+              collectionId: collection_id,
+            }
           );
+          try {
+            await services.queue.sendBookmarkProcessingMessage(
+              bookmark.id,
+              user_id
+            );
+          } catch (queueError) {
+            console.log("queueError", queueError);
+            fastify.log.error({ queueError }, "Queue post error");
+          }
           return reply.status(201).send({
             bookmark,
             message: "Private link saved successfully",
@@ -117,6 +185,12 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
 
           if (error.message.includes("Unsupported content type")) {
             return reply.status(422).send({ error: error.message });
+          }
+
+          if (error.message.includes("Scraped content is not usable")) {
+            return reply
+              .status(422)
+              .send({ error: `URL not accessible: ${error.message}` });
           }
         }
 
@@ -203,7 +277,8 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
 
   // Preview endpoint - fetches OpenGraph metadata for a URL without saving.
   // On scraping failure (private/authenticated links), returns partial metadata
-  // derived from the URL structure along with AI-suggested tags and description.
+  // derived from the URL structure. User-provided description is collected only
+  // during private-link save, then enriched asynchronously after creation.
   fastify.post<{
     Body: { url: string };
     Reply: PreviewResponse | { error: string };
@@ -243,25 +318,9 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
 
         const partialMetadata = services.webScraping.extractMetadataFromUrl(url);
 
-        let suggestedTags: string[] | undefined;
-        let suggestedDescription: string | undefined;
-        try {
-          const aiSuggestions = await services.bookmark.inferPrivateLinkMetadata(
-            url,
-            partialMetadata.title,
-            partialMetadata.siteName
-          );
-          suggestedTags = aiSuggestions.tags;
-          suggestedDescription = aiSuggestions.description;
-        } catch (aiError) {
-          fastify.log.warn({ aiError }, "AI metadata inference failed, returning without suggestions");
-        }
-
         return reply.send({
           metadata: partialMetadata,
           scrapable: false,
-          suggestedTags,
-          suggestedDescription,
         });
       }
     }

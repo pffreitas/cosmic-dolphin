@@ -68,8 +68,7 @@ export function createServiceContainer(
     bookmark: new BookmarkServiceImpl(
       bookmarkRepository,
       webScrapingService,
-      collectionRepository,
-      ai
+      collectionRepository
     ),
     bookmarkLike: new BookmarkLikeServiceImpl(bookmarkLikeRepository),
     collection: new CollectionServiceImpl(collectionRepository),

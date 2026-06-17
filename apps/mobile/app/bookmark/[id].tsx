@@ -328,6 +328,8 @@ export default function BookmarkDetailScreen() {
   const cosmicSummary = bookmark.cosmicSummary;
   const fallbackDescription = bookmark.metadata?.openGraph?.description;
   const readingTime = bookmark.metadata?.readingTime;
+  const isPrivateProcessing =
+    bookmark.isPrivateLink && bookmark.processingStatus === 'processing';
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -432,6 +434,15 @@ export default function BookmarkDetailScreen() {
                   </Text>
                 </View>
               ))}
+            </View>
+          )}
+
+          {isPrivateProcessing && (
+            <View style={[styles.processingContainer, { backgroundColor: colors.backgroundSecondary }]}>
+              <ActivityIndicator size="small" color={colors.tint} />
+              <Text style={[styles.processingText, { color: colors.textSecondary }]}>
+                Organizing for quick access...
+              </Text>
             </View>
           )}
 
@@ -654,6 +665,19 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  processingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 14,
+    marginTop: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  processingText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   summaryContainer: {
     marginTop: 8,

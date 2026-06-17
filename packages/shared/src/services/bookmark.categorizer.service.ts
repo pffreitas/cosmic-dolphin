@@ -70,7 +70,7 @@ export class BookmarkCategorizerServiceImpl implements BookmarkCategorizerServic
         categoryTree,
         title: bookmark.title || content.title || "",
         url: bookmark.sourceUrl,
-        summary: bookmark.cosmicSummary || "",
+        summary: bookmark.cosmicSummary || bookmark.cosmicBriefSummary || "",
         tags: bookmark.cosmicTags || [],
       });
 
