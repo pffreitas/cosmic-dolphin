@@ -2,6 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
 import 'react-native-reanimated';
 import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
@@ -49,6 +50,8 @@ function RootLayoutNav() {
   const router = useRouter();
   const pathname = usePathname();
   const { session, isLoading } = useAuth();
+  const statusBarStyle = colorScheme === 'dark' ? 'light' : 'dark';
+  const statusBarBackground = colorScheme === 'dark' ? '#00021f' : '#ffffff';
   
   // Track if we've already initiated navigation to share screen for the current intent
   const hasNavigatedToShare = useRef(false);
@@ -122,42 +125,48 @@ function RootLayoutNav() {
   // Show loading screen while checking auth state
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colorScheme === 'dark' ? '#0a0a1a' : '#ffffff' }}>
-        <ActivityIndicator size="large" color={colorScheme === 'dark' ? '#ffffff' : '#111827'} />
-      </View>
+      <>
+        <StatusBar style={statusBarStyle} backgroundColor={statusBarBackground} translucent={false} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: statusBarBackground }}>
+          <ActivityIndicator size="large" color={colorScheme === 'dark' ? '#ffffff' : '#111827'} />
+        </View>
+      </>
     );
   }
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen 
-          name="bookmark/[id]" 
-          options={{ 
-            headerShown: false,
-            animation: 'slide_from_right',
-          }} 
-        />
-        <Stack.Screen 
-          name="search" 
-          options={{ 
-            headerShown: false,
-            presentation: 'modal',
-            animation: 'slide_from_bottom',
-          }} 
-        />
-        <Stack.Screen 
-          name="share" 
-          options={{ 
-            headerShown: false,
-            presentation: 'modal',
-            animation: 'slide_from_bottom',
-          }} 
-        />
-        <Stack.Screen name="+not-found" />
-      </Stack>
+      <>
+        <StatusBar style={statusBarStyle} backgroundColor={statusBarBackground} translucent={false} />
+        <Stack>
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="bookmark/[id]"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="search"
+            options={{
+              headerShown: false,
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
+            }}
+          />
+          <Stack.Screen
+            name="share"
+            options={{
+              headerShown: false,
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
+            }}
+          />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+      </>
     </ThemeProvider>
   );
 }
