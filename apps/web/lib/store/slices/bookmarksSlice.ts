@@ -8,15 +8,39 @@ import {
 import { SearchBookmarksQuery } from "@/lib/types/bookmark";
 import { BookmarksClientAPI } from "@/lib/api/bookmarks-client";
 
+type SerializableBookmark = Omit<
+  Bookmark,
+  "processingStartedAt" | "processingCompletedAt"
+> & {
+  processingStartedAt?: string;
+  processingCompletedAt?: string;
+};
+
+function serializeDate(value: Date | string | undefined): string | undefined {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  return value;
+}
+
+function serializeBookmark(bookmark: Bookmark): SerializableBookmark {
+  return {
+    ...bookmark,
+    processingStartedAt: serializeDate(bookmark.processingStartedAt),
+    processingCompletedAt: serializeDate(bookmark.processingCompletedAt),
+  };
+}
+
 interface BookmarksState {
-  bookmarks: Bookmark[];
+  bookmarks: SerializableBookmark[];
   loading: boolean;
   error: string | null;
   createLoading: boolean;
   createError: string | null;
   previewLoading: boolean;
   previewError: string | null;
-  searchResults: Bookmark[];
+  searchResults: SerializableBookmark[];
   searchLoading: boolean;
   searchError: string | null;
   searchQuery: string;
@@ -146,7 +170,7 @@ const bookmarksSlice = createSlice({
         fetchBookmarks.fulfilled,
         (state, action: PayloadAction<Bookmark[]>) => {
           state.loading = false;
-          state.bookmarks = action.payload;
+          state.bookmarks = action.payload.map(serializeBookmark);
         }
       )
       .addCase(fetchBookmarks.rejected, (state, action) => {
@@ -162,7 +186,8 @@ const bookmarksSlice = createSlice({
         searchBookmarks.fulfilled,
         (state, action: PayloadAction<SearchBookmarksResponse>) => {
           state.searchLoading = false;
-          state.searchResults = action.payload.bookmarks;
+          state.searchResults =
+            action.payload.bookmarks.map(serializeBookmark);
         }
       )
       .addCase(searchBookmarks.rejected, (state, action) => {
