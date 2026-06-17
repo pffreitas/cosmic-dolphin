@@ -1,9 +1,15 @@
 package com.cosmicdolphin.app
 import expo.modules.splashscreen.SplashScreenManager
 
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageView
 
+import com.facebook.react.bridge.ReactMarker
+import com.facebook.react.bridge.ReactMarkerConstants
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -12,7 +18,16 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
 import expo.modules.ReactActivityDelegateWrapper
 
 class MainActivity : ReactActivity() {
+  private var fullScreenSplashOverlay: ImageView? = null
+
+  private val fullScreenSplashListener = ReactMarker.MarkerListener { name, _, _ ->
+    if (name == ReactMarkerConstants.CONTENT_APPEARED) {
+      hideFullScreenSplashOverlay()
+    }
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
+    configureSplashSystemBars()
     // Set the theme to AppTheme BEFORE onCreate to support
     // coloring the background, status bar, and navigation bar.
     // This is required for expo-splash-screen.
@@ -21,6 +36,7 @@ class MainActivity : ReactActivity() {
     SplashScreenManager.registerOnActivity(this)
     // @generated end expo-splashscreen
     super.onCreate(null)
+    showFullScreenSplashOverlay()
   }
 
   /**
@@ -42,6 +58,62 @@ class MainActivity : ReactActivity() {
               mainComponentName,
               fabricEnabled
           ){})
+  }
+
+  private fun configureSplashSystemBars() {
+    window.statusBarColor = Color.rgb(0, 2, 31)
+    window.navigationBarColor = Color.rgb(0, 1, 15)
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+      window.decorView.systemUiVisibility =
+        window.decorView.systemUiVisibility and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
+    }
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      window.decorView.systemUiVisibility =
+        window.decorView.systemUiVisibility and View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
+    }
+  }
+
+  private fun showFullScreenSplashOverlay() {
+    val decorView = window.decorView as? ViewGroup ?: return
+    val overlay = ImageView(this).apply {
+      setBackgroundColor(Color.rgb(0, 2, 31))
+      setImageResource(R.drawable.splashscreen_full)
+      scaleType = ImageView.ScaleType.CENTER_CROP
+      layoutParams = ViewGroup.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT,
+        ViewGroup.LayoutParams.MATCH_PARENT
+      )
+    }
+
+    fullScreenSplashOverlay = overlay
+    decorView.addView(overlay)
+    ReactMarker.addListener(fullScreenSplashListener)
+
+    // Android 12+ platform splash screens are icon-based. Hide that layer once
+    // our full-screen launch artwork is mounted, then remove the overlay when
+    // React Native reports first content.
+    SplashScreenManager.hide()
+  }
+
+  private fun hideFullScreenSplashOverlay() {
+    ReactMarker.removeListener(fullScreenSplashListener)
+    val overlay = fullScreenSplashOverlay ?: return
+
+    runOnUiThread {
+      overlay
+        .animate()
+        .alpha(0.0f)
+        .setDuration(180)
+        .withEndAction {
+          (overlay.parent as? ViewGroup)?.removeView(overlay)
+          if (fullScreenSplashOverlay === overlay) {
+            fullScreenSplashOverlay = null
+          }
+        }
+        .start()
+    }
   }
 
   /**
