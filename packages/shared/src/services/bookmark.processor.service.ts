@@ -24,6 +24,7 @@ import {
 import { CollectionRepository } from "../repositories/collection.repository";
 import { ChunkingService, ChunkingServiceImpl } from "./chunking.service";
 import { EmbeddingService, EmbeddingServiceImpl } from "./embedding.service";
+import { BOOKMARK_MODEL_IDS } from "./bookmark.model-ids";
 
 export interface BookmarkProcessorService {
   process(id: string, userId: string): Promise<void>;
@@ -242,7 +243,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         sessionID: session.sessionID,
         taskID: task.taskID,
         messageID: Identifier.ascending("message"),
-        modelId: "google/gemini-2.5-pro",
+        modelId: BOOKMARK_MODEL_IDS.large,
         context: [],
         tools: [],
         message: {
@@ -268,7 +269,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
 
       briefSummary = await this.ai.generateObject({
         sessionID: session.sessionID,
-        modelId: "google/gemini-2.5-flash",
+        modelId: BOOKMARK_MODEL_IDS.small,
         prompt: briefPrompt.replace("{{CONTENT}}", textContent),
         schema: z.string().describe("The summary of the content"),
       });
@@ -304,7 +305,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     try {
       const response = await this.ai.generateObject({
         sessionID: session.sessionID,
-        modelId: "qwen/qwen3.7-max",
+        modelId: BOOKMARK_MODEL_IDS.small,
         prompt: GENERATE_TAGS_PROMPT.replace(
           "{{CONTENT}}",
           this.isTwitterBookmark(bookmark) || this.isYouTubeBookmark(bookmark)
@@ -435,7 +436,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     try {
       const relevantImages = await this.ai.generateObject({
         sessionID: session.sessionID,
-        modelId: "qwen/qwen3.7-max",
+        modelId: BOOKMARK_MODEL_IDS.small,
         prompt: FILTER_IMAGES_PROMPT.replace(
           "{{CONTENT}}",
           content.content ?? ""

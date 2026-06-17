@@ -333,6 +333,53 @@ describe("BookmarkProcessorService", () => {
       );
     });
 
+    it("uses the large model for full summaries and the small model for generated bookmark data", async () => {
+      const mockSession: Session = {
+        sessionID: "test-session-id",
+        refID: testBookmark.id,
+      };
+
+      const mockTask: Task = {
+        taskID: "test-task-id",
+        sessionID: mockSession.sessionID,
+        name: "test-task",
+        status: "pending",
+        subTasks: {},
+      };
+
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
+        testScrapedContent
+      );
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(
+        testBookmark
+      );
+      mockBookmarkService.update.mockResolvedValue(testBookmark);
+      mockAI.newSession.mockResolvedValue(mockSession);
+      mockAI.newTask.mockResolvedValue(mockTask);
+      mockAI.newSubTask.mockResolvedValue({
+        taskID: "subtask-id",
+        name: "test-subtask",
+        status: "pending",
+      });
+
+      await service.process(testBookmark.id, testBookmark.userId);
+
+      expect(mockAI.prompt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          modelId: "qwen/qwen3.7-plus",
+        })
+      );
+      expect(
+        mockAI.generateObject.mock.calls.map(([input]) => input.modelId)
+      ).toEqual([
+        "deepseek/deepseek-v4-flash",
+        "deepseek/deepseek-v4-flash",
+        "deepseek/deepseek-v4-flash",
+        "deepseek/deepseek-v4-flash",
+      ]);
+    });
+
     it("should handle AI processing errors gracefully", async () => {
       const mockSession: Session = {
         sessionID: "test-session-id",
