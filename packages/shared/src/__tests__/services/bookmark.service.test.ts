@@ -4,6 +4,7 @@ import { BookmarkRepository } from "../../repositories";
 import { WebScrapingService } from "../../services/web-scraping.service";
 import { TestDataFactory } from "../../test-utils/factories";
 import { ScrapedUrlContents } from "../../types";
+import { AI } from "../../ai";
 
 describe("BookmarkService", () => {
   let service: BookmarkServiceImpl;
@@ -185,6 +186,35 @@ describe("BookmarkService", () => {
       await expect(
         service.delete("test-bookmark-id", testUserId)
       ).rejects.toThrow(TypeError);
+    });
+  });
+
+  describe("inferPrivateLinkMetadata", () => {
+    it("uses the small model for private link inference", async () => {
+      const mockAI = {
+        generateObject: jest.fn<any>().mockResolvedValue({
+          description: "A private design file.",
+          tags: ["design", "private-link"],
+        }),
+      } as unknown as jest.Mocked<AI>;
+      const serviceWithAI = new BookmarkServiceImpl(
+        mockRepository,
+        mockWebScrapingService,
+        undefined,
+        mockAI
+      );
+
+      await serviceWithAI.inferPrivateLinkMetadata(
+        "https://figma.com/file/example",
+        "Design file",
+        "Figma"
+      );
+
+      expect(mockAI.generateObject).toHaveBeenCalledWith(
+        expect.objectContaining({
+          modelId: "deepseek/deepseek-v4-flash",
+        })
+      );
     });
   });
 });

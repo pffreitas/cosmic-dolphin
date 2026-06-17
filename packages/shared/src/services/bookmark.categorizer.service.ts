@@ -9,6 +9,7 @@ import {
   buildCategoryTreeText,
   buildCategorizationPrompt,
 } from "./bookmark.categorizer.prompt";
+import { BOOKMARK_MODEL_IDS } from "./bookmark.model-ids";
 
 // Zod schema for LLM response validation
 export const CategorizationResponseSchema = z.object({
@@ -77,7 +78,7 @@ export class BookmarkCategorizerServiceImpl implements BookmarkCategorizerServic
       // Call LLM for categorization
       const response = await this.ai.generateObject({
         sessionID: session.sessionID,
-        modelId: "qwen/qwen3.7-max",
+        modelId: BOOKMARK_MODEL_IDS.small,
         prompt,
         schema: CategorizationResponseSchema,
       });

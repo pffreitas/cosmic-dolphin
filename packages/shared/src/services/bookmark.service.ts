@@ -17,6 +17,7 @@ import { WebScrapingService } from "./web-scraping.service";
 import { NewBookmark, BookmarkUpdate } from "../database/schema";
 import { AI } from "../ai";
 import { z } from "zod";
+import { BOOKMARK_MODEL_IDS } from "./bookmark.model-ids";
 
 export interface PrivateLinkMetadata {
   title?: string;
@@ -178,7 +179,7 @@ export class BookmarkServiceImpl implements BookmarkService {
 
     const result = await this.ai.generateObject({
       sessionID: "private-link-inference",
-      modelId: "google/gemini-2.5-flash",
+      modelId: BOOKMARK_MODEL_IDS.small,
       prompt,
       schema: z.object({
         description: z.string().describe("Brief description of the link"),
