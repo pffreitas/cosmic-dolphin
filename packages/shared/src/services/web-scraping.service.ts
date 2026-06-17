@@ -80,6 +80,7 @@ export class WebScrapingServiceImpl implements WebScrapingService {
       }
 
       const scrapedUrlContents = this.scrapeContent(url, response.body);
+      this.assertScrapedContentUsable(scrapedUrlContents);
       return scrapedUrlContents;
     } catch (error) {
       throw error;
@@ -141,6 +142,37 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     const images = this.extractImages($);
     const links = this.extractLinks($);
     return { title, content: body, metadata, images, links };
+  }
+
+  private assertScrapedContentUsable(
+    scrapedContent: Omit<
+      ScrapedUrlContents,
+      "id" | "createdAt" | "updatedAt" | "bookmarkId"
+    >
+  ): void {
+    const bodyText = cheerio
+      .load(scrapedContent.content)
+      .root()
+      .text()
+      .replace(/\s+/g, " ")
+      .trim();
+    const bodyWordCount = bodyText
+      .split(/\s+/)
+      .filter((word) => word.length > 0).length;
+    const hasDescription = Boolean(
+      scrapedContent.metadata.openGraph?.description?.trim()
+    );
+    const authWallPattern =
+      /\b(log in|login|sign in|signin|single sign-on|sso|authentication required|access denied|permission denied)\b/i;
+
+    if (
+      (!hasDescription && bodyWordCount <= 1) ||
+      authWallPattern.test(bodyText)
+    ) {
+      throw new Error(
+        "Scraped content is not usable: page appears empty or behind authentication"
+      );
+    }
   }
 
   private extractTitle($: CheerioAPI): ScrapedUrlContents["title"] {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, View, Pressable, ScrollView, ActivityIndicator, Image, Dimensions } from 'react-native';
+import { StyleSheet, View, Pressable, ScrollView, ActivityIndicator, Image, TextInput } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useShareIntentContext } from 'expo-share-intent';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,9 +10,15 @@ import Animated, { FadeIn, FadeInDown, useSharedValue, useAnimatedStyle, withRep
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { BookmarksAPI, UrlPreviewMetadata } from '@/lib/api';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { BookmarksAPI, PreviewUrlResponse } from '@/lib/api';
+import {
+  buildPrivateLinkCreateParams,
+  isPrivateLinkPreview,
+} from '@/lib/private-link';
+import {
+  getShareScrollBottomInset,
+  shouldRenderPreviewMedia,
+} from '@/lib/share-layout';
 
 // Helper to extract domain from URL
 function extractDomain(url: string): string {
@@ -71,11 +77,14 @@ export default function ShareScreen() {
 
   // Preview state
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-  const [previewData, setPreviewData] = useState<UrlPreviewMetadata | null>(null);
+  const [previewData, setPreviewData] = useState<PreviewUrlResponse | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [privateDescription, setPrivateDescription] = useState('');
 
   const tintColor = useThemeColor({}, 'tint');
   const iconColor = useThemeColor({}, 'icon');
+  const textColor = useThemeColor({}, 'text');
+  const textSecondaryColor = useThemeColor({}, 'textSecondary');
   const backgroundColor = useThemeColor({}, 'background');
   const secondaryBackgroundColor = useThemeColor({}, 'backgroundSecondary');
   const borderColor = useThemeColor({}, 'border');
@@ -92,8 +101,11 @@ export default function ShareScreen() {
     setPreviewError(null);
     
     try {
-      const metadata = await BookmarksAPI.preview(url);
-      setPreviewData(metadata);
+      const preview = await BookmarksAPI.preview(url);
+      setPreviewData(preview);
+      if (isPrivateLinkPreview(preview)) {
+        setPrivateDescription('');
+      }
     } catch (error) {
       console.error('Error fetching preview:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to load preview';
@@ -122,7 +134,23 @@ export default function ShareScreen() {
     setSaveError(null);
 
     try {
-      await BookmarksAPI.create({ source_url: sharedUrl });
+      if (isPrivateLinkPreview(previewData)) {
+        if (!privateDescription.trim()) {
+          setSaveError('Add a brief description so this private link is findable later.');
+          setIsSaving(false);
+          return;
+        }
+
+        await BookmarksAPI.create(
+          buildPrivateLinkCreateParams({
+            url: sharedUrl,
+            preview: previewData,
+            description: privateDescription,
+          })
+        );
+      } else {
+        await BookmarksAPI.create({ source_url: sharedUrl });
+      }
       setIsSaved(true);
 
       // Brief delay to show success state before closing
@@ -136,11 +164,14 @@ export default function ShareScreen() {
   };
 
   // Get display values from preview data or fallbacks
-  const displayTitle = previewData?.title || extractDomain(sharedUrl || '');
-  const displayDescription = previewData?.description;
-  const displayImage = previewData?.image;
-  const displayFavicon = previewData?.favicon;
-  const displaySiteName = previewData?.siteName || (sharedUrl ? extractDomain(sharedUrl) : '');
+  const previewMetadata = previewData?.metadata;
+  const isPrivateLink = isPrivateLinkPreview(previewData);
+  const displayTitle = previewMetadata?.title || extractDomain(sharedUrl || '');
+  const displayDescription = previewMetadata?.description;
+  const displayImage = previewMetadata?.image;
+  const displayFavicon = previewMetadata?.favicon;
+  const displaySiteName = previewMetadata?.siteName || (sharedUrl ? extractDomain(sharedUrl) : '');
+  const showPreviewMedia = shouldRenderPreviewMedia(isPrivateLink, Boolean(displayImage));
 
   return (
     <ThemedView style={styles.container}>
@@ -163,7 +194,10 @@ export default function ShareScreen() {
       {/* Content */}
       <ScrollView 
         style={styles.scrollContent} 
-        contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 120 }]}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingBottom: getShareScrollBottomInset(insets.bottom) },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {sharedUrl ? (
@@ -172,32 +206,38 @@ export default function ShareScreen() {
             {isLoadingPreview ? (
               <ShimmerPlaceholder />
             ) : (
-              <View style={[styles.previewCard, { backgroundColor: secondaryBackgroundColor, borderColor }]}>
+              <View style={[
+                styles.previewCard,
+                isPrivateLink && styles.privatePreviewCard,
+                { backgroundColor: secondaryBackgroundColor, borderColor },
+              ]}>
                 {/* OpenGraph Image with Blur Background for aspect ratio fitting */}
-                <View style={styles.imageContainer}>
-                  {displayImage ? (
-                    <>
-                      <Image 
-                        source={{ uri: displayImage }} 
-                        style={StyleSheet.absoluteFill}
-                        blurRadius={20}
-                      />
-                      <BlurView intensity={20} style={StyleSheet.absoluteFill} />
-                      <Image 
-                        source={{ uri: displayImage }} 
-                        style={styles.previewImage}
-                        resizeMode="contain"
-                      />
-                    </>
-                  ) : (
-                    <View style={[styles.imagePlaceholder, { backgroundColor: borderColor }]}>
-                      <Ionicons name="link" size={48} color={iconColor} style={{ opacity: 0.2 }} />
-                    </View>
-                  )}
-                </View>
+                {showPreviewMedia && (
+                  <View style={styles.imageContainer}>
+                    {displayImage ? (
+                      <>
+                        <Image
+                          source={{ uri: displayImage }}
+                          style={StyleSheet.absoluteFill}
+                          blurRadius={20}
+                        />
+                        <BlurView intensity={20} style={StyleSheet.absoluteFill} />
+                        <Image
+                          source={{ uri: displayImage }}
+                          style={styles.previewImage}
+                          resizeMode="contain"
+                        />
+                      </>
+                    ) : (
+                      <View style={[styles.imagePlaceholder, { backgroundColor: borderColor }]}>
+                        <Ionicons name="link" size={48} color={iconColor} style={{ opacity: 0.2 }} />
+                      </View>
+                    )}
+                  </View>
+                )}
 
                 {/* Card Content */}
-                <View style={styles.previewContent}>
+                <View style={[styles.previewContent, isPrivateLink && styles.privatePreviewContent]}>
                   {/* Site info */}
                   <View style={styles.siteInfo}>
                     {displayFavicon ? (
@@ -216,7 +256,11 @@ export default function ShareScreen() {
                   </View>
 
                   {/* Title */}
-                  <ThemedText type="defaultSemiBold" style={styles.previewTitle} numberOfLines={3}>
+                  <ThemedText
+                    type="defaultSemiBold"
+                    style={[styles.previewTitle, isPrivateLink && styles.privatePreviewTitle]}
+                    numberOfLines={3}
+                  >
                     {displayTitle}
                   </ThemedText>
 
@@ -237,6 +281,40 @@ export default function ShareScreen() {
                 <ThemedText style={styles.urlFallbackText} numberOfLines={1}>
                   {sharedUrl}
                 </ThemedText>
+              </View>
+            )}
+
+            {isPrivateLink && (
+              <View style={[styles.privateLinkPanel, { backgroundColor: secondaryBackgroundColor, borderColor }]}>
+                <View style={styles.privateLinkHeader}>
+                  <Ionicons name="lock-closed-outline" size={18} color={tintColor} />
+                  <ThemedText type="defaultSemiBold" style={styles.privateLinkTitle}>
+                    Save for quick access
+                  </ThemedText>
+                </View>
+                <ThemedText style={[styles.privateLinkCopy, { color: textSecondaryColor }]}>
+                  We can't read or summarize this page, but we can organize it from your note.
+                </ThemedText>
+                <View style={styles.inputGroup}>
+                  <ThemedText style={[styles.inputLabel, { color: textColor }]}>
+                    Brief description
+                  </ThemedText>
+                  <TextInput
+                    value={privateDescription}
+                    onChangeText={setPrivateDescription}
+                    placeholder="What is this link, and why will you need it?"
+                    placeholderTextColor={textSecondaryColor}
+                    multiline
+                    style={[
+                      styles.textArea,
+                      {
+                        color: textColor,
+                        borderColor,
+                        backgroundColor,
+                      },
+                    ]}
+                  />
+                </View>
               </View>
             )}
 
@@ -264,7 +342,7 @@ export default function ShareScreen() {
           <View style={styles.buttonGroup}>
             <Pressable 
               onPress={handleSaveAndClose}
-              disabled={isSaving || isSaved}
+              disabled={isSaving || isSaved || (isPrivateLink && !privateDescription.trim())}
               style={({ pressed }) => [
                 styles.saveButton,
                 { 
@@ -382,6 +460,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 12,
   },
+  privatePreviewCard: {
+    borderRadius: 20,
+  },
   imageContainer: {
     width: '100%',
     height: 220,
@@ -399,6 +480,9 @@ const styles = StyleSheet.create({
   previewContent: {
     padding: 20,
     gap: 8,
+  },
+  privatePreviewContent: {
+    padding: 16,
   },
   siteInfo: {
     flexDirection: 'row',
@@ -430,6 +514,10 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     fontWeight: '700',
     letterSpacing: -0.5,
+  },
+  privatePreviewTitle: {
+    fontSize: 20,
+    lineHeight: 26,
   },
   previewDescription: {
     fontSize: 15,
@@ -473,6 +561,43 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.5,
     fontWeight: '500',
+  },
+  privateLinkPanel: {
+    borderWidth: 1,
+    borderRadius: 20,
+    gap: 12,
+    marginTop: 12,
+    padding: 14,
+  },
+  privateLinkHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  privateLinkTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  privateLinkCopy: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  inputGroup: {
+    gap: 8,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  textArea: {
+    minHeight: 84,
+    borderWidth: 1,
+    borderRadius: 14,
+    fontSize: 15,
+    lineHeight: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    textAlignVertical: 'top',
   },
   errorContainer: {
     flexDirection: 'row',

@@ -178,8 +178,6 @@ model PreviewRequest {
 model PreviewResponse {
     metadata: PreviewMetadata;
     scrapable: boolean;
-    suggestedTags?: string[];
-    suggestedDescription?: string;
 }
 
 model GetCollectionsResponse {

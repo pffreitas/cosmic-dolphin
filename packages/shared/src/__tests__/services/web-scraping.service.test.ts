@@ -57,5 +57,34 @@ describe("WebScrapingService", () => {
       expect(mockTwitterService.isTwitterUrl).toHaveBeenCalledWith("https://example.com");
       expect(result.title).toBe("Regular Page");
     });
+
+    it("should reject contentless authenticated app shells", async () => {
+      mockHttpClient.fetch.mockResolvedValueOnce({
+        body: `
+          <!doctype html>
+          <html>
+            <head>
+              <title>Jira</title>
+              <meta name="application-name" content="JIRA" />
+            </head>
+            <body>
+              <div id="root"></div>
+              <script>window.__SPA_BOOTSTRAP__ = {}</script>
+            </body>
+          </html>
+        `,
+        status: 200,
+        ok: true,
+        statusText: "OK",
+        headers: new Headers({ "content-type": "text/html" }) as any,
+        arrayBuffer: async () => new ArrayBuffer(0),
+      });
+
+      await expect(
+        webScrapingService.scrape(
+          "https://ab-inbev.atlassian.net/browse/BEESIP-33999"
+        )
+      ).rejects.toThrow("Scraped content is not usable");
+    });
   });
 });

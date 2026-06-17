@@ -30,6 +30,20 @@ export interface BookmarkProcessorService {
   process(id: string, userId: string): Promise<void>;
 }
 
+const PRIVATE_LINK_ENRICHMENT_PROMPT = `You are creating a private link quick-access record.
+The page content is inaccessible, so do not summarize or claim facts from the page.
+Use only the URL, title, and user description to create locator metadata.
+
+URL: {{URL}}
+Title: {{TITLE}}
+User description: {{DESCRIPTION}}
+
+Return:
+- title: A short useful title for the saved link.
+- description: A polished 1-2 sentence description based only on the user's description.
+- tags: 3-6 lowercase tags. Use hyphens for multi-word tags.
+- quickAccessKeywords: 3-8 phrases the user might search for later.`;
+
 export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
   private categorizerService: BookmarkCategorizerService;
   private chunkingService: ChunkingService;
@@ -60,10 +74,11 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       throw new Error(`Bookmark not found: ${id}`);
     }
 
-    const content = await this.bookmarkService.getScrapedUrlContent(
-      bookmark.id
-    );
-    if (!content) {
+    const isPrivateLink = bookmark.isPrivateLink;
+    const content = isPrivateLink
+      ? null
+      : await this.bookmarkService.getScrapedUrlContent(bookmark.id);
+    if (!isPrivateLink && !content) {
       throw new Error(`Scraped url content not found: ${bookmark.id}`);
     }
 
@@ -92,13 +107,49 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         session
       );
 
+      if (isPrivateLink) {
+        bookmark = await this.processPrivateLink(session, bookmark);
+        await this.eventBus.publishToBookmark(
+          bookmark.id,
+          "bookmark.updated",
+          bookmark
+        );
+
+        bookmark = await this.bookmarkService.updateProcessingStatus(
+          bookmark.id,
+          "completed"
+        );
+        await this.eventBus.publishToBookmark(
+          bookmark.id,
+          "bookmark.processing.completed",
+          {
+            bookmark,
+          }
+        );
+        return;
+      }
+
+      const scrapedContent = content!;
+
       // Start independent AI tasks in parallel to minimize total processing time
-      const summarizePromise = this.summarizeContent(session, bookmark, content);
-      const metadataPromise = this.generateMetadata(session, bookmark, content);
+      const summarizePromise = this.summarizeContent(
+        session,
+        bookmark,
+        scrapedContent
+      );
+      const metadataPromise = this.generateMetadata(
+        session,
+        bookmark,
+        scrapedContent
+      );
       const imagesPromise = this.isTwitterBookmark(bookmark)
-        ? Promise.resolve(this.promoteTweetImages(content))
-        : this.processImages(session, bookmark, content);
-      const embeddingPromise = this.chunkAndEmbed(session, bookmark, content);
+        ? Promise.resolve(this.promoteTweetImages(scrapedContent))
+        : this.processImages(session, bookmark, scrapedContent);
+      const embeddingPromise = this.chunkAndEmbed(
+        session,
+        bookmark,
+        scrapedContent
+      );
       startedTasks.push(
         summarizePromise,
         metadataPromise,
@@ -120,7 +171,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       const categorization = await this.categorizerService.categorize(
         session,
         bookmark,
-        content
+        scrapedContent
       );
       bookmark.collectionId = categorization.categoryId;
 
@@ -130,7 +181,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       await embeddingPromise;
 
       // Final construction of search document
-      const searchDocument = this.buildSearchDocument(bookmark, content);
+      const searchDocument = this.buildSearchDocument(bookmark, scrapedContent);
       bookmark.searchDocument = searchDocument;
 
       // Batch update the bookmark with all AI-generated content in one DB call
@@ -189,6 +240,147 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
 
   private isTwitterBookmark(bookmark: Bookmark): boolean {
     return bookmark.metadata?.openGraph?.site_name === "X (formerly Twitter)";
+  }
+
+  private async processPrivateLink(
+    session: Session,
+    bookmark: Bookmark
+  ): Promise<Bookmark> {
+    const context = bookmark.metadata?.privateLink;
+    const userDescription =
+      context?.userDescription ||
+      bookmark.cosmicBriefSummary ||
+      bookmark.metadata?.openGraph?.description ||
+      "";
+
+    const task = await this.ai.newTask(
+      session.sessionID,
+      "Organizing private link"
+    );
+    const subTask = await this.ai.newSubTask(
+      "Generating quick-access metadata"
+    );
+    task.subTasks[subTask.taskID] = subTask;
+    await this.eventBus.publishToBookmark(bookmark.id, "task.started", task);
+
+    try {
+      const enrichment = await this.ai.generateObject({
+        sessionID: session.sessionID,
+        modelId: BOOKMARK_MODEL_IDS.small,
+        prompt: PRIVATE_LINK_ENRICHMENT_PROMPT
+          .replace("{{URL}}", bookmark.sourceUrl)
+          .replace("{{TITLE}}", bookmark.title || "Untitled")
+          .replace("{{DESCRIPTION}}", userDescription || "No description"),
+        schema: z.object({
+          title: z.string().describe("A concise bookmark title"),
+          description: z
+            .string()
+            .describe("A polished description based only on user input"),
+          tags: z.array(z.string()).describe("Search and categorization tags"),
+          quickAccessKeywords: z
+            .array(z.string())
+            .describe("Additional phrases for quick access search"),
+        }),
+      });
+
+      const tags = this.normalizeTags(enrichment.tags);
+      const enrichedBookmark: Bookmark = {
+        ...bookmark,
+        title: enrichment.title || bookmark.title,
+        cosmicBriefSummary: enrichment.description || userDescription,
+        cosmicTags: tags,
+        quickAccess: this.buildPrivateLinkQuickAccess(
+          bookmark,
+          enrichment.title,
+          enrichment.description,
+          tags,
+          enrichment.quickAccessKeywords
+        ),
+        metadata: {
+          ...bookmark.metadata,
+          privateLink: {
+            userDescription,
+            userProvidedTitle: context?.userProvidedTitle,
+            enrichedAt: new Date().toISOString(),
+          },
+        },
+      };
+
+      const syntheticContent =
+        this.buildPrivateLinkSyntheticContent(enrichedBookmark);
+      const categorization = await this.categorizerService.categorize(
+        session,
+        enrichedBookmark,
+        syntheticContent
+      );
+      enrichedBookmark.collectionId = categorization.categoryId;
+
+      task.status = "completed";
+      task.subTasks[subTask.taskID].status = "completed";
+      await this.eventBus.publishToBookmark(
+        bookmark.id,
+        "task.completed",
+        task
+      );
+
+      return this.bookmarkService.update(bookmark.id, enrichedBookmark);
+    } catch (error) {
+      task.status = "failed";
+      task.subTasks[subTask.taskID].status = "failed";
+      await this.eventBus.publishToBookmark(bookmark.id, "task.failed", task);
+      throw error;
+    }
+  }
+
+  private normalizeTags(tags: string[]): string[] {
+    return [
+      ...new Set(
+        tags
+          .map((tag) => tag.trim().toLowerCase().replace(/\s+/g, "-"))
+          .filter(Boolean)
+      ),
+    ];
+  }
+
+  private buildPrivateLinkQuickAccess(
+    bookmark: Bookmark,
+    title: string,
+    description: string,
+    tags: string[],
+    quickAccessKeywords: string[]
+  ): string {
+    return [
+      title,
+      bookmark.sourceUrl,
+      description,
+      tags.join(" "),
+      quickAccessKeywords.join(" "),
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+
+  private buildPrivateLinkSyntheticContent(
+    bookmark: Bookmark
+  ): ScrapedUrlContents {
+    return {
+      id: `private-link-${bookmark.id}`,
+      bookmarkId: bookmark.id,
+      title: bookmark.title || "",
+      content: [
+        bookmark.title || "",
+        bookmark.sourceUrl,
+        bookmark.cosmicBriefSummary || "",
+        bookmark.cosmicTags?.join(" ") || "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      metadata: bookmark.metadata || {},
+      images: [],
+      links: [],
+      createdAt: bookmark.createdAt,
+      updatedAt: bookmark.updatedAt,
+    };
   }
 
   private promoteTweetImages(content: ScrapedUrlContents): BookmarkImage[] {
