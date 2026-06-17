@@ -24,6 +24,7 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean",
+    "worktree": "scripts/init-worktree.sh",
     "apispec:install": "cd packages/apispec && bun install --ignore-scripts",
     "apispec:compile": "cd packages/apispec && bun run compile",
     "apispec:generate": "cd packages/apispec && bun run generate:client",
