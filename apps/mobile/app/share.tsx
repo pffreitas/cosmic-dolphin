@@ -293,7 +293,7 @@ export default function ShareScreen() {
                   </ThemedText>
                 </View>
                 <ThemedText style={[styles.privateLinkCopy, { color: textSecondaryColor }]}>
-                  We can't read or summarize this page, but we can organize it from your note.
+                  We cannot read or summarize this page, but we can organize it from your note.
                 </ThemedText>
                 <View style={styles.inputGroup}>
                   <ThemedText style={[styles.inputLabel, { color: textColor }]}>
