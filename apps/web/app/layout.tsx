@@ -8,12 +8,12 @@ import { CommandDialogProvider } from "@/components/providers/command-dialog-pro
 import { GlobalCommandDialog } from "@/components/global-command-dialog";
 import { GlobalKeyboardShortcuts } from "@/components/global-keyboard-shortcuts";
 import { CommandDialogTrigger } from "@/components/command-dialog-trigger";
-import Link from "next/link";
 import { CosmicMenu } from "@/components/cosmic-menu";
 import NewBookmarkButton from "@/components/bookmark/new-bookmark";
 import { MobileHeader } from "@/components/mobile/mobile-header";
 import { BottomNavigation } from "@/components/mobile/bottom-nav";
 import { createClient } from "@/utils/supabase/server";
+import { DesktopSiteHeader } from "@/components/desktop-site-header";
 
 export default async function RootLayout({
   children,
@@ -79,36 +79,21 @@ export default async function RootLayout({
                 {/* Desktop Layout */}
                 <main className="hidden md:flex w-full h-full p-2">
                   <div className="w-full mx-auto flex flex-col gap-6">
-                    <div className="flex gap-6">
-                      <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-3">
-                        <div className="flex items-center justify-between gap-4 h-10">
-                          <div className="flex-1 flex">
-                            <Link href="/" className="flex gap-2 items-center">
-                              <div className="text-2xl">🐬</div>
-                              <div
-                                className={`transition-all duration-300 ease-in-out overflow-hidden ${"w-auto opacity-100"}`}
-                              >
-                                <h2 className="font-noto text-lg font-normal text-gray-800 whitespace-nowrap">
-                                  Cosmic Dolphin
-                                </h2>
-                              </div>
-                            </Link>
-                            {isLoggedIn && <CosmicMenu />}
+                    <DesktopSiteHeader
+                      isLoggedIn={isLoggedIn}
+                      authenticatedNavigation={
+                        isLoggedIn ? <CosmicMenu /> : undefined
+                      }
+                      authenticatedActions={
+                        isLoggedIn ? (
+                          <div className="flex items-center gap-3">
+                            <CommandDialogTrigger />
+                            <NewBookmarkButton />
                           </div>
-                          {isLoggedIn && (
-                            <div className="flex-1 flex justify-end">
-                              <div className="flex items-center gap-3">
-                                <CommandDialogTrigger />
-                                <NewBookmarkButton />
-                              </div>
-                            </div>
-                          )}
-                          <div className="flex items-center space-x-2">
-                            <HeaderAuth />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                        ) : undefined
+                      }
+                      authControls={<HeaderAuth />}
+                    />
                     <div className="flex-1 max-w-screen-lg mx-auto">
                       {children}
                     </div>
