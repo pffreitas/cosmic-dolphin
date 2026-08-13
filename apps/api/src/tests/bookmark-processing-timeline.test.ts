@@ -1,5 +1,8 @@
 import { describe, it, expect, mock } from "bun:test";
-import { buildBookmarkProcessingTimelineResponse } from "../routes/bookmarks";
+import {
+  buildBookmarkProcessingTimelineResponse,
+  queueBookmarkForProcessing,
+} from "../routes/bookmarks";
 import { Bookmark } from "@cosmic-dolphin/shared";
 
 describe("GET /bookmarks/:id/processing-timeline", () => {
@@ -148,5 +151,87 @@ describe("GET /bookmarks/:id/processing-timeline", () => {
       pollAfterMs: 0,
       run: undefined,
     });
+  });
+
+  it("continues polling when the timeline run is still running", async () => {
+    const completedBookmark = {
+      ...bookmark,
+      processingStatus: "completed" as const,
+    };
+    const services = createServices({
+      bookmarkResult: {
+        bookmark: completedBookmark,
+        isLikedByCurrentUser: false,
+      },
+      timeline: {
+        run: {
+          id: "run-1",
+          bookmarkId: "bookmark-1",
+          userId: "user-1",
+          status: "running" as const,
+          startedAt: new Date("2026-01-01T00:00:00Z"),
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+          reasoningTokens: 0,
+          cachedInputTokens: 0,
+          createdAt: new Date("2026-01-01T00:00:00Z"),
+          updatedAt: new Date("2026-01-01T00:00:00Z"),
+        },
+        events: [],
+      },
+    });
+
+    const response = await buildBookmarkProcessingTimelineResponse(
+      services,
+      "bookmark-1",
+      "user-1"
+    );
+
+    expect(response.body.pollAfterMs).toBe(2000);
+  });
+});
+
+describe("queueBookmarkForProcessing", () => {
+  const bookmark: Bookmark = {
+    id: "bookmark-1",
+    sourceUrl: "https://example.com",
+    userId: "user-1",
+    isPrivateLink: false,
+    isPublic: false,
+    processingStatus: "idle",
+    createdAt: new Date("2026-01-01T00:00:00Z"),
+    updatedAt: new Date("2026-01-01T00:00:00Z"),
+  };
+
+  it("returns a processing bookmark after enqueue succeeds", async () => {
+    const queuedBookmark = {
+      ...bookmark,
+      processingStatus: "processing" as const,
+    };
+    const services = {
+      queue: {
+        sendBookmarkProcessingMessage: mock(async () => 123),
+      },
+      bookmark: {
+        updateProcessingStatus: mock(async () => queuedBookmark),
+      },
+    } as any;
+
+    const result = await queueBookmarkForProcessing(
+      services,
+      bookmark,
+      "user-1"
+    );
+
+    expect(result).toEqual(queuedBookmark);
+    expect(services.queue.sendBookmarkProcessingMessage).toHaveBeenCalledWith(
+      "bookmark-1",
+      "user-1"
+    );
+    expect(services.bookmark.updateProcessingStatus).toHaveBeenCalledWith(
+      "bookmark-1",
+      "processing"
+    );
   });
 });

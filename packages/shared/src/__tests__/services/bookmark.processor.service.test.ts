@@ -20,6 +20,8 @@ describe("BookmarkProcessorService", () => {
   let mockAI: jest.Mocked<AI>;
   let mockBookmarkProcessingRepository: jest.Mocked<BookmarkProcessingRepository>;
   let mockHttpClient: jest.Mocked<HttpClient>;
+  let mockChunkingService: jest.Mocked<ChunkingService>;
+  let mockEmbeddingService: jest.Mocked<EmbeddingService>;
   let testBookmark: Bookmark;
   let testScrapedContent: ScrapedUrlContents;
 
@@ -231,12 +233,12 @@ describe("BookmarkProcessorService", () => {
       getCollectionsByIds: jest.fn<any>().mockResolvedValue([]),
     } as jest.Mocked<CollectionRepository>;
 
-    const mockChunkingService: jest.Mocked<ChunkingService> = {
+    mockChunkingService = {
       chunkHtml: jest.fn<any>().mockReturnValue([]),
       stripHtml: jest.fn<any>().mockReturnValue(""),
     };
 
-    const mockEmbeddingService: jest.Mocked<EmbeddingService> = {
+    mockEmbeddingService = {
       embedText: jest.fn<any>().mockResolvedValue([0.1, 0.2, 0.3]),
       embedTexts: jest.fn<any>().mockResolvedValue([[0.1, 0.2, 0.3]]),
       embedTextWithUsage: jest.fn<any>().mockResolvedValue({
@@ -683,6 +685,116 @@ describe("BookmarkProcessorService", () => {
           error: "AI service unavailable",
         })
       );
+    });
+
+    it("marks the bookmark failed when the durable timeline cannot start", async () => {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
+        testScrapedContent
+      );
+      mockBookmarkService.updateProcessingStatus.mockImplementation(
+        async (_id, status, error) => ({
+          ...testBookmark,
+          processingStatus: status,
+          processingError: error,
+        })
+      );
+      mockBookmarkProcessingRepository.createRun.mockRejectedValueOnce(
+        new Error("timeline unavailable")
+      );
+
+      await expect(
+        service.process(testBookmark.id, testBookmark.userId)
+      ).rejects.toThrow("timeline unavailable");
+
+      expect(mockBookmarkService.updateProcessingStatus).toHaveBeenNthCalledWith(
+        1,
+        testBookmark.id,
+        "processing"
+      );
+      expect(mockBookmarkService.updateProcessingStatus).toHaveBeenNthCalledWith(
+        2,
+        testBookmark.id,
+        "failed",
+        "timeline unavailable"
+      );
+    });
+
+    it("completes the bookmark when embedding generation fails", async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      const mockSession: Session = {
+        sessionID: "test-session-id",
+        refID: testBookmark.id,
+      };
+      const completedBookmark = {
+        ...testBookmark,
+        processingStatus: "completed" as const,
+      };
+
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
+        testScrapedContent
+      );
+      mockBookmarkService.updateProcessingStatus.mockImplementation(
+        async (_id, status, error) => ({
+          ...testBookmark,
+          processingStatus: status,
+          processingError: error,
+        })
+      );
+      mockBookmarkService.update.mockResolvedValue(completedBookmark);
+      mockAI.newSession.mockResolvedValue(mockSession);
+      mockChunkingService.chunkHtml.mockReturnValue([
+        {
+          content: "chunk text",
+          index: 0,
+          size: 10,
+          startPosition: 0,
+          endPosition: 10,
+        },
+      ]);
+      mockContentChunkRepository.createTextChunk.mockResolvedValue({
+        id: "chunk-1",
+        scrapedContentId: testScrapedContent.id,
+        chunkType: "text",
+        content: "chunk text",
+        index: 0,
+        size: 10,
+        startPosition: 0,
+        endPosition: 10,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      mockEmbeddingService.embedTextsWithUsage.mockRejectedValueOnce(
+        new Error("embedding provider unavailable")
+      );
+
+      try {
+        await expect(
+          service.process(testBookmark.id, testBookmark.userId)
+        ).resolves.toBeUndefined();
+
+        expect(
+          mockBookmarkService.updateProcessingStatus
+        ).toHaveBeenLastCalledWith(testBookmark.id, "completed");
+        expect(mockBookmarkProcessingRepository.updateRun).toHaveBeenCalledWith(
+          "run-1",
+          expect.objectContaining({
+            status: "completed",
+          })
+        );
+        expect(mockBookmarkProcessingRepository.updateEvent).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.objectContaining({
+            status: "failed",
+            error: "embedding provider unavailable",
+          })
+        );
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
     });
   });
 });

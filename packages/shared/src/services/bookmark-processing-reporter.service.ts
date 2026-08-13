@@ -87,6 +87,10 @@ export class BookmarkProcessingReporter {
     this.runEventId = runEvent.id;
   }
 
+  hasStarted(): boolean {
+    return Boolean(this.runId && this.runStartedAt);
+  }
+
   async trackPhase<T>(
     phase: BookmarkProcessingPhaseName,
     name: string,

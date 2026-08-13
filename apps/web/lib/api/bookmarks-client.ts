@@ -17,6 +17,16 @@ import { SearchBookmarksQuery } from "@/lib/types/bookmark";
 import { createClient } from "@/utils/supabase/client";
 import { BookmarkProcessingTimelineResponse } from "@/lib/types/processing-timeline";
 
+export class ProcessingTimelineFetchError extends Error {
+  constructor(
+    message: string,
+    public readonly statusCode: number
+  ) {
+    super(message);
+    this.name = "ProcessingTimelineFetchError";
+  }
+}
+
 function getApiBasePath(): string {
   const basePath = process.env.NEXT_PUBLIC_API_URL;
   if (!basePath) {
@@ -110,7 +120,10 @@ export namespace BookmarksClientAPI {
 
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
-      throw new Error(body.error || "Failed to fetch processing timeline");
+      throw new ProcessingTimelineFetchError(
+        body.error || "Failed to fetch processing timeline",
+        response.status
+      );
     }
 
     return response.json();

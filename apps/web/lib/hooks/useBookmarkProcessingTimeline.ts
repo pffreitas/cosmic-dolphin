@@ -23,9 +23,30 @@ const PHASE_LABELS: Record<string, string> = {
 };
 
 export function shouldPollProcessingTimeline(
-  bookmark?: Pick<Bookmark, "processingStatus"> | null
+  bookmark?: Pick<Bookmark, "processingStatus"> | null,
+  timeline?: Pick<
+    BookmarkProcessingTimelineResponse,
+    "pollAfterMs" | "run" | "events"
+  >
 ): boolean {
-  return bookmark?.processingStatus === "processing";
+  return (
+    bookmark?.processingStatus === "processing" ||
+    (timeline?.pollAfterMs ?? 0) > 0 ||
+    timeline?.run?.status === "running" ||
+    timeline?.events?.some((event) => event.status === "running") === true
+  );
+}
+
+export function shouldRetryProcessingTimelineError(error: unknown): boolean {
+  const statusCode =
+    typeof error === "object" && error !== null && "statusCode" in error
+      ? (error as { statusCode?: unknown }).statusCode
+      : undefined;
+
+  return (
+    typeof statusCode !== "number" ||
+    ![401, 403, 404].includes(statusCode)
+  );
 }
 
 export function getActivePhaseLabel(
@@ -72,7 +93,11 @@ export function useBookmarkProcessingTimeline(
   }, [initialBookmark]);
 
   useEffect(() => {
-    if (!enabled || !bookmarkId || !shouldPollProcessingTimeline(bookmark)) {
+    if (
+      !enabled ||
+      !bookmarkId ||
+      !shouldPollProcessingTimeline(initialBookmark)
+    ) {
       setIsPolling(false);
       return;
     }
@@ -92,7 +117,7 @@ export function useBookmarkProcessingTimeline(
         setTimeline(response);
         setBookmark(response.bookmark);
 
-        if (shouldPollProcessingTimeline(response.bookmark)) {
+        if (shouldPollProcessingTimeline(response.bookmark, response)) {
           timeoutId = setTimeout(
             poll,
             response.pollAfterMs || pollIntervalMs
@@ -108,6 +133,10 @@ export function useBookmarkProcessingTimeline(
             ? pollError.message
             : "Failed to load processing timeline"
         );
+        if (!shouldRetryProcessingTimelineError(pollError)) {
+          setIsPolling(false);
+          return;
+        }
         timeoutId = setTimeout(poll, pollIntervalMs);
       }
     };
@@ -120,9 +149,9 @@ export function useBookmarkProcessingTimeline(
         clearTimeout(timeoutId);
       }
     };
-  }, [bookmark?.processingStatus, bookmarkId, enabled, pollIntervalMs]);
+  }, [initialBookmark, bookmarkId, enabled, pollIntervalMs]);
 
-  const events = timeline?.events ?? [];
+  const events = useMemo(() => timeline?.events ?? [], [timeline?.events]);
   const activePhaseLabel = useMemo(() => getActivePhaseLabel(events), [events]);
 
   return {

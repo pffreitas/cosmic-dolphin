@@ -103,11 +103,11 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     const reporter = new BookmarkProcessingReporter(
       this.bookmarkProcessingRepository
     );
-    await reporter.startRun(bookmark.id, userId);
 
     const startedTasks: Promise<unknown>[] = [];
 
     try {
+      await reporter.startRun(bookmark.id, userId);
       const session = await this.ai.newSession(bookmark.id);
 
       if (isPrivateLink) {
@@ -165,9 +165,13 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         () => this.chunkContent(bookmark, scrapedContent)
       );
       const embeddingPromise = chunkingPromise.then((chunkingResult) =>
-        reporter.trackPhase("embedding", "Embed content chunks", (phaseReporter) =>
-          this.embedChunks(chunkingResult, phaseReporter)
-        )
+        reporter
+          .trackPhase("embedding", "Embed content chunks", (phaseReporter) =>
+            this.embedChunks(chunkingResult, phaseReporter)
+          )
+          .catch((error) => {
+            console.error("Failed to embed content chunks:", error);
+          })
       );
       startedTasks.push(
         summaryPromise,
@@ -245,7 +249,9 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         "failed",
         errorMessage
       );
-      await reporter.failRun(errorMessage);
+      if (reporter.hasStarted()) {
+        await reporter.failRun(errorMessage);
+      }
       throw error;
     }
   }

@@ -51,6 +51,24 @@ type BookmarkTimelineServices = Pick<
   "bookmark" | "bookmarkProcessing"
 >;
 
+type BookmarkQueueServices = Pick<ServiceContainer, "bookmark" | "queue">;
+
+export async function queueBookmarkForProcessing(
+  services: BookmarkQueueServices,
+  bookmark: Bookmark,
+  userId: string,
+  onQueueError?: (error: unknown) => void
+): Promise<Bookmark> {
+  try {
+    await services.queue.sendBookmarkProcessingMessage(bookmark.id, userId);
+  } catch (queueError) {
+    onQueueError?.(queueError);
+    return bookmark;
+  }
+
+  return services.bookmark.updateProcessingStatus(bookmark.id, "processing");
+}
+
 export async function buildBookmarkProcessingTimelineResponse(
   services: BookmarkTimelineServices,
   bookmarkId: string,
@@ -79,13 +97,19 @@ export async function buildBookmarkProcessingTimelineResponse(
     ...result.bookmark,
     isLikedByCurrentUser: result.isLikedByCurrentUser,
   };
+  const hasRunningTimeline =
+    timeline?.run.status === "running" ||
+    timeline?.events.some((event) => event.status === "running") === true;
 
   return {
     body: {
       bookmark,
       run: timeline?.run,
       events: timeline?.events ?? [],
-      pollAfterMs: bookmark.processingStatus === "processing" ? 2000 : 0,
+      pollAfterMs:
+        bookmark.processingStatus === "processing" || hasRunningTimeline
+          ? 2000
+          : 0,
     },
   };
 }
@@ -147,17 +171,17 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
                 collectionId: collection_id,
               }
             );
-            try {
-              await services.queue.sendBookmarkProcessingMessage(
-                bookmark.id,
-                user_id
-              );
-            } catch (queueError) {
-              console.log("queueError", queueError);
-              fastify.log.error({ queueError }, "Queue post error");
-            }
-            return reply.status(201).send({
+            const queuedBookmark = await queueBookmarkForProcessing(
+              services,
               bookmark,
+              user_id,
+              (queueError) => {
+                console.log("queueError", queueError);
+                fastify.log.error({ queueError }, "Queue post error");
+              }
+            );
+            return reply.status(201).send({
+              bookmark: queuedBookmark,
               message: "Private link saved successfully",
             });
           }
@@ -179,35 +203,35 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
               collectionId: collection_id,
             }
           );
-          try {
-            await services.queue.sendBookmarkProcessingMessage(
-              bookmark.id,
-              user_id
-            );
-          } catch (queueError) {
-            console.log("queueError", queueError);
-            fastify.log.error({ queueError }, "Queue post error");
-          }
-          return reply.status(201).send({
+          const queuedBookmark = await queueBookmarkForProcessing(
+            services,
             bookmark,
+            user_id,
+            (queueError) => {
+              console.log("queueError", queueError);
+              fastify.log.error({ queueError }, "Queue post error");
+            }
+          );
+          return reply.status(201).send({
+            bookmark: queuedBookmark,
             message: "Private link saved successfully",
           });
         }
 
         const bookmark = await services.bookmark.create(source_url, user_id);
 
-        try {
-          await services.queue.sendBookmarkProcessingMessage(
-            bookmark.id,
-            user_id
-          );
-        } catch (queueError) {
-          console.log("queueError", queueError);
-          fastify.log.error({ queueError }, "Queue post error");
-        }
+        const queuedBookmark = await queueBookmarkForProcessing(
+          services,
+          bookmark,
+          user_id,
+          (queueError) => {
+            console.log("queueError", queueError);
+            fastify.log.error({ queueError }, "Queue post error");
+          }
+        );
 
         return reply.status(201).send({
-          bookmark,
+          bookmark: queuedBookmark,
           message: "Bookmark created successfully",
         });
       } catch (error) {

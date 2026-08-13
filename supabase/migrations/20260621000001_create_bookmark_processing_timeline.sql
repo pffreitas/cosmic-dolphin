@@ -64,4 +64,3 @@ CREATE TRIGGER update_bookmark_processing_events_updated_at
     BEFORE UPDATE ON bookmark_processing_events
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
-
