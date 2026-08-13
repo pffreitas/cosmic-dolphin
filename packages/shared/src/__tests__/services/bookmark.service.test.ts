@@ -23,6 +23,8 @@ describe("BookmarkService", () => {
       searchByQuickAccess: jest.fn(),
       fullTextSearch: jest.fn(),
       vectorSearch: jest.fn(),
+      markRead: jest.fn(),
+      markUnread: jest.fn(),
       update: jest.fn(),
       deleteScrapedUrlContents: jest.fn(),
       deleteByUser: jest.fn(),
@@ -288,6 +290,79 @@ describe("BookmarkService", () => {
   });
 
   describe("mapDatabaseToBookmark", () => {
+    it("should derive read fields from read_at", () => {
+      const readAt = new Date("2026-06-16T12:00:00.000Z");
+      const dbBookmark = {
+        id: "test-id",
+        source_url: "https://example.com",
+        title: "Test Title",
+        metadata: null,
+        collection_id: null,
+        user_id: testUserId,
+        is_archived: false,
+        is_favorite: false,
+        cosmic_summary: null,
+        cosmic_brief_summary: null,
+        cosmic_tags: null,
+        cosmic_images: null,
+        cosmic_links: null,
+        quick_access: null,
+        search_document: null,
+        is_private_link: false,
+        like_count: 0,
+        is_public: false,
+        share_slug: null,
+        processing_status: "idle",
+        processing_started_at: null,
+        processing_completed_at: null,
+        processing_error: null,
+        read_at: readAt,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+
+      const mappedBookmark = (service as any).mapDatabaseToBookmark(dbBookmark);
+
+      expect(mappedBookmark.readAt).toEqual(readAt);
+      expect(mappedBookmark.isRead).toBe(true);
+    });
+
+    it("should mark bookmarks without read_at as unread", () => {
+      const dbBookmark = {
+        id: "test-id",
+        source_url: "https://example.com",
+        title: "Test Title",
+        metadata: null,
+        collection_id: null,
+        user_id: testUserId,
+        is_archived: false,
+        is_favorite: false,
+        cosmic_summary: null,
+        cosmic_brief_summary: null,
+        cosmic_tags: null,
+        cosmic_images: null,
+        cosmic_links: null,
+        quick_access: null,
+        search_document: null,
+        is_private_link: false,
+        like_count: 0,
+        is_public: false,
+        share_slug: null,
+        processing_status: "idle",
+        processing_started_at: null,
+        processing_completed_at: null,
+        processing_error: null,
+        read_at: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+
+      const mappedBookmark = (service as any).mapDatabaseToBookmark(dbBookmark);
+
+      expect(mappedBookmark.readAt).toBeUndefined();
+      expect(mappedBookmark.isRead).toBe(false);
+    });
+
     it("should not include content field in mapped bookmark", () => {
       const dbBookmark = {
         id: "test-id",
@@ -319,6 +394,99 @@ describe("BookmarkService", () => {
       expect(mappedBookmark.title).toBe(dbBookmark.title);
       expect(mappedBookmark.userId).toBe(dbBookmark.user_id);
       expect(mappedBookmark).not.toHaveProperty("content");
+    });
+  });
+
+  describe("read state", () => {
+    it("should mark a bookmark read for the owning user", async () => {
+      const readAt = new Date("2026-06-16T12:00:00.000Z");
+      const dbBookmark = {
+        id: "bookmark-id",
+        source_url: "https://example.com",
+        title: "Read bookmark",
+        metadata: null,
+        collection_id: null,
+        user_id: testUserId,
+        is_archived: false,
+        is_favorite: false,
+        cosmic_summary: null,
+        cosmic_brief_summary: null,
+        cosmic_tags: null,
+        cosmic_images: null,
+        cosmic_links: null,
+        quick_access: null,
+        search_document: null,
+        is_private_link: false,
+        like_count: 0,
+        is_public: false,
+        share_slug: null,
+        processing_status: "idle",
+        processing_started_at: null,
+        processing_completed_at: null,
+        processing_error: null,
+        read_at: readAt,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+      mockRepository.markRead.mockResolvedValue(dbBookmark as any);
+
+      const result = await service.markRead("bookmark-id", testUserId);
+
+      expect(mockRepository.markRead).toHaveBeenCalledWith(
+        "bookmark-id",
+        testUserId
+      );
+      expect(result.isRead).toBe(true);
+      expect(result.readAt).toEqual(readAt);
+    });
+
+    it("should throw Bookmark not found when marking read fails ownership check", async () => {
+      mockRepository.markRead.mockResolvedValue(null);
+
+      await expect(service.markRead("bookmark-id", testUserId)).rejects.toThrow(
+        "Bookmark not found"
+      );
+    });
+
+    it("should clear read state when marking unread", async () => {
+      const dbBookmark = {
+        id: "bookmark-id",
+        source_url: "https://example.com",
+        title: "Unread bookmark",
+        metadata: null,
+        collection_id: null,
+        user_id: testUserId,
+        is_archived: false,
+        is_favorite: false,
+        cosmic_summary: null,
+        cosmic_brief_summary: null,
+        cosmic_tags: null,
+        cosmic_images: null,
+        cosmic_links: null,
+        quick_access: null,
+        search_document: null,
+        is_private_link: false,
+        like_count: 0,
+        is_public: false,
+        share_slug: null,
+        processing_status: "idle",
+        processing_started_at: null,
+        processing_completed_at: null,
+        processing_error: null,
+        read_at: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+      mockRepository.markUnread.mockResolvedValue(dbBookmark as any);
+
+      const result = await service.markUnread("bookmark-id", testUserId);
+
+      expect(mockRepository.markUnread).toHaveBeenCalledWith(
+        "bookmark-id",
+        testUserId
+      );
+      expect(result.isRead).toBe(false);
+      expect(result.readAt).toBeUndefined();
     });
   });
 

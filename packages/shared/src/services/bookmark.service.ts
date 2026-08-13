@@ -43,6 +43,7 @@ export interface BookmarkService {
     metadata: PrivateLinkMetadata
   ): Promise<Bookmark>;
   findByUser(userId: string, options?: FindByUserOptions): Promise<Bookmark[]>;
+  findFeed(userId: string, options?: FindByUserOptions): Promise<Bookmark[]>;
   searchByQuickAccess(
     userId: string,
     query: string,
@@ -56,6 +57,8 @@ export interface BookmarkService {
   ): Promise<Bookmark>;
   share(bookmarkId: string, userId: string): Promise<ShareBookmarkResponse>;
   unshare(bookmarkId: string, userId: string): Promise<ShareBookmarkResponse>;
+  markRead(bookmarkId: string, userId: string): Promise<Bookmark>;
+  markUnread(bookmarkId: string, userId: string): Promise<Bookmark>;
   findByShareSlug(slug: string): Promise<Bookmark | null>;
   delete(id: string, userId: string): Promise<void>;
 }
@@ -211,6 +214,17 @@ export class BookmarkServiceImpl implements BookmarkService {
     return this.enrichManyWithCollectionInfo(mapped);
   }
 
+  async findFeed(
+    userId: string,
+    options: FindByUserOptions = {}
+  ): Promise<Bookmark[]> {
+    return this.findByUser(userId, {
+      ...options,
+      readStatus: "unread",
+      includeArchived: false,
+    });
+  }
+
   async update(
     id: string,
     data: Partial<
@@ -248,6 +262,25 @@ export class BookmarkServiceImpl implements BookmarkService {
     if (!deleted) {
       throw new Error("Bookmark not found");
     }
+  }
+
+  async markRead(bookmarkId: string, userId: string): Promise<Bookmark> {
+    const bookmark = await this.bookmarkRepository.markRead(bookmarkId, userId);
+    if (!bookmark) {
+      throw new Error("Bookmark not found");
+    }
+    return this.mapDatabaseToBookmark(bookmark);
+  }
+
+  async markUnread(bookmarkId: string, userId: string): Promise<Bookmark> {
+    const bookmark = await this.bookmarkRepository.markUnread(
+      bookmarkId,
+      userId
+    );
+    if (!bookmark) {
+      throw new Error("Bookmark not found");
+    }
+    return this.mapDatabaseToBookmark(bookmark);
   }
 
   async updateProcessingStatus(
@@ -425,6 +458,8 @@ export class BookmarkServiceImpl implements BookmarkService {
       likeCount: data.like_count ?? 0,
       isPublic: data.is_public ?? false,
       shareSlug: data.share_slug ?? undefined,
+      readAt: data.read_at ? new Date(data.read_at) : undefined,
+      isRead: data.read_at != null,
       processingStatus: data.processing_status || "idle",
       processingStartedAt: data.processing_started_at
         ? new Date(data.processing_started_at)

@@ -218,7 +218,7 @@ export function GlobalCommandDialog() {
 
         {/* Static Navigation Commands */}
         <CommandGroup heading="Navigation">
-          <CommandItem onSelect={() => handleNavigationSelect("/")}>
+          <CommandItem onSelect={() => handleNavigationSelect("/my/dashboard")}>
             <Home className="mr-2 h-4 w-4" />
             <span>Home</span>
             <CommandShortcut>⌘H</CommandShortcut>

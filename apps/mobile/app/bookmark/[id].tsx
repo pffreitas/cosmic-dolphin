@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -62,6 +62,11 @@ export default function BookmarkDetailScreen() {
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
   const [isShareLoading, setIsShareLoading] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isRead, setIsRead] = useState(false);
+  const [readAt, setReadAt] = useState<string | undefined>(undefined);
+  const [isReadLoading, setIsReadLoading] = useState(false);
+  const [suppressAutoRead, setSuppressAutoRead] = useState(false);
+  const autoReadTriggeredRef = useRef(false);
 
   // Markdown styles based on color scheme - must be called before any early returns
   const markdownStyles = useMemo(() => ({
@@ -184,6 +189,10 @@ export default function BookmarkDetailScreen() {
         setIsLiked(data.isLikedByCurrentUser ?? false);
         setLikeCount(data.likeCount ?? 0);
         setIsShared(data.isPublic ?? false);
+        setIsRead(data.isRead ?? Boolean(data.readAt));
+        setReadAt(data.readAt);
+        setSuppressAutoRead(false);
+        autoReadTriggeredRef.current = false;
       } else {
         setError('Bookmark not found');
       }
@@ -236,6 +245,83 @@ export default function BookmarkDetailScreen() {
     }
   };
 
+  const applyReadState = useCallback((updated: Bookmark) => {
+    setBookmark(updated);
+    setIsRead(updated.isRead ?? Boolean(updated.readAt));
+    setReadAt(updated.readAt);
+  }, []);
+
+  const markReadAutomatically = useCallback(async () => {
+    if (!bookmark || isRead || suppressAutoRead || autoReadTriggeredRef.current) {
+      return;
+    }
+
+    autoReadTriggeredRef.current = true;
+    try {
+      const updated = await BookmarksAPI.markRead(bookmark.id);
+      applyReadState(updated);
+    } catch (error) {
+      autoReadTriggeredRef.current = false;
+      console.error('Failed to automatically mark bookmark read:', error);
+    }
+  }, [applyReadState, bookmark, isRead, suppressAutoRead]);
+
+  useEffect(() => {
+    if (!bookmark || isRead || suppressAutoRead) return;
+
+    const timeoutId = setTimeout(() => {
+      markReadAutomatically();
+    }, 20000);
+
+    return () => clearTimeout(timeoutId);
+  }, [bookmark, isRead, markReadAutomatically, suppressAutoRead]);
+
+  const handleScroll = useCallback((event: any) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    if (!contentSize?.height || contentSize.height <= layoutMeasurement.height) {
+      return;
+    }
+
+    const scrollRatio =
+      (contentOffset.y + layoutMeasurement.height) / contentSize.height;
+
+    if (scrollRatio >= 0.7) {
+      markReadAutomatically();
+    }
+  }, [markReadAutomatically]);
+
+  const handleReadToggle = async () => {
+    if (!bookmark || isReadLoading) return;
+
+    const previousBookmark = bookmark;
+    const previousIsRead = isRead;
+    const previousReadAt = readAt;
+
+    setIsRead(!isRead);
+    setReadAt(isRead ? undefined : new Date().toISOString());
+    setIsReadLoading(true);
+
+    try {
+      const updated = isRead
+        ? await BookmarksAPI.markUnread(bookmark.id)
+        : await BookmarksAPI.markRead(bookmark.id);
+      applyReadState(updated);
+      setSuppressAutoRead(isRead);
+    } catch (error) {
+      console.error('Failed to update read state:', error);
+      setBookmark(previousBookmark);
+      setIsRead(previousIsRead);
+      setReadAt(previousReadAt);
+      Alert.alert(
+        "Error",
+        "Failed to update read status. Please try again later.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setIsReadLoading(false);
+    }
+  };
+
   const handleShareToggle = async () => {
     if (!bookmark || isShareLoading) return;
 
@@ -250,7 +336,7 @@ export default function BookmarkDetailScreen() {
       setIsShared(result.isPublic);
       setShareUrl(result.shareUrl);
       setIsShareModalVisible(true);
-    } catch (err) {
+    } catch {
       Alert.alert('Error', 'Failed to share bookmark. Please try again.');
     } finally {
       setIsShareLoading(false);
@@ -266,7 +352,7 @@ export default function BookmarkDetailScreen() {
       setIsShared(result.isPublic);
       setShareUrl('');
       setIsShareModalVisible(false);
-    } catch (err) {
+    } catch {
       Alert.alert('Error', 'Failed to unshare bookmark. Please try again.');
     } finally {
       setIsShareLoading(false);
@@ -357,6 +443,17 @@ export default function BookmarkDetailScreen() {
             )}
           </Pressable>
           <Pressable
+            onPress={handleReadToggle}
+            style={styles.headerButton}
+            disabled={isReadLoading}
+          >
+            <Ionicons
+              name={isRead ? "return-up-back-outline" : "checkmark-done-outline"}
+              size={22}
+              color={isRead ? colors.tint : colors.textSecondary}
+            />
+          </Pressable>
+          <Pressable
             onPress={handleShareToggle}
             style={styles.headerButton}
             disabled={isShareLoading}
@@ -377,6 +474,8 @@ export default function BookmarkDetailScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         {/* Hero Image */}
         {image && (
@@ -420,6 +519,14 @@ export default function BookmarkDetailScreen() {
           <Text style={[styles.date, { color: colors.textSecondary }]}>
             Saved on {formatDate(bookmark.createdAt)}
           </Text>
+
+          {isRead && (
+            <View style={[styles.readBadge, { borderColor: colors.border }]}>
+              <Text style={[styles.readBadgeText, { color: colors.textSecondary }]}>
+                Read
+              </Text>
+            </View>
+          )}
 
           {/* Tags */}
           {bookmark.cosmicTags && bookmark.cosmicTags.length > 0 && (
@@ -651,6 +758,17 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: 14,
+  },
+  readBadge: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  readBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   tagsContainer: {
     flexDirection: 'row',

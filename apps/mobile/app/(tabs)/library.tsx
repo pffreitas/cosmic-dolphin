@@ -1,23 +1,16 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
-  StyleSheet,
-  View,
-  Text,
-  Pressable,
   ActivityIndicator,
+  FlatList,
+  Pressable,
   RefreshControl,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { BlurView } from 'expo-blur';
-import Animated, {
-  useAnimatedScrollHandler,
-  useSharedValue,
-  useAnimatedStyle,
-  interpolate,
-  Extrapolation,
-} from 'react-native-reanimated';
 
 import { BookmarkCard } from '@/components/BookmarkCard';
 import { useBookmarks } from '@/hooks/useBookmarks';
@@ -25,14 +18,19 @@ import { Bookmark } from '@/lib/api';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
-const HEADER_HEIGHT = 56;
-const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
+type ReadStatus = 'all' | 'unread' | 'read';
 
-export default function HomeScreen() {
+const filters: { label: string; value: ReadStatus }[] = [
+  { label: 'All', value: 'all' },
+  { label: 'Unread', value: 'unread' },
+  { label: 'Read', value: 'read' },
+];
+
+export default function LibraryScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
-  const insets = useSafeAreaInsets();
+  const [readStatus, setReadStatus] = useState<ReadStatus>('all');
   const {
     bookmarks,
     isLoading,
@@ -42,48 +40,10 @@ export default function HomeScreen() {
     refresh,
     loadMore,
     toggleRead,
-  } = useBookmarks({ mode: 'feed' });
-
-  const scrollY = useSharedValue(0);
-
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
-
-  const headerBlurStyle = useAnimatedStyle(() => {
-    const intensity = interpolate(
-      scrollY.value,
-      [0, 50],
-      [0, 1],
-      Extrapolation.CLAMP,
-    );
-    return {
-      opacity: intensity,
-    };
-  });
-
-  const headerBorderStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      scrollY.value,
-      [0, 50],
-      [0, 1],
-      Extrapolation.CLAMP,
-    );
-    return {
-      borderBottomColor: colors.border,
-      borderBottomWidth: 1,
-      opacity,
-    };
-  });
+  } = useBookmarks({ mode: 'library', readStatus });
 
   const handleBookmarkPress = useCallback((bookmark: Bookmark) => {
     router.push(`/bookmark/${bookmark.id}`);
-  }, [router]);
-
-  const handleSearchPress = useCallback(() => {
-    router.push('/search');
   }, [router]);
 
   const renderBookmark = useCallback(
@@ -92,10 +52,17 @@ export default function HomeScreen() {
         bookmark={item}
         onPress={handleBookmarkPress}
         onToggleRead={toggleRead}
+        showReadStatus
       />
     ),
     [handleBookmarkPress, toggleRead]
   );
+
+  const handleEndReached = useCallback(() => {
+    if (hasMore && !isLoadingMore) {
+      loadMore();
+    }
+  }, [hasMore, isLoadingMore, loadMore]);
 
   const renderFooter = useCallback(() => {
     if (!isLoadingMore) return null;
@@ -111,51 +78,22 @@ export default function HomeScreen() {
     return (
       <View style={styles.emptyContainer}>
         <View style={[styles.emptyIconContainer, { backgroundColor: colors.backgroundSecondary }]}>
-          <Ionicons name="bookmark-outline" size={32} color={colors.textSecondary} />
+          <Ionicons name="library-outline" size={32} color={colors.textSecondary} />
         </View>
         <Text style={[styles.emptyTitle, { color: colors.text }]}>
-          No bookmarks yet
+          No bookmarks found
         </Text>
         <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-          Unread bookmarks appear here. Read bookmarks stay in your library.
+          Your complete saved library will appear here.
         </Text>
       </View>
     );
   }, [isLoading, colors]);
 
-  const handleEndReached = useCallback(() => {
-    if (hasMore && !isLoadingMore) {
-      loadMore();
-    }
-  }, [hasMore, isLoadingMore, loadMore]);
-
-  const keyExtractor = useCallback((item: Bookmark) => item.id, []);
-
-  const headerContent = (
-    <View style={styles.headerInner}>
-      <View style={styles.brandContainer}>
-        <Text style={styles.brandEmoji}>🐬</Text>
-        <Text style={[styles.brandTitle, { color: colors.text }]}>Home</Text>
-      </View>
-      <Pressable
-        onPress={handleSearchPress}
-        style={({ pressed }) => [
-          styles.searchButton,
-          { backgroundColor: colors.backgroundSecondary, opacity: pressed ? 0.7 : 1 },
-        ]}
-        hitSlop={8}
-      >
-        <Ionicons name="search-outline" size={20} color={colors.text} />
-      </Pressable>
-    </View>
-  );
-
   if (isLoading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-        <View style={styles.header}>
-          {headerContent}
-        </View>
+        <Header colors={colors} readStatus={readStatus} onFilterChange={setReadStatus} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.tint} />
         </View>
@@ -166,9 +104,7 @@ export default function HomeScreen() {
   if (error) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-        <View style={styles.header}>
-          {headerContent}
-        </View>
+        <Header colors={colors} readStatus={readStatus} onFilterChange={setReadStatus} />
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={48} color={colors.textSecondary} />
           <Text style={[styles.errorTitle, { color: colors.text }]}>
@@ -184,37 +120,21 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <View style={[styles.headerWrapper, { top: insets.top }]}>
-        <AnimatedBlurView
-          intensity={80}
-          tint={colorScheme === 'dark' ? 'dark' : 'light'}
-          style={[StyleSheet.absoluteFill, headerBlurStyle]}
-        />
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background, opacity: 0.7 }]} />
-        {headerContent}
-        <Animated.View style={[styles.headerBorder, headerBorderStyle]} />
-      </View>
-
-      <Animated.FlatList
+      <Header colors={colors} readStatus={readStatus} onFilterChange={setReadStatus} />
+      <FlatList
         data={bookmarks}
         renderItem={renderBookmark}
-        keyExtractor={keyExtractor}
-        contentContainerStyle={[
-          { paddingTop: HEADER_HEIGHT },
-          bookmarks.length === 0 ? styles.emptyList : undefined,
-        ]}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={bookmarks.length === 0 ? styles.emptyList : undefined}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.5}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={false}
             onRefresh={refresh}
             tintColor={colors.tint}
-            progressViewOffset={HEADER_HEIGHT}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -223,59 +143,83 @@ export default function HomeScreen() {
   );
 }
 
+function Header({
+  colors,
+  readStatus,
+  onFilterChange,
+}: {
+  colors: typeof Colors.light;
+  readStatus: ReadStatus;
+  onFilterChange: (status: ReadStatus) => void;
+}) {
+  return (
+    <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      <View>
+        <Text style={[styles.title, { color: colors.text }]}>Library</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          All saved bookmarks
+        </Text>
+      </View>
+      <View style={[styles.segmented, { backgroundColor: colors.backgroundSecondary }]}>
+        {filters.map((filter) => {
+          const isActive = readStatus === filter.value;
+          return (
+            <Pressable
+              key={filter.value}
+              onPress={() => onFilterChange(filter.value)}
+              style={[
+                styles.segment,
+                isActive && { backgroundColor: colors.tint },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.segmentText,
+                  { color: isActive ? '#fff' : colors.textSecondary },
+                ]}
+              >
+                {filter.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  headerWrapper: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: HEADER_HEIGHT,
-    zIndex: 10,
-    overflow: 'hidden',
-  },
   header: {
-    height: HEADER_HEIGHT,
-  },
-  headerInner: {
-    height: HEADER_HEIGHT,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    gap: 12,
   },
-  headerBorder: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 1,
-  },
-  brandContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  brandEmoji: {
+  title: {
     fontSize: 24,
-  },
-  brandTitle: {
-    fontSize: 20,
     fontWeight: '700',
   },
-  searchButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+  subtitle: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+  segmented: {
+    flexDirection: 'row',
+    borderRadius: 8,
+    padding: 3,
+    alignSelf: 'flex-start',
+  },
+  segment: {
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  segmentText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,
@@ -323,7 +267,6 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     fontSize: 14,
     textAlign: 'center',
-    maxWidth: 280,
   },
   footerLoader: {
     paddingVertical: 20,

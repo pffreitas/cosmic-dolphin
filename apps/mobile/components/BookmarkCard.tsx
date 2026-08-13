@@ -7,6 +7,8 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 interface BookmarkCardProps {
   bookmark: Bookmark;
   onPress?: (bookmark: Bookmark) => void;
+  onToggleRead?: (bookmark: Bookmark) => void;
+  showReadStatus?: boolean;
 }
 
 function extractDomain(url: string): string {
@@ -18,7 +20,12 @@ function extractDomain(url: string): string {
   }
 }
 
-export function BookmarkCard({ bookmark, onPress }: BookmarkCardProps) {
+export function BookmarkCard({
+  bookmark,
+  onPress,
+  onToggleRead,
+  showReadStatus = false,
+}: BookmarkCardProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
 
@@ -33,12 +40,18 @@ export function BookmarkCard({ bookmark, onPress }: BookmarkCardProps) {
     extractDomain(bookmark.sourceUrl || '');
   const image = bookmark.metadata?.openGraph?.image;
   const description = bookmark.cosmicBriefSummary || bookmark.metadata?.openGraph?.description || '';
+  const isRead = bookmark.isRead ?? Boolean(bookmark.readAt);
 
   // Display collection name if available, otherwise fall back to site name
   const displayName = collectionName || siteName;
 
   const handlePress = () => {
     onPress?.(bookmark);
+  };
+
+  const handleToggleRead = (event: any) => {
+    event.stopPropagation?.();
+    onToggleRead?.(bookmark);
   };
 
   return (
@@ -70,6 +83,14 @@ export function BookmarkCard({ bookmark, onPress }: BookmarkCardProps) {
             </View>
           )}
 
+          {showReadStatus && isRead && (
+            <View style={[styles.readBadge, { borderColor: colors.border }]}>
+              <Text style={[styles.readBadgeText, { color: colors.textSecondary }]}>
+                Read
+              </Text>
+            </View>
+          )}
+
           {/* Title */}
           <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
             {bookmark.title || 'Untitled'}
@@ -97,6 +118,24 @@ export function BookmarkCard({ bookmark, onPress }: BookmarkCardProps) {
               ))}
             </View>
           )}
+
+          {onToggleRead && (
+            <Pressable
+              onPress={handleToggleRead}
+              style={({ pressed }) => [
+                styles.readButton,
+                {
+                  borderColor: colors.border,
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
+              hitSlop={8}
+            >
+              <Text style={[styles.readButtonText, { color: colors.textSecondary }]}>
+                {isRead ? 'Mark unread' : 'Mark read'}
+              </Text>
+            </Pressable>
+          )}
         </View>
 
         {/* Right side: Image */}
@@ -119,6 +158,17 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
+  },
+  readBadge: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  readBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   content: {
     flexDirection: 'row',
@@ -174,6 +224,18 @@ const styles = StyleSheet.create({
   },
   tagText: {
     fontSize: 12,
+  },
+  readButton: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginTop: 2,
+  },
+  readButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   imageContainer: {
     width: 80,

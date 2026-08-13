@@ -14,6 +14,7 @@ export interface FindByUserOptions {
   limit?: number;
   offset?: number;
   includeArchived?: boolean;
+  readStatus?: "all" | "unread" | "read";
 }
 
 export interface SearchOptions {
@@ -67,6 +68,8 @@ export interface BookmarkRepository {
     options?: SearchOptions
   ): Promise<VectorSearchResult[]>;
   findByShareSlug(slug: string): Promise<Bookmark | null>;
+  markRead(id: string, userId: string): Promise<Bookmark | null>;
+  markUnread(id: string, userId: string): Promise<Bookmark | null>;
   update(id: string, data: BookmarkUpdate): Promise<Bookmark>;
   deleteByUser(id: string, userId: string): Promise<boolean>;
 }
@@ -214,6 +217,7 @@ export class BookmarkRepositoryImpl
         limit = 50,
         offset = 0,
         includeArchived = false,
+        readStatus = "all",
       } = options;
 
       let query = this.db
@@ -230,6 +234,12 @@ export class BookmarkRepositoryImpl
 
       if (collectionId) {
         query = query.where("collection_id", "=", collectionId);
+      }
+
+      if (readStatus === "unread") {
+        query = query.where("read_at", "is", null);
+      } else if (readStatus === "read") {
+        query = query.where("read_at", "is not", null);
       }
 
       return await query.execute();
@@ -274,6 +284,34 @@ export class BookmarkRepositoryImpl
 
       return result;
     }, "update");
+  }
+
+  async markRead(id: string, userId: string): Promise<Bookmark | null> {
+    return this.executeQuery(async () => {
+      const result = await this.db
+        .updateTable("bookmarks")
+        .set({ read_at: new Date() })
+        .where("id", "=", id)
+        .where("user_id", "=", userId)
+        .returningAll()
+        .executeTakeFirst();
+
+      return result || null;
+    }, "markRead");
+  }
+
+  async markUnread(id: string, userId: string): Promise<Bookmark | null> {
+    return this.executeQuery(async () => {
+      const result = await this.db
+        .updateTable("bookmarks")
+        .set({ read_at: null })
+        .where("id", "=", id)
+        .where("user_id", "=", userId)
+        .returningAll()
+        .executeTakeFirst();
+
+      return result || null;
+    }, "markUnread");
   }
 
   async deleteByUser(id: string, userId: string): Promise<boolean> {

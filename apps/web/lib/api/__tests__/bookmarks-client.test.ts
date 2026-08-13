@@ -1,6 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-const { mockBookmarksRemove, mockGetSession } = vi.hoisted(() => ({
+const {
+  mockBookmarksFeed,
+  mockBookmarksList,
+  mockBookmarksMarkRead,
+  mockBookmarksMarkUnread,
+  mockBookmarksRemove,
+  mockGetSession,
+} = vi.hoisted(() => ({
+  mockBookmarksFeed: vi.fn(),
+  mockBookmarksList: vi.fn(),
+  mockBookmarksMarkRead: vi.fn(),
+  mockBookmarksMarkUnread: vi.fn(),
   mockBookmarksRemove: vi.fn(),
   mockGetSession: vi.fn(),
 }));
@@ -10,7 +21,8 @@ vi.mock("@cosmic-dolphin/api-client", () => {
   function MockBookmarksApi() {
     return {
       bookmarksRemove: mockBookmarksRemove,
-      bookmarksList: vi.fn(),
+      bookmarksFeed: mockBookmarksFeed,
+      bookmarksList: mockBookmarksList,
       bookmarksCreate: vi.fn(),
       bookmarksFindById: vi.fn(),
       bookmarksSearch: vi.fn(),
@@ -18,6 +30,8 @@ vi.mock("@cosmic-dolphin/api-client", () => {
       bookmarksUnlike: vi.fn(),
       bookmarksShare: vi.fn(),
       bookmarksUnshare: vi.fn(),
+      bookmarksMarkRead: mockBookmarksMarkRead,
+      bookmarksMarkUnread: mockBookmarksMarkUnread,
       bookmarksPreview: vi.fn(),
     };
   }
@@ -45,11 +59,66 @@ import { BookmarksClientAPI } from "../bookmarks-client";
 
 describe("BookmarksClientAPI.remove", () => {
   beforeEach(() => {
+    mockBookmarksFeed.mockReset();
+    mockBookmarksList.mockReset();
+    mockBookmarksMarkRead.mockReset();
+    mockBookmarksMarkUnread.mockReset();
     mockBookmarksRemove.mockReset();
     mockGetSession.mockReset();
     mockGetSession.mockResolvedValue({
       data: { session: { access_token: "test-token" } },
     });
+  });
+
+  it("should request the unread feed", async () => {
+    mockBookmarksFeed.mockResolvedValue({ bookmarks: [] });
+
+    const result = await BookmarksClientAPI.feed({ limit: 10, offset: 20 });
+
+    expect(mockBookmarksFeed).toHaveBeenCalledWith({ limit: 10, offset: 20 });
+    expect(result).toEqual([]);
+  });
+
+  it("should map library list query params to generated client names", async () => {
+    mockBookmarksList.mockResolvedValue({ bookmarks: [] });
+
+    await BookmarksClientAPI.list({
+      collection_id: "collection-id",
+      read_status: "read",
+      limit: 5,
+      offset: 10,
+    });
+
+    expect(mockBookmarksList).toHaveBeenCalledWith({
+      collectionId: "collection-id",
+      readStatus: "read",
+      limit: 5,
+      offset: 10,
+    });
+  });
+
+  it("should mark a bookmark read", async () => {
+    const bookmark = { id: "bookmark-123", isRead: true };
+    mockBookmarksMarkRead.mockResolvedValue(bookmark);
+
+    const result = await BookmarksClientAPI.markRead("bookmark-123");
+
+    expect(mockBookmarksMarkRead).toHaveBeenCalledWith({
+      id: "bookmark-123",
+    });
+    expect(result).toBe(bookmark);
+  });
+
+  it("should mark a bookmark unread", async () => {
+    const bookmark = { id: "bookmark-123", isRead: false };
+    mockBookmarksMarkUnread.mockResolvedValue(bookmark);
+
+    const result = await BookmarksClientAPI.markUnread("bookmark-123");
+
+    expect(mockBookmarksMarkUnread).toHaveBeenCalledWith({
+      id: "bookmark-123",
+    });
+    expect(result).toBe(bookmark);
   });
 
   describe("happy path", () => {

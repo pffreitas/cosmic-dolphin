@@ -3,6 +3,7 @@ import {
   BookmarksApi,
   CollectionsApi,
   Bookmark,
+  BookmarkReadStatus,
   Collection,
   CreateBookmarkRequest,
   CreateBookmarkResponse,
@@ -48,14 +49,35 @@ export namespace BookmarksClientAPI {
     collection_id?: string;
     limit?: number;
     offset?: number;
+    read_status?: BookmarkReadStatus;
   }): Promise<Bookmark[]> {
     const bookmarksApi = await getApiInstance();
 
     try {
-      const response = await bookmarksApi.bookmarksList(query);
+      const response = await bookmarksApi.bookmarksList({
+        collectionId: query?.collection_id,
+        limit: query?.limit,
+        offset: query?.offset,
+        readStatus: query?.read_status,
+      });
       return response.bookmarks || [];
     } catch (error) {
       console.error("Error fetching bookmarks", error);
+      return [];
+    }
+  }
+
+  export async function feed(query?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<Bookmark[]> {
+    const bookmarksApi = await getApiInstance();
+
+    try {
+      const response = await bookmarksApi.bookmarksFeed(query);
+      return response.bookmarks || [];
+    } catch (error) {
+      console.error("Error fetching bookmark feed", error);
       return [];
     }
   }
@@ -127,6 +149,32 @@ export namespace BookmarksClientAPI {
       return await bookmarksApi.bookmarksUnlike({ id: bookmarkId });
     } catch (error: any) {
       console.error("Error unliking bookmark", error);
+      if (error?.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw error;
+    }
+  }
+
+  export async function markRead(bookmarkId: string): Promise<Bookmark> {
+    const bookmarksApi = await getApiInstance();
+    try {
+      return await bookmarksApi.bookmarksMarkRead({ id: bookmarkId });
+    } catch (error: any) {
+      console.error("Error marking bookmark read", error);
+      if (error?.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw error;
+    }
+  }
+
+  export async function markUnread(bookmarkId: string): Promise<Bookmark> {
+    const bookmarksApi = await getApiInstance();
+    try {
+      return await bookmarksApi.bookmarksMarkUnread({ id: bookmarkId });
+    } catch (error: any) {
+      console.error("Error marking bookmark unread", error);
       if (error?.response?.data?.error) {
         throw new Error(error.response.data.error);
       }

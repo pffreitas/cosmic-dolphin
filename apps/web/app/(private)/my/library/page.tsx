@@ -1,117 +1,53 @@
 import { BookmarksAPI } from "@/lib/api/bookmarks";
-import { Bookmark } from "@cosmic-dolphin/api-client";
+import { Bookmark, BookmarkReadStatus } from "@cosmic-dolphin/api-client";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Bookmark as BookmarkIcon, LockIcon } from "lucide-react";
+import { Bookmark as BookmarkIcon } from "lucide-react";
+import { BookmarkListCard } from "@/components/bookmark/bookmark-list-card";
 
-function extractDomain(url: string): string {
-  try {
-    const domain = new URL(url).hostname.replace("www.", "");
-    return domain;
-  } catch {
-    return "";
+const readFilters: {
+  label: string;
+  value: BookmarkReadStatus;
+}[] = [
+  { label: "All", value: BookmarkReadStatus.All },
+  { label: "Unread", value: BookmarkReadStatus.Unread },
+  { label: "Read", value: BookmarkReadStatus.Read },
+];
+
+function normalizeReadStatus(
+  readStatus?: string
+): BookmarkReadStatus {
+  if (readStatus === BookmarkReadStatus.Unread) {
+    return BookmarkReadStatus.Unread;
   }
+  if (readStatus === BookmarkReadStatus.Read) {
+    return BookmarkReadStatus.Read;
+  }
+  return BookmarkReadStatus.All;
 }
 
-const BookmarkCard = ({ bookmark }: { bookmark: Bookmark }) => {
-  // Get the immediate (last) collection from the path
-  const immediateCollection = bookmark.collectionPath?.length
-    ? bookmark.collectionPath[bookmark.collectionPath.length - 1]
-    : null;
-  const collectionName = immediateCollection?.name;
-
-  const siteName =
-    bookmark.metadata?.openGraph?.siteName ||
-    extractDomain(bookmark.sourceUrl || "");
-  const image = bookmark.metadata?.openGraph?.image;
-  const description =
-    bookmark.cosmicBriefSummary ||
-    bookmark.metadata?.openGraph?.description ||
-    "";
-
-  // Display collection name if available, otherwise fall back to site name
-  const displayName = collectionName || siteName;
-
-  return (
-    <article className="group py-6 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
-      <div className="flex gap-6">
-        {/* Content */}
-        <div className="flex-1 min-w-0 flex flex-col gap-2">
-          {/* Publication header */}
-          {displayName && (
-            <div className="flex items-center gap-2 text-sm">
-              <div className="w-5 h-5 rounded-sm bg-gradient-to-br from-gray-700 to-gray-900 dark:from-gray-300 dark:to-gray-500 flex items-center justify-center">
-                <span className="text-[10px] font-bold text-white dark:text-gray-900 uppercase">
-                  {displayName.charAt(0)}
-                </span>
-              </div>
-              <span className="text-gray-600 dark:text-gray-400">
-                In{" "}
-                <span className="font-medium text-gray-900 dark:text-gray-100">
-                  {displayName}
-                </span>
-              </span>
-            </div>
-          )}
-
-          {/* Title */}
-          <Link href={`/bookmarks/${bookmark.id}`} className="block">
-            <h2 className="flex items-start gap-1.5 text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 leading-tight line-clamp-2 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors">
-              {bookmark.isPrivateLink && (
-                <LockIcon className="mt-1 size-4 shrink-0 text-gray-400 dark:text-gray-500" />
-              )}
-              {bookmark.title}
-            </h2>
-          </Link>
-
-          {/* Description */}
-          {description && (
-            <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base leading-relaxed">
-              {description}
-            </p>
-          )}
-
-          {/* Tags */}
-          {bookmark.cosmicTags && bookmark.cosmicTags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-1">
-              {bookmark.cosmicTags.slice(0, 3).map((tag) => (
-                <Badge
-                  key={tag}
-                  variant="secondary"
-                  className="text-xs px-2 py-0 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                >
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Thumbnail */}
-        {image && (
-          <Link href={`/bookmarks/${bookmark.id}`} className="shrink-0">
-            <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800">
-              <img
-                src={image}
-                alt=""
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-            </div>
-          </Link>
-        )}
-      </div>
-    </article>
-  );
-};
+function buildLibraryFilterHref(
+  readStatus: BookmarkReadStatus,
+  collectionId?: string
+) {
+  const params = new URLSearchParams();
+  if (collectionId) params.set("collection_id", collectionId);
+  if (readStatus !== BookmarkReadStatus.All) {
+    params.set("read_status", readStatus);
+  }
+  const query = params.toString();
+  return query ? `/my/library?${query}` : "/my/library";
+}
 
 async function BookmarksList({
   searchParams,
 }: {
-  searchParams: { collection_id?: string };
+  searchParams: { collection_id?: string; read_status?: string };
 }) {
+  const readStatus = normalizeReadStatus(searchParams.read_status);
   const bookmarks = await BookmarksAPI.list({
     collection_id: searchParams.collection_id,
+    read_status: readStatus,
   });
 
   if (!bookmarks || bookmarks.length === 0) {
@@ -121,10 +57,12 @@ async function BookmarksList({
           <BookmarkIcon className="w-8 h-8 text-gray-400" />
         </div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-          No bookmarks yet
+          No bookmarks found
         </h3>
         <p className="text-gray-500 dark:text-gray-400 max-w-sm">
-          Start saving articles and pages to build your personal library.
+          {readStatus === BookmarkReadStatus.Read
+            ? "Bookmarks you mark as read will stay here in your complete library."
+            : "Start saving articles and pages to build your personal library."}
         </p>
       </div>
     );
@@ -133,7 +71,11 @@ async function BookmarksList({
   return (
     <div className="divide-y divide-gray-100 dark:divide-gray-800">
       {bookmarks.map((bookmark: Bookmark) => (
-        <BookmarkCard key={bookmark.id} bookmark={bookmark} />
+        <BookmarkListCard
+          key={bookmark.id}
+          bookmark={bookmark}
+          showReadStatus
+        />
       ))}
     </div>
   );
@@ -148,26 +90,21 @@ const LoadingBookmarks = () => (
       >
         <div className="flex gap-6">
           <div className="flex-1 min-w-0 flex flex-col gap-2">
-            {/* Publication header skeleton - matches: flex items-center gap-2 text-sm */}
             <div className="flex items-center gap-2 text-sm">
               <div className="w-5 h-5 rounded-sm bg-gray-200 dark:bg-gray-700" />
               <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 rounded" />
             </div>
-            {/* Title skeleton - matches: text-lg sm:text-xl leading-tight line-clamp-2 */}
             <div className="space-y-1">
               <div className="h-6 sm:h-7 w-full bg-gray-200 dark:bg-gray-700 rounded" />
               <div className="h-6 sm:h-7 w-3/4 bg-gray-200 dark:bg-gray-700 rounded" />
             </div>
-            {/* Description skeleton - matches: text-sm sm:text-base leading-relaxed line-clamp-2 */}
             <div className="h-12 sm:h-14 w-full bg-gray-100 dark:bg-gray-800 rounded" />
-            {/* Tags skeleton - matches: flex flex-wrap gap-1.5 mt-1 with Badge */}
             <div className="flex flex-wrap gap-1.5 mt-1">
               <div className="h-5 w-16 bg-gray-100 dark:bg-gray-800 rounded-md" />
               <div className="h-5 w-20 bg-gray-100 dark:bg-gray-800 rounded-md" />
               <div className="h-5 w-14 bg-gray-100 dark:bg-gray-800 rounded-md" />
             </div>
           </div>
-          {/* Thumbnail skeleton - matches: w-24 h-24 sm:w-32 sm:h-32 rounded-md */}
           <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-md bg-gray-200 dark:bg-gray-700 shrink-0" />
         </div>
       </article>
@@ -178,11 +115,44 @@ const LoadingBookmarks = () => (
 export default async function Index({
   searchParams,
 }: {
-  searchParams: Promise<{ collection_id?: string }>;
+  searchParams: Promise<{ collection_id?: string; read_status?: string }>;
 }) {
   const params = await searchParams;
+  const readStatus = normalizeReadStatus(params.read_status);
+
   return (
     <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+            Library
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            All saved bookmarks, including items already read.
+          </p>
+        </div>
+        <nav className="flex rounded-md border border-gray-200 bg-white p-1 text-sm dark:border-gray-800 dark:bg-gray-950">
+          {readFilters.map((filter) => {
+            const isActive = readStatus === filter.value;
+            return (
+              <Link
+                key={filter.value}
+                href={buildLibraryFilterHref(
+                  filter.value,
+                  params.collection_id
+                )}
+                className={`rounded px-3 py-1.5 font-medium transition-colors ${
+                  isActive
+                    ? "bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300"
+                    : "text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-900"
+                }`}
+              >
+                {filter.label}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
       <Suspense fallback={<LoadingBookmarks />}>
         <BookmarksList searchParams={params} />
       </Suspense>

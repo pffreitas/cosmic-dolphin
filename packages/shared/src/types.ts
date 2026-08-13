@@ -119,6 +119,8 @@ export interface Bookmark extends BaseEntity {
   isLikedByCurrentUser?: boolean;
   isPublic: boolean;
   shareSlug?: string;
+  readAt?: Date;
+  isRead?: boolean;
   processingStatus: ProcessingStatus;
   processingStartedAt?: Date;
   processingCompletedAt?: Date;
@@ -205,6 +207,7 @@ export interface GetBookmarksQuery {
   collection_id?: string;
   limit?: number;
   offset?: number;
+  read_status?: "all" | "unread" | "read";
 }
 
 export interface GetBookmarksResponse {
