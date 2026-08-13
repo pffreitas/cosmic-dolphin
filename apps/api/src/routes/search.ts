@@ -5,7 +5,7 @@ import {
   createDatabase,
 } from "@cosmic-dolphin/shared";
 import { createClient } from "@supabase/supabase-js";
-import { config } from "../config/environment";
+import { config, resolveFrontendOrigin } from "../config/environment";
 import { authMiddleware } from "../middleware/auth";
 
 export default async function searchRoutes(fastify: FastifyInstance) {
@@ -64,8 +64,10 @@ export default async function searchRoutes(fastify: FastifyInstance) {
           "Cache-Control": "no-cache",
           Connection: "keep-alive",
           "X-Accel-Buffering": "no",
-          // 🛡️ Sentinel: Restrict CORS to explicit trusted frontend origin for SSE
-          "Access-Control-Allow-Origin": config.FRONTEND_URL,
+          "Access-Control-Allow-Origin": resolveFrontendOrigin(
+            request.headers.origin,
+            config.FRONTEND_ORIGINS
+          ),
           "Access-Control-Allow-Credentials": "true",
         });
 

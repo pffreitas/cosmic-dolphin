@@ -59,14 +59,23 @@ export async function queueBookmarkForProcessing(
   userId: string,
   onQueueError?: (error: unknown) => void
 ): Promise<Bookmark> {
+  const processingBookmark = await services.bookmark.updateProcessingStatus(
+    bookmark.id,
+    "processing"
+  );
+
   try {
     await services.queue.sendBookmarkProcessingMessage(bookmark.id, userId);
   } catch (queueError) {
     onQueueError?.(queueError);
-    return bookmark;
+    return services.bookmark.updateProcessingStatus(
+      bookmark.id,
+      "failed",
+      "Failed to enqueue bookmark processing"
+    );
   }
 
-  return services.bookmark.updateProcessingStatus(bookmark.id, "processing");
+  return processingBookmark;
 }
 
 export async function buildBookmarkProcessingTimelineResponse(

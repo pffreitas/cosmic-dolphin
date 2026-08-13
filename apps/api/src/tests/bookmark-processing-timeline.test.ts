@@ -188,6 +188,10 @@ describe("GET /bookmarks/:id/processing-timeline", () => {
       "user-1"
     );
 
+    if (response.statusCode) {
+      throw new Error("Expected timeline response");
+    }
+
     expect(response.body.pollAfterMs).toBe(2000);
   });
 });
@@ -232,6 +236,69 @@ describe("queueBookmarkForProcessing", () => {
     expect(services.bookmark.updateProcessingStatus).toHaveBeenCalledWith(
       "bookmark-1",
       "processing"
+    );
+  });
+
+  it("marks the bookmark processing before enqueueing the worker job", async () => {
+    const callOrder: string[] = [];
+    const queuedBookmark = {
+      ...bookmark,
+      processingStatus: "processing" as const,
+    };
+    const services = {
+      queue: {
+        sendBookmarkProcessingMessage: mock(async () => {
+          callOrder.push("queue");
+        }),
+      },
+      bookmark: {
+        updateProcessingStatus: mock(async () => {
+          callOrder.push("status");
+          return queuedBookmark;
+        }),
+      },
+    } as any;
+
+    await queueBookmarkForProcessing(services, bookmark, "user-1");
+
+    expect(callOrder).toEqual(["status", "queue"]);
+  });
+
+  it("marks the bookmark failed when enqueueing fails after processing starts", async () => {
+    const failedBookmark = {
+      ...bookmark,
+      processingStatus: "failed" as const,
+      processingError: "Failed to enqueue bookmark processing",
+    };
+    const services = {
+      queue: {
+        sendBookmarkProcessingMessage: mock(async () => {
+          throw new Error("queue unavailable");
+        }),
+      },
+      bookmark: {
+        updateProcessingStatus: mock(async (_id, status, error) =>
+          status === "failed"
+            ? { ...failedBookmark, processingError: error }
+            : { ...bookmark, processingStatus: status }
+        ),
+      },
+    } as any;
+    const onQueueError = mock(() => {});
+
+    const result = await queueBookmarkForProcessing(
+      services,
+      bookmark,
+      "user-1",
+      onQueueError
+    );
+
+    expect(result).toEqual(failedBookmark);
+    expect(onQueueError).toHaveBeenCalled();
+    expect(services.bookmark.updateProcessingStatus).toHaveBeenLastCalledWith(
+      "bookmark-1",
+      "failed",
+      "Failed to enqueue bookmark processing"
     );
   });
 });
