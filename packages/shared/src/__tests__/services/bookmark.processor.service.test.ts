@@ -5,7 +5,7 @@ import { ContentChunkRepository } from "../../repositories/content-chunk.reposit
 import { CollectionRepository } from "../../repositories/collection.repository";
 import { AI } from "../../ai";
 import { Session, Task } from "../../ai/types";
-import { EventBus } from "../../ai/bus";
+import { BookmarkProcessingRepository } from "../../repositories/bookmark-processing.repository";
 import { TestDataFactory } from "../../test-utils/factories";
 import { Bookmark, ScrapedUrlContents } from "../../types";
 import { HttpClient } from "../../services/http-client";
@@ -18,7 +18,7 @@ describe("BookmarkProcessorService", () => {
   let mockContentChunkRepository: jest.Mocked<ContentChunkRepository>;
   let mockCollectionRepository: jest.Mocked<CollectionRepository>;
   let mockAI: jest.Mocked<AI>;
-  let mockEventBus: jest.Mocked<EventBus>;
+  let mockBookmarkProcessingRepository: jest.Mocked<BookmarkProcessingRepository>;
   let mockHttpClient: jest.Mocked<HttpClient>;
   let testBookmark: Bookmark;
   let testScrapedContent: ScrapedUrlContents;
@@ -58,63 +58,145 @@ describe("BookmarkProcessorService", () => {
       delete: jest.fn(),
     } as jest.Mocked<BookmarkService>;
 
-    const mockPromptGenerator = async function* (input: {
-      message?: { content?: string };
-    }) {
-      const message = input.message?.content ?? "";
-      if (message.includes("generate the tags")) {
-        yield {
-          type: "text",
-          part: { text: '{"tags": ["test", "bookmark"]}' },
+    const generateObjectValue = async (input: any) => {
+      if (
+        input.prompt &&
+        input.prompt.includes("Your task is to generate a brief summary")
+      ) {
+        return "Generated brief summary";
+      } else if (
+        input.prompt &&
+        input.prompt.includes("Your task is to filter the images")
+      ) {
+        return {
+          images: [
+            {
+              url: "https://example.com/image.jpg",
+              title: "Test image",
+              description: "A test image",
+            },
+          ],
         };
-      } else {
-        yield { type: "text", part: { text: "Generated summary" } };
+      } else if (
+        input.prompt &&
+        input.prompt.includes("Your task is to generate the tags")
+      ) {
+        return {
+          tags: ["test", "bookmark"],
+        };
       }
+      return {
+        existingCategoryId: null,
+        newCategoryPath: ["Uncategorized"],
+        confidence: 0.9,
+        reasoning: "Default categorization",
+      };
+    };
+
+    const mockUsage = {
+      inputTokens: 10,
+      outputTokens: 20,
+      totalTokens: 30,
     };
 
     mockAI = {
       newSession: jest.fn(),
       newTask: jest.fn(),
       newSubTask: jest.fn(),
-      generateObject: jest.fn().mockImplementation(async (input: any) => {
-        // Return different mocked values based on what's being generated
-        if (
-          input.prompt &&
-          input.prompt.includes("Your task is to generate a brief summary")
-        ) {
-          return "Generated brief summary";
-        } else if (
-          input.prompt &&
-          input.prompt.includes("Your task is to filter the images")
-        ) {
-          return {
-            images: [
-              {
-                url: "https://example.com/image.jpg",
-                title: "Test image",
-                description: "A test image",
-              },
-            ],
-          };
-        } else if (
-          input.prompt &&
-          input.prompt.includes("Your task is to generate the tags")
-        ) {
-          return {
-            tags: ["test", "bookmark"],
-          };
-        }
-        return "Default generated object";
+      generateText: jest.fn<any>().mockResolvedValue({
+        value: "Generated summary",
+        text: "Generated summary",
+        usage: mockUsage,
       }),
-      prompt: jest.fn().mockImplementation((input: any) => mockPromptGenerator(input)),
+      generateObjectWithUsage: jest.fn().mockImplementation(async (input: any) => ({
+        value: await generateObjectValue(input),
+        usage: mockUsage,
+      })),
+      generateObject: jest.fn().mockImplementation(generateObjectValue),
+      prompt: jest.fn(),
       processStream: jest.fn(),
     } as any;
 
-    mockEventBus = {
-      publish: jest.fn(),
-      publishEvent: jest.fn(),
-      publishToBookmark: jest.fn(),
-      cleanupBookmarkChannel: jest.fn(),
+    mockBookmarkProcessingRepository = {
+      createRun: jest.fn(async (data: any) => ({
+        id: "run-1",
+        bookmarkId: data.bookmarkId,
+        userId: data.userId,
+        status: data.status,
+        startedAt: data.startedAt,
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        reasoningTokens: 0,
+        cachedInputTokens: 0,
+        createdAt: data.startedAt,
+        updatedAt: data.startedAt,
+      })),
+      updateRun: jest.fn(async (id: string, data: any) => ({
+        id,
+        bookmarkId: testBookmark.id,
+        userId: testBookmark.userId,
+        status: data.status,
+        startedAt: new Date(),
+        endedAt: data.endedAt,
+        durationMs: data.durationMs,
+        inputTokens: data.inputTokens ?? 0,
+        outputTokens: data.outputTokens ?? 0,
+        totalTokens: data.totalTokens ?? 0,
+        reasoningTokens: data.reasoningTokens ?? 0,
+        cachedInputTokens: data.cachedInputTokens ?? 0,
+        costUsd: data.costUsd ?? undefined,
+        error: data.error ?? undefined,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })),
+      createEvent: jest.fn(async (data: any) => ({
+        id: `event-${data.sequence}`,
+        runId: data.runId,
+        parentEventId: data.parentEventId,
+        kind: data.kind,
+        phase: data.phase,
+        name: data.name,
+        status: data.status,
+        sequence: data.sequence,
+        startedAt: data.startedAt,
+        inputTokens: data.inputTokens ?? 0,
+        outputTokens: data.outputTokens ?? 0,
+        totalTokens: data.totalTokens ?? 0,
+        reasoningTokens: data.reasoningTokens ?? 0,
+        cachedInputTokens: data.cachedInputTokens ?? 0,
+        costUsd: data.costUsd ?? undefined,
+        providerMetadata: data.providerMetadata,
+        metadata: data.metadata,
+        error: data.error ?? undefined,
+        createdAt: data.startedAt,
+        updatedAt: data.startedAt,
+      })),
+      updateEvent: jest.fn(async (id: string, data: any) => ({
+        id,
+        runId: "run-1",
+        kind: "phase",
+        phase: "summarization",
+        name: "test",
+        status: data.status,
+        sequence: 1,
+        startedAt: new Date(),
+        endedAt: data.endedAt,
+        durationMs: data.durationMs,
+        modelId: data.modelId,
+        inputTokens: data.inputTokens ?? 0,
+        outputTokens: data.outputTokens ?? 0,
+        totalTokens: data.totalTokens ?? 0,
+        reasoningTokens: data.reasoningTokens ?? 0,
+        cachedInputTokens: data.cachedInputTokens ?? 0,
+        costUsd: data.costUsd ?? undefined,
+        providerMetadata: data.providerMetadata,
+        metadata: data.metadata,
+        error: data.error ?? undefined,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })),
+      findLatestTimeline: jest.fn(async () => null),
     } as any;
 
     mockContentChunkRepository = {
@@ -157,6 +239,15 @@ describe("BookmarkProcessorService", () => {
     const mockEmbeddingService: jest.Mocked<EmbeddingService> = {
       embedText: jest.fn<any>().mockResolvedValue([0.1, 0.2, 0.3]),
       embedTexts: jest.fn<any>().mockResolvedValue([[0.1, 0.2, 0.3]]),
+      embedTextWithUsage: jest.fn<any>().mockResolvedValue({
+        value: [0.1, 0.2, 0.3],
+        usage: { inputTokens: 1, totalTokens: 1 },
+      }),
+      embedTextsWithUsage: jest.fn<any>().mockResolvedValue({
+        value: [[0.1, 0.2, 0.3]],
+        usage: { inputTokens: 1, totalTokens: 1 },
+      }),
+      getModelId: jest.fn<any>().mockReturnValue("openai/text-embedding-3-small"),
     };
 
     service = new BookmarkProcessorServiceImpl(
@@ -164,7 +255,7 @@ describe("BookmarkProcessorService", () => {
       mockContentChunkRepository,
       mockCollectionRepository,
       mockAI,
-      mockEventBus,
+      mockBookmarkProcessingRepository,
       mockHttpClient,
       mockChunkingService,
       mockEmbeddingService
@@ -254,10 +345,74 @@ describe("BookmarkProcessorService", () => {
         testBookmark.id
       );
       expect(mockAI.newSession).toHaveBeenCalledWith(testBookmark.id);
-      expect(mockEventBus.publishToBookmark).toHaveBeenCalledWith(
-        testBookmark.id,
-        "session.started",
-        mockSession
+      expect(mockBookmarkProcessingRepository.createRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bookmarkId: testBookmark.id,
+          userId: testBookmark.userId,
+          status: "running",
+        })
+      );
+    });
+
+    it("records durable processing phases and does not publish realtime events", async () => {
+      const mockSession: Session = {
+        sessionID: "test-session-id",
+        refID: testBookmark.id,
+      };
+      const mockTask: Task = {
+        taskID: "test-task-id",
+        sessionID: mockSession.sessionID,
+        name: "test-task",
+        status: "pending",
+        subTasks: {},
+      };
+
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
+        testScrapedContent
+      );
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(
+        testBookmark
+      );
+      mockBookmarkService.update.mockResolvedValue(testBookmark);
+      mockAI.newSession.mockResolvedValue(mockSession);
+      mockAI.newTask.mockResolvedValue(mockTask);
+      mockAI.newSubTask.mockResolvedValue({
+        taskID: "subtask-id",
+        name: "test-subtask",
+        status: "pending",
+      });
+
+      await service.process(testBookmark.id, testBookmark.userId);
+
+      expect(mockBookmarkProcessingRepository.createRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bookmarkId: testBookmark.id,
+          userId: testBookmark.userId,
+          status: "running",
+        })
+      );
+      expect(
+        mockBookmarkProcessingRepository.createEvent.mock.calls.map(
+          ([event]) => event.phase
+        )
+      ).toEqual(
+        expect.arrayContaining([
+          "summarization",
+          "brief_summary",
+          "tags",
+          "images",
+          "chunking",
+          "embedding",
+          "categorization",
+          "finalization",
+        ])
+      );
+      expect(mockBookmarkProcessingRepository.updateRun).toHaveBeenCalledWith(
+        "run-1",
+        expect.objectContaining({
+          status: "completed",
+        })
       );
     });
 
@@ -339,7 +494,7 @@ describe("BookmarkProcessorService", () => {
         name: "test-subtask",
         status: "pending",
       });
-      (mockAI.generateObject as jest.Mock).mockImplementation(async (input: any) => {
+      const privateLinkResult = async (input: any) => {
         if (input.prompt.includes("private link quick-access record")) {
           return {
             title: "Checkout Design Review",
@@ -356,7 +511,14 @@ describe("BookmarkProcessorService", () => {
           confidence: 0.91,
           reasoning: "The description is about a design review.",
         };
-      });
+      };
+      (mockAI.generateObject as jest.Mock).mockImplementation(privateLinkResult);
+      (mockAI.generateObjectWithUsage as jest.Mock).mockImplementation(
+        async (input: any) => ({
+          value: await privateLinkResult(input),
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+        })
+      );
       mockCollectionRepository.createPath.mockResolvedValue({
         id: "design-reviews-id",
         name: "Reviews",
@@ -425,10 +587,11 @@ describe("BookmarkProcessorService", () => {
       expect(mockBookmarkService.getScrapedUrlContent).toHaveBeenCalledWith(
         testBookmark.id
       );
-      expect(mockEventBus.publishToBookmark).toHaveBeenCalledWith(
-        testBookmark.id,
-        "session.started",
-        mockSession
+      expect(mockBookmarkProcessingRepository.createRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bookmarkId: testBookmark.id,
+          userId: testBookmark.userId,
+        })
       );
     });
 
@@ -464,13 +627,13 @@ describe("BookmarkProcessorService", () => {
 
       await service.process(testBookmark.id, testBookmark.userId);
 
-      expect(mockAI.prompt).toHaveBeenCalledWith(
+      expect(mockAI.generateText).toHaveBeenCalledWith(
         expect.objectContaining({
           modelId: "qwen/qwen3.7-plus",
         })
       );
       expect(
-        mockAI.generateObject.mock.calls.map(([input]) => input.modelId)
+        mockAI.generateObjectWithUsage.mock.calls.map(([input]) => input.modelId)
       ).toEqual([
         "deepseek/deepseek-v4-flash",
         "deepseek/deepseek-v4-flash",
@@ -505,16 +668,20 @@ describe("BookmarkProcessorService", () => {
         status: "pending",
         subTasks: {},
       });
-      mockAI.newTask.mockRejectedValueOnce(new Error("AI service unavailable"));
+      mockAI.generateText.mockRejectedValueOnce(
+        new Error("AI service unavailable")
+      );
 
       await expect(
         service.process(testBookmark.id, testBookmark.userId)
       ).rejects.toThrow("AI service unavailable");
 
-      expect(mockEventBus.publishToBookmark).toHaveBeenCalledWith(
-        testBookmark.id,
-        "session.started",
-        mockSession
+      expect(mockBookmarkProcessingRepository.updateRun).toHaveBeenCalledWith(
+        "run-1",
+        expect.objectContaining({
+          status: "failed",
+          error: "AI service unavailable",
+        })
       );
     });
   });

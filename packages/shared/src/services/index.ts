@@ -7,6 +7,7 @@ export * from "./collection.service";
 export * from "./profile.service";
 export * from "./bookmark.processor.service";
 export * from "./bookmark.categorizer.service";
+export * from "./bookmark-processing-reporter.service";
 export * from "./bookmark.model-ids";
 export * from "./chunking.service";
 export * from "./embedding.service";
@@ -35,9 +36,10 @@ import {
   BookmarkLikeRepositoryImpl,
   CollectionRepositoryImpl,
   ProfileRepositoryImpl,
+  BookmarkProcessingRepository,
+  BookmarkProcessingRepositoryImpl,
 } from "../repositories";
 import { AI } from "../ai";
-import { EventBus } from "../ai/bus";
 
 export interface ServiceContainer {
   webScraping: WebScrapingService;
@@ -47,6 +49,7 @@ export interface ServiceContainer {
   collection: CollectionService;
   profile: ProfileService;
   search: SearchService;
+  bookmarkProcessing: BookmarkProcessingRepository;
 }
 
 export function createServiceContainer(
@@ -58,9 +61,9 @@ export function createServiceContainer(
   const bookmarkLikeRepository = new BookmarkLikeRepositoryImpl(db);
   const collectionRepository = new CollectionRepositoryImpl(db);
   const profileRepository = new ProfileRepositoryImpl(db);
+  const bookmarkProcessingRepository = new BookmarkProcessingRepositoryImpl(db);
 
-  const eventBus = new EventBus(supabaseClient);
-  const ai = new AI(eventBus);
+  const ai = new AI();
   const embeddingService = new EmbeddingServiceImpl();
 
   return {
@@ -75,5 +78,6 @@ export function createServiceContainer(
     collection: new CollectionServiceImpl(collectionRepository),
     profile: new ProfileServiceImpl(profileRepository),
     search: new SearchServiceImpl(bookmarkRepository, embeddingService, ai),
+    bookmarkProcessing: bookmarkProcessingRepository,
   };
 }

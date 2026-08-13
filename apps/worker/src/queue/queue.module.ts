@@ -8,7 +8,6 @@ import { BookmarkProcessorHandler } from "./handlers/bookmark-processor.handler"
 import { MessageHandler } from "./interfaces/message-handler.interface";
 import {
   AI,
-  EventBus,
   BookmarkProcessorServiceImpl,
   BookmarkServiceImpl,
   BookmarkService,
@@ -19,6 +18,7 @@ import {
   createDatabase,
   Database,
   ContentChunkRepositoryImpl,
+  BookmarkProcessingRepositoryImpl,
 } from "@cosmic-dolphin/shared";
 import { ConfigService } from "@nestjs/config";
 import {
@@ -35,15 +35,8 @@ import { Kysely } from "kysely";
   providers: [
     SupabaseClientService,
     {
-      provide: EventBus,
-      useFactory: (supabaseClient: SupabaseClientService) =>
-        new EventBus(supabaseClient.getClient()),
-      inject: [SupabaseClientService],
-    },
-    {
       provide: AI,
-      useFactory: (eventBus: EventBus) => new AI(eventBus),
-      inject: [EventBus],
+      useFactory: () => new AI(),
     },
     {
       provide: DATABASE_INSTANCE,
@@ -80,20 +73,21 @@ import { Kysely } from "kysely";
       useFactory: (
         bookmarkService: BookmarkService,
         ai: AI,
-        eventBus: EventBus,
         db: Kysely<Database>,
       ) => {
         const contentChunkRepository = new ContentChunkRepositoryImpl(db);
         const collectionRepository = new CollectionRepositoryImpl(db);
+        const bookmarkProcessingRepository =
+          new BookmarkProcessingRepositoryImpl(db);
         return new BookmarkProcessorServiceImpl(
           bookmarkService,
           contentChunkRepository,
           collectionRepository,
           ai,
-          eventBus,
+          bookmarkProcessingRepository,
         );
       },
-      inject: [BOOKMARK_SERVICE, AI, EventBus, DATABASE_INSTANCE],
+      inject: [BOOKMARK_SERVICE, AI, DATABASE_INSTANCE],
     },
     {
       provide: WEB_SCRAPING_SERVICE,

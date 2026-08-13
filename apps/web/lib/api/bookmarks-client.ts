@@ -15,6 +15,7 @@ import {
 } from "@cosmic-dolphin/api-client";
 import { SearchBookmarksQuery } from "@/lib/types/bookmark";
 import { createClient } from "@/utils/supabase/client";
+import { BookmarkProcessingTimelineResponse } from "@/lib/types/processing-timeline";
 
 function getApiBasePath(): string {
   const basePath = process.env.NEXT_PUBLIC_API_URL;
@@ -27,16 +28,20 @@ function getApiBasePath(): string {
 }
 
 async function getConfiguration(): Promise<Configuration> {
-  const supabase = createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const accessToken = session?.access_token || "";
+  const accessToken = await getAccessToken();
 
   return new Configuration({
     basePath: getApiBasePath(),
     accessToken,
   });
+}
+
+async function getAccessToken(): Promise<string> {
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.access_token || "";
 }
 
 export namespace BookmarksClientAPI {
@@ -88,6 +93,27 @@ export namespace BookmarksClientAPI {
       console.error("Error fetching bookmark by id", error);
       return null;
     }
+  }
+
+  export async function getProcessingTimeline(
+    id: string
+  ): Promise<BookmarkProcessingTimelineResponse> {
+    const accessToken = await getAccessToken();
+    const response = await fetch(
+      `${getApiBasePath()}/bookmarks/${id}/processing-timeline`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || "Failed to fetch processing timeline");
+    }
+
+    return response.json();
   }
 
   export async function search(

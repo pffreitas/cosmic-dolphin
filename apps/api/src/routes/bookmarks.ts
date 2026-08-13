@@ -11,6 +11,7 @@ import {
   ServiceContainer,
   createServiceContainer,
   Bookmark,
+  BookmarkProcessingTimeline,
   Collection,
   createDatabase,
 } from "@cosmic-dolphin/shared";
@@ -43,6 +44,50 @@ export function validateCreateBookmarkBody(
   }
 
   return { ok: true };
+}
+
+type BookmarkTimelineServices = Pick<
+  ServiceContainer,
+  "bookmark" | "bookmarkProcessing"
+>;
+
+export async function buildBookmarkProcessingTimelineResponse(
+  services: BookmarkTimelineServices,
+  bookmarkId: string,
+  userId: string
+): Promise<
+  | { statusCode?: undefined; body: BookmarkProcessingTimeline }
+  | { statusCode: 404; body: { error: string } }
+> {
+  const result = await services.bookmark.findByIdAndUserWithLikeStatus(
+    bookmarkId,
+    userId
+  );
+
+  if (!result) {
+    return {
+      statusCode: 404,
+      body: { error: "Bookmark not found" },
+    };
+  }
+
+  const timeline = await services.bookmarkProcessing.findLatestTimeline(
+    bookmarkId,
+    userId
+  );
+  const bookmark = {
+    ...result.bookmark,
+    isLikedByCurrentUser: result.isLikedByCurrentUser,
+  };
+
+  return {
+    body: {
+      bookmark,
+      run: timeline?.run,
+      events: timeline?.events ?? [],
+      pollAfterMs: bookmark.processingStatus === "processing" ? 2000 : 0,
+    },
+  };
 }
 
 export default async function bookmarkRoutes(fastify: FastifyInstance) {
@@ -322,6 +367,35 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           metadata: partialMetadata,
           scrapable: false,
         });
+      }
+    }
+  );
+
+  fastify.get<{
+    Params: { id: string };
+    Reply: BookmarkProcessingTimeline | { error: string };
+  }>(
+    "/bookmarks/:id/processing-timeline",
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const user_id = request.userId!;
+
+        const result = await buildBookmarkProcessingTimelineResponse(
+          services,
+          id,
+          user_id
+        );
+
+        if (result.statusCode) {
+          return reply.status(result.statusCode).send(result.body);
+        }
+
+        return reply.send(result.body);
+      } catch (error) {
+        fastify.log.error({ error }, "Get bookmark processing timeline error");
+        return reply.status(500).send({ error: "Internal server error" });
       }
     }
   );

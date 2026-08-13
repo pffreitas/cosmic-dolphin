@@ -129,3 +129,39 @@ describe("BookmarksClientAPI.remove", () => {
     });
   });
 });
+
+describe("BookmarksClientAPI.getProcessingTimeline", () => {
+  beforeEach(() => {
+    mockGetSession.mockReset();
+    mockGetSession.mockResolvedValue({
+      data: { session: { access_token: "test-token" } },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          bookmark: { id: "bookmark-123", processingStatus: "processing" },
+          events: [],
+          pollAfterMs: 2000,
+        }),
+      }))
+    );
+  });
+
+  it("fetches the authenticated processing timeline endpoint", async () => {
+    const response = await BookmarksClientAPI.getProcessingTimeline(
+      "bookmark-123"
+    );
+
+    expect(response.pollAfterMs).toBe(2000);
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.test.com/bookmarks/bookmark-123/processing-timeline",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer test-token",
+        }),
+      })
+    );
+  });
+});

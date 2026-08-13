@@ -12,19 +12,12 @@ mock.module("../ai/id", () => ({
 }));
 
 import { AI } from "../ai";
-import { EventBus } from "../ai/bus";
 
 describe("AI Stream", () => {
-  let mockEventBus: EventBus;
+  beforeAll(() => {});
 
-  beforeAll(() => {
-    mockEventBus = {
-      publish: mock(),
-    } as unknown as EventBus;
-  });
-
-  it("should publish usage stats on stream finish", async () => {
-    const ai = new AI(mockEventBus);
+  it("should collect streamed text and usage without publishing realtime events", async () => {
+    const ai = new AI();
 
     const input: PromptInput = {
       sessionID: "session-1",
@@ -47,29 +40,34 @@ describe("AI Stream", () => {
     const stream = {
       fullStream: (async function* () {
         yield {
+          type: "text-start",
+        };
+        yield {
+          type: "text-delta",
+          text: "Hello ",
+        };
+        yield {
+          type: "text-delta",
+          text: "world",
+        };
+        yield {
           type: "finish",
           totalUsage: mockUsage,
         };
       })(),
     } as any;
 
-    const generator = ai.processStream(input, stream);
+    const result = await ai.processStream(input, stream);
 
-    const parts = [];
-    for await (const part of generator) {
-      parts.push(part);
-    }
-
-    expect(mockEventBus.publish).toHaveBeenCalledWith(
-      "message.part.updated",
-      expect.objectContaining({
-        type: "usage",
-        part: mockUsage,
-        sessionID: input.sessionID,
-        taskID: input.taskID,
-        messageID: input.messageID,
-        partID: "mock-part-id",
-      })
-    );
+    expect(result.text).toBe("Hello world");
+    expect(result.usage).toEqual({
+      inputTokens: 10,
+      outputTokens: 20,
+      totalTokens: 30,
+      reasoningTokens: 5,
+      cachedInputTokens: 0,
+      costUsd: undefined,
+      providerMetadata: undefined,
+    });
   });
 });
