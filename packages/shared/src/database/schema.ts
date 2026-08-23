@@ -20,6 +20,8 @@ export interface CollectionsTable extends BaseTable {
 
 // Processing status type
 export type ProcessingStatus = "idle" | "processing" | "completed" | "failed";
+export type BookmarkProcessingTimelineStatus = "running" | "completed" | "failed";
+export type BookmarkProcessingEventKind = "run" | "phase" | "turn";
 
 // Bookmarks table
 export interface BookmarksTable extends BaseTable {
@@ -101,6 +103,45 @@ export interface ProfilesTable {
   updated_at: Generated<Date>;
 }
 
+export interface BookmarkProcessingRunsTable extends BaseTable {
+  bookmark_id: string;
+  user_id: string;
+  status: BookmarkProcessingTimelineStatus;
+  started_at: Date;
+  ended_at: Date | null;
+  duration_ms: number | null;
+  input_tokens: Generated<number>;
+  output_tokens: Generated<number>;
+  total_tokens: Generated<number>;
+  reasoning_tokens: Generated<number>;
+  cached_input_tokens: Generated<number>;
+  cost_usd: string | null;
+  error: string | null;
+}
+
+export interface BookmarkProcessingEventsTable extends BaseTable {
+  run_id: string;
+  parent_event_id: string | null;
+  kind: BookmarkProcessingEventKind;
+  phase: string | null;
+  name: string;
+  status: BookmarkProcessingTimelineStatus;
+  sequence: number;
+  started_at: Date;
+  ended_at: Date | null;
+  duration_ms: number | null;
+  model_id: string | null;
+  input_tokens: Generated<number>;
+  output_tokens: Generated<number>;
+  total_tokens: Generated<number>;
+  reasoning_tokens: Generated<number>;
+  cached_input_tokens: Generated<number>;
+  cost_usd: string | null;
+  provider_metadata: any | null;
+  metadata: any | null;
+  error: string | null;
+}
+
 // Database schema interface
 export interface Database {
   collections: CollectionsTable;
@@ -111,6 +152,8 @@ export interface Database {
   text_chunks: TextChunksTable;
   image_chunks: ImageChunksTable;
   profiles: ProfilesTable;
+  bookmark_processing_runs: BookmarkProcessingRunsTable;
+  bookmark_processing_events: BookmarkProcessingEventsTable;
 }
 
 // Type helpers for each table
@@ -144,3 +187,13 @@ export type ImageChunkUpdate = Updateable<ImageChunksTable>;
 export type Profile = Selectable<ProfilesTable>;
 export type NewProfile = Insertable<ProfilesTable>;
 export type ProfileUpdate = Updateable<ProfilesTable>;
+
+export type BookmarkProcessingRun = Selectable<BookmarkProcessingRunsTable>;
+export type NewBookmarkProcessingRun = Insertable<BookmarkProcessingRunsTable>;
+export type BookmarkProcessingRunUpdate = Updateable<BookmarkProcessingRunsTable>;
+
+export type BookmarkProcessingEvent = Selectable<BookmarkProcessingEventsTable>;
+export type NewBookmarkProcessingEvent =
+  Insertable<BookmarkProcessingEventsTable>;
+export type BookmarkProcessingEventUpdate =
+  Updateable<BookmarkProcessingEventsTable>;

@@ -6,9 +6,9 @@ import { getTestDatabase } from "../../test-utils/database";
 import { TestDataFactory } from "../../test-utils/factories";
 import { WebScrapingService } from "../../services/web-scraping.service";
 import { AI } from "../../ai";
-import { EventBus } from "../../ai/bus";
 import { ContentChunkRepository } from "../../repositories/content-chunk.repository";
 import { CollectionRepositoryImpl } from "../../repositories/collection.repository";
+import { BookmarkProcessingRepositoryImpl } from "../../repositories/bookmark-processing.repository";
 import { HttpClient } from "../../services/http-client";
 import { ChunkingService } from "../../services/chunking.service";
 import { EmbeddingService } from "../../services/embedding.service";
@@ -21,7 +21,6 @@ describe("Bookmark Content Refactor Integration", () => {
   let mockWebScrapingService: jest.Mocked<WebScrapingService>;
   let mockContentChunkRepository: jest.Mocked<ContentChunkRepository>;
   let mockAI: jest.Mocked<AI>;
-  let mockEventBus: jest.Mocked<EventBus>;
   let mockHttpClient: jest.Mocked<HttpClient>;
   let mockChunkingService: jest.Mocked<ChunkingService>;
   let mockEmbeddingService: jest.Mocked<EmbeddingService>;
@@ -63,74 +62,62 @@ describe("Bookmark Content Refactor Integration", () => {
       delete: jest.fn(),
     } as jest.Mocked<ContentChunkRepository>;
 
-    const mockPromptGenerator = async function* (input: {
-      message?: { content?: string };
-    }) {
-      const message = input.message?.content ?? "";
-      if (message.includes("generate the tags")) {
-        yield {
-          type: "text",
-          part: { text: '{"tags": ["ai", "processing"]}' },
+    const generateObjectValue = async (input: any) => {
+      if (
+        input.prompt &&
+        input.prompt.includes("Your task is to generate a brief summary")
+      ) {
+        return "Generated brief summary";
+      } else if (
+        input.prompt &&
+        input.prompt.includes("Your task is to filter the images")
+      ) {
+        return {
+          images: [
+            {
+              url: "https://example.com/image.jpg",
+              title: "Test image",
+              description: "A test image",
+            },
+          ],
         };
-      } else {
-        yield { type: "text", part: { text: "Generated AI summary" } };
+      } else if (
+        input.prompt &&
+        input.prompt.includes("Your task is to generate the tags")
+      ) {
+        return {
+          tags: ["ai", "processing"],
+        };
+      } else if (
+        input.prompt &&
+        input.prompt.includes("bookmark categorization assistant")
+      ) {
+        return {
+          existingCategoryId: null,
+          newCategoryPath: ["Test", "Category"],
+          confidence: 0.85,
+          reasoning: "Creating a new test category for this bookmark",
+        };
       }
+      return "Default generated object";
     };
 
     mockAI = {
       newSession: jest.fn(),
       newTask: jest.fn(),
       newSubTask: jest.fn(),
-      generateObject: jest.fn().mockImplementation(async (input: any) => {
-        // Return different mocked values based on what's being generated
-        if (
-          input.prompt &&
-          input.prompt.includes("Your task is to generate a brief summary")
-        ) {
-          return "Generated brief summary";
-        } else if (
-          input.prompt &&
-          input.prompt.includes("Your task is to filter the images")
-        ) {
-          return {
-            images: [
-              {
-                url: "https://example.com/image.jpg",
-                title: "Test image",
-                description: "A test image",
-              },
-            ],
-          };
-        } else if (
-          input.prompt &&
-          input.prompt.includes("Your task is to generate the tags")
-        ) {
-          return {
-            tags: ["ai", "processing"],
-          };
-        } else if (
-          input.prompt &&
-          input.prompt.includes("bookmark categorization assistant")
-        ) {
-          // Categorization prompt - suggest a new category path
-          return {
-            existingCategoryId: null,
-            newCategoryPath: ["Test", "Category"],
-            confidence: 0.85,
-            reasoning: "Creating a new test category for this bookmark",
-          };
-        }
-        return "Default generated object";
+      generateText: jest.fn<any>().mockResolvedValue({
+        value: "Generated AI summary",
+        text: "Generated AI summary",
+        usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
       }),
-      prompt: jest.fn().mockImplementation((input: any) => mockPromptGenerator(input)),
+      generateObjectWithUsage: jest.fn().mockImplementation(async (input: any) => ({
+        value: await generateObjectValue(input),
+        usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      })),
+      generateObject: jest.fn().mockImplementation(generateObjectValue),
+      prompt: jest.fn(),
       processStream: jest.fn(),
-    } as any;
-
-    mockEventBus = {
-      publish: jest.fn(),
-      publishEvent: jest.fn(),
-      publishToBookmark: jest.fn(),
-      cleanupBookmarkChannel: jest.fn(),
     } as any;
 
     mockChunkingService = {
@@ -141,6 +128,15 @@ describe("Bookmark Content Refactor Integration", () => {
     mockEmbeddingService = {
       embedText: jest.fn<any>().mockResolvedValue([0.1, 0.2, 0.3]),
       embedTexts: jest.fn<any>().mockResolvedValue([[0.1, 0.2, 0.3]]),
+      embedTextWithUsage: jest.fn<any>().mockResolvedValue({
+        value: [0.1, 0.2, 0.3],
+        usage: { inputTokens: 1, totalTokens: 1 },
+      }),
+      embedTextsWithUsage: jest.fn<any>().mockResolvedValue({
+        value: [[0.1, 0.2, 0.3]],
+        usage: { inputTokens: 1, totalTokens: 1 },
+      }),
+      getModelId: jest.fn<any>().mockReturnValue("openai/text-embedding-3-small"),
     };
 
     service = new BookmarkServiceImpl(repository, mockWebScrapingService);
@@ -149,7 +145,7 @@ describe("Bookmark Content Refactor Integration", () => {
       mockContentChunkRepository,
       collectionRepository,
       mockAI,
-      mockEventBus,
+      new BookmarkProcessingRepositoryImpl(db),
       mockHttpClient,
       mockChunkingService,
       mockEmbeddingService

@@ -27,11 +27,26 @@ import { Tool } from "./tool";
 import { ToolRegistry } from "./tool";
 import { z, ZodSchema } from "zod";
 import { Identifier } from "./id";
-import { EventBus } from "./bus";
+import { BookmarkProcessingUsage } from "../types";
+import { toProcessingUsage } from "./usage";
+
+export interface AITextResult {
+  value: string;
+  text: string;
+  usage?: BookmarkProcessingUsage;
+  providerMetadata?: Record<string, any>;
+}
+
+export interface AIObjectResult<T> {
+  value: T;
+  usage?: BookmarkProcessingUsage;
+  providerMetadata?: Record<string, any>;
+}
+
 export class AI {
   private openrouter: OpenRouterProvider;
 
-  constructor(private eventBus: EventBus) {
+  constructor() {
     this.openrouter = createOpenRouter({
       apiKey: process.env.OPENROUTER_API_KEY,
     });
@@ -66,17 +81,147 @@ export class AI {
     return this.openrouter(modelId);
   }
 
-  async generateObject<T>(input: GenerateObjectInput<T>): Promise<T> {
-    const { object } = await generateObject({
+  async generateObjectWithUsage<T>(
+    input: GenerateObjectInput<T>
+  ): Promise<AIObjectResult<T>> {
+    const result = await generateObject({
       model: this.getModel(input.modelId),
       schema: input.schema,
       prompt: input.prompt,
     });
 
-    return object;
+    const usage = toProcessingUsage(
+      (result as any).usage ?? (result as any).totalUsage,
+      (result as any).providerMetadata
+    );
+
+    return {
+      value: result.object,
+      usage,
+      providerMetadata: usage?.providerMetadata,
+    };
+  }
+
+  async generateObject<T>(input: GenerateObjectInput<T>): Promise<T> {
+    const result = await this.generateObjectWithUsage(input);
+    return result.value;
+  }
+
+  async generateText(input: PromptInput): Promise<AITextResult> {
+    const aiTools = await this.buildTools(input);
+    const result = streamText({
+      model: this.getModel(input.modelId),
+      messages: [...input.context, input.message],
+      tools: aiTools,
+      maxRetries: 3,
+      stopWhen: async ({ steps }) => steps.length >= 1000,
+    });
+
+    return this.processStream(input, result);
   }
 
   async *prompt(input: PromptInput): AsyncGenerator<LLMResponsePart> {
+    const result = await this.generateText(input);
+    yield {
+      sessionID: input.sessionID,
+      taskID: input.taskID,
+      messageID: input.messageID,
+      partID: Identifier.ascending("part"),
+      type: "text",
+      part: { text: result.text },
+    };
+    if (result.usage) {
+      yield {
+        sessionID: input.sessionID,
+        taskID: input.taskID,
+        messageID: input.messageID,
+        partID: Identifier.ascending("part"),
+        type: "usage",
+        part: {
+          inputTokens: result.usage.inputTokens,
+          outputTokens: result.usage.outputTokens,
+          totalTokens: result.usage.totalTokens,
+          reasoningTokens: result.usage.reasoningTokens,
+          cachedInputTokens: result.usage.cachedInputTokens,
+        },
+      };
+    }
+  }
+
+  async processStream(
+    input: PromptInput,
+    stream: StreamTextResult<ToolSet, never>
+  ): Promise<AITextResult> {
+    let text = "";
+    let rawUsage: unknown;
+    let providerMetadata: unknown;
+
+    for await (const value of stream.fullStream) {
+      switch (value.type) {
+        case "start":
+          break;
+        case "start-step":
+          break;
+        case "finish-step":
+          rawUsage = value.usage;
+          providerMetadata = (value as any).providerMetadata;
+          break;
+        case "reasoning-start":
+          break;
+        case "reasoning-delta":
+          break;
+        case "reasoning-end":
+          break;
+        case "tool-input-start":
+          break;
+
+        case "tool-input-delta":
+          break;
+
+        case "tool-input-end":
+          break;
+
+        case "tool-call": {
+          break;
+        }
+
+        case "tool-result": {
+          break;
+        }
+
+        case "tool-error": {
+          break;
+        }
+
+        case "error":
+          throw value.error;
+
+        case "text-start":
+          break;
+
+        case "text-delta":
+          text += value.text;
+          break;
+
+        case "text-end":
+          break;
+
+        case "finish":
+          rawUsage = value.totalUsage;
+          providerMetadata = (value as any).providerMetadata ?? providerMetadata;
+      }
+    }
+
+    const usage = toProcessingUsage(rawUsage, providerMetadata);
+    return {
+      value: text.trimEnd(),
+      text: text.trimEnd(),
+      usage,
+      providerMetadata: usage?.providerMetadata,
+    };
+  }
+
+  private async buildTools(input: PromptInput): Promise<Record<string, AITool>> {
     const aiTools: Record<string, AITool> = {};
     for (const item of await ToolRegistry.init(input.tools)) {
       aiTools[item.id] = tool({
@@ -96,228 +241,6 @@ export class AI {
       });
     }
 
-    const result = streamText({
-      model: this.getModel(input.modelId),
-      messages: [...input.context, input.message],
-      tools: aiTools,
-      maxRetries: 3,
-      stopWhen: async ({ steps }) => {
-        if (steps.length >= 1000) {
-          return true;
-        }
-
-        return false;
-      },
-    });
-
-    yield* this.processStream(input, result);
-  }
-
-  async *processStream(
-    input: PromptInput,
-    stream: StreamTextResult<ToolSet, never>
-  ): AsyncGenerator<LLMResponsePart> {
-    const parts: LLMResponsePart[] = [];
-
-    let currentText: LLMTextResponsePart | undefined;
-    const toolcalls: Record<string, LLMToolResponsePart> = {};
-
-    for await (const value of stream.fullStream) {
-      console.log(value.type);
-
-      switch (value.type) {
-        case "start":
-          break;
-        case "start-step":
-          console.log("start-step", value);
-          break;
-        case "finish-step":
-          console.log("finish-step", value);
-          const usagePart: LLMUsagePart = {
-            sessionID: input.sessionID,
-            taskID: input.taskID,
-            messageID: input.messageID,
-            partID: Identifier.ascending("part"),
-            type: "usage",
-            part: {
-              inputTokens: value.usage.inputTokens,
-              outputTokens: value.usage.outputTokens,
-              totalTokens: value.usage.totalTokens,
-              reasoningTokens: value.usage.reasoningTokens,
-              cachedInputTokens: value.usage.cachedInputTokens,
-            },
-          };
-          parts.push(usagePart);
-          this.eventBus.publish("message.part.updated", usagePart);
-          yield usagePart;
-          break;
-        case "reasoning-start":
-          console.log("reasoning-start", value);
-          break;
-        case "reasoning-delta":
-          console.log("reasoning-delta", value);
-          break;
-        case "reasoning-end":
-          console.log("reasoning-end", value);
-          break;
-        case "tool-input-start":
-          const part: LLMToolResponsePart = {
-            sessionID: input.sessionID,
-            taskID: input.taskID,
-            messageID: input.messageID,
-            partID: toolcalls[value.id]?.partID ?? Identifier.ascending("part"),
-            type: "tool",
-            part: {
-              tool: value.toolName,
-              callID: value.id,
-              state: {
-                status: "pending",
-                input: "",
-                output: "",
-                metadata: {},
-                title: "",
-              },
-              time: Date.now(),
-            },
-          };
-          toolcalls[value.id] = part;
-          this.eventBus.publish("message.part.updated", part);
-          yield part;
-          break;
-
-        case "tool-input-delta":
-          break;
-
-        case "tool-input-end":
-          break;
-
-        case "tool-call": {
-          const match = toolcalls[value.toolCallId];
-          if (match) {
-            const part: LLMToolResponsePart = {
-              ...match,
-              part: {
-                tool: value.toolName,
-                callID: value.toolCallId,
-                state: {
-                  status: "running",
-                  input: value.input,
-                  output: "",
-                  metadata: {},
-                  title: "",
-                },
-                time: Date.now(),
-              },
-            };
-            toolcalls[value.toolCallId] = part as LLMToolResponsePart;
-            this.eventBus.publish("message.part.updated", part);
-            yield part;
-          }
-          break;
-        }
-
-        case "tool-result": {
-          const match = toolcalls[value.toolCallId];
-          if (match && match.part.state.status === "running") {
-            const part: LLMToolResponsePart = {
-              ...match,
-              part: {
-                tool: value.toolName,
-                callID: value.toolCallId,
-                state: {
-                  status: "completed",
-                  input: value.input,
-                  output: value.output.output,
-                  metadata: value.output.metadata,
-                  title: value.output.title,
-                },
-                time: Date.now(),
-              },
-            };
-            delete toolcalls[value.toolCallId];
-            this.eventBus.publish("message.part.updated", part);
-            yield part;
-          }
-          break;
-        }
-
-        case "tool-error": {
-          const match = toolcalls[value.toolCallId];
-          if (match && match.part.state.status === "running") {
-            const part: LLMToolResponsePart = {
-              ...match,
-              part: {
-                tool: value.toolName,
-                callID: value.toolCallId,
-                state: {
-                  status: "error",
-                  input: value.input,
-                  output: (value.error as any).toString(),
-                  metadata: {},
-                  title: "",
-                },
-                time: Date.now(),
-              },
-            };
-            delete toolcalls[value.toolCallId];
-            this.eventBus.publish("tool.failed", part);
-            yield part;
-          }
-          break;
-        }
-
-        case "error":
-          throw value.error;
-
-        case "text-start":
-          currentText = {
-            sessionID: input.sessionID,
-            taskID: input.taskID,
-            messageID: input.messageID,
-            partID: Identifier.ascending("part"),
-            type: "text",
-            part: {
-              text: "",
-            },
-          };
-          break;
-
-        case "text-delta":
-          if (currentText) {
-            currentText.part.text += value.text;
-            this.eventBus.publish("message.part.updated", currentText);
-            yield currentText;
-          }
-          break;
-
-        case "text-end":
-          if (currentText) {
-            currentText.part.text = currentText.part.text.trimEnd();
-            parts.push(currentText);
-            this.eventBus.publish("message.part.updated", currentText);
-            yield currentText;
-          }
-          currentText = undefined;
-          break;
-
-        case "finish":
-          const usage: LLMUsagePart = {
-            sessionID: input.sessionID,
-            taskID: input.taskID,
-            messageID: input.messageID,
-            partID: Identifier.ascending("part"),
-            type: "usage",
-            part: {
-              inputTokens: value.totalUsage.inputTokens,
-              outputTokens: value.totalUsage.outputTokens,
-              totalTokens: value.totalUsage.totalTokens,
-              reasoningTokens: value.totalUsage.reasoningTokens,
-              cachedInputTokens: value.totalUsage.cachedInputTokens,
-            },
-          };
-          this.eventBus.publish("message.part.updated", usage);
-          yield usage;
-      }
-    }
+    return aiTools;
   }
 }

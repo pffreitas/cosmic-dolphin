@@ -19,7 +19,7 @@ export function getTestDatabase(): Kysely<Database> {
 }
 
 export async function clearDatabase(db: Kysely<Database>): Promise<void> {
-  await sql`TRUNCATE image_chunks, text_chunks, content_chunks, bookmark_likes, scraped_url_contents, bookmarks, collections CASCADE`.execute(db);
+  await sql`TRUNCATE bookmark_processing_events, bookmark_processing_runs, image_chunks, text_chunks, content_chunks, bookmark_likes, scraped_url_contents, bookmarks, collections CASCADE`.execute(db);
 }
 
 export async function closeTestDatabase(): Promise<void> {
