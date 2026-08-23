@@ -3,13 +3,12 @@ import { Bookmark, ScrapedUrlContents } from "../types";
 import { CollectionRepository } from "../repositories/collection.repository";
 import { AI } from "../ai";
 import { Session } from "../ai/types";
-import { Identifier } from "../ai/id";
-import { EventBus } from "../ai/bus";
 import {
   buildCategoryTreeText,
   buildCategorizationPrompt,
 } from "./bookmark.categorizer.prompt";
 import { BOOKMARK_MODEL_IDS } from "./bookmark.model-ids";
+import { BookmarkProcessingPhaseReporter } from "./bookmark-processing-reporter.service";
 
 // Zod schema for LLM response validation
 export const CategorizationResponseSchema = z.object({
@@ -32,27 +31,23 @@ export interface BookmarkCategorizerService {
   categorize(
     session: Session,
     bookmark: Bookmark,
-    content: ScrapedUrlContents
+    content: ScrapedUrlContents,
+    phaseReporter?: BookmarkProcessingPhaseReporter
   ): Promise<CategorizationResult>;
 }
 
 export class BookmarkCategorizerServiceImpl implements BookmarkCategorizerService {
   constructor(
     private collectionRepository: CollectionRepository,
-    private ai: AI,
-    private eventBus: EventBus
+    private ai: AI
   ) {}
 
   async categorize(
     session: Session,
     bookmark: Bookmark,
-    content: ScrapedUrlContents
+    content: ScrapedUrlContents,
+    phaseReporter?: BookmarkProcessingPhaseReporter
   ): Promise<CategorizationResult> {
-    const task = await this.ai.newTask(session.sessionID, "Categorizing bookmark");
-    const subTask = await this.ai.newSubTask("Analyzing content for categorization");
-    task.subTasks[subTask.taskID] = subTask;
-    await this.eventBus.publishToBookmark(bookmark.id, "task.started", task);
-
     try {
       // Fetch user's existing category tree
       const categories = await this.collectionRepository.findTreeByUser(bookmark.userId);
@@ -76,12 +71,24 @@ export class BookmarkCategorizerServiceImpl implements BookmarkCategorizerServic
       });
 
       // Call LLM for categorization
-      const response = await this.ai.generateObject({
-        sessionID: session.sessionID,
-        modelId: BOOKMARK_MODEL_IDS.small,
-        prompt,
-        schema: CategorizationResponseSchema,
-      });
+      const response = phaseReporter
+        ? await phaseReporter.trackTurn(
+            "Categorize bookmark",
+            BOOKMARK_MODEL_IDS.small,
+            async () =>
+              this.ai.generateObjectWithUsage({
+                sessionID: session.sessionID,
+                modelId: BOOKMARK_MODEL_IDS.small,
+                prompt,
+                schema: CategorizationResponseSchema,
+              })
+          )
+        : await this.ai.generateObject({
+            sessionID: session.sessionID,
+            modelId: BOOKMARK_MODEL_IDS.small,
+            prompt,
+            schema: CategorizationResponseSchema,
+          });
 
       // Process the response
       let categoryId: string;
@@ -113,9 +120,6 @@ export class BookmarkCategorizerServiceImpl implements BookmarkCategorizerServic
         isNewCategory = true;
       }
 
-      task.subTasks[subTask.taskID].status = "completed";
-      await this.eventBus.publishToBookmark(bookmark.id, "task.completed", task);
-
       return {
         categoryId,
         categoryPath,
@@ -124,8 +128,6 @@ export class BookmarkCategorizerServiceImpl implements BookmarkCategorizerServic
       };
     } catch (error) {
       console.error("Failed to categorize bookmark", error);
-      task.subTasks[subTask.taskID].status = "failed";
-      await this.eventBus.publishToBookmark(bookmark.id, "task.failed", task);
       throw error;
     }
   }

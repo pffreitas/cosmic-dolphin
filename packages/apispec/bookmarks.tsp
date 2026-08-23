@@ -37,9 +37,25 @@ enum BookmarkReadStatus {
     read,
 }
 
+@doc("Durable processing timeline status for runs, phases, and turns")
+enum BookmarkProcessingTimelineStatus {
+    running,
+    completed,
+    failed,
+}
+
+@doc("Processing timeline span kind")
+enum BookmarkProcessingEventKind {
+    run,
+    phase,
+    turn,
+}
+
 model Bookmark {
     id: string;
     sourceUrl: string;
+    createdAt: utcDateTime;
+    updatedAt: utcDateTime;
     collectionId?: string;
     collectionPath?: CollectionPathItem[];
     title?: string;
@@ -174,6 +190,58 @@ model ShareBookmarkResponse {
     shareUrl: string;
 }
 
+model BookmarkProcessingRun {
+    id: string;
+    bookmarkId: string;
+    userId: string;
+    status: BookmarkProcessingTimelineStatus;
+    startedAt: utcDateTime;
+    endedAt?: utcDateTime;
+    durationMs?: int64;
+    inputTokens: int32;
+    outputTokens: int32;
+    totalTokens: int32;
+    reasoningTokens: int32;
+    cachedInputTokens: int32;
+    costUsd?: string;
+    error?: string;
+    createdAt: utcDateTime;
+    updatedAt: utcDateTime;
+}
+
+model BookmarkProcessingEvent {
+    id: string;
+    runId: string;
+    parentEventId?: string;
+    kind: BookmarkProcessingEventKind;
+    phase?: string;
+    name: string;
+    status: BookmarkProcessingTimelineStatus;
+    sequence: int32;
+    startedAt: utcDateTime;
+    endedAt?: utcDateTime;
+    durationMs?: int64;
+    modelId?: string;
+    inputTokens: int32;
+    outputTokens: int32;
+    totalTokens: int32;
+    reasoningTokens: int32;
+    cachedInputTokens: int32;
+    costUsd?: string;
+    providerMetadata?: Record<unknown>;
+    metadata?: Record<unknown>;
+    error?: string;
+    createdAt: utcDateTime;
+    updatedAt: utcDateTime;
+}
+
+model BookmarkProcessingTimelineResponse {
+    bookmark: Bookmark;
+    run?: BookmarkProcessingRun;
+    events: BookmarkProcessingEvent[];
+    pollAfterMs: int32;
+}
+
 model PreviewMetadata {
     title?: string;
     description?: string;
@@ -261,6 +329,18 @@ interface Bookmarks {
     @useAuth(BearerAuth)
     @get
     findById(@path id: string): Bookmark | {
+        @statusCode statusCode: 404;
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+
+    @doc("Get the durable processing timeline for a bookmark")
+    @useAuth(BearerAuth)
+    @get
+    @route("/{id}/processing-timeline")
+    getProcessingTimeline(@path id: string): BookmarkProcessingTimelineResponse | {
         @statusCode statusCode: 404;
         @body body: BookmarkError;
     } | {

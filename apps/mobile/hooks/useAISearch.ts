@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { SearchAPI, HybridSearchResultItem } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { cacheBookmarksInBackground } from '@/lib/bookmark-cache';
 
 interface UseAISearchResult {
   results: HybridSearchResultItem[];
@@ -13,6 +15,7 @@ interface UseAISearchResult {
 }
 
 export function useAISearch(): UseAISearchResult {
+  const { user } = useAuth();
   const [results, setResults] = useState<HybridSearchResultItem[]>([]);
   const [aiResponse, setAiResponse] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -44,6 +47,10 @@ export function useAISearch(): UseAISearchResult {
       onResults: (searchResults) => {
         if (!abortRef.current) {
           setResults(searchResults);
+          cacheBookmarksInBackground(
+            user?.id,
+            searchResults.map((result) => result.bookmark)
+          );
           setIsSearching(false);
         }
       },
@@ -72,7 +79,7 @@ export function useAISearch(): UseAISearchResult {
         setIsStreaming(false);
       }
     });
-  }, []);
+  }, [user?.id]);
 
   return {
     results,

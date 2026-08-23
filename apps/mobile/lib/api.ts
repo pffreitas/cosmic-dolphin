@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { APIError } from './api-errors';
 
 // API configuration
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || '';
@@ -120,6 +121,12 @@ async function getAuthHeaders(): Promise<HeadersInit> {
   };
 }
 
+async function createApiError(response: Response): Promise<APIError> {
+  const errorData = await response.json().catch(() => ({}));
+  const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
+  return new APIError(errorMessage, response.status);
+}
+
 export namespace BookmarksAPI {
   export async function list(params: GetBookmarksParams = {}): Promise<Bookmark[]> {
     const { limit = 20, offset = 0, collection_id, read_status } = params;
@@ -147,7 +154,7 @@ export namespace BookmarksAPI {
       );
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw await createApiError(response);
       }
 
       const data: GetBookmarksResponse = await response.json();
@@ -197,7 +204,7 @@ export namespace BookmarksAPI {
         if (response.status === 404) {
           return null;
         }
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw await createApiError(response);
       }
 
       return await response.json();
@@ -217,9 +224,7 @@ export namespace BookmarksAPI {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
-        throw new Error(errorMessage);
+        throw await createApiError(response);
       }
 
       return await response.json();
@@ -244,7 +249,7 @@ export namespace BookmarksAPI {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw await createApiError(response);
       }
 
       const data: GetBookmarksResponse = await response.json();
@@ -265,9 +270,7 @@ export namespace BookmarksAPI {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
-        throw new Error(errorMessage);
+        throw await createApiError(response);
       }
 
       return await response.json();
@@ -286,9 +289,7 @@ export namespace BookmarksAPI {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
-        throw new Error(errorMessage);
+        throw await createApiError(response);
       }
 
       return await response.json();
@@ -307,9 +308,7 @@ export namespace BookmarksAPI {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
-        throw new Error(errorMessage);
+        throw await createApiError(response);
       }
 
       return await response.json();
@@ -370,9 +369,7 @@ export namespace BookmarksAPI {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
-        throw new Error(errorMessage);
+        throw await createApiError(response);
       }
 
       return await response.json();
@@ -391,9 +388,7 @@ export namespace BookmarksAPI {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
-        throw new Error(errorMessage);
+        throw await createApiError(response);
       }
 
       return await response.json();

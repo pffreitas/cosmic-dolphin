@@ -1,12 +1,8 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { useAppSelector, useAppDispatch } from "@/lib/store/hooks";
-import { setCurrentBookmarkFromApi } from "@/lib/store/slices/realtimeSlice";
 import { Bookmark } from "@cosmic-dolphin/api-client";
 import CosmicMarkdown from "@/components/markdown/CosmicMarkdown";
 import OpenGraphWebpage from "@/components/opengraph/OpenGraphWebpage";
-import CosmicLoading from "@/components/loading/CosmicLoading";
-import { ConnectionStatus } from "@/components/realtime/ConnectionStatus";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   HeartIcon,
@@ -21,8 +17,6 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { Action, Actions } from "@/components/ai-elements/actions";
-import { Separator } from "@/components/ui/separator";
-import { useSessionByBookmark } from "@/lib/store/realtimeSelectors";
 import { Badge } from "@/components/ui/badge";
 import { BookmarkImageGallery } from "@/components/bookmark/BookmarkImageGallery";
 import {
@@ -34,7 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useBookmarkRealtime } from "@/lib/hooks/useBookmarkRealtime";
+import { useBookmarkProcessingTimeline } from "@/lib/hooks/useBookmarkProcessingTimeline";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -52,12 +46,14 @@ interface ProcessingStatusProps {
   status: string;
   error?: string;
   isPrivateLink?: boolean;
+  activePhaseLabel?: string;
 }
 
 const ProcessingStatusBanner = ({
   status,
   error,
   isPrivateLink,
+  activePhaseLabel,
 }: ProcessingStatusProps) => {
   if (status === "idle" || status === "completed") {
     return null;
@@ -97,9 +93,10 @@ const ProcessingStatusBanner = ({
                 : "Processing bookmark..."}
             </span>
             <span className="text-xs text-blue-600 dark:text-blue-500">
-              {isPrivateLink
-                ? "AI is creating tags and a category from your note"
-                : "AI is analyzing and summarizing the content"}
+              {activePhaseLabel ||
+                (isPrivateLink
+                  ? "AI is creating tags and a category from your note"
+                  : "AI is analyzing and summarizing the content")}
             </span>
           </div>
         </div>
@@ -109,8 +106,6 @@ const ProcessingStatusBanner = ({
 };
 
 export const BookmarkBody = (props: { bookmark: Bookmark }) => {
-  const dispatch = useAppDispatch();
-  const { currentBookmark } = useAppSelector((state) => state.realtime);
   const [isLiked, setIsLiked] = useState(
     () => (props.bookmark as any).isLikedByCurrentUser ?? false
   );
@@ -138,35 +133,21 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const router = useRouter();
 
-  const { isConnected, isProcessing } = useBookmarkRealtime(
+  const { bookmark, activePhaseLabel } = useBookmarkProcessingTimeline(
     props.bookmark.id,
+    props.bookmark,
     {
       enabled: true,
     }
   );
 
-  const activeSession = useSessionByBookmark(props.bookmark.id);
-
   useEffect(() => {
-    if (
-      props.bookmark &&
-      (!currentBookmark || currentBookmark.id !== props.bookmark.id)
-    ) {
-      dispatch(setCurrentBookmarkFromApi(props.bookmark));
-    }
-  }, [props.bookmark, currentBookmark, dispatch]);
-
-  const bookmark = currentBookmark || props.bookmark;
-
-  useEffect(() => {
-    setIsRead(props.bookmark.isRead ?? Boolean(props.bookmark.readAt));
-    setReadAt(props.bookmark.readAt);
+    setIsRead(bookmark.isRead ?? Boolean(bookmark.readAt));
+    setReadAt(bookmark.readAt);
     setSuppressAutoRead(false);
-  }, [props.bookmark.id, props.bookmark.isRead, props.bookmark.readAt]);
+  }, [bookmark.id, bookmark.isRead, bookmark.readAt]);
 
-  const processingStatus =
-    (bookmark as any).processingStatus ||
-    (activeSession?.isLoading ? "processing" : "idle");
+  const processingStatus = (bookmark as any).processingStatus || "idle";
 
   const handleLikeToggle = async () => {
     if (isLikeLoading) return;
@@ -201,11 +182,10 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
       const updated = await BookmarksClientAPI.markRead(bookmark.id);
       setIsRead(updated.isRead ?? true);
       setReadAt(updated.readAt);
-      dispatch(setCurrentBookmarkFromApi(updated));
     } catch (error) {
       console.error("Failed to automatically mark bookmark read:", error);
     }
-  }, [bookmark.id, dispatch, isRead, isReadLoading]);
+  }, [bookmark.id, isRead, isReadLoading]);
 
   useAutoMarkBookmarkRead({
     enabled: !isRead && !suppressAutoRead,
@@ -228,7 +208,6 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
       setIsRead(updated.isRead ?? !previousIsRead);
       setReadAt(updated.readAt);
       setSuppressAutoRead(isRead);
-      dispatch(setCurrentBookmarkFromApi(updated));
     } catch (error) {
       console.error("Failed to update read state:", error);
       setIsRead(previousIsRead);
@@ -339,28 +318,12 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
         </Breadcrumb>
       )}
 
-      <ConnectionStatus />
-
       <ProcessingStatusBanner
         status={processingStatus}
         error={(bookmark as any).processingError}
         isPrivateLink={bookmark.isPrivateLink}
+        activePhaseLabel={activePhaseLabel}
       />
-
-      {/* Legacy loading indicator */}
-      {activeSession?.isLoading && processingStatus === "idle" && (
-        <Card>
-          <CardContent className="px-5 py-2">
-            <div className="flex flex-row gap-6 h-8 items-stretch">
-              <div className="w-[180px] flex">
-                <CosmicLoading />
-              </div>
-              <Separator orientation="vertical" className="w-px" />
-              <div className="flex-1 flex align-center" />
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Header: Title + Actions */}
       <header>

@@ -21,6 +21,10 @@ export {
   ContentChunkRepository,
   ContentChunkRepositoryImpl,
 } from "./content-chunk.repository";
+export {
+  BookmarkProcessingRepository,
+  BookmarkProcessingRepositoryImpl,
+} from "./bookmark-processing.repository";
 export type {
   CreateTextChunkData,
   CreateImageChunkData,

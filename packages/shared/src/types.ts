@@ -97,6 +97,67 @@ export interface BookmarkLink {
 
 // Processing status type
 export type ProcessingStatus = "idle" | "processing" | "completed" | "failed";
+export type BookmarkProcessingTimelineStatus =
+  | "running"
+  | "completed"
+  | "failed";
+export type BookmarkProcessingEventKind = "run" | "phase" | "turn";
+
+export interface BookmarkProcessingUsage {
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  reasoningTokens?: number;
+  cachedInputTokens?: number;
+  costUsd?: string;
+  providerMetadata?: Record<string, any>;
+}
+
+export interface BookmarkProcessingRun extends BaseEntity {
+  bookmarkId: string;
+  userId: string;
+  status: BookmarkProcessingTimelineStatus;
+  startedAt: Date;
+  endedAt?: Date;
+  durationMs?: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  reasoningTokens: number;
+  cachedInputTokens: number;
+  costUsd?: string;
+  error?: string;
+}
+
+export interface BookmarkProcessingEvent extends BaseEntity {
+  runId: string;
+  parentEventId?: string;
+  kind: BookmarkProcessingEventKind;
+  phase?: string;
+  name: string;
+  status: BookmarkProcessingTimelineStatus;
+  sequence: number;
+  startedAt: Date;
+  endedAt?: Date;
+  durationMs?: number;
+  modelId?: string;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  reasoningTokens: number;
+  cachedInputTokens: number;
+  costUsd?: string;
+  providerMetadata?: Record<string, any>;
+  metadata?: Record<string, any>;
+  error?: string;
+}
+
+export interface BookmarkProcessingTimeline {
+  bookmark: Bookmark;
+  run?: BookmarkProcessingRun;
+  events: BookmarkProcessingEvent[];
+  pollAfterMs: number;
+}
 
 export interface Bookmark extends BaseEntity {
   sourceUrl: string;
