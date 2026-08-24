@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Bookmark } from "@cosmic-dolphin/api-client";
 import CosmicMarkdown from "@/components/markdown/CosmicMarkdown";
 import OpenGraphWebpage from "@/components/opengraph/OpenGraphWebpage";
@@ -13,6 +13,7 @@ import {
   CheckIcon,
   ExternalLinkIcon,
   LockIcon,
+  RotateCcwIcon,
   Trash2Icon,
 } from "lucide-react";
 import { Action, Actions } from "@/components/ai-elements/actions";
@@ -39,6 +40,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BookmarksClientAPI } from "@/lib/api/bookmarks-client";
+import { useAutoMarkBookmarkRead } from "@/lib/hooks/useAutoMarkBookmarkRead";
 
 interface ProcessingStatusProps {
   status: string;
@@ -114,6 +116,14 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
   const [isShared, setIsShared] = useState(
     () => (props.bookmark as any).isPublic ?? false
   );
+  const [isRead, setIsRead] = useState(
+    () => props.bookmark.isRead ?? Boolean(props.bookmark.readAt)
+  );
+  const [readAt, setReadAt] = useState<Date | undefined>(
+    () => props.bookmark.readAt
+  );
+  const [isReadLoading, setIsReadLoading] = useState(false);
+  const [suppressAutoRead, setSuppressAutoRead] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isShareLoading, setIsShareLoading] = useState(false);
@@ -130,6 +140,12 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
       enabled: true,
     }
   );
+
+  useEffect(() => {
+    setIsRead(bookmark.isRead ?? Boolean(bookmark.readAt));
+    setReadAt(bookmark.readAt);
+    setSuppressAutoRead(false);
+  }, [bookmark.id, bookmark.isRead, bookmark.readAt]);
 
   const processingStatus = (bookmark as any).processingStatus || "idle";
 
@@ -156,6 +172,48 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
       setLikeCount(previousLikeCount);
     } finally {
       setIsLikeLoading(false);
+    }
+  };
+
+  const markCurrentBookmarkRead = useCallback(async () => {
+    if (isRead || isReadLoading) return;
+
+    try {
+      const updated = await BookmarksClientAPI.markRead(bookmark.id);
+      setIsRead(updated.isRead ?? true);
+      setReadAt(updated.readAt);
+    } catch (error) {
+      console.error("Failed to automatically mark bookmark read:", error);
+    }
+  }, [bookmark.id, isRead, isReadLoading]);
+
+  useAutoMarkBookmarkRead({
+    enabled: !isRead && !suppressAutoRead,
+    onMarkRead: markCurrentBookmarkRead,
+  });
+
+  const handleReadToggle = async () => {
+    if (isReadLoading) return;
+
+    const previousIsRead = isRead;
+    const previousReadAt = readAt;
+    setIsRead(!isRead);
+    setReadAt(isRead ? undefined : new Date());
+    setIsReadLoading(true);
+
+    try {
+      const updated = isRead
+        ? await BookmarksClientAPI.markUnread(bookmark.id)
+        : await BookmarksClientAPI.markRead(bookmark.id);
+      setIsRead(updated.isRead ?? !previousIsRead);
+      setReadAt(updated.readAt);
+      setSuppressAutoRead(isRead);
+    } catch (error) {
+      console.error("Failed to update read state:", error);
+      setIsRead(previousIsRead);
+      setReadAt(previousReadAt);
+    } finally {
+      setIsReadLoading(false);
     }
   };
 
@@ -279,6 +337,12 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
             </h1>
           )}
 
+          {isRead && (
+            <Badge variant="outline" className="mt-2 shrink-0">
+              Read
+            </Badge>
+          )}
+
           <Actions className="shrink-0 mt-1">
             <Action
               label={isLiked ? "Unlike" : "Like"}
@@ -313,6 +377,26 @@ export const BookmarkBody = (props: { bookmark: Bookmark }) => {
               }
             >
               <ShareIcon className="size-4" />
+            </Action>
+            <Action
+              label={isRead ? "Mark unread" : "Mark read"}
+              tooltip={isRead ? "Mark unread" : "Mark read"}
+              onClick={handleReadToggle}
+              disabled={isReadLoading}
+              variant="outline"
+              className={
+                isRead
+                  ? "text-green-600 hover:text-green-700 border-green-200 bg-green-50/50 hover:bg-green-50 dark:border-green-900/50 dark:bg-green-950/30 dark:hover:bg-green-950/50 w-auto px-3 gap-2 cursor-pointer"
+                  : "text-muted-foreground hover:text-green-600 w-auto px-3 gap-2 cursor-pointer"
+              }
+            >
+              {isReadLoading ? (
+                <Loader2Icon className="size-4 animate-spin" />
+              ) : isRead ? (
+                <RotateCcwIcon className="size-4" />
+              ) : (
+                <CheckIcon className="size-4" />
+              )}
             </Action>
             <Action
               label="Delete"

@@ -50,6 +50,8 @@ export interface Bookmark {
   isLikedByCurrentUser?: boolean;
   isPublic?: boolean;
   shareSlug?: string;
+  readAt?: string;
+  isRead?: boolean;
   isPrivateLink?: boolean;
   processingStatus?: 'idle' | 'processing' | 'completed' | 'failed';
   processingError?: string;
@@ -68,6 +70,7 @@ export interface GetBookmarksParams {
   limit?: number;
   offset?: number;
   collection_id?: string;
+  read_status?: 'all' | 'unread' | 'read';
 }
 
 export interface CreateBookmarkParams {
@@ -126,7 +129,7 @@ async function createApiError(response: Response): Promise<APIError> {
 
 export namespace BookmarksAPI {
   export async function list(params: GetBookmarksParams = {}): Promise<Bookmark[]> {
-    const { limit = 20, offset = 0, collection_id } = params;
+    const { limit = 20, offset = 0, collection_id, read_status } = params;
     
     try {
       const headers = await getAuthHeaders();
@@ -135,6 +138,9 @@ export namespace BookmarksAPI {
       queryParams.append('offset', offset.toString());
       if (collection_id) {
         queryParams.append('collection_id', collection_id);
+      }
+      if (read_status) {
+        queryParams.append('read_status', read_status);
       }
 
       const url = `${API_URL}/bookmarks?${queryParams.toString()}`;
@@ -156,6 +162,32 @@ export namespace BookmarksAPI {
     } catch (error) {
 
       console.error('Error fetching bookmarks:', {error});
+      throw error;
+    }
+  }
+
+  export async function feed(params: Pick<GetBookmarksParams, 'limit' | 'offset'> = {}): Promise<Bookmark[]> {
+    const { limit = 20, offset = 0 } = params;
+
+    try {
+      const headers = await getAuthHeaders();
+      const queryParams = new URLSearchParams();
+      queryParams.append('limit', limit.toString());
+      queryParams.append('offset', offset.toString());
+
+      const response = await fetch(`${API_URL}/bookmarks/feed?${queryParams.toString()}`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: GetBookmarksResponse = await response.json();
+      return data.bookmarks || [];
+    } catch (error) {
+      console.error('Error fetching bookmark feed:', error);
       throw error;
     }
   }
@@ -282,6 +314,48 @@ export namespace BookmarksAPI {
       return await response.json();
     } catch (error) {
       console.error('Error unliking bookmark:', error);
+      throw error;
+    }
+  }
+
+  export async function markRead(id: string): Promise<Bookmark> {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/bookmarks/${id}/read`, {
+        method: 'PUT',
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error marking bookmark read:', error);
+      throw error;
+    }
+  }
+
+  export async function markUnread(id: string): Promise<Bookmark> {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/bookmarks/${id}/read`, {
+        method: 'DELETE',
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error marking bookmark unread:', error);
       throw error;
     }
   }

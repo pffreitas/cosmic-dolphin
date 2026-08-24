@@ -53,9 +53,12 @@ describe("BookmarkProcessorService", () => {
       convertToPrivateLink: jest.fn(),
       findByUserAndUrl: jest.fn(),
       findByUser: jest.fn(),
+      findFeed: jest.fn(),
       searchByQuickAccess: jest.fn(),
       share: jest.fn(),
       unshare: jest.fn(),
+      markRead: jest.fn(),
+      markUnread: jest.fn(),
       findByShareSlug: jest.fn(),
       delete: jest.fn(),
     } as jest.Mocked<BookmarkService>;

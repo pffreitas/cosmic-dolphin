@@ -286,19 +286,25 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         collection_id,
         limit = 50,
         offset = 0,
+        read_status = "all",
       } = request.query as Omit<GetBookmarksQuery, "user_id">;
       const user_id = request.userId!;
 
       fastify.log.info(
-        { collection_id, limit, offset, user_id },
+        { collection_id, limit, offset, read_status, user_id },
         "Get bookmarks request"
       );
+
+      if (!["all", "unread", "read"].includes(read_status)) {
+        return reply.status(400).send({ error: "Invalid read_status" });
+      }
 
       const bookmarks = await services.bookmark.findByUser(user_id, {
         collectionId: collection_id,
         limit,
         offset,
         includeArchived: false,
+        readStatus: read_status,
       });
 
       return reply.send({ bookmarks });
@@ -307,6 +313,31 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
       fastify.log.error({ errorMessage, errorStack }, "Get bookmarks error");
+      return reply.status(500).send({ error: "Internal server error" });
+    }
+  });
+
+  fastify.get<{
+    Querystring: { limit?: number; offset?: number };
+    Reply: GetBookmarksResponse | { error: string };
+  }>("/bookmarks/feed", { preHandler: authMiddleware }, async (request, reply) => {
+    try {
+      const { limit = 50, offset = 0 } = request.query;
+      const user_id = request.userId!;
+
+      fastify.log.info({ limit, offset, user_id }, "Get bookmark feed request");
+
+      const bookmarks = await services.bookmark.findFeed(user_id, {
+        limit,
+        offset,
+      });
+
+      return reply.send({ bookmarks });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      fastify.log.error({ errorMessage, errorStack }, "Get bookmark feed error");
       return reply.status(500).send({ error: "Internal server error" });
     }
   });
@@ -483,6 +514,54 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           return reply.status(404).send({ error: "Bookmark not found" });
         }
         fastify.log.error({ error }, "Delete bookmark error");
+        return reply.status(500).send({ error: "Internal server error" });
+      }
+    }
+  );
+
+  fastify.put<{
+    Params: { id: string };
+    Reply: Bookmark | { error: string };
+  }>(
+    "/bookmarks/:id/read",
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const user_id = request.userId!;
+
+        const bookmark = await services.bookmark.markRead(id, user_id);
+
+        return reply.send(bookmark);
+      } catch (error) {
+        if (error instanceof Error && error.message === "Bookmark not found") {
+          return reply.status(404).send({ error: "Bookmark not found" });
+        }
+        fastify.log.error({ error }, "Mark bookmark read error");
+        return reply.status(500).send({ error: "Internal server error" });
+      }
+    }
+  );
+
+  fastify.delete<{
+    Params: { id: string };
+    Reply: Bookmark | { error: string };
+  }>(
+    "/bookmarks/:id/read",
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const user_id = request.userId!;
+
+        const bookmark = await services.bookmark.markUnread(id, user_id);
+
+        return reply.send(bookmark);
+      } catch (error) {
+        if (error instanceof Error && error.message === "Bookmark not found") {
+          return reply.status(404).send({ error: "Bookmark not found" });
+        }
+        fastify.log.error({ error }, "Mark bookmark unread error");
         return reply.status(500).send({ error: "Internal server error" });
       }
     }

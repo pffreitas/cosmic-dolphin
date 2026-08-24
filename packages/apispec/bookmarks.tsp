@@ -30,6 +30,13 @@ enum ProcessingStatus {
     failed,
 }
 
+@doc("Read-state filter for bookmark library queries")
+enum BookmarkReadStatus {
+    all,
+    unread,
+    read,
+}
+
 @doc("Durable processing timeline status for runs, phases, and turns")
 enum BookmarkProcessingTimelineStatus {
     running,
@@ -66,6 +73,8 @@ model Bookmark {
     isLikedByCurrentUser?: boolean;
     isPublic?: boolean;
     shareSlug?: string;
+    readAt?: utcDateTime;
+    isRead?: boolean;
     processingStatus?: ProcessingStatus;
     processingStartedAt?: utcDateTime;
     processingCompletedAt?: utcDateTime;
@@ -142,6 +151,10 @@ model GetBookmarksQuery {
     @doc("Number of bookmarks to skip")
     @query
     offset?: int32 = 0;
+
+    @doc("Filter bookmarks by read state")
+    @query
+    read_status?: BookmarkReadStatus = BookmarkReadStatus.all;
 }
 
 model GetBookmarksResponse {
@@ -300,6 +313,18 @@ interface Bookmarks {
         @body body: BookmarkError;
     };
 
+    @doc("Get user's unread bookmark feed")
+    @useAuth(BearerAuth)
+    @get
+    @route("/feed")
+    feed(
+        @query limit?: int32 = 50,
+        @query offset?: int32 = 0,
+    ): GetBookmarksResponse | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+
     @doc("Get a bookmark by ID")
     @useAuth(BearerAuth)
     @get
@@ -327,6 +352,30 @@ interface Bookmarks {
     @useAuth(BearerAuth)
     @delete
     remove(@path id: string): DeleteBookmarkResponse | {
+        @statusCode statusCode: 404;
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+          };
+
+    @doc("Mark a bookmark as read")
+    @useAuth(BearerAuth)
+    @put
+    @route("/{id}/read")
+    markRead(@path id: string): Bookmark | {
+        @statusCode statusCode: 404;
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+
+    @doc("Mark a bookmark as unread")
+    @useAuth(BearerAuth)
+    @delete
+    @route("/{id}/read")
+    markUnread(@path id: string): Bookmark | {
         @statusCode statusCode: 404;
         @body body: BookmarkError;
     } | {

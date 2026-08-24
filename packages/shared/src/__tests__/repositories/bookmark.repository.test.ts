@@ -333,6 +333,119 @@ describe("BookmarkRepository", () => {
       expect(found.length).toBeGreaterThanOrEqual(2);
       expect(foundIds).toEqual(expect.arrayContaining([createdArchived.id, createdActive.id]));
     });
+
+    it("should filter unread bookmarks", async () => {
+      const unreadBookmark = TestDataFactory.createBookmark({
+        user_id: testUserId,
+        read_at: null,
+      });
+      const readBookmark = TestDataFactory.createBookmark({
+        user_id: testUserId,
+        read_at: new Date(),
+      });
+
+      const createdUnread = await repository.create(unreadBookmark);
+      const createdRead = await repository.create(readBookmark);
+
+      const found = await repository.findByUser(testUserId, {
+        readStatus: "unread",
+      });
+      const foundIds = found.map((b) => b.id);
+
+      expect(foundIds).toContain(createdUnread.id);
+      expect(foundIds).not.toContain(createdRead.id);
+      expect(found.every((b) => b.read_at === null)).toBe(true);
+    });
+
+    it("should filter read bookmarks", async () => {
+      const unreadBookmark = TestDataFactory.createBookmark({
+        user_id: testUserId,
+        read_at: null,
+      });
+      const readBookmark = TestDataFactory.createBookmark({
+        user_id: testUserId,
+        read_at: new Date(),
+      });
+
+      const createdUnread = await repository.create(unreadBookmark);
+      const createdRead = await repository.create(readBookmark);
+
+      const found = await repository.findByUser(testUserId, {
+        readStatus: "read",
+      });
+      const foundIds = found.map((b) => b.id);
+
+      expect(foundIds).toContain(createdRead.id);
+      expect(foundIds).not.toContain(createdUnread.id);
+      expect(found.every((b) => b.read_at !== null)).toBe(true);
+    });
+
+    it("should include both read and unread bookmarks by default", async () => {
+      const unreadBookmark = TestDataFactory.createBookmark({
+        user_id: testUserId,
+        read_at: null,
+      });
+      const readBookmark = TestDataFactory.createBookmark({
+        user_id: testUserId,
+        read_at: new Date(),
+      });
+
+      const createdUnread = await repository.create(unreadBookmark);
+      const createdRead = await repository.create(readBookmark);
+
+      const found = await repository.findByUser(testUserId);
+      const foundIds = found.map((b) => b.id);
+
+      expect(foundIds).toEqual(expect.arrayContaining([
+        createdUnread.id,
+        createdRead.id,
+      ]));
+    });
+  });
+
+  describe("read state", () => {
+    it("should mark a bookmark read for its owner", async () => {
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+        read_at: null,
+      });
+      const created = await repository.create(bookmarkData);
+
+      const updated = await repository.markRead(created.id, testUserId);
+
+      expect(updated).not.toBeNull();
+      expect(updated!.id).toBe(created.id);
+      expect(updated!.read_at).toBeInstanceOf(Date);
+    });
+
+    it("should mark a bookmark unread for its owner", async () => {
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+        read_at: new Date(),
+      });
+      const created = await repository.create(bookmarkData);
+
+      const updated = await repository.markUnread(created.id, testUserId);
+
+      expect(updated).not.toBeNull();
+      expect(updated!.id).toBe(created.id);
+      expect(updated!.read_at).toBeNull();
+    });
+
+    it("should return null when marking another user's bookmark read", async () => {
+      const bookmarkData = TestDataFactory.createBookmark({
+        user_id: testUserId,
+        read_at: null,
+      });
+      const created = await repository.create(bookmarkData);
+      const otherUserId = TestDataFactory.generateUserId();
+
+      const updated = await repository.markRead(created.id, otherUserId);
+
+      expect(updated).toBeNull();
+      const unchanged = await repository.findByIdAndUser(created.id, testUserId);
+      expect(unchanged!.read_at).toBeNull();
+    });
   });
 
   describe("update", () => {

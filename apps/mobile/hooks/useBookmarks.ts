@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { BookmarksAPI, Bookmark } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import {
+  cacheBookmarksInBackground,
   cacheLibraryPageInBackground,
   getCachedLibrary,
 } from '@/lib/bookmark-cache';
@@ -18,9 +19,38 @@ interface UseBookmarksResult {
   hasMore: boolean;
   refresh: () => Promise<void>;
   loadMore: () => Promise<void>;
+  toggleRead: (bookmark: Bookmark) => Promise<void>;
 }
 
-export function useBookmarks(): UseBookmarksResult {
+interface UseBookmarksOptions {
+  mode?: 'feed' | 'library';
+  readStatus?: 'all' | 'unread' | 'read';
+}
+
+function bookmarkIsRead(bookmark: Bookmark): boolean {
+  return bookmark.isRead ?? Boolean(bookmark.readAt);
+}
+
+function filterCachedBookmarks(
+  bookmarks: Bookmark[],
+  mode: UseBookmarksOptions['mode'],
+  readStatus: UseBookmarksOptions['readStatus']
+): Bookmark[] {
+  if (mode === 'feed' || readStatus === 'unread') {
+    return bookmarks.filter((bookmark) => !bookmarkIsRead(bookmark));
+  }
+
+  if (readStatus === 'read') {
+    return bookmarks.filter(bookmarkIsRead);
+  }
+
+  return bookmarks;
+}
+
+export function useBookmarks({
+  mode = 'library',
+  readStatus = 'all',
+}: UseBookmarksOptions = {}): UseBookmarksResult {
   const { user } = useAuth();
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,10 +82,17 @@ export function useBookmarks(): UseBookmarksResult {
     }
 
     try {
-      const newBookmarks = await BookmarksAPI.list({
-        limit: PAGE_SIZE,
-        offset: currentOffset,
-      });
+      const newBookmarks =
+        mode === 'feed'
+          ? await BookmarksAPI.feed({
+              limit: PAGE_SIZE,
+              offset: currentOffset,
+            })
+          : await BookmarksAPI.list({
+              limit: PAGE_SIZE,
+              offset: currentOffset,
+              read_status: readStatus,
+            });
 
       if (reset) {
         setBookmarks(newBookmarks);
@@ -66,7 +103,11 @@ export function useBookmarks(): UseBookmarksResult {
       }
 
       setIsOffline(false);
-      cacheLibraryPageInBackground(userId, newBookmarks, { reset });
+      if (mode === 'library' && readStatus === 'all') {
+        cacheLibraryPageInBackground(userId, newBookmarks, { reset });
+      } else {
+        cacheBookmarksInBackground(userId, newBookmarks);
+      }
 
       // If we received fewer than PAGE_SIZE items, there are no more
       setHasMore(newBookmarks.length === PAGE_SIZE);
@@ -74,7 +115,11 @@ export function useBookmarks(): UseBookmarksResult {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch bookmarks';
 
       if (reset && !isAuthError(err)) {
-        const cachedBookmarks = await getCachedLibrary(userId);
+        const cachedBookmarks = filterCachedBookmarks(
+          await getCachedLibrary(userId),
+          mode,
+          readStatus
+        );
         if (cachedBookmarks.length > 0) {
           setBookmarks(cachedBookmarks);
           setOffset(cachedBookmarks.length);
@@ -91,7 +136,7 @@ export function useBookmarks(): UseBookmarksResult {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [offset, user?.id]);
+  }, [mode, offset, readStatus, user?.id]);
 
   const refresh = useCallback(async () => {
     setOffset(0);
@@ -117,9 +162,37 @@ export function useBookmarks(): UseBookmarksResult {
       setIsOffline(false);
       setHasMore(false);
     }
-    // Fetch only when the signed-in user changes; offset changes are handled by explicit actions.
+    // Fetch when the signed-in user, mode, or filter changes; offset changes are handled by explicit actions.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [user?.id, mode, readStatus]);
+
+  const toggleRead = useCallback(async (bookmark: Bookmark) => {
+    const currentIsRead = bookmark.isRead ?? Boolean(bookmark.readAt);
+    const updated = currentIsRead
+      ? await BookmarksAPI.markUnread(bookmark.id)
+      : await BookmarksAPI.markRead(bookmark.id);
+
+    cacheBookmarksInBackground(user?.id, [updated]);
+
+    setBookmarks((prev) => {
+      if (mode === 'feed' && bookmarkIsRead(updated)) {
+        return prev.filter((item) => item.id !== bookmark.id);
+      }
+
+      if (mode === 'library' && readStatus !== 'all') {
+        const updatedIsRead = bookmarkIsRead(updated);
+        const matchesFilter =
+          (readStatus === 'read' && updatedIsRead) ||
+          (readStatus === 'unread' && !updatedIsRead);
+
+        if (!matchesFilter) {
+          return prev.filter((item) => item.id !== bookmark.id);
+        }
+      }
+
+      return prev.map((item) => (item.id === bookmark.id ? updated : item));
+    });
+  }, [mode, readStatus, user?.id]);
 
   return {
     bookmarks,
@@ -130,5 +203,6 @@ export function useBookmarks(): UseBookmarksResult {
     hasMore,
     refresh,
     loadMore,
+    toggleRead,
   };
 }

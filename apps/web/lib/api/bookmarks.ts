@@ -1,4 +1,9 @@
-import { Configuration, BookmarksApi, Bookmark } from "@cosmic-dolphin/api-client";
+import {
+  Configuration,
+  BookmarksApi,
+  Bookmark,
+  BookmarkReadStatus,
+} from "@cosmic-dolphin/api-client";
 import { createClient } from "@/utils/supabase/server";
 
 function getApiBasePath(): string {
@@ -31,14 +36,35 @@ export namespace BookmarksAPI {
     collection_id?: string;
     limit?: number;
     offset?: number;
+    read_status?: BookmarkReadStatus;
   }): Promise<Bookmark[]> {
     const bookmarksApi = await getApiInstance();
 
     try {
-      const response = await bookmarksApi.bookmarksList(query);
+      const response = await bookmarksApi.bookmarksList({
+        collectionId: query?.collection_id,
+        limit: query?.limit,
+        offset: query?.offset,
+        readStatus: query?.read_status,
+      });
       return response.bookmarks || [];
     } catch (error) {
       console.error("Error fetching bookmarks", error);
+      return [];
+    }
+  }
+
+  export async function feed(query?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<Bookmark[]> {
+    const bookmarksApi = await getApiInstance();
+
+    try {
+      const response = await bookmarksApi.bookmarksFeed(query);
+      return response.bookmarks || [];
+    } catch (error) {
+      console.error("Error fetching bookmark feed", error);
       return [];
     }
   }
