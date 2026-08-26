@@ -1,0 +1,208 @@
+/* ============================================================================
+   Cosmic Dolphin — design tokens (direction: Signal)
+
+   Generated from docs/design-system/tokens.json. Do not hand-edit: change the
+   JSON and regenerate, so the spec and the stylesheet cannot drift apart.
+
+   Import at the top of apps/web/app/globals.css, before the Tailwind layers.
+   Every token is prefixed --cd-* because several unprefixed shadcn variables
+   (--accent, --border, --ring) mean something different from ours; the
+   compatibility layer at the bottom of this file bridges the two.
+   ============================================================================ */
+
+:root {
+  /* -------- Type -------- */
+  --cd-font-sans: "Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cd-font-serif: "Source Serif 4",Georgia,"Times New Roman",serif;
+  --cd-font-mono: "IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+
+  /* -------- Shape -------- */
+  --cd-radius-xs: 4px;
+  --cd-radius-sm: 6px;
+  --cd-radius-md: 8px;
+  --cd-radius-lg: 12px;
+  --cd-radius-pill: 999px;
+
+  /* -------- Space (4px base) -------- */
+  --cd-space-1: 4px;
+  --cd-space-2: 8px;
+  --cd-space-3: 12px;
+  --cd-space-4: 16px;
+  --cd-space-5: 24px;
+  --cd-space-6: 32px;
+  --cd-space-7: 48px;
+  --cd-space-8: 64px;
+  --cd-measure: 68ch;
+
+  /* -------- Motion -------- */
+  --cd-ease: cubic-bezier(0.2, 0.6, 0.3, 1);
+  --cd-duration-fast: 150ms;
+  --cd-duration: 220ms;
+
+  /* -------- Colour · light -------- */
+  /* Surfaces */
+  --cd-bg: #FFFFFF;
+  --cd-bg-subtle: #F7F9FB;
+  --cd-bg-panel: #FFFFFF;
+  --cd-bg-inset: #EEF2F6;
+
+  /* Text */
+  --cd-fg: #0C1622;
+  --cd-fg-secondary: #4C5A68;
+  --cd-fg-tertiary: #657485;
+
+  /* Lines */
+  --cd-border: #E2E8EE;
+  --cd-border-strong: #C9D4DE;
+
+  /* Accent */
+  --cd-accent: #0B6F9C;
+  --cd-accent-hover: #0A5C82;
+  --cd-accent-fg: #FFFFFF;
+  --cd-accent-soft: #EAF4FA;
+  --cd-accent-border: #BEDDEC;
+
+  /* AI layer */
+  --cd-ai: #0B6F9C;
+  --cd-ai-bg: #F2F8FC;
+  --cd-ai-bg-top: #FFFFFF;
+  --cd-ai-border: #D3E7F1;
+  --cd-ai-chip: #E2F0F8;
+  --cd-ai-glow: rgba(11,111,156,.11);
+  --cd-ai-sheen: rgba(255,255,255,.9);
+
+  /* State */
+  --cd-like: #D6336C;
+  --cd-success: #15803D;
+  --cd-warning: #B45309;
+  --cd-danger: #DC2626;
+  --cd-hl-bg: #EAF4FA;
+  --cd-hl-line: #BEDDEC;
+  --cd-focus: #0B6F9C;
+
+  /* Header capsule */
+  --cd-nav-band-top: #CFE6F3;
+  --cd-nav-band-bot: #E9F3F9;
+  --cd-nav-glass: linear-gradient(180deg,rgba(255,255,255,.95) 0%,rgba(255,255,255,.55) 100%);
+  --cd-nav-edge: rgba(255,255,255,.9);
+  --cd-nav-sheen: rgba(255,255,255,.85);
+  --cd-nav-pill: rgba(255,255,255,.96);
+  --cd-nav-shadow: 0 10px 26px -14px rgba(8,50,72,.55), 0 2px 6px -3px rgba(8,50,72,.2);
+
+  /* -------- Elevation -------- */
+  --cd-shadow-capsule: var(--cd-nav-shadow);
+  --cd-shadow-popover: 0 12px 32px -12px rgba(8, 50, 72, 0.28), 0 2px 6px -3px rgba(8, 50, 72, 0.16);
+  --cd-shadow-dialog: 0 24px 60px -20px rgba(8, 50, 72, 0.42);
+}
+
+.dark {
+  /* -------- Colour · dark -------- */
+  /* Surfaces */
+  --cd-bg: #0A1119;
+  --cd-bg-subtle: #0E1720;
+  --cd-bg-panel: #101A24;
+  --cd-bg-inset: #16222E;
+
+  /* Text */
+  --cd-fg: #E9F0F6;
+  --cd-fg-secondary: #9FB1C0;
+  --cd-fg-tertiary: #6E8394;
+
+  /* Lines */
+  --cd-border: #1E2C39;
+  --cd-border-strong: #2C3E4E;
+
+  /* Accent */
+  --cd-accent: #5CC2E8;
+  --cd-accent-hover: #8AD5F0;
+  --cd-accent-fg: #04222F;
+  --cd-accent-soft: #0E2634;
+  --cd-accent-border: #1C4256;
+
+  /* AI layer */
+  --cd-ai: #5CC2E8;
+  --cd-ai-bg: #0C202C;
+  --cd-ai-bg-top: #12222E;
+  --cd-ai-border: #193A4B;
+  --cd-ai-chip: #12303F;
+  --cd-ai-glow: rgba(92,194,232,.14);
+  --cd-ai-sheen: rgba(255,255,255,.07);
+
+  /* State */
+  --cd-like: #F472A0;
+  --cd-success: #4ADE80;
+  --cd-warning: #FBBF24;
+  --cd-danger: #F87171;
+  --cd-hl-bg: #0E2634;
+  --cd-hl-line: #2B6E8C;
+  --cd-focus: #5CC2E8;
+
+  /* Header capsule */
+  --cd-nav-band-top: #0C1E2B;
+  --cd-nav-band-bot: #0A1119;
+  --cd-nav-glass: linear-gradient(180deg,rgba(255,255,255,.09) 0%,rgba(255,255,255,.03) 100%);
+  --cd-nav-edge: rgba(255,255,255,.13);
+  --cd-nav-sheen: rgba(255,255,255,.15);
+  --cd-nav-pill: rgba(255,255,255,.11);
+  --cd-nav-shadow: 0 12px 30px -16px rgba(0,0,0,.85);
+
+  --cd-shadow-popover: 0 12px 32px -12px rgba(0, 0, 0, 0.7), 0 2px 6px -3px rgba(0, 0, 0, 0.5);
+  --cd-shadow-dialog: 0 24px 60px -20px rgba(0, 0, 0, 0.8);
+}
+
+/* ----------------------------------------------------------------------------
+   shadcn / Radix compatibility layer
+
+   components/ui/* consume shadcn's HSL-triplet variables. These map them onto
+   Signal so existing primitives inherit the new palette before any of them are
+   rewritten. Note --accent: shadcn uses it for a muted hover surface, so it
+   maps to our --cd-bg-inset, NOT to our brand accent. Reach for the brand
+   accent through Tailwind's `accent` key or var(--cd-accent).
+
+   Delete this block once no component reads the unprefixed variables.
+   ---------------------------------------------------------------------------- */
+:root {
+  --background: 0.0 0.0% 100.0%;
+  --foreground: 212.7 47.8% 9.0%;
+  --card: 0.0 0.0% 100.0%;
+  --card-foreground: 212.7 47.8% 9.0%;
+  --popover: 0.0 0.0% 100.0%;
+  --popover-foreground: 212.7 47.8% 9.0%;
+  --primary: 198.6 86.8% 32.7%;
+  --primary-foreground: 0.0 0.0% 100.0%;
+  --secondary: 210.0 30.8% 94.9%;
+  --secondary-foreground: 212.7 47.8% 9.0%;
+  --muted: 210.0 33.3% 97.6%;
+  --muted-foreground: 210.0 15.6% 35.3%;
+  --accent: 210.0 30.8% 94.9%;
+  --accent-foreground: 212.7 47.8% 9.0%;
+  --destructive: 0.0 72.2% 50.6%;
+  --destructive-foreground: 0.0 0.0% 100.0%;
+  --border: 210.0 26.1% 91.0%;
+  --input: 208.6 24.1% 82.9%;
+  --ring: 198.6 86.8% 32.7%;
+  --radius: 8px;
+}
+
+.dark {
+  --background: 212.0 42.9% 6.9%;
+  --foreground: 207.7 41.9% 93.9%;
+  --card: 210.0 38.5% 10.2%;
+  --card-foreground: 207.7 41.9% 93.9%;
+  --popover: 210.0 38.5% 10.2%;
+  --popover-foreground: 207.7 41.9% 93.9%;
+  --primary: 196.3 75.3% 63.5%;
+  --primary-foreground: 198.1 84.3% 10.0%;
+  --secondary: 210.0 35.3% 13.3%;
+  --secondary-foreground: 207.7 41.9% 93.9%;
+  --muted: 210.0 39.1% 9.0%;
+  --muted-foreground: 207.3 20.8% 68.8%;
+  --accent: 210.0 35.3% 13.3%;
+  --accent-foreground: 207.7 41.9% 93.9%;
+  --destructive: 0.0 90.6% 70.8%;
+  --destructive-foreground: 198.1 84.3% 10.0%;
+  --border: 208.9 31.0% 17.1%;
+  --input: 208.2 27.9% 23.9%;
+  --ring: 196.3 75.3% 63.5%;
+  --radius: 8px;
+}
