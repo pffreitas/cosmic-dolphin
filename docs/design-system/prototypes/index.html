@@ -35,6 +35,10 @@
   --measure:68ch;
   --ease:cubic-bezier(.2,.6,.3,1);
 
+  /* The navigation band is assembled from two per-direction stops, so the
+     capsule, the band behind it and the doc header all stay in step. */
+  --nav-band:linear-gradient(180deg,var(--nav-band-top) 0%,var(--nav-band-bot) 100%);
+
   /* ---------- OPTION A · SIGNAL (default) — light ---------- */
   --font-sans:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
   --font-serif:"Source Serif 4",Georgia,"Times New Roman",serif;
@@ -64,6 +68,17 @@
   --hl-bg:#EAF4FA;
   --hl-line:#BEDDEC;
   --focus:#0B6F9C;
+  --nav-band-top:#CFE6F3;
+  --nav-band-bot:#E9F3F9;
+  --nav-glass:linear-gradient(180deg,rgba(255,255,255,.95) 0%,rgba(255,255,255,.55) 100%);
+  --nav-edge:rgba(255,255,255,.9);
+  --nav-sheen:rgba(255,255,255,.85);
+  --nav-pill:rgba(255,255,255,.96);
+  --nav-shadow:0 10px 26px -14px rgba(8,50,72,.55), 0 2px 6px -3px rgba(8,50,72,.2);
+  --ai-bg-top:#FFFFFF;
+  --ai-glow:rgba(11,111,156,.11);
+  --ai-sheen:rgba(255,255,255,.9);
+  --ai-chip:#E2F0F8;
 }
 :root[data-mode="dark"]{
   --bg:#0A1119; --bg-subtle:#0E1720; --bg-panel:#101A24; --bg-inset:#16222E;
@@ -76,6 +91,13 @@
   --hl-bg:#0E2634;
   --hl-line:#2B6E8C;
   --focus:#5CC2E8;
+  --nav-band-top:#0C1E2B; --nav-band-bot:#0A1119;
+  --nav-glass:linear-gradient(180deg,rgba(255,255,255,.09) 0%,rgba(255,255,255,.03) 100%);
+  --nav-edge:rgba(255,255,255,.13); --nav-sheen:rgba(255,255,255,.15);
+  --nav-pill:rgba(255,255,255,.11);
+  --nav-shadow:0 12px 30px -16px rgba(0,0,0,.85);
+  --ai-bg-top:#12222E; --ai-glow:rgba(92,194,232,.14);
+  --ai-sheen:rgba(255,255,255,.07); --ai-chip:#12303F;
 }
 
 /* ---------- OPTION B · EMBER — light ---------- */
@@ -94,6 +116,13 @@
   --hl-bg:#FBEFD6;
   --hl-line:#E3C489;
   --focus:#9E5C08;
+  --nav-band-top:#F1E3CD; --nav-band-bot:#FBF4EA;
+  --nav-glass:linear-gradient(180deg,rgba(255,255,255,.96) 0%,rgba(255,255,255,.6) 100%);
+  --nav-edge:rgba(255,255,255,.92); --nav-sheen:rgba(255,255,255,.9);
+  --nav-pill:rgba(255,255,255,.96);
+  --nav-shadow:0 10px 26px -14px rgba(80,52,20,.45), 0 2px 6px -3px rgba(80,52,20,.16);
+  --ai-bg-top:#FFFDF9; --ai-glow:rgba(158,92,8,.11);
+  --ai-sheen:rgba(255,255,255,.9); --ai-chip:#F7EAD4;
 }
 :root[data-option="ember"][data-mode="dark"]{
   --bg:#14100C; --bg-subtle:#191410; --bg-panel:#1B1611; --bg-inset:#241D16;
@@ -106,6 +135,13 @@
   --hl-bg:#2B2113;
   --hl-line:#6A4E1F;
   --focus:#F0B354;
+  --nav-band-top:#231A11; --nav-band-bot:#14100C;
+  --nav-glass:linear-gradient(180deg,rgba(255,255,255,.08) 0%,rgba(255,255,255,.025) 100%);
+  --nav-edge:rgba(255,255,255,.12); --nav-sheen:rgba(255,255,255,.14);
+  --nav-pill:rgba(255,255,255,.1);
+  --nav-shadow:0 12px 30px -16px rgba(0,0,0,.85);
+  --ai-bg-top:#241B11; --ai-glow:rgba(240,179,84,.13);
+  --ai-sheen:rgba(255,255,255,.06); --ai-chip:#2C2113;
 }
 
 /* ---------- OPTION C · GRAPHITE — light ---------- */
@@ -124,6 +160,13 @@
   --hl-bg:#FEF3C7;
   --hl-line:#E5C86B;
   --focus:#18181B;
+  --nav-band-top:#E9E9EC; --nav-band-bot:#F7F7F8;
+  --nav-glass:linear-gradient(180deg,rgba(255,255,255,.98) 0%,rgba(255,255,255,.74) 100%);
+  --nav-edge:rgba(255,255,255,.95); --nav-sheen:rgba(255,255,255,.95);
+  --nav-pill:#FFFFFF;
+  --nav-shadow:0 10px 26px -14px rgba(9,9,11,.34), 0 2px 6px -3px rgba(9,9,11,.1);
+  --ai-bg-top:#FFFFFF; --ai-glow:rgba(9,9,11,.055);
+  --ai-sheen:rgba(255,255,255,.95); --ai-chip:#F1F1F2;
 }
 :root[data-option="graphite"][data-mode="dark"]{
   --bg:#09090B; --bg-subtle:#0C0C0E; --bg-panel:#0E0E11; --bg-inset:#18181B;
@@ -136,6 +179,13 @@
   --hl-bg:#2E2716;
   --hl-line:#5C4E24;
   --focus:#FAFAFA;
+  --nav-band-top:#161619; --nav-band-bot:#09090B;
+  --nav-glass:linear-gradient(180deg,rgba(255,255,255,.07) 0%,rgba(255,255,255,.02) 100%);
+  --nav-edge:rgba(255,255,255,.1); --nav-sheen:rgba(255,255,255,.12);
+  --nav-pill:rgba(255,255,255,.09);
+  --nav-shadow:0 12px 30px -16px rgba(0,0,0,.9);
+  --ai-bg-top:#151519; --ai-glow:rgba(255,255,255,.05);
+  --ai-sheen:rgba(255,255,255,.06); --ai-chip:#1A1A1E;
 }
 
 html{-webkit-text-size-adjust:100%}
@@ -183,11 +233,17 @@ img{max-width:100%}
 .wrap{max-width:1180px;margin:0 auto;padding:0 var(--s-5)}
 .topbar{
   position:sticky;top:0;z-index:50;
-  background:color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter:saturate(180%) blur(12px);
-  border-bottom:1px solid var(--border);
+  padding:12px 0 14px;
+  background:linear-gradient(180deg,var(--nav-band-top) 0%,var(--bg) 100%);
 }
-.topbar-in{display:flex;align-items:center;gap:var(--s-4);flex-wrap:wrap;padding:var(--s-3) 0}
+.topbar-in{
+  display:flex;align-items:center;gap:var(--s-3);flex-wrap:wrap;
+  padding:8px 10px 8px 18px;border-radius:var(--r-pill);
+  background:var(--nav-glass);
+  border:1px solid var(--nav-edge);
+  box-shadow:var(--nav-shadow), inset 0 1px 0 var(--nav-sheen);
+  backdrop-filter:saturate(170%) blur(10px);
+}
 .brandmark{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;letter-spacing:-.01em;white-space:nowrap}
 .brand-dot{width:20px;height:20px;border-radius:var(--r-sm);background:var(--accent);position:relative;flex:none}
 .brand-dot::after{content:"";position:absolute;inset:6px 6px auto auto;width:5px;height:5px;border-radius:50%;background:var(--accent-fg);opacity:.9}
@@ -285,8 +341,9 @@ section.doc:first-of-type{border-top:0}
 }
 :root[data-option="graphite"] .why{font-family:var(--font-mono);font-size:11.5px}
 .why-body{
-  margin-top:var(--s-2);padding:10px 12px;border-radius:var(--r-md);
-  background:var(--ai-bg);border:1px solid var(--ai-border);
+  margin-top:var(--s-2);padding:11px 13px;border-radius:var(--r-md);
+  background:linear-gradient(180deg,var(--ai-bg-top) 0%,var(--ai-bg) 100%);
+  border:1px solid var(--ai-border);box-shadow:inset 0 1px 0 var(--ai-sheen);
   font-size:13px;color:var(--fg-secondary);
 }
 details.why-wrap>summary{list-style:none;cursor:pointer}
@@ -294,20 +351,30 @@ details.why-wrap>summary::-webkit-details-marker{display:none}
 
 /* ---------- AI CALLOUT — the quiet editorial layer ---------- */
 .ai{
-  border-radius:var(--r-md);background:var(--ai-bg);border:1px solid var(--ai-border);
-  padding:var(--s-4);position:relative;
+  position:relative;isolation:isolate;
+  border-radius:var(--r-lg);
+  background:linear-gradient(180deg,var(--ai-bg-top) 0%,var(--ai-bg) 100%);
+  border:1px solid var(--ai-border);
+  box-shadow:inset 0 1px 0 var(--ai-sheen);
+  padding:var(--s-5);
 }
-:root .ai{border-left:2px solid var(--accent)}
-:root[data-option="ember"] .ai{border-left-width:1px;border-left-color:var(--ai-border);background:var(--ai-bg)}
-:root[data-option="graphite"] .ai{border-left-width:1px;border-left-color:var(--ai-border);border-top:1px dashed var(--border-strong)}
-.ai-head{display:flex;align-items:center;gap:7px;margin-bottom:10px}
+/* A single soft aura in the corner — enough to mark the surface as machine-made
+   without turning it into a gradient card. */
+.ai::before{
+  content:"";position:absolute;z-index:-1;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(110% 130% at 100% 0%, var(--ai-glow), transparent 58%);
+}
+.ai-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .ai-badge{
   display:inline-flex;align-items:center;gap:6px;
-  font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ai);
+  font-size:12px;font-weight:600;line-height:1;letter-spacing:.005em;color:var(--ai);
+  background:var(--ai-chip);border:1px solid var(--ai-border);
+  border-radius:var(--r-pill);padding:5px 11px 5px 8px;
 }
-:root[data-option="ember"] .ai-badge{font-family:var(--font-serif);font-size:12.5px;letter-spacing:.06em;text-transform:none;font-style:italic;font-weight:600}
-:root[data-option="graphite"] .ai-badge{font-family:var(--font-mono);font-size:11px;letter-spacing:.05em;color:var(--fg-tertiary);font-weight:400}
+:root[data-option="ember"] .ai-badge{font-family:var(--font-serif);font-size:13px;font-style:italic;font-weight:600}
+:root[data-option="graphite"] .ai-badge{font-family:var(--font-mono);font-size:11.5px;font-weight:400;letter-spacing:.02em;color:var(--fg-secondary);background:transparent}
 .ai-mark{width:12px;height:12px;flex:none;color:var(--ai)}
+.ai-foot{margin-top:16px;padding-top:14px;border-top:1px solid var(--ai-border)}
 
 /* ---------- SOCIAL ACTION ROW ---------- */
 .social{display:flex;align-items:center;gap:2px;margin-left:-8px;flex-wrap:wrap}
@@ -345,14 +412,36 @@ details.why-wrap>summary::-webkit-details-marker{display:none}
 
 /* ---------- APP FRAME (screen mockups) ---------- */
 .frame{border:1px solid var(--border-strong);border-radius:var(--r-lg);overflow:hidden;background:var(--bg)}
-.frame-bar{display:flex;align-items:center;gap:var(--s-3);padding:10px var(--s-4);border-bottom:1px solid var(--border);background:var(--bg-subtle)}
-.frame-bar .path{font-family:var(--font-mono);font-size:11.5px;color:var(--fg-tertiary)}
-.appnav{display:flex;align-items:center;gap:var(--s-4);padding:var(--s-3) var(--s-5);border-bottom:1px solid var(--border);background:var(--bg)}
-.navlink{font-size:13.5px;font-weight:500;color:var(--fg-secondary);padding:6px 10px;border-radius:var(--r-sm);text-decoration:none}
-.navlink[aria-current="page"]{color:var(--fg);background:var(--bg-inset)}
-:root[data-option="ember"] .navlink[aria-current="page"]{background:transparent;box-shadow:inset 0 -2px 0 var(--accent);border-radius:0}
-:root[data-option="graphite"] .navlink[aria-current="page"]{background:transparent;color:var(--fg);box-shadow:inset 0 -1px 0 var(--fg)}
-.searchbox{flex:1;max-width:340px;display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-subtle);font-size:13px;color:var(--fg-tertiary)}
+/* The header floats as a capsule on a tinted band — the band carries the
+   direction's colour, the capsule stays glass so content reads through it. */
+.apphead{padding:0 16px 16px;background:var(--nav-band)}
+.frame-bar{display:flex;align-items:center;gap:var(--s-3);padding:11px 8px 12px;background:transparent}
+.frame-bar .path{font-family:var(--font-mono);font-size:11.5px;color:var(--fg-tertiary);opacity:.9}
+.appnav{
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:var(--s-4);
+  padding:8px 8px 8px 18px;border-radius:var(--r-pill);
+  background:var(--nav-glass);
+  border:1px solid var(--nav-edge);
+  box-shadow:var(--nav-shadow), inset 0 1px 0 var(--nav-sheen);
+  backdrop-filter:saturate(170%) blur(10px);
+}
+.navlinks{display:flex;align-items:center;gap:2px;justify-self:center}
+.navactions{display:flex;align-items:center;gap:8px;justify-self:end}
+.navlink{
+  font-size:13.5px;font-weight:500;color:var(--fg-secondary);
+  padding:7px 14px;border-radius:var(--r-pill);text-decoration:none;white-space:nowrap;
+  transition:background .15s var(--ease),color .15s var(--ease);
+}
+.navlink:hover{color:var(--fg)}
+.navlink[aria-current="page"]{color:var(--fg);background:var(--nav-pill);box-shadow:0 1px 2px rgba(0,0,0,.07)}
+.navsearch{
+  display:inline-flex;align-items:center;gap:8px;font:inherit;font-size:13px;
+  color:var(--fg-tertiary);cursor:pointer;white-space:nowrap;
+  background:var(--nav-pill);border:1px solid var(--nav-edge);
+  border-radius:var(--r-pill);padding:7px 8px 7px 13px;
+}
+.navsearch:hover{color:var(--fg-secondary)}
+.navsearch .kbd{background:transparent;border-color:transparent;border-bottom-width:1px}
 
 .app-body{display:grid;grid-template-columns:minmax(0,1fr) 268px;gap:var(--s-6);padding:var(--s-5)}
 .app-body.with-rail{grid-template-columns:216px minmax(0,1fr)}
@@ -370,6 +459,7 @@ details.why-wrap>summary::-webkit-details-marker{display:none}
   background:transparent;border:0;border-radius:0;
   border-bottom:1px solid var(--border);padding:var(--s-5) 0;margin-bottom:0;
 }
+.feed-item--ai{background:transparent;border:0;padding:0}
 :root[data-option="ember"] .feed-item:first-child,
 :root[data-option="graphite"] .feed-item:first-child{padding-top:0}
 .feed-item:last-child{border-bottom:0;margin-bottom:0}
@@ -419,9 +509,14 @@ details.why-wrap>summary::-webkit-details-marker{display:none}
 .reader{font-size:16px;line-height:1.75;color:var(--fg-secondary)}
 .reader p{margin:0 0 var(--s-4)}
 .hl{background:var(--hl-bg);box-shadow:inset 0 -2px 0 var(--hl-line);color:var(--fg);padding:1px 2px;border-radius:2px}
-.keypoints{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-.keypoints li{display:flex;gap:10px;font-size:14px;line-height:1.55;color:var(--fg-secondary)}
-.keypoints .n{font-family:var(--font-mono);font-size:11px;color:var(--ai);padding-top:3px;flex:none}
+/* Key points are findings, not a sequence — a marker, never 01/02/03. */
+.keypoints{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:11px}
+.keypoints li{display:flex;gap:11px;font-size:14px;line-height:1.55;color:var(--fg-secondary)}
+.keypoints .kp{
+  width:6px;height:6px;flex:none;margin-top:8px;border-radius:50%;
+  background:var(--ai);box-shadow:0 0 0 3px var(--ai-chip);
+}
+:root[data-option="graphite"] .keypoints .kp{background:var(--fg);box-shadow:0 0 0 3px var(--bg-inset)}
 .comment{display:flex;gap:10px;padding:var(--s-3) 0;border-top:1px solid var(--border)}
 .comment-body{flex:1;min-width:0}
 .comment .who{font-size:13px;font-weight:600}
@@ -443,6 +538,9 @@ code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset)
 
 .scroll-x{overflow-x:auto}
 @media (max-width:900px){
+  .appnav{grid-template-columns:minmax(0,1fr);gap:var(--s-3);border-radius:var(--r-lg);padding:14px}
+  .navlinks,.navactions{justify-self:start;flex-wrap:wrap}
+  .topbar-in{border-radius:var(--r-lg);padding:12px}
   .app-body,.app-body.with-rail{grid-template-columns:minmax(0,1fr)}
   .rail{display:none}
   .g3,.g4,.g2,.do-dont{grid-template-columns:minmax(0,1fr)}
@@ -518,7 +616,7 @@ code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset)
     <div class="rules">
       <div class="rule"><div class="k">voice</div><div class="t-body-sm muted">Serif for content the user is <i>evaluating</i>; sans for everything they <i>operate</i>. Never a serif button, never a sans bookmark title.</div></div>
       <div class="rule"><div class="k">surfaces</div><div class="t-body-sm muted">Borders and separators, not elevation. Shadows only for things that genuinely float: dialogs, popovers, command palette.</div></div>
-      <div class="rule"><div class="k">shape</div><div class="t-body-sm muted">8px content surfaces, 6px compact controls, pills only for tags, avatars, segmented filters, and the primary CTA.</div></div>
+      <div class="rule"><div class="k">shape</div><div class="t-body-sm muted">8px content surfaces, 6px compact controls, 12px on the app frame and the AI callout. Pills for the header capsule, tags, avatars, segmented filters, and the primary CTA.</div></div>
       <div class="rule"><div class="k">ai</div><div class="t-body-sm muted">A quiet editorial layer, never a mascot. Every AI output shows its source and offers "why this appeared".</div></div>
       <div class="rule"><div class="k">social</div><div class="t-body-sm muted">Present but secondary. One compact action row; conversation expands on demand and never runs inline in the feed.</div></div>
       <div class="rule"><div class="k">density</div><div class="t-body-sm muted">Medium. Scannable like YouTube, calmer than a dashboard. One clear title per item, one summary, one action row.</div></div>
@@ -580,7 +678,7 @@ code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset)
           <div style="border-radius:var(--r-lg)">12 · lg</div>
           <div style="border-radius:var(--r-pill)">pill</div>
         </div>
-        <p class="t-body-sm muted" style="margin-top:12px">6px on buttons, inputs and chips. 8px on cards, panels, thumbnails and dialogs. 12px only on full app frames. Pills are reserved — tags, avatars, segmented filters, primary CTA.</p>
+        <p class="t-body-sm muted" style="margin-top:12px">6px on buttons, inputs and chips. 8px on cards, panels, thumbnails and dialogs. 12px on the app frame and the AI callout. Pills are reserved — the header capsule and its nav pills, tags, avatars, segmented filters, and the primary CTA.</p>
       </div>
       <div>
         <p class="t-label" style="margin-bottom:12px">Spacing · 4px base</p>
@@ -652,12 +750,39 @@ code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset)
       <p class="t-label" style="margin-bottom:14px">AI callout</p>
       <div class="ai">
         <div class="ai-head">
-          <svg class="ai-mark"><use href="#i-ai"/></svg>
-          <span class="ai-badge">Cosmic brief</span>
+          <span class="ai-badge"><svg class="ai-mark"><use href="#i-ai"/></svg> Cosmic brief</span>
         </div>
         <p class="t-body-sm" style="color:var(--fg-secondary)">Argues that retrieval-augmented agents fail less from bad embeddings than from missing episodic memory — the model can recall facts but not what it already tried.</p>
+        <div class="ai-foot prov">
+          <span class="favicon">E</span><span class="src">every.to</span>
+          <span class="dot"></span><span>summarised from the full article</span>
+        </div>
       </div>
-      <p class="t-meta" style="margin-top:14px">The AI layer is a surface treatment, not a colour explosion. One badge, one summary, source underneath.</p>
+      <p class="t-meta" style="margin-top:14px">A soft gradient ground, one hairline, one corner aura, and a chip that names the author. No accent rail, no glow, no purple.</p>
+    </div>
+  </div>
+
+  <div style="margin-top:16px">
+    <p class="t-label" style="margin-bottom:12px">Header capsule</p>
+    <div style="border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden">
+      <div class="apphead" style="padding-top:16px">
+        <nav class="appnav">
+          <span class="brandmark"><span class="brand-dot"></span> Cosmic Dolphin</span>
+          <div class="navlinks">
+            <a class="navlink" href="#components" aria-current="page">Home</a>
+            <a class="navlink" href="#components">Library</a>
+            <a class="navlink" href="#components">Explore</a>
+          </div>
+          <div class="navactions">
+            <button class="navsearch"><svg width="14" height="14"><use href="#i-search"/></svg> Search <span class="kbd">⌘K</span></button>
+            <button class="btn btn-primary btn-sm">Save a link</button>
+            <span class="avatar">PF</span>
+          </div>
+        </nav>
+      </div>
+      <div style="padding:14px 18px;background:var(--bg)">
+        <p class="t-meta">The band carries the direction's colour; the capsule stays glass so the page reads through it. Brand left, destinations centred, actions right — the centre column never shifts when the side columns change width.</p>
+      </div>
     </div>
   </div>
 
@@ -705,16 +830,22 @@ code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset)
   <p class="sec-lede">Ranked by personal usefulness first, social proof second. Every item answers three questions before the user clicks: where is this from, what is it about, and why am I seeing it.</p>
 
   <div class="frame">
-    <div class="frame-bar"><span class="path">cosmicdolphin.app/my/dashboard</span></div>
-
-    <nav class="appnav">
-      <span class="brandmark"><span class="brand-dot"></span> Cosmic Dolphin</span>
-      <a class="navlink" href="#home" aria-current="page">Home</a>
-      <a class="navlink" href="#library">Library</a>
-      <div class="searchbox"><svg width="14" height="14"><use href="#i-search"/></svg> Search your library and feed <span class="kbd" style="margin-left:auto">⌘K</span></div>
-      <button class="btn btn-primary btn-sm">Save a link</button>
-      <span class="avatar">PF</span>
-    </nav>
+    <div class="apphead">
+      <div class="frame-bar"><span class="path">cosmicdolphin.app/my/dashboard</span></div>
+      <nav class="appnav">
+        <span class="brandmark"><span class="brand-dot"></span> Cosmic Dolphin</span>
+        <div class="navlinks">
+          <a class="navlink" href="#home" aria-current="page">Home</a>
+          <a class="navlink" href="#library">Library</a>
+          <a class="navlink" href="#home">Explore</a>
+        </div>
+        <div class="navactions">
+          <button class="navsearch"><svg width="14" height="14"><use href="#i-search"/></svg> Search <span class="kbd">⌘K</span></button>
+          <button class="btn btn-primary btn-sm">Save a link</button>
+          <span class="avatar">PF</span>
+        </div>
+      </nav>
+    </div>
 
     <div class="app-body">
       <div>
@@ -785,20 +916,19 @@ code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset)
           </article>
 
           <!-- AI digest item — the reason Home exists -->
-          <article class="feed-item">
+          <article class="feed-item feed-item--ai">
             <div class="ai">
               <div class="ai-head">
-                <svg class="ai-mark"><use href="#i-ai"/></svg>
-                <span class="ai-badge">This week in your library</span>
+                <span class="ai-badge"><svg class="ai-mark"><use href="#i-ai"/></svg> This week in your library</span>
                 <button class="btn btn-icon btn-ghost" style="margin-left:auto" aria-label="More"><svg width="16" height="16"><use href="#i-more"/></svg></button>
               </div>
               <a class="fi-title" href="#home"><h3 class="t-title-2" style="margin-bottom:8px">Four of your saves are circling the same argument</h3></a>
               <p class="fi-sum" style="margin-bottom:12px">You've been collecting pieces that all push back on scale-first agent design. Two of them contradict each other on evaluation.</p>
               <ul class="keypoints" style="margin-bottom:14px">
-                <li><span class="n">01</span><span><b style="color:var(--fg);font-weight:500">Memory beats context.</b> Three sources argue that episodic state, not window size, is the limiting factor.</span></li>
-                <li><span class="n">02</span><span><b style="color:var(--fg);font-weight:500">Evaluation is unresolved.</b> Chen proposes trajectory-level scoring; Okafor calls it unfalsifiable.</span></li>
+                <li><span class="kp"></span><span><b style="color:var(--fg);font-weight:500">Memory beats context.</b> Three sources argue that episodic state, not window size, is the limiting factor.</span></li>
+                <li><span class="kp"></span><span><b style="color:var(--fg);font-weight:500">Evaluation is unresolved.</b> Chen proposes trajectory-level scoring; Okafor calls it unfalsifiable.</span></li>
               </ul>
-              <div class="prov" style="margin-bottom:12px">
+              <div class="ai-foot prov" style="margin-bottom:12px">
                 <span>Built from</span><span class="favicon">E</span><span class="src">every.to</span>
                 <span class="dot"></span><span class="favicon">A</span><span class="src">arxiv.org</span>
                 <span class="dot"></span><span>+2 more</span>
@@ -895,16 +1025,22 @@ code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset)
   <p class="sec-lede">Chronological by default, organised by AI, overridable by hand. The tree is a suggestion the user can accept, rename, or ignore — never a cage.</p>
 
   <div class="frame">
-    <div class="frame-bar"><span class="path">cosmicdolphin.app/my/library</span></div>
-
-    <nav class="appnav">
-      <span class="brandmark"><span class="brand-dot"></span> Cosmic Dolphin</span>
-      <a class="navlink" href="#home">Home</a>
-      <a class="navlink" href="#library" aria-current="page">Library</a>
-      <div class="searchbox"><svg width="14" height="14"><use href="#i-search"/></svg> Search your library and feed <span class="kbd" style="margin-left:auto">⌘K</span></div>
-      <button class="btn btn-primary btn-sm">Save a link</button>
-      <span class="avatar">PF</span>
-    </nav>
+    <div class="apphead">
+      <div class="frame-bar"><span class="path">cosmicdolphin.app/my/library</span></div>
+      <nav class="appnav">
+        <span class="brandmark"><span class="brand-dot"></span> Cosmic Dolphin</span>
+        <div class="navlinks">
+          <a class="navlink" href="#home">Home</a>
+          <a class="navlink" href="#library" aria-current="page">Library</a>
+          <a class="navlink" href="#home">Explore</a>
+        </div>
+        <div class="navactions">
+          <button class="navsearch"><svg width="14" height="14"><use href="#i-search"/></svg> Search <span class="kbd">⌘K</span></button>
+          <button class="btn btn-primary btn-sm">Save a link</button>
+          <span class="avatar">PF</span>
+        </div>
+      </nav>
+    </div>
 
     <div class="app-body with-rail">
       <aside class="rail">
@@ -927,8 +1063,11 @@ code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset)
         </div>
         <div>
           <p class="t-label" style="margin-bottom:10px">Suggested by Cosmic</p>
-          <div class="ai" style="padding:12px">
-            <p class="t-body-sm" style="margin-bottom:10px;color:var(--fg-secondary)">9 saves look like a new collection: <b style="color:var(--fg)">Typography &amp; reading UX</b>.</p>
+          <div class="ai" style="padding:14px">
+            <div class="ai-head" style="margin-bottom:10px">
+              <span class="ai-badge"><svg class="ai-mark"><use href="#i-ai"/></svg> Suggestion</span>
+            </div>
+            <p class="t-body-sm" style="margin-bottom:12px;color:var(--fg-secondary)">9 saves look like a new collection: <b style="color:var(--fg)">Typography &amp; reading UX</b>.</p>
             <div class="row gap-2">
               <button class="btn btn-sm btn-primary">Create</button>
               <button class="btn btn-sm btn-ghost">Not now</button>
@@ -1037,15 +1176,22 @@ code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset)
   <p class="sec-lede">The one place the serif runs at full size. AI sits above the fold as an offer, the original text below it as the ground truth, conversation last.</p>
 
   <div class="frame">
-    <div class="frame-bar"><span class="path">cosmicdolphin.app/bookmarks/bk_8f2a</span></div>
-    <nav class="appnav">
-      <span class="brandmark"><span class="brand-dot"></span> Cosmic Dolphin</span>
-      <a class="navlink" href="#home">Home</a>
-      <a class="navlink" href="#library">Library</a>
-      <div class="searchbox"><svg width="14" height="14"><use href="#i-search"/></svg> Search your library and feed <span class="kbd" style="margin-left:auto">⌘K</span></div>
-      <button class="btn btn-primary btn-sm">Save a link</button>
-      <span class="avatar">PF</span>
-    </nav>
+    <div class="apphead">
+      <div class="frame-bar"><span class="path">cosmicdolphin.app/bookmarks/bk_8f2a</span></div>
+      <nav class="appnav">
+        <span class="brandmark"><span class="brand-dot"></span> Cosmic Dolphin</span>
+        <div class="navlinks">
+          <a class="navlink" href="#home">Home</a>
+          <a class="navlink" href="#library">Library</a>
+          <a class="navlink" href="#home">Explore</a>
+        </div>
+        <div class="navactions">
+          <button class="navsearch"><svg width="14" height="14"><use href="#i-search"/></svg> Search <span class="kbd">⌘K</span></button>
+          <button class="btn btn-primary btn-sm">Save a link</button>
+          <span class="avatar">PF</span>
+        </div>
+      </nav>
+    </div>
 
     <div class="detail">
       <div class="detail-hero">
@@ -1067,9 +1213,8 @@ code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset)
 
       <div class="ai" style="margin-bottom:32px">
         <div class="ai-head">
-          <svg class="ai-mark"><use href="#i-ai"/></svg>
-          <span class="ai-badge">Cosmic brief</span>
-          <span class="t-meta" style="margin-left:auto">from the full article</span>
+          <span class="ai-badge"><svg class="ai-mark"><use href="#i-ai"/></svg> Cosmic brief</span>
+          <span class="t-meta" style="margin-left:auto">9 min article · read in 40 seconds</span>
         </div>
         <p class="t-body" style="color:var(--fg-secondary);margin-bottom:16px">
           Retrieval quality has become a distraction. In the author's testing, agents with excellent search still
@@ -1078,10 +1223,15 @@ code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset)
         </p>
         <p class="t-label" style="margin-bottom:10px">Key points</p>
         <ul class="keypoints">
-          <li><span class="n">01</span><span>Retrieval accuracy above ~85% stops predicting task success.</span></li>
-          <li><span class="n">02</span><span>Repeated-action loops account for most failed long-horizon runs.</span></li>
-          <li><span class="n">03</span><span>An append-only attempt log outperformed a 4× larger context window.</span></li>
+          <li><span class="kp"></span><span>Retrieval accuracy above ~85% stops predicting task success.</span></li>
+          <li><span class="kp"></span><span>Repeated-action loops account for most failed long-horizon runs.</span></li>
+          <li><span class="kp"></span><span>An append-only attempt log outperformed a 4× larger context window.</span></li>
         </ul>
+        <div class="ai-foot prov">
+          <span class="favicon">E</span><span class="src">every.to</span>
+          <span class="dot"></span><span>summarised from the full article</span>
+          <button class="btn btn-sm btn-ghost" style="margin-left:auto">Regenerate</button>
+        </div>
       </div>
 
       <div class="reader">
@@ -1148,7 +1298,7 @@ code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset)
         <div class="rule"><div class="k">serif</div><div class="t-body-sm muted">Content titles and pull quotes only. Feed titles, library titles, detail titles, headings inside saved content.</div></div>
         <div class="rule"><div class="k">sans</div><div class="t-body-sm muted">Nav, buttons, metadata, tags, comments, forms, empty states, every count.</div></div>
         <div class="rule"><div class="k">colour</div><div class="t-body-sm muted">Semantic tokens only. Accent is for active nav, links, AI provenance and selected states — not decoration.</div></div>
-        <div class="rule"><div class="k">shadow</div><div class="t-body-sm muted">Dialogs, popovers and the command palette. Nothing in a feed or list may float.</div></div>
+        <div class="rule"><div class="k">shadow</div><div class="t-body-sm muted">The header capsule, dialogs, popovers and the command palette. Nothing in a feed or list may float.</div></div>
         <div class="rule"><div class="k">a11y</div><div class="t-body-sm muted">4.5:1 on body text, visible focus ring on every interactive element, reduced-motion honoured by all progress and shimmer.</div></div>
       </div>
     </div>
@@ -1158,7 +1308,7 @@ code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset)
       <div class="rules">
         <div class="rule"><div class="k">tokens</div><div class="t-body-sm muted">CSS variables in <code class="inl">apps/web/app/globals.css</code>, mirrored to Tailwind theme keys and re-exported for <code class="inl">apps/mobile</code>.</div></div>
         <div class="rule"><div class="k">primitives</div><div class="t-body-sm muted">Radix + <code class="inl">components/ui</code>. Restyle the primitive; never fork it per screen.</div></div>
-        <div class="rule"><div class="k">patterns</div><div class="t-body-sm muted">Feed item, library row, provenance row, AI callout, social row and staged progress ship as shared components.</div></div>
+        <div class="rule"><div class="k">patterns</div><div class="t-body-sm muted">Header capsule, feed item, library row, provenance row, AI callout, social row and staged progress ship as shared components.</div></div>
         <div class="rule"><div class="k">data</div><div class="t-body-sm muted">Provenance comes from <code class="inl">metadata.openGraph</code> + <code class="inl">sourceUrl</code>; summaries from <code class="inl">cosmicBriefSummary</code>; tags from <code class="inl">cosmicTags</code>; filing from <code class="inl">collectionPath</code>.</div></div>
         <div class="rule"><div class="k">states</div><div class="t-body-sm muted">Every list needs four: loading skeleton, empty, error, and AI-processing. Ship all four or the pattern is incomplete.</div></div>
       </div>

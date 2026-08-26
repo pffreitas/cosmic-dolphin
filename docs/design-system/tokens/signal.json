@@ -2,7 +2,7 @@
   "$schema-note": "Cosmic Dolphin design tokens. Semantic names only \u2014 components must never reference a raw hex.",
   "id": "signal",
   "name": "Signal",
-  "tagline": "Deep blue-cyan on cool neutrals. Bordered feed panels, accent rail on AI.",
+  "tagline": "Deep blue-cyan on cool neutrals. Bordered feed panels, glass header capsule on a cyan band.",
   "typography": {
     "families": {
       "sans": "\"Inter\",system-ui,-apple-system,\"Segoe UI\",sans-serif",
@@ -99,7 +99,18 @@
       "danger": "#DC2626",
       "hl-bg": "#EAF4FA",
       "hl-line": "#BEDDEC",
-      "focus": "#0B6F9C"
+      "focus": "#0B6F9C",
+      "nav-band-top": "#CFE6F3",
+      "nav-band-bot": "#E9F3F9",
+      "nav-glass": "linear-gradient(180deg,rgba(255,255,255,.95) 0%,rgba(255,255,255,.55) 100%)",
+      "nav-edge": "rgba(255,255,255,.9)",
+      "nav-sheen": "rgba(255,255,255,.85)",
+      "nav-pill": "rgba(255,255,255,.96)",
+      "nav-shadow": "0 10px 26px -14px rgba(8,50,72,.55), 0 2px 6px -3px rgba(8,50,72,.2)",
+      "ai-bg-top": "#FFFFFF",
+      "ai-glow": "rgba(11,111,156,.11)",
+      "ai-sheen": "rgba(255,255,255,.9)",
+      "ai-chip": "#E2F0F8"
     },
     "dark": {
       "bg": "#0A1119",
@@ -125,7 +136,18 @@
       "danger": "#F87171",
       "hl-bg": "#0E2634",
       "hl-line": "#2B6E8C",
-      "focus": "#5CC2E8"
+      "focus": "#5CC2E8",
+      "nav-band-top": "#0C1E2B",
+      "nav-band-bot": "#0A1119",
+      "nav-glass": "linear-gradient(180deg,rgba(255,255,255,.09) 0%,rgba(255,255,255,.03) 100%)",
+      "nav-edge": "rgba(255,255,255,.13)",
+      "nav-sheen": "rgba(255,255,255,.15)",
+      "nav-pill": "rgba(255,255,255,.11)",
+      "nav-shadow": "0 12px 30px -16px rgba(0,0,0,.85)",
+      "ai-bg-top": "#12222E",
+      "ai-glow": "rgba(92,194,232,.14)",
+      "ai-sheen": "rgba(255,255,255,.07)",
+      "ai-chip": "#12303F"
     }
   },
   "shape": {
@@ -139,8 +161,8 @@
     "usage": {
       "r-sm": "buttons, inputs, chips, ghost hit areas",
       "r-md": "cards, panels, thumbnails, dialogs, AI callouts",
-      "r-lg": "full app frames only",
-      "r-pill": "tags, avatars, segmented filters, primary CTA \u2014 nothing else"
+      "r-lg": "the app frame and the AI callout",
+      "r-pill": "the header capsule and its nav pills, tags, avatars, segmented filters, and the primary CTA \u2014 nothing else"
     }
   },
   "space": {
@@ -159,6 +181,7 @@
   "framing": {
     "feed-item": "bordered-panels",
     "library-row": "separator-rows",
-    "elevation": "Shadows only on dialogs, popovers and the command palette. Nothing in a feed or list floats."
+    "elevation": "Shadows on the header capsule, dialogs, popovers and the command palette. Nothing in a feed or list floats.",
+    "header": "glass capsule floating on a tinted band (--nav-* tokens)"
   }
 }

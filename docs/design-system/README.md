@@ -26,16 +26,17 @@ All three share the same tokens, components, layouts, density and interaction ru
 in palette, type pairing, and how a feed item is framed.
 
 **A · Signal** — Deep blue-cyan on cool neutrals. Inter + Source Serif 4. Feed items are bordered
-panels; the AI callout carries a 2px accent rail. The most explicitly *product* of the three,
+panels; the header capsule floats on a cyan band. The most explicitly *product* of the three,
 closest to Linear. Reads as trustworthy infrastructure.
 
 **B · Ember** — Amber on warm paper. Instrument Sans + Newsreader. Feed items are separator rows on
-a warm ground; AI labels are set in italic serif. The most *reading-room* of the three, closest to
+a warm ground; the AI chip is set in italic serif. The most *reading-room* of the three, closest to
 Craft. Reads as a place you sit down with.
 
 **C · Graphite** — Near-monochrome, colour reserved for state (unread, like, success, error,
-highlight). Geist + Instrument Serif, mono metadata, hairline separators, visible keyboard hints.
-The most *precise* of the three, closest to Vercel. Reads as a tool for people who move fast.
+highlight). Geist + Instrument Serif, mono metadata, hairline separators, visible keyboard hints,
+an ink CTA in the header capsule. The most *precise* of the three, closest to Vercel. Reads as a
+tool for people who move fast.
 
 ## Fixed across all three
 
@@ -46,9 +47,17 @@ These are not per-direction choices. They hold whichever palette wins.
   *operates* — nav, buttons, metadata, tags, comments, forms, every count. Never a serif button,
   never a sans bookmark title.
 - **Borders, not elevation.** Separators and 1px borders frame surfaces. Shadows are reserved for
-  things that genuinely float: dialogs, popovers, the command palette.
-- **Shape.** 8px on content surfaces, 6px on compact controls, pills only for tags, avatars,
-  segmented filters, and the primary CTA.
+  things that genuinely float: the header capsule, dialogs, popovers, the command palette.
+- **Shape.** 8px on content surfaces, 6px on compact controls, 12px on the app frame and the AI
+  callout. Pills for the header capsule and its nav pills, tags, avatars, segmented filters, and
+  the primary CTA.
+- **The header is a capsule on a band.** A tinted band carries the direction's colour; a glass
+  capsule floats on it, laid out as a three-column grid — brand left, destinations centred, actions
+  right — so the centre column never shifts when the side columns change width. The `--nav-*` tokens
+  own the band, glass, edge, sheen, pill and shadow.
+- **The AI surface is a gradient ground, not a rail.** A soft vertical gradient, one hairline
+  border, a single corner aura, an inset top sheen, and a chip that names the author. Findings get a
+  dot marker — never `01 / 02 / 03`, which would claim an order the content doesn't have.
 - **Medium density.** Scannable like YouTube, calmer than a dashboard. One title, one summary, one
   action row per feed item.
 - **AI is a quiet editorial layer.** Never a mascot, never a chat bubble in the feed. Every AI
@@ -69,8 +78,8 @@ These are not per-direction choices. They hold whichever palette wins.
    and should not survive.
 3. Wire the type pairing into `tailwind.config.ts` `fontFamily` (`sans`, `serif`, `mono`), replacing
    the current `karla`/`noto` entries.
-4. Build the six shared patterns as components before refactoring any page: feed item, library row,
-   provenance row, AI callout, social action row, staged AI progress.
+4. Build the seven shared patterns as components before refactoring any page: header capsule, feed
+   item, library row, provenance row, AI callout, social action row, staged AI progress.
 5. Refactor pages in this order — Library (`/my/library`), Bookmark detail (`/bookmarks/[id]`),
    Home (`/my/dashboard`), then auth and the rest of the chrome.
 6. Re-export the token JSON for `apps/mobile` so the two clients stay in sync.

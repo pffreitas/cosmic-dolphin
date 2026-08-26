@@ -2,7 +2,7 @@
   "$schema-note": "Cosmic Dolphin design tokens. Semantic names only \u2014 components must never reference a raw hex.",
   "id": "ember",
   "name": "Ember",
-  "tagline": "Amber on warm paper. Separator rows, bookish serif, italic editorial labels.",
+  "tagline": "Amber on warm paper. Separator rows, bookish serif, glass header capsule on a warm band.",
   "typography": {
     "families": {
       "sans": "\"Instrument Sans\",\"Inter\",system-ui,sans-serif",
@@ -99,7 +99,18 @@
       "danger": "#B91C1C",
       "hl-bg": "#FBEFD6",
       "hl-line": "#E3C489",
-      "focus": "#9E5C08"
+      "focus": "#9E5C08",
+      "nav-band-top": "#F1E3CD",
+      "nav-band-bot": "#FBF4EA",
+      "nav-glass": "linear-gradient(180deg,rgba(255,255,255,.96) 0%,rgba(255,255,255,.6) 100%)",
+      "nav-edge": "rgba(255,255,255,.92)",
+      "nav-sheen": "rgba(255,255,255,.9)",
+      "nav-pill": "rgba(255,255,255,.96)",
+      "nav-shadow": "0 10px 26px -14px rgba(80,52,20,.45), 0 2px 6px -3px rgba(80,52,20,.16)",
+      "ai-bg-top": "#FFFDF9",
+      "ai-glow": "rgba(158,92,8,.11)",
+      "ai-sheen": "rgba(255,255,255,.9)",
+      "ai-chip": "#F7EAD4"
     },
     "dark": {
       "bg": "#14100C",
@@ -125,7 +136,18 @@
       "danger": "#F87171",
       "hl-bg": "#2B2113",
       "hl-line": "#6A4E1F",
-      "focus": "#F0B354"
+      "focus": "#F0B354",
+      "nav-band-top": "#231A11",
+      "nav-band-bot": "#14100C",
+      "nav-glass": "linear-gradient(180deg,rgba(255,255,255,.08) 0%,rgba(255,255,255,.025) 100%)",
+      "nav-edge": "rgba(255,255,255,.12)",
+      "nav-sheen": "rgba(255,255,255,.14)",
+      "nav-pill": "rgba(255,255,255,.1)",
+      "nav-shadow": "0 12px 30px -16px rgba(0,0,0,.85)",
+      "ai-bg-top": "#241B11",
+      "ai-glow": "rgba(240,179,84,.13)",
+      "ai-sheen": "rgba(255,255,255,.06)",
+      "ai-chip": "#2C2113"
     }
   },
   "shape": {
@@ -139,8 +161,8 @@
     "usage": {
       "r-sm": "buttons, inputs, chips, ghost hit areas",
       "r-md": "cards, panels, thumbnails, dialogs, AI callouts",
-      "r-lg": "full app frames only",
-      "r-pill": "tags, avatars, segmented filters, primary CTA \u2014 nothing else"
+      "r-lg": "the app frame and the AI callout",
+      "r-pill": "the header capsule and its nav pills, tags, avatars, segmented filters, and the primary CTA \u2014 nothing else"
     }
   },
   "space": {
@@ -159,6 +181,7 @@
   "framing": {
     "feed-item": "separator-rows",
     "library-row": "separator-rows",
-    "elevation": "Shadows only on dialogs, popovers and the command palette. Nothing in a feed or list floats."
+    "elevation": "Shadows on the header capsule, dialogs, popovers and the command palette. Nothing in a feed or list floats.",
+    "header": "glass capsule floating on a tinted band (--nav-* tokens)"
   }
 }
