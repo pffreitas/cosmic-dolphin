@@ -95,6 +95,25 @@ Mobile (Expo 54, Expo Router) ─┤── @cosmic-dolphin/api-client (generated
 - Uses **Expo Router** (file-based routing)
 - Shares the same `@cosmic-dolphin/api-client` as the web app
 
+## UI and product specification
+
+The UI revamp is specified, not improvised. Before implementing or refactoring **any** interface, or
+before building a feature that touches the feed, library, AI pipeline, or social layer, read:
+
+- [`docs/design-system/`](docs/design-system/) — the adopted visual direction (**Signal**): tokens,
+  components, patterns, page composition, and the migration plan. `README.md` there lists the ten
+  rules that do not bend; `tokens.json` and `tokens.css` are the source of truth for every value.
+- [`docs/functional-spec/`](docs/functional-spec/) — product behaviour: capture, AI pipeline,
+  library, feed ranking, social, data model, and API surface. It marks what already **exists** in
+  the codebase versus what is **new**, so existing capabilities are not rebuilt.
+
+Two rules from those documents bind every UI change:
+
+- **Semantic tokens only.** No hex, `rgb()`, px radius, or font stack in a component. Add the value
+  to `docs/design-system/tokens.json`, regenerate `tokens.css`, and document it — in that order.
+- **Serif for content, sans for chrome.** Serif on bookmark and feed titles and headings inside
+  saved content; sans on everything the user operates.
+
 ## Key conventions
 
 - **API contract first:** all endpoint changes start in `packages/apispec/*.tsp`, then regenerate the client with `bun run apispec`.
