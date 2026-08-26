@@ -1,0 +1,1216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cosmic Dolphin Prototypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400..600&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   COSMIC DOLPHIN — DESIGN SYSTEM PROTOTYPES
+   Three directions over one shared skeleton.
+   Structural tokens are shared; palette + type + framing vary.
+   ============================================================ */
+
+*,*::before,*::after{box-sizing:border-box}
+
+/* ---------- SHARED STRUCTURAL TOKENS ---------- */
+:root{
+  --r-xs:4px; --r-sm:6px; --r-md:8px; --r-lg:12px; --r-pill:999px;
+  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:24px; --s-6:32px; --s-7:48px; --s-8:64px;
+  --measure:68ch;
+  --ease:cubic-bezier(.2,.6,.3,1);
+
+  /* ---------- OPTION A · SIGNAL (default) — light ---------- */
+  --font-sans:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+
+  --bg:#FFFFFF;
+  --bg-subtle:#F7F9FB;
+  --bg-panel:#FFFFFF;
+  --bg-inset:#EEF2F6;
+  --fg:#0C1622;
+  --fg-secondary:#4C5A68;
+  --fg-tertiary:#657485;
+  --border:#E2E8EE;
+  --border-strong:#C9D4DE;
+  --accent:#0B6F9C;
+  --accent-hover:#0A5C82;
+  --accent-fg:#FFFFFF;
+  --accent-soft:#EAF4FA;
+  --accent-border:#BEDDEC;
+  --ai:#0B6F9C;
+  --ai-bg:#F2F8FC;
+  --ai-border:#D3E7F1;
+  --like:#D6336C;
+  --success:#15803D;
+  --warning:#B45309;
+  --danger:#DC2626;
+  --hl-bg:#EAF4FA;
+  --hl-line:#BEDDEC;
+  --focus:#0B6F9C;
+}
+:root[data-mode="dark"]{
+  --bg:#0A1119; --bg-subtle:#0E1720; --bg-panel:#101A24; --bg-inset:#16222E;
+  --fg:#E9F0F6; --fg-secondary:#9FB1C0; --fg-tertiary:#6E8394;
+  --border:#1E2C39; --border-strong:#2C3E4E;
+  --accent:#5CC2E8; --accent-hover:#8AD5F0; --accent-fg:#04222F;
+  --accent-soft:#0E2634; --accent-border:#1C4256;
+  --ai:#5CC2E8; --ai-bg:#0C202C; --ai-border:#193A4B;
+  --like:#F472A0; --success:#4ADE80; --warning:#FBBF24; --danger:#F87171;
+  --hl-bg:#0E2634;
+  --hl-line:#2B6E8C;
+  --focus:#5CC2E8;
+}
+
+/* ---------- OPTION B · EMBER — light ---------- */
+:root[data-option="ember"]{
+  --font-sans:"Instrument Sans","Inter",system-ui,sans-serif;
+  --font-serif:"Newsreader",Georgia,"Times New Roman",serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+
+  --bg:#FFFCF8; --bg-subtle:#F9F5EF; --bg-panel:#FFFFFF; --bg-inset:#F2EBE1;
+  --fg:#1B1613; --fg-secondary:#574F47; --fg-tertiary:#7C7168;
+  --border:#EAE1D6; --border-strong:#D8CBBB;
+  --accent:#9E5C08; --accent-hover:#7F4A06; --accent-fg:#FFFFFF;
+  --accent-soft:#FDF3E3; --accent-border:#EBD5AE;
+  --ai:#8E5308; --ai-bg:#FBF4E9; --ai-border:#EDDCC1;
+  --like:#BE185D; --success:#4D7C0F; --warning:#B45309; --danger:#B91C1C;
+  --hl-bg:#FBEFD6;
+  --hl-line:#E3C489;
+  --focus:#9E5C08;
+}
+:root[data-option="ember"][data-mode="dark"]{
+  --bg:#14100C; --bg-subtle:#191410; --bg-panel:#1B1611; --bg-inset:#241D16;
+  --fg:#F5EEE5; --fg-secondary:#B6A899; --fg-tertiary:#8A7C6E;
+  --border:#2A221A; --border-strong:#3B3025;
+  --accent:#F0B354; --accent-hover:#F7C877; --accent-fg:#241704;
+  --accent-soft:#241B0F; --accent-border:#4A3718;
+  --ai:#F0B354; --ai-bg:#201810; --ai-border:#3D2E17;
+  --like:#F472A0; --success:#A3E635; --warning:#FBBF24; --danger:#F87171;
+  --hl-bg:#2B2113;
+  --hl-line:#6A4E1F;
+  --focus:#F0B354;
+}
+
+/* ---------- OPTION C · GRAPHITE — light ---------- */
+:root[data-option="graphite"]{
+  --font-sans:"Geist","Inter",system-ui,sans-serif;
+  --font-serif:"Instrument Serif",Georgia,"Times New Roman",serif;
+  --font-mono:"Geist Mono","IBM Plex Mono",ui-monospace,monospace;
+
+  --bg:#FFFFFF; --bg-subtle:#FAFAFA; --bg-panel:#FFFFFF; --bg-inset:#F4F4F5;
+  --fg:#09090B; --fg-secondary:#52525B; --fg-tertiary:#71717A;
+  --border:#E4E4E7; --border-strong:#D4D4D8;
+  --accent:#18181B; --accent-hover:#000000; --accent-fg:#FFFFFF;
+  --accent-soft:#F4F4F5; --accent-border:#D4D4D8;
+  --ai:#3F3F46; --ai-bg:#FAFAFA; --ai-border:#E4E4E7;
+  --like:#E11D48; --success:#16A34A; --warning:#CA8A04; --danger:#DC2626;
+  --hl-bg:#FEF3C7;
+  --hl-line:#E5C86B;
+  --focus:#18181B;
+}
+:root[data-option="graphite"][data-mode="dark"]{
+  --bg:#09090B; --bg-subtle:#0C0C0E; --bg-panel:#0E0E11; --bg-inset:#18181B;
+  --fg:#FAFAFA; --fg-secondary:#A1A1AA; --fg-tertiary:#82828B;
+  --border:#232327; --border-strong:#34343A;
+  --accent:#FAFAFA; --accent-hover:#FFFFFF; --accent-fg:#09090B;
+  --accent-soft:#18181B; --accent-border:#34343A;
+  --ai:#A1A1AA; --ai-bg:#111114; --ai-border:#232327;
+  --like:#FB7185; --success:#4ADE80; --warning:#FACC15; --danger:#F87171;
+  --hl-bg:#2E2716;
+  --hl-line:#5C4E24;
+  --focus:#FAFAFA;
+}
+
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--fg);
+  font-family:var(--font-sans);
+  font-size:15px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  transition:background .25s var(--ease), color .25s var(--ease);
+}
+a{color:inherit}
+img{max-width:100%}
+:focus-visible{outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--r-sm)}
+
+/* ---------- TYPE SCALE ----------
+   Serif = content the user is evaluating (titles, headings, pull quotes).
+   Sans  = everything the user operates (nav, meta, controls, comments).
+   Mono  = machine facts (domains, counts, shortcuts) — Graphite leans on it.
+------------------------------------ */
+.t-display{font-family:var(--font-serif);font-size:40px;line-height:1.1;font-weight:600;letter-spacing:-.015em;margin:0}
+.t-title-1{font-family:var(--font-serif);font-size:29px;line-height:1.2;font-weight:600;letter-spacing:-.01em;margin:0}
+.t-title-2{font-family:var(--font-serif);font-size:20px;line-height:1.3;font-weight:600;letter-spacing:-.005em;margin:0}
+.t-title-3{font-family:var(--font-serif);font-size:17px;line-height:1.35;font-weight:600;margin:0}
+.t-body{font-size:15px;line-height:1.65;margin:0}
+.t-body-sm{font-size:13.5px;line-height:1.55;margin:0}
+.t-meta{font-size:12.5px;line-height:1.4;color:var(--fg-secondary);margin:0}
+.t-label{font-size:11px;line-height:1.3;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--fg-tertiary);margin:0}
+.t-quote{font-family:var(--font-serif);font-size:19px;line-height:1.5;font-style:italic;font-weight:400;margin:0}
+.muted{color:var(--fg-secondary)}
+.dim{color:var(--fg-tertiary)}
+
+/* Instrument Serif has no bold — compensate with optical size */
+:root[data-option="graphite"] .t-display{font-weight:400;font-size:44px;letter-spacing:-.02em}
+:root[data-option="graphite"] .t-title-1{font-weight:400;font-size:32px}
+:root[data-option="graphite"] .t-title-2{font-weight:400;font-size:22px}
+:root[data-option="graphite"] .t-title-3{font-weight:400;font-size:19px}
+/* Newsreader reads small — bump optical size slightly */
+:root[data-option="ember"] .t-title-2{font-size:21px}
+:root[data-option="ember"] .t-title-3{font-size:18px}
+
+/* ---------- DOC CHROME ---------- */
+.wrap{max-width:1180px;margin:0 auto;padding:0 var(--s-5)}
+.topbar{
+  position:sticky;top:0;z-index:50;
+  background:color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter:saturate(180%) blur(12px);
+  border-bottom:1px solid var(--border);
+}
+.topbar-in{display:flex;align-items:center;gap:var(--s-4);flex-wrap:wrap;padding:var(--s-3) 0}
+.brandmark{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;letter-spacing:-.01em;white-space:nowrap}
+.brand-dot{width:20px;height:20px;border-radius:var(--r-sm);background:var(--accent);position:relative;flex:none}
+.brand-dot::after{content:"";position:absolute;inset:6px 6px auto auto;width:5px;height:5px;border-radius:50%;background:var(--accent-fg);opacity:.9}
+.topbar .spacer{flex:1}
+
+/* Segmented control — the one place we allow a pill container */
+.segmented{display:inline-flex;background:var(--bg-inset);border-radius:var(--r-pill);padding:3px;gap:2px}
+.segmented button{
+  font:inherit;font-size:12.5px;font-weight:500;
+  border:0;background:transparent;color:var(--fg-secondary);
+  padding:6px 14px;border-radius:var(--r-pill);cursor:pointer;
+  transition:background .18s var(--ease),color .18s var(--ease);white-space:nowrap;
+}
+.segmented button:hover{color:var(--fg)}
+.segmented button[aria-pressed="true"]{background:var(--bg-panel);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+:root[data-mode="dark"] .segmented button[aria-pressed="true"]{background:var(--border-strong);box-shadow:none}
+
+section.doc{padding:var(--s-7) 0;border-top:1px solid var(--border)}
+section.doc:first-of-type{border-top:0}
+.sec-head{display:flex;align-items:baseline;gap:var(--s-3);margin-bottom:var(--s-2);flex-wrap:wrap}
+.sec-num{font-family:var(--font-mono);font-size:12px;color:var(--fg-tertiary)}
+.sec-lede{max-width:var(--measure);color:var(--fg-secondary);margin:0 0 var(--s-5)}
+.grid{display:grid;gap:var(--s-4)}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.panel{background:var(--bg-panel);border:1px solid var(--border);border-radius:var(--r-md);padding:var(--s-4)}
+.stack{display:flex;flex-direction:column}
+.row{display:flex;align-items:center}
+.gap-1{gap:var(--s-1)}.gap-2{gap:var(--s-2)}.gap-3{gap:var(--s-3)}.gap-4{gap:var(--s-4)}.gap-5{gap:var(--s-5)}
+.wrapr{flex-wrap:wrap}
+
+/* ---------- FOUNDATION SPECIMENS ---------- */
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:var(--s-2)}
+.sw{border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;background:var(--bg-panel)}
+.sw .chip{height:56px}
+.sw .lab{padding:8px 10px;font-family:var(--font-mono);font-size:11px;color:var(--fg-secondary);border-top:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.radii{display:flex;gap:var(--s-3);flex-wrap:wrap}
+.radii div{width:72px;height:72px;background:var(--bg-inset);border:1px solid var(--border);display:grid;place-items:center;font-family:var(--font-mono);font-size:11px;color:var(--fg-secondary)}
+.spacebar{display:flex;align-items:flex-end;gap:var(--s-2)}
+.spacebar span{background:var(--accent);opacity:.85;width:26px;border-radius:var(--r-xs) var(--r-xs) 0 0}
+.typerow{display:flex;align-items:baseline;gap:var(--s-4);padding:var(--s-3) 0;border-bottom:1px dashed var(--border)}
+.typerow:last-child{border-bottom:0}
+.typerow .tag{font-family:var(--font-mono);font-size:11px;color:var(--fg-tertiary);width:100px;flex:none}
+
+/* ---------- CONTROLS ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  font:inherit;font-size:13.5px;font-weight:500;line-height:1;
+  padding:9px 14px;border-radius:var(--r-sm);
+  border:1px solid var(--border-strong);background:var(--bg-panel);color:var(--fg);
+  cursor:pointer;transition:background .15s var(--ease),border-color .15s var(--ease),color .15s var(--ease);
+  white-space:nowrap;
+}
+.btn:hover{background:var(--bg-subtle)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);border-radius:var(--r-pill);padding:9px 18px}
+.btn-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn-ghost{border-color:transparent;background:transparent;color:var(--fg-secondary)}
+.btn-ghost:hover{background:var(--bg-inset);color:var(--fg)}
+.btn-sm{font-size:12.5px;padding:6px 10px}
+.btn-icon{padding:8px;width:34px;height:34px}
+.input{
+  font:inherit;font-size:14px;width:100%;
+  padding:10px 12px;border-radius:var(--r-md);
+  border:1px solid var(--border-strong);background:var(--bg-panel);color:var(--fg);
+}
+.input::placeholder{color:var(--fg-tertiary)}
+.input:focus{outline:2px solid var(--focus);outline-offset:-1px;border-color:var(--focus)}
+.kbd{font-family:var(--font-mono);font-size:11px;padding:2px 6px;border:1px solid var(--border-strong);border-bottom-width:2px;border-radius:var(--r-xs);color:var(--fg-tertiary);background:var(--bg-panel)}
+
+/* Tags — pills by default; Graphite squares them off */
+.tag{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:12px;font-weight:500;line-height:1;
+  padding:5px 10px;border-radius:var(--r-pill);
+  background:var(--accent-soft);color:var(--accent);border:1px solid transparent;
+}
+:root[data-option="ember"] .tag{background:transparent;border-color:var(--accent-border);color:var(--accent)}
+:root[data-option="graphite"] .tag{border-radius:var(--r-sm);background:transparent;border-color:var(--border-strong);color:var(--fg-secondary);font-family:var(--font-mono);font-weight:400;font-size:11.5px}
+.tag-neutral{background:var(--bg-inset);color:var(--fg-secondary)}
+:root[data-option="ember"] .tag-neutral,:root[data-option="graphite"] .tag-neutral{background:var(--bg-inset);border-color:transparent;color:var(--fg-secondary)}
+
+.avatar{width:26px;height:26px;border-radius:var(--r-pill);flex:none;display:grid;place-items:center;font-size:11px;font-weight:600;color:var(--accent-fg);background:var(--accent);letter-spacing:.02em}
+.avatar-lg{width:36px;height:36px;font-size:13px}
+.favicon{width:16px;height:16px;border-radius:var(--r-xs);flex:none;display:grid;place-items:center;font-size:9px;font-weight:700;color:var(--bg);background:var(--fg-secondary);letter-spacing:0}
+
+/* ---------- PROVENANCE ROW (always visible, compact, inspectable) ---------- */
+.prov{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--fg-secondary);flex-wrap:wrap;min-width:0}
+.prov .dot{width:3px;height:3px;border-radius:50%;background:var(--fg-tertiary);flex:none}
+.prov .src{font-weight:500;color:var(--fg)}
+:root[data-option="graphite"] .prov{font-family:var(--font-mono);font-size:11.5px}
+.why{
+  font:inherit;font-size:12.5px;color:var(--ai);background:transparent;border:0;padding:0;cursor:pointer;
+  text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;
+}
+:root[data-option="graphite"] .why{font-family:var(--font-mono);font-size:11.5px}
+.why-body{
+  margin-top:var(--s-2);padding:10px 12px;border-radius:var(--r-md);
+  background:var(--ai-bg);border:1px solid var(--ai-border);
+  font-size:13px;color:var(--fg-secondary);
+}
+details.why-wrap>summary{list-style:none;cursor:pointer}
+details.why-wrap>summary::-webkit-details-marker{display:none}
+
+/* ---------- AI CALLOUT — the quiet editorial layer ---------- */
+.ai{
+  border-radius:var(--r-md);background:var(--ai-bg);border:1px solid var(--ai-border);
+  padding:var(--s-4);position:relative;
+}
+:root .ai{border-left:2px solid var(--accent)}
+:root[data-option="ember"] .ai{border-left-width:1px;border-left-color:var(--ai-border);background:var(--ai-bg)}
+:root[data-option="graphite"] .ai{border-left-width:1px;border-left-color:var(--ai-border);border-top:1px dashed var(--border-strong)}
+.ai-head{display:flex;align-items:center;gap:7px;margin-bottom:10px}
+.ai-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ai);
+}
+:root[data-option="ember"] .ai-badge{font-family:var(--font-serif);font-size:12.5px;letter-spacing:.06em;text-transform:none;font-style:italic;font-weight:600}
+:root[data-option="graphite"] .ai-badge{font-family:var(--font-mono);font-size:11px;letter-spacing:.05em;color:var(--fg-tertiary);font-weight:400}
+.ai-mark{width:12px;height:12px;flex:none;color:var(--ai)}
+
+/* ---------- SOCIAL ACTION ROW ---------- */
+.social{display:flex;align-items:center;gap:2px;margin-left:-8px;flex-wrap:wrap}
+.act{
+  display:inline-flex;align-items:center;gap:6px;
+  font:inherit;font-size:12.5px;font-weight:500;color:var(--fg-secondary);
+  background:transparent;border:0;border-radius:var(--r-sm);padding:6px 8px;cursor:pointer;
+  transition:background .15s var(--ease),color .15s var(--ease);
+}
+.act:hover{background:var(--bg-inset);color:var(--fg)}
+.act svg{width:15px;height:15px;flex:none}
+.act[data-on="true"]{color:var(--like)}
+.act[data-on="true"] svg{fill:currentColor}
+.act.saved[data-on="true"]{color:var(--accent)}
+:root[data-option="graphite"] .act{font-family:var(--font-mono);font-weight:400;font-size:12px}
+
+/* ---------- STAGED AI PROGRESS ---------- */
+.steps{display:flex;flex-direction:column;gap:9px}
+.step{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--fg-tertiary)}
+.step .mk{width:14px;height:14px;flex:none;border-radius:50%;border:1.5px solid var(--border-strong);display:grid;place-items:center}
+.step[data-state="done"]{color:var(--fg-secondary)}
+.step[data-state="done"] .mk{border-color:var(--success);background:var(--success)}
+.step[data-state="done"] .mk::after{content:"";width:5px;height:2.5px;border-left:1.5px solid var(--bg);border-bottom:1.5px solid var(--bg);transform:rotate(-45deg) translate(.5px,-.5px)}
+.step[data-state="active"]{color:var(--fg)}
+.step[data-state="active"] .mk{border-color:var(--accent);border-right-color:transparent;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.step[data-state="active"] .mk{animation:none;border-right-color:var(--accent);opacity:.6}.sk{animation:none}}
+
+/* ---------- SKELETON ---------- */
+.sk{background:linear-gradient(90deg,var(--bg-inset) 0%,var(--bg-subtle) 40%,var(--bg-inset) 80%);background-size:280% 100%;animation:shim 1.6s var(--ease) infinite;border-radius:var(--r-xs)}
+@keyframes shim{to{background-position:-180% 0}}
+.sk-line{height:11px;margin-bottom:8px}
+.sk-title{height:17px;width:72%;margin-bottom:12px}
+.sk-thumb{width:104px;height:78px;border-radius:var(--r-md);flex:none}
+
+/* ---------- APP FRAME (screen mockups) ---------- */
+.frame{border:1px solid var(--border-strong);border-radius:var(--r-lg);overflow:hidden;background:var(--bg)}
+.frame-bar{display:flex;align-items:center;gap:var(--s-3);padding:10px var(--s-4);border-bottom:1px solid var(--border);background:var(--bg-subtle)}
+.frame-bar .path{font-family:var(--font-mono);font-size:11.5px;color:var(--fg-tertiary)}
+.appnav{display:flex;align-items:center;gap:var(--s-4);padding:var(--s-3) var(--s-5);border-bottom:1px solid var(--border);background:var(--bg)}
+.navlink{font-size:13.5px;font-weight:500;color:var(--fg-secondary);padding:6px 10px;border-radius:var(--r-sm);text-decoration:none}
+.navlink[aria-current="page"]{color:var(--fg);background:var(--bg-inset)}
+:root[data-option="ember"] .navlink[aria-current="page"]{background:transparent;box-shadow:inset 0 -2px 0 var(--accent);border-radius:0}
+:root[data-option="graphite"] .navlink[aria-current="page"]{background:transparent;color:var(--fg);box-shadow:inset 0 -1px 0 var(--fg)}
+.searchbox{flex:1;max-width:340px;display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-subtle);font-size:13px;color:var(--fg-tertiary)}
+
+.app-body{display:grid;grid-template-columns:minmax(0,1fr) 268px;gap:var(--s-6);padding:var(--s-5)}
+.app-body.with-rail{grid-template-columns:216px minmax(0,1fr)}
+.rail{display:flex;flex-direction:column;gap:var(--s-5)}
+
+/* ---------- FEED ---------- */
+.feedhead{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);margin-bottom:var(--s-4);flex-wrap:wrap}
+.feed{display:flex;flex-direction:column}
+.feed-item{
+  background:var(--bg-panel);border:1px solid var(--border);border-radius:var(--r-md);
+  padding:var(--s-4);margin-bottom:var(--s-3);
+}
+:root[data-option="ember"] .feed-item,
+:root[data-option="graphite"] .feed-item{
+  background:transparent;border:0;border-radius:0;
+  border-bottom:1px solid var(--border);padding:var(--s-5) 0;margin-bottom:0;
+}
+:root[data-option="ember"] .feed-item:first-child,
+:root[data-option="graphite"] .feed-item:first-child{padding-top:0}
+.feed-item:last-child{border-bottom:0;margin-bottom:0}
+.fi-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.fi-main{display:flex;gap:var(--s-4);align-items:flex-start}
+.fi-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+.fi-title{display:block;text-decoration:none}
+.fi-title:hover{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:var(--border-strong)}
+.fi-sum{font-size:14px;line-height:1.6;color:var(--fg-secondary);margin:0}
+.thumb{width:132px;height:88px;border-radius:var(--r-md);flex:none;position:relative;overflow:hidden;border:1px solid var(--border)}
+:root[data-option="graphite"] .thumb{border-radius:var(--r-sm)}
+.thumb-lg{width:100%;height:210px}
+.thumb::after{content:"";position:absolute;inset:0;background:
+  radial-gradient(110% 85% at 16% 10%, color-mix(in srgb,var(--accent) 62%, transparent), transparent 58%),
+  radial-gradient(95% 95% at 86% 90%, color-mix(in srgb,var(--fg) 38%, transparent), transparent 56%),
+  var(--bg-inset);
+}
+.thumb .dur{position:absolute;z-index:1;right:6px;bottom:6px;font-family:var(--font-mono);font-size:10.5px;padding:2px 5px;border-radius:var(--r-xs);background:rgba(9,9,11,.78);color:#fff}
+.fi-actions{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);margin-top:2px}
+
+/* ---------- LIBRARY ---------- */
+.libhead{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--s-4);margin-bottom:var(--s-4);flex-wrap:wrap}
+.lib{border-top:1px solid var(--border)}
+.lib-row{display:flex;gap:var(--s-4);align-items:flex-start;padding:var(--s-4) 0;border-bottom:1px solid var(--border)}
+.lib-row:hover{background:color-mix(in srgb,var(--bg-subtle) 70%, transparent)}
+.lib-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.lib-thumb{width:88px;height:64px;border-radius:var(--r-sm);flex:none;position:relative;overflow:hidden;border:1px solid var(--border)}
+.lib-thumb.sk::after{content:none}
+.lib-thumb::after{content:"";position:absolute;inset:0;background:
+  radial-gradient(115% 90% at 20% 10%, color-mix(in srgb,var(--accent) 52%, transparent), transparent 58%), var(--bg-inset);}
+.crumb{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--fg-tertiary);min-width:0}
+:root[data-option="graphite"] .crumb{font-family:var(--font-mono);font-size:11.5px}
+.crumb b{font-weight:500;color:var(--fg-secondary)}
+.unread{width:6px;height:6px;border-radius:50%;background:var(--accent);flex:none;margin-top:9px}
+.tree{display:flex;flex-direction:column;gap:1px;font-size:13.5px}
+.tree a{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:var(--r-sm);text-decoration:none;color:var(--fg-secondary)}
+.tree a:hover{background:var(--bg-inset);color:var(--fg)}
+.tree a[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:500}
+:root[data-option="graphite"] .tree a[aria-current="true"]{background:var(--bg-inset);color:var(--fg)}
+.tree .sub{padding-left:22px}
+.tree .count{margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--fg-tertiary)}
+.tree-ai{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ai);opacity:.85}
+
+/* ---------- DETAIL ---------- */
+.detail{max-width:720px;margin:0 auto;padding:var(--s-6) var(--s-5) var(--s-7)}
+.detail-hero{display:flex;flex-direction:column;gap:var(--s-3);margin-bottom:var(--s-5)}
+.reader{font-size:16px;line-height:1.75;color:var(--fg-secondary)}
+.reader p{margin:0 0 var(--s-4)}
+.hl{background:var(--hl-bg);box-shadow:inset 0 -2px 0 var(--hl-line);color:var(--fg);padding:1px 2px;border-radius:2px}
+.keypoints{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.keypoints li{display:flex;gap:10px;font-size:14px;line-height:1.55;color:var(--fg-secondary)}
+.keypoints .n{font-family:var(--font-mono);font-size:11px;color:var(--ai);padding-top:3px;flex:none}
+.comment{display:flex;gap:10px;padding:var(--s-3) 0;border-top:1px solid var(--border)}
+.comment-body{flex:1;min-width:0}
+.comment .who{font-size:13px;font-weight:600}
+.comment .txt{font-size:13.5px;line-height:1.6;color:var(--fg-secondary);margin:3px 0 6px}
+
+/* ---------- RULES TABLE ---------- */
+.rules{display:grid;gap:var(--s-3)}
+.rule{display:grid;grid-template-columns:120px minmax(0,1fr);gap:var(--s-4);padding:var(--s-3) 0;border-bottom:1px solid var(--border);align-items:start}
+.rule:last-child{border-bottom:0}
+.rule .k{font-family:var(--font-mono);font-size:11.5px;color:var(--fg-tertiary);padding-top:2px}
+.do-dont{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s-4)}
+.dd{border:1px solid var(--border);border-radius:var(--r-md);padding:var(--s-4)}
+.dd h4{margin:0 0 10px;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.dd.do h4{color:var(--success)}
+.dd.dont h4{color:var(--danger)}
+.dd ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px}
+.dd li{font-size:13.5px;line-height:1.5;color:var(--fg-secondary)}
+code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset);padding:1px 5px;border-radius:var(--r-xs);color:var(--fg)}
+
+.scroll-x{overflow-x:auto}
+@media (max-width:900px){
+  .app-body,.app-body.with-rail{grid-template-columns:minmax(0,1fr)}
+  .rail{display:none}
+  .g3,.g4,.g2,.do-dont{grid-template-columns:minmax(0,1fr)}
+  .rule{grid-template-columns:minmax(0,1fr);gap:var(--s-1)}
+  .thumb{width:96px;height:70px}
+}
+</style>
+</head>
+<body>
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 5.6a5.2 5.2 0 0 0-7.4 0L12 7l-1.4-1.4a5.2 5.2 0 1 0-7.4 7.4l1.4 1.4L12 21.2l7.4-7.4 1.4-1.4a5.2 5.2 0 0 0 0-7.4z"/></symbol>
+  <symbol id="i-comment" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.8-.8L3 21l1.9-5.1A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21 12 16.5 6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></symbol>
+  <symbol id="i-ai" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l1.9 5.2 5.2 1.9-5.2 1.9L12 16.7l-1.9-5.2-5.2-1.9 5.2-1.9zM19 15l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+</svg>
+
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <div class="brandmark"><span class="brand-dot"></span> Cosmic Dolphin · Design System</div>
+    <div class="spacer"></div>
+    <div class="segmented" role="group" aria-label="Design direction">
+      <button data-opt="signal" aria-pressed="true">A · Signal</button>
+      <button data-opt="ember" aria-pressed="false">B · Ember</button>
+      <button data-opt="graphite" aria-pressed="false">C · Graphite</button>
+    </div>
+    <div class="segmented" role="group" aria-label="Color mode">
+      <button data-mode="light" aria-pressed="true">Light</button>
+      <button data-mode="dark" aria-pressed="false">Dark</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ============ 0 · INTRO ============ -->
+<section class="doc" id="intro">
+  <p class="t-label" style="margin-bottom:12px">Three directions, one system</p>
+  <h1 class="t-display" style="max-width:22ch">A calm, intelligent reading network.</h1>
+  <p class="sec-lede" style="margin-top:16px;font-size:16px">
+    Cosmic Dolphin turns saved links into things people actually read. Everything below is the same
+    design system — same tokens, same components, same layouts — rendered in three visual directions.
+    Switch between <b>Signal</b>, <b>Ember</b>, and <b>Graphite</b> in the header, and flip light/dark
+    to check both. Pick one; the rest becomes the spec.
+  </p>
+
+  <div class="grid g3" style="margin-top:8px">
+    <div class="panel">
+      <p class="t-label">Direction A</p>
+      <h3 class="t-title-3" style="margin:6px 0 8px">Signal</h3>
+      <p class="t-body-sm muted">Deep blue-cyan on cool neutrals. Feed items are bordered panels. AI carries an accent rail. The most explicitly "product" of the three — closest to Linear.</p>
+    </div>
+    <div class="panel">
+      <p class="t-label">Direction B</p>
+      <h3 class="t-title-3" style="margin:6px 0 8px">Ember</h3>
+      <p class="t-body-sm muted">Amber on warm paper. Separator rows instead of boxes, a bookish serif, and italic editorial labels. The most reading-room of the three — closest to Craft.</p>
+    </div>
+    <div class="panel">
+      <p class="t-label">Direction C</p>
+      <h3 class="t-title-3" style="margin:6px 0 8px">Graphite</h3>
+      <p class="t-body-sm muted">Near-monochrome with color reserved for state. Hairlines, mono metadata, a sharp display serif. The most precise of the three — closest to Vercel.</p>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:24px">
+    <p class="t-label" style="margin-bottom:12px">Fixed across all three</p>
+    <div class="rules">
+      <div class="rule"><div class="k">voice</div><div class="t-body-sm muted">Serif for content the user is <i>evaluating</i>; sans for everything they <i>operate</i>. Never a serif button, never a sans bookmark title.</div></div>
+      <div class="rule"><div class="k">surfaces</div><div class="t-body-sm muted">Borders and separators, not elevation. Shadows only for things that genuinely float: dialogs, popovers, command palette.</div></div>
+      <div class="rule"><div class="k">shape</div><div class="t-body-sm muted">8px content surfaces, 6px compact controls, pills only for tags, avatars, segmented filters, and the primary CTA.</div></div>
+      <div class="rule"><div class="k">ai</div><div class="t-body-sm muted">A quiet editorial layer, never a mascot. Every AI output shows its source and offers "why this appeared".</div></div>
+      <div class="rule"><div class="k">social</div><div class="t-body-sm muted">Present but secondary. One compact action row; conversation expands on demand and never runs inline in the feed.</div></div>
+      <div class="rule"><div class="k">density</div><div class="t-body-sm muted">Medium. Scannable like YouTube, calmer than a dashboard. One clear title per item, one summary, one action row.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 1 · FOUNDATIONS ============ -->
+<section class="doc" id="foundations">
+  <div class="sec-head"><span class="sec-num">01</span><h2 class="t-title-1">Foundations</h2></div>
+  <p class="sec-lede">Semantic tokens only. No component should ever reference a raw hex value — if a colour isn't in this list, it doesn't exist yet.</p>
+
+  <p class="t-label" style="margin-bottom:12px">Surfaces &amp; text</p>
+  <div class="swatches" style="margin-bottom:32px">
+    <div class="sw"><div class="chip" style="background:var(--bg)"></div><div class="lab">--bg</div></div>
+    <div class="sw"><div class="chip" style="background:var(--bg-subtle)"></div><div class="lab">--bg-subtle</div></div>
+    <div class="sw"><div class="chip" style="background:var(--bg-inset)"></div><div class="lab">--bg-inset</div></div>
+    <div class="sw"><div class="chip" style="background:var(--border)"></div><div class="lab">--border</div></div>
+    <div class="sw"><div class="chip" style="background:var(--border-strong)"></div><div class="lab">--border-strong</div></div>
+    <div class="sw"><div class="chip" style="background:var(--fg-tertiary)"></div><div class="lab">--fg-tertiary</div></div>
+    <div class="sw"><div class="chip" style="background:var(--fg-secondary)"></div><div class="lab">--fg-secondary</div></div>
+    <div class="sw"><div class="chip" style="background:var(--fg)"></div><div class="lab">--fg</div></div>
+  </div>
+
+  <p class="t-label" style="margin-bottom:12px">Accent, AI &amp; state</p>
+  <div class="swatches" style="margin-bottom:32px">
+    <div class="sw"><div class="chip" style="background:var(--accent)"></div><div class="lab">--accent</div></div>
+    <div class="sw"><div class="chip" style="background:var(--accent-soft)"></div><div class="lab">--accent-soft</div></div>
+    <div class="sw"><div class="chip" style="background:var(--ai-bg)"></div><div class="lab">--ai-bg</div></div>
+    <div class="sw"><div class="chip" style="background:var(--hl-bg)"></div><div class="lab">--hl-bg</div></div>
+    <div class="sw"><div class="chip" style="background:var(--like)"></div><div class="lab">--like</div></div>
+    <div class="sw"><div class="chip" style="background:var(--success)"></div><div class="lab">--success</div></div>
+    <div class="sw"><div class="chip" style="background:var(--warning)"></div><div class="lab">--warning</div></div>
+    <div class="sw"><div class="chip" style="background:var(--danger)"></div><div class="lab">--danger</div></div>
+    <div class="sw"><div class="chip" style="background:var(--focus)"></div><div class="lab">--focus</div></div>
+  </div>
+
+  <div class="grid g2">
+    <div>
+      <p class="t-label" style="margin-bottom:4px">Type scale</p>
+      <div class="typerow"><span class="tag">display</span><span class="t-display">Reading, restored</span></div>
+      <div class="typerow"><span class="tag">title-1</span><span class="t-title-1">Bookmark detail title</span></div>
+      <div class="typerow"><span class="tag">title-2</span><span class="t-title-2">Feed post title</span></div>
+      <div class="typerow"><span class="tag">title-3</span><span class="t-title-3">Library row title</span></div>
+      <div class="typerow"><span class="tag">body</span><span class="t-body">AI summary, article body, descriptions.</span></div>
+      <div class="typerow"><span class="tag">body-sm</span><span class="t-body-sm">Comments, secondary copy, help text.</span></div>
+      <div class="typerow"><span class="tag">meta</span><span class="t-meta">stratechery.com · saved 2d ago · 4 min</span></div>
+      <div class="typerow"><span class="tag">label</span><span class="t-label">Section label</span></div>
+      <div class="typerow"><span class="tag">quote</span><span class="t-quote">“Saving is not reading.”</span></div>
+    </div>
+
+    <div class="stack gap-5">
+      <div>
+        <p class="t-label" style="margin-bottom:12px">Radius</p>
+        <div class="radii">
+          <div style="border-radius:var(--r-xs)">4 · xs</div>
+          <div style="border-radius:var(--r-sm)">6 · sm</div>
+          <div style="border-radius:var(--r-md)">8 · md</div>
+          <div style="border-radius:var(--r-lg)">12 · lg</div>
+          <div style="border-radius:var(--r-pill)">pill</div>
+        </div>
+        <p class="t-body-sm muted" style="margin-top:12px">6px on buttons, inputs and chips. 8px on cards, panels, thumbnails and dialogs. 12px only on full app frames. Pills are reserved — tags, avatars, segmented filters, primary CTA.</p>
+      </div>
+      <div>
+        <p class="t-label" style="margin-bottom:12px">Spacing · 4px base</p>
+        <div class="spacebar">
+          <span style="height:4px"></span><span style="height:8px"></span><span style="height:12px"></span>
+          <span style="height:16px"></span><span style="height:24px"></span><span style="height:32px"></span>
+          <span style="height:48px"></span><span style="height:64px"></span>
+        </div>
+        <p class="t-body-sm muted" style="margin-top:12px">4 · 8 · 12 · 16 · 24 · 32 · 48 · 64. Inside a card use 12/16; between cards 12; between sections 32/48. Reading measure caps at 68ch.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2 · COMPONENTS ============ -->
+<section class="doc" id="components">
+  <div class="sec-head"><span class="sec-num">02</span><h2 class="t-title-1">Components</h2></div>
+  <p class="sec-lede">The pieces every Cosmic Dolphin screen is built from. Composition is flexible; these are not.</p>
+
+  <div class="grid g2">
+    <div class="panel">
+      <p class="t-label" style="margin-bottom:14px">Buttons &amp; inputs</p>
+      <div class="row wrapr gap-2" style="margin-bottom:14px">
+        <button class="btn btn-primary">Save a link</button>
+        <button class="btn">Open original</button>
+        <button class="btn btn-ghost">Dismiss</button>
+        <button class="btn btn-icon" aria-label="More"><svg width="16" height="16"><use href="#i-more"/></svg></button>
+      </div>
+      <div class="row gap-2" style="margin-bottom:10px">
+        <input class="input" placeholder="Paste a URL to save…" />
+      </div>
+      <p class="t-meta">One primary action per surface, and it is always the pill. Everything else is bordered or ghost.</p>
+    </div>
+
+    <div class="panel">
+      <p class="t-label" style="margin-bottom:14px">Tags, chips &amp; identity</p>
+      <div class="row wrapr gap-2" style="margin-bottom:14px">
+        <span class="tag">agent memory</span>
+        <span class="tag">retrieval</span>
+        <span class="tag">product strategy</span>
+        <span class="tag tag-neutral">Unread</span>
+        <span class="tag tag-neutral">12 min</span>
+      </div>
+      <div class="row wrapr gap-3">
+        <span class="row gap-2"><span class="avatar">MR</span><span class="t-body-sm">Maya Rodrigues</span></span>
+        <span class="row gap-2"><span class="favicon">S</span><span class="t-meta">stratechery.com</span></span>
+        <span class="kbd">⌘K</span>
+      </div>
+      <p class="t-meta" style="margin-top:14px">AI-suggested tags and user tags render identically — the user can edit either.</p>
+    </div>
+  </div>
+
+  <div class="grid g2" style="margin-top:16px">
+    <div class="panel">
+      <p class="t-label" style="margin-bottom:14px">Provenance row · always visible</p>
+      <div class="prov" style="margin-bottom:10px">
+        <span class="favicon">E</span><span class="src">every.to</span>
+        <span class="dot"></span><span>shared by Maya</span>
+        <span class="dot"></span><span>2d ago</span>
+      </div>
+      <details class="why-wrap">
+        <summary class="why">Why this appeared</summary>
+        <div class="why-body">You saved three links about agent memory this week. This one is from a source you've opened 6 times, and Maya — whose saves you open often — shared it yesterday.</div>
+      </details>
+      <p class="t-meta" style="margin-top:14px">Never ship an AI output without a source. "Why this appeared" is a disclosure, not a tooltip.</p>
+    </div>
+
+    <div class="panel">
+      <p class="t-label" style="margin-bottom:14px">AI callout</p>
+      <div class="ai">
+        <div class="ai-head">
+          <svg class="ai-mark"><use href="#i-ai"/></svg>
+          <span class="ai-badge">Cosmic brief</span>
+        </div>
+        <p class="t-body-sm" style="color:var(--fg-secondary)">Argues that retrieval-augmented agents fail less from bad embeddings than from missing episodic memory — the model can recall facts but not what it already tried.</p>
+      </div>
+      <p class="t-meta" style="margin-top:14px">The AI layer is a surface treatment, not a colour explosion. One badge, one summary, source underneath.</p>
+    </div>
+  </div>
+
+  <div class="grid g3" style="margin-top:16px">
+    <div class="panel">
+      <p class="t-label" style="margin-bottom:14px">Social action row</p>
+      <div class="social">
+        <button class="act" data-on="true"><svg><use href="#i-heart"/></svg> 128</button>
+        <button class="act"><svg><use href="#i-comment"/></svg> 14</button>
+        <button class="act saved" data-on="true"><svg><use href="#i-save"/></svg> Saved</button>
+        <button class="act"><svg><use href="#i-share"/></svg></button>
+      </div>
+      <p class="t-meta" style="margin-top:14px">Counts stay muted until the user acts. No count above 4 digits — abbreviate.</p>
+    </div>
+
+    <div class="panel">
+      <p class="t-label" style="margin-bottom:14px">Staged AI progress</p>
+      <div class="steps">
+        <div class="step" data-state="done"><span class="mk"></span> Fetched page</div>
+        <div class="step" data-state="done"><span class="mk"></span> Extracted content</div>
+        <div class="step" data-state="active"><span class="mk"></span> Summarising…</div>
+        <div class="step"><span class="mk"></span> Filing into a collection</div>
+      </div>
+      <p class="t-meta" style="margin-top:14px">The row exists the instant a link is pasted. Never a full-screen spinner.</p>
+    </div>
+
+    <div class="panel">
+      <p class="t-label" style="margin-bottom:14px">Pending item skeleton</p>
+      <div class="row gap-3" style="align-items:flex-start">
+        <div style="flex:1;min-width:0">
+          <div class="sk sk-title"></div>
+          <div class="sk sk-line"></div>
+          <div class="sk sk-line" style="width:64%"></div>
+        </div>
+        <div class="sk sk-thumb"></div>
+      </div>
+      <p class="t-meta" style="margin-top:14px">Skeletons mirror the real row's geometry so nothing jumps when content lands.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3 · HOME FEED ============ -->
+<section class="doc" id="home">
+  <div class="sec-head"><span class="sec-num">03</span><h2 class="t-title-1">Home · the ranked feed</h2></div>
+  <p class="sec-lede">Ranked by personal usefulness first, social proof second. Every item answers three questions before the user clicks: where is this from, what is it about, and why am I seeing it.</p>
+
+  <div class="frame">
+    <div class="frame-bar"><span class="path">cosmicdolphin.app/my/dashboard</span></div>
+
+    <nav class="appnav">
+      <span class="brandmark"><span class="brand-dot"></span> Cosmic Dolphin</span>
+      <a class="navlink" href="#home" aria-current="page">Home</a>
+      <a class="navlink" href="#library">Library</a>
+      <div class="searchbox"><svg width="14" height="14"><use href="#i-search"/></svg> Search your library and feed <span class="kbd" style="margin-left:auto">⌘K</span></div>
+      <button class="btn btn-primary btn-sm">Save a link</button>
+      <span class="avatar">PF</span>
+    </nav>
+
+    <div class="app-body">
+      <div>
+        <div class="feedhead">
+          <div class="segmented" role="group" aria-label="Feed filter">
+            <button aria-pressed="true">For you</button>
+            <button aria-pressed="false">Following</button>
+            <button aria-pressed="false">Unread</button>
+          </div>
+          <span class="t-meta">Updated 4 min ago</span>
+        </div>
+
+        <div class="feed">
+
+          <!-- Just-saved, still processing -->
+          <article class="feed-item">
+            <div class="fi-top">
+              <span class="favicon">A</span>
+              <span class="prov"><span class="src">arxiv.org</span><span class="dot"></span><span>you saved this · just now</span></span>
+            </div>
+            <div class="fi-main">
+              <div class="fi-text">
+                <a class="fi-title" href="#home"><h3 class="t-title-2">Episodic Memory for Long-Horizon Tool-Using Agents</h3></a>
+                <div class="steps" style="margin-top:2px">
+                  <div class="step" data-state="done"><span class="mk"></span> Extracted content</div>
+                  <div class="step" data-state="active"><span class="mk"></span> Summarising…</div>
+                </div>
+              </div>
+              <div class="sk sk-thumb" style="width:132px;height:88px"></div>
+            </div>
+          </article>
+
+          <!-- Standard article item -->
+          <article class="feed-item">
+            <div class="fi-top">
+              <span class="avatar" style="width:22px;height:22px;font-size:9.5px">MR</span>
+              <span class="prov">
+                <span class="src">Maya Rodrigues</span><span class="dot"></span><span>shared</span>
+                <span class="dot"></span><span class="favicon">E</span><span>every.to</span>
+                <span class="dot"></span><span>2d</span>
+              </span>
+              <button class="btn btn-icon btn-ghost" style="margin-left:auto" aria-label="More"><svg width="16" height="16"><use href="#i-more"/></svg></button>
+            </div>
+            <div class="fi-main">
+              <div class="fi-text">
+                <a class="fi-title" href="#home"><h3 class="t-title-2">The Bottleneck Was Never Retrieval</h3></a>
+                <p class="fi-sum">Agents don't fail because they can't find the right document — they fail because they can't remember what they already tried. A case for episodic memory over bigger context windows.</p>
+                <div class="row wrapr gap-2">
+                  <span class="tag">agent memory</span>
+                  <span class="tag">retrieval</span>
+                  <span class="tag tag-neutral">9 min read</span>
+                </div>
+                <details class="why-wrap">
+                  <summary class="why">Why this appeared</summary>
+                  <div class="why-body">Three of your last ten saves were about agent memory, and you open 7 of every 10 links Maya shares.</div>
+                </details>
+                <div class="fi-actions">
+                  <div class="social">
+                    <button class="act"><svg><use href="#i-heart"/></svg> 128</button>
+                    <button class="act"><svg><use href="#i-comment"/></svg> 14</button>
+                    <button class="act saved"><svg><use href="#i-save"/></svg> Save</button>
+                    <button class="act"><svg><use href="#i-share"/></svg></button>
+                  </div>
+                </div>
+              </div>
+              <div class="thumb"></div>
+            </div>
+          </article>
+
+          <!-- AI digest item — the reason Home exists -->
+          <article class="feed-item">
+            <div class="ai">
+              <div class="ai-head">
+                <svg class="ai-mark"><use href="#i-ai"/></svg>
+                <span class="ai-badge">This week in your library</span>
+                <button class="btn btn-icon btn-ghost" style="margin-left:auto" aria-label="More"><svg width="16" height="16"><use href="#i-more"/></svg></button>
+              </div>
+              <a class="fi-title" href="#home"><h3 class="t-title-2" style="margin-bottom:8px">Four of your saves are circling the same argument</h3></a>
+              <p class="fi-sum" style="margin-bottom:12px">You've been collecting pieces that all push back on scale-first agent design. Two of them contradict each other on evaluation.</p>
+              <ul class="keypoints" style="margin-bottom:14px">
+                <li><span class="n">01</span><span><b style="color:var(--fg);font-weight:500">Memory beats context.</b> Three sources argue that episodic state, not window size, is the limiting factor.</span></li>
+                <li><span class="n">02</span><span><b style="color:var(--fg);font-weight:500">Evaluation is unresolved.</b> Chen proposes trajectory-level scoring; Okafor calls it unfalsifiable.</span></li>
+              </ul>
+              <div class="prov" style="margin-bottom:12px">
+                <span>Built from</span><span class="favicon">E</span><span class="src">every.to</span>
+                <span class="dot"></span><span class="favicon">A</span><span class="src">arxiv.org</span>
+                <span class="dot"></span><span>+2 more</span>
+              </div>
+              <div class="social">
+                <button class="act"><svg><use href="#i-heart"/></svg> 6</button>
+                <button class="act"><svg><use href="#i-comment"/></svg></button>
+                <button class="act saved"><svg><use href="#i-save"/></svg> Save digest</button>
+                <button class="act"><svg><use href="#i-share"/></svg></button>
+              </div>
+            </div>
+          </article>
+
+          <!-- Video item — media leads for video only -->
+          <article class="feed-item">
+            <div class="fi-top">
+              <span class="favicon">Y</span>
+              <span class="prov"><span class="src">youtube.com</span><span class="dot"></span><span>Karpathy</span><span class="dot"></span><span>liked by 3 people you follow</span></span>
+            </div>
+            <div class="thumb thumb-lg" style="margin-bottom:12px"><span class="dur">42:18</span></div>
+            <div class="fi-text">
+              <a class="fi-title" href="#home"><h3 class="t-title-2">Building an agent that actually finishes things</h3></a>
+              <p class="fi-sum">Transcript summarised into six checkpoints — jump to any of them without watching the whole thing.</p>
+              <div class="fi-actions">
+                <div class="social">
+                  <button class="act"><svg><use href="#i-heart"/></svg> 2.1k</button>
+                  <button class="act"><svg><use href="#i-comment"/></svg> 87</button>
+                  <button class="act saved"><svg><use href="#i-save"/></svg> Save</button>
+                  <button class="act"><svg><use href="#i-share"/></svg></button>
+                </div>
+                <button class="btn btn-sm"><svg width="13" height="13"><use href="#i-play"/></svg> Watch with summary</button>
+              </div>
+            </div>
+          </article>
+
+        </div>
+      </div>
+
+      <aside class="rail">
+        <div>
+          <p class="t-label" style="margin-bottom:10px">Continue reading</p>
+          <div class="lib" style="border-top:0">
+            <div class="lib-row" style="padding:10px 0">
+              <span class="unread" style="margin-top:7px"></span>
+              <div class="lib-text"><h4 class="t-title-3" style="font-size:14px">Notes on institutional memory</h4><span class="t-meta">73% · 4 min left</span></div>
+            </div>
+            <div class="lib-row" style="padding:10px 0;border-bottom:0">
+              <span class="unread" style="margin-top:7px"></span>
+              <div class="lib-text"><h4 class="t-title-3" style="font-size:14px">The cost of a perfect index</h4><span class="t-meta">Not started · 11 min</span></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <p class="t-label" style="margin-bottom:10px">Your topics this week</p>
+          <div class="row wrapr gap-2">
+            <span class="tag">agent memory</span><span class="tag">evaluation</span>
+            <span class="tag">product strategy</span><span class="tag">typography</span>
+          </div>
+        </div>
+        <div>
+          <p class="t-label" style="margin-bottom:10px">People you follow</p>
+          <div class="stack gap-3">
+            <div class="row gap-2"><span class="avatar">MR</span><div><div class="t-body-sm" style="font-weight:500">Maya Rodrigues</div><div class="t-meta">18 saves this week</div></div></div>
+            <div class="row gap-2"><span class="avatar">TO</span><div><div class="t-body-sm" style="font-weight:500">Tunde Okafor</div><div class="t-meta">6 saves this week</div></div></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="do-dont" style="margin-top:24px">
+    <div class="dd do">
+      <h4>Do</h4>
+      <ul>
+        <li>Show the source and the sharer before the title — trust precedes attention.</li>
+        <li>Give a just-saved link a real row immediately, with staged progress inside it.</li>
+        <li>Let video lead with its thumbnail; keep article thumbnails at 132×88 beside the text.</li>
+      </ul>
+    </div>
+    <div class="dd dont">
+      <h4>Don't</h4>
+      <ul>
+        <li>Render comment threads inline in the feed — the action row expands them.</li>
+        <li>Rank on likes alone, or badge anything "trending".</li>
+        <li>Stack more than one AI digest per screenful; it stops reading as a signal.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4 · LIBRARY ============ -->
+<section class="doc" id="library">
+  <div class="sec-head"><span class="sec-num">04</span><h2 class="t-title-1">Library · saved link first</h2></div>
+  <p class="sec-lede">Chronological by default, organised by AI, overridable by hand. The tree is a suggestion the user can accept, rename, or ignore — never a cage.</p>
+
+  <div class="frame">
+    <div class="frame-bar"><span class="path">cosmicdolphin.app/my/library</span></div>
+
+    <nav class="appnav">
+      <span class="brandmark"><span class="brand-dot"></span> Cosmic Dolphin</span>
+      <a class="navlink" href="#home">Home</a>
+      <a class="navlink" href="#library" aria-current="page">Library</a>
+      <div class="searchbox"><svg width="14" height="14"><use href="#i-search"/></svg> Search your library and feed <span class="kbd" style="margin-left:auto">⌘K</span></div>
+      <button class="btn btn-primary btn-sm">Save a link</button>
+      <span class="avatar">PF</span>
+    </nav>
+
+    <div class="app-body with-rail">
+      <aside class="rail">
+        <div>
+          <div class="row gap-2" style="justify-content:space-between;margin-bottom:10px">
+            <p class="t-label" style="margin:0">Collections</p>
+            <span class="tree-ai"><svg class="ai-mark" style="width:10px;height:10px"><use href="#i-ai"/></svg> AI filed</span>
+          </div>
+          <nav class="tree">
+            <a href="#library" aria-current="true"><svg width="14" height="14"><use href="#i-folder"/></svg> All saves <span class="count">412</span></a>
+            <a href="#library"><svg width="14" height="14"><use href="#i-folder"/></svg> Inbox <span class="count">7</span></a>
+            <a href="#library"><svg width="14" height="14"><use href="#i-chev"/></svg> Research <span class="count">96</span></a>
+            <a href="#library" class="sub">Agent memory <span class="count">23</span></a>
+            <a href="#library" class="sub">Evaluation <span class="count">31</span></a>
+            <a href="#library"><svg width="14" height="14"><use href="#i-chev"/></svg> Product <span class="count">128</span></a>
+            <a href="#library" class="sub">Strategy <span class="count">54</span></a>
+            <a href="#library" class="sub">Design systems <span class="count">40</span></a>
+            <a href="#library"><svg width="14" height="14"><use href="#i-folder"/></svg> Read later <span class="count">88</span></a>
+          </nav>
+        </div>
+        <div>
+          <p class="t-label" style="margin-bottom:10px">Suggested by Cosmic</p>
+          <div class="ai" style="padding:12px">
+            <p class="t-body-sm" style="margin-bottom:10px;color:var(--fg-secondary)">9 saves look like a new collection: <b style="color:var(--fg)">Typography &amp; reading UX</b>.</p>
+            <div class="row gap-2">
+              <button class="btn btn-sm btn-primary">Create</button>
+              <button class="btn btn-sm btn-ghost">Not now</button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div>
+        <div class="libhead">
+          <div>
+            <h3 class="t-title-2" style="margin-bottom:4px">All saves</h3>
+            <p class="t-meta">412 links · 88 unread</p>
+          </div>
+          <div class="row gap-2 wrapr">
+            <div class="segmented" role="group" aria-label="Read status">
+              <button aria-pressed="true">All</button>
+              <button aria-pressed="false">Unread</button>
+              <button aria-pressed="false">Read</button>
+            </div>
+            <button class="btn btn-sm">Newest <svg width="13" height="13" style="transform:rotate(90deg)"><use href="#i-chev"/></svg></button>
+          </div>
+        </div>
+
+        <div class="lib">
+          <article class="lib-row">
+            <span class="unread"></span>
+            <div class="lib-text">
+              <div class="crumb"><svg width="12" height="12"><use href="#i-folder"/></svg> Research <svg width="11" height="11"><use href="#i-chev"/></svg> <b>Agent memory</b></div>
+              <h4 class="t-title-3">The Bottleneck Was Never Retrieval</h4>
+              <p class="t-body-sm muted">Agents fail because they can't remember what they already tried, not because they can't find the right document.</p>
+              <div class="row wrapr gap-2">
+                <span class="tag">agent memory</span><span class="tag">retrieval</span>
+                <span class="t-meta" style="margin-left:4px">every.to · 2d ago · 9 min</span>
+              </div>
+            </div>
+            <div class="lib-thumb"></div>
+          </article>
+
+          <article class="lib-row">
+            <span class="unread"></span>
+            <div class="lib-text">
+              <div class="crumb"><svg width="12" height="12"><use href="#i-folder"/></svg> Product <svg width="11" height="11"><use href="#i-chev"/></svg> <b>Design systems</b></div>
+              <h4 class="t-title-3">Tokens are a contract, not a palette</h4>
+              <p class="t-body-sm muted">Why naming a colour <code class="inl">--accent</code> instead of <code class="inl">--blue-600</code> is the whole discipline.</p>
+              <div class="row wrapr gap-2">
+                <span class="tag">design systems</span><span class="tag">tokens</span>
+                <span class="t-meta" style="margin-left:4px">linear.app · 3d ago · 6 min</span>
+              </div>
+            </div>
+            <div class="lib-thumb"></div>
+          </article>
+
+          <article class="lib-row">
+            <span class="unread" style="background:transparent"></span>
+            <div class="lib-text">
+              <div class="crumb"><svg width="12" height="12"><use href="#i-folder"/></svg> Read later</div>
+              <h4 class="t-title-3">Notes on institutional memory</h4>
+              <p class="t-body-sm muted">A short essay on why teams re-solve the same problem every eighteen months.</p>
+              <div class="row wrapr gap-2">
+                <span class="tag tag-neutral"><svg width="11" height="11"><use href="#i-check"/></svg> Read</span>
+                <span class="tag">organisations</span>
+                <span class="t-meta" style="margin-left:4px">stratechery.com · 1w ago · 12 min</span>
+              </div>
+            </div>
+            <div class="lib-thumb"></div>
+          </article>
+
+          <article class="lib-row" style="border-bottom:0">
+            <span class="unread" style="background:transparent"></span>
+            <div class="lib-text">
+              <div class="crumb"><svg width="12" height="12"><use href="#i-folder"/></svg> Inbox <span class="tree-ai" style="margin-left:6px"><svg class="ai-mark" style="width:10px;height:10px"><use href="#i-ai"/></svg> filing…</span></div>
+              <h4 class="t-title-3">Episodic Memory for Long-Horizon Tool-Using Agents</h4>
+              <div style="max-width:420px"><div class="sk sk-line" style="width:88%"></div><div class="sk sk-line" style="width:52%;margin-bottom:0"></div></div>
+            </div>
+            <div class="sk lib-thumb"></div>
+          </article>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="do-dont" style="margin-top:24px">
+    <div class="dd do">
+      <h4>Do</h4>
+      <ul>
+        <li>Use <code class="inl">divide-y</code> rows. The Library is a list, not a wall of cards.</li>
+        <li>Show the AI's filing decision as a breadcrumb the user can click and change.</li>
+        <li>Mark unread with a 6px dot, never a coloured background or a badge.</li>
+      </ul>
+    </div>
+    <div class="dd dont">
+      <h4>Don't</h4>
+      <ul>
+        <li>Put social counts on Library rows — this surface is private.</li>
+        <li>Auto-move a link the user has manually filed. Suggest, don't relocate.</li>
+        <li>Hide the chronological order behind the tree; it is the default view.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5 · BOOKMARK DETAIL ============ -->
+<section class="doc" id="detail">
+  <div class="sec-head"><span class="sec-num">05</span><h2 class="t-title-1">Bookmark detail · read, then discuss</h2></div>
+  <p class="sec-lede">The one place the serif runs at full size. AI sits above the fold as an offer, the original text below it as the ground truth, conversation last.</p>
+
+  <div class="frame">
+    <div class="frame-bar"><span class="path">cosmicdolphin.app/bookmarks/bk_8f2a</span></div>
+    <nav class="appnav">
+      <span class="brandmark"><span class="brand-dot"></span> Cosmic Dolphin</span>
+      <a class="navlink" href="#home">Home</a>
+      <a class="navlink" href="#library">Library</a>
+      <div class="searchbox"><svg width="14" height="14"><use href="#i-search"/></svg> Search your library and feed <span class="kbd" style="margin-left:auto">⌘K</span></div>
+      <button class="btn btn-primary btn-sm">Save a link</button>
+      <span class="avatar">PF</span>
+    </nav>
+
+    <div class="detail">
+      <div class="detail-hero">
+        <div class="crumb"><svg width="12" height="12"><use href="#i-folder"/></svg> Research <svg width="11" height="11"><use href="#i-chev"/></svg> <b>Agent memory</b></div>
+        <h1 class="t-title-1">The Bottleneck Was Never Retrieval</h1>
+        <div class="prov">
+          <span class="favicon">E</span><span class="src">every.to</span>
+          <span class="dot"></span><span>Dan Shipper</span>
+          <span class="dot"></span><span>saved 2d ago</span>
+          <span class="dot"></span><span>9 min read</span>
+        </div>
+        <div class="row wrapr gap-2" style="margin-top:4px">
+          <button class="btn btn-primary btn-sm">Mark as read</button>
+          <button class="btn btn-sm">Open original</button>
+          <button class="btn btn-sm"><svg width="13" height="13"><use href="#i-share"/></svg> Share</button>
+          <button class="btn btn-icon btn-sm btn-ghost" aria-label="More"><svg width="15" height="15"><use href="#i-more"/></svg></button>
+        </div>
+      </div>
+
+      <div class="ai" style="margin-bottom:32px">
+        <div class="ai-head">
+          <svg class="ai-mark"><use href="#i-ai"/></svg>
+          <span class="ai-badge">Cosmic brief</span>
+          <span class="t-meta" style="margin-left:auto">from the full article</span>
+        </div>
+        <p class="t-body" style="color:var(--fg-secondary);margin-bottom:16px">
+          Retrieval quality has become a distraction. In the author's testing, agents with excellent search still
+          looped on solved sub-problems because nothing recorded what had already been attempted. The fix is a
+          cheap episodic log, not a better index.
+        </p>
+        <p class="t-label" style="margin-bottom:10px">Key points</p>
+        <ul class="keypoints">
+          <li><span class="n">01</span><span>Retrieval accuracy above ~85% stops predicting task success.</span></li>
+          <li><span class="n">02</span><span>Repeated-action loops account for most failed long-horizon runs.</span></li>
+          <li><span class="n">03</span><span>An append-only attempt log outperformed a 4× larger context window.</span></li>
+        </ul>
+      </div>
+
+      <div class="reader">
+        <p>
+          Every team that has shipped an agent to production tells a version of the same story. They spend a
+          quarter tuning the retriever, celebrate the eval bump, and then watch the thing
+          <span class="hl">stall on a task it had already half-solved forty seconds earlier</span>. The documents
+          were there. The model found them. It just had no idea it had been here before.
+        </p>
+        <p>
+          It is worth being precise about what memory means here, because the word has been stretched to cover
+          everything from a vector store to a system prompt. What is missing is not semantic recall…
+        </p>
+        <p class="t-quote" style="border-left:2px solid var(--accent);padding-left:16px;color:var(--fg)">
+          An agent that cannot remember its own failures is not an agent. It is a very expensive retry loop.
+        </p>
+      </div>
+
+      <div style="margin-top:32px">
+        <div class="row gap-3" style="justify-content:space-between;padding-bottom:8px">
+          <div class="social">
+            <button class="act" data-on="true"><svg><use href="#i-heart"/></svg> 128</button>
+            <button class="act"><svg><use href="#i-comment"/></svg> 14</button>
+            <button class="act saved" data-on="true"><svg><use href="#i-save"/></svg> Saved</button>
+            <button class="act"><svg><use href="#i-share"/></svg></button>
+          </div>
+          <span class="t-meta">1 highlight</span>
+        </div>
+
+        <div class="comment">
+          <span class="avatar avatar-lg">MR</span>
+          <div class="comment-body">
+            <div class="row gap-2"><span class="who">Maya Rodrigues</span><span class="t-meta">2d ago</span></div>
+            <p class="txt">The attempt-log result matches what we saw internally, though we needed to summarise the log every ~40 steps or it drowned the window.</p>
+            <div class="social"><button class="act"><svg><use href="#i-heart"/></svg> 9</button><button class="act">Reply</button></div>
+          </div>
+        </div>
+        <div class="comment">
+          <span class="avatar avatar-lg" style="background:var(--fg-secondary)">TO</span>
+          <div class="comment-body">
+            <div class="row gap-2"><span class="who">Tunde Okafor</span><span class="t-meta">1d ago</span></div>
+            <p class="txt">Sceptical of the 85% claim — that threshold is probably task-dependent. Saved the paper it cites.</p>
+            <div class="social"><button class="act"><svg><use href="#i-heart"/></svg> 4</button><button class="act">Reply</button></div>
+          </div>
+        </div>
+        <div class="comment">
+          <span class="avatar avatar-lg">PF</span>
+          <div class="comment-body" style="padding-top:2px"><input class="input" placeholder="Add a comment…" /></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6 · RULES FOR AGENTS ============ -->
+<section class="doc" id="rules">
+  <div class="sec-head"><span class="sec-num">06</span><h2 class="t-title-1">Rules for implementers</h2></div>
+  <p class="sec-lede">Tokens and components are strict. Page composition is yours. When a new screen needs something not listed here, extend the token set first and the component second — never inline a value.</p>
+
+  <div class="grid g2">
+    <div class="panel">
+      <p class="t-label" style="margin-bottom:14px">Non-negotiable</p>
+      <div class="rules">
+        <div class="rule"><div class="k">serif</div><div class="t-body-sm muted">Content titles and pull quotes only. Feed titles, library titles, detail titles, headings inside saved content.</div></div>
+        <div class="rule"><div class="k">sans</div><div class="t-body-sm muted">Nav, buttons, metadata, tags, comments, forms, empty states, every count.</div></div>
+        <div class="rule"><div class="k">colour</div><div class="t-body-sm muted">Semantic tokens only. Accent is for active nav, links, AI provenance and selected states — not decoration.</div></div>
+        <div class="rule"><div class="k">shadow</div><div class="t-body-sm muted">Dialogs, popovers and the command palette. Nothing in a feed or list may float.</div></div>
+        <div class="rule"><div class="k">a11y</div><div class="t-body-sm muted">4.5:1 on body text, visible focus ring on every interactive element, reduced-motion honoured by all progress and shimmer.</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <p class="t-label" style="margin-bottom:14px">Where things live</p>
+      <div class="rules">
+        <div class="rule"><div class="k">tokens</div><div class="t-body-sm muted">CSS variables in <code class="inl">apps/web/app/globals.css</code>, mirrored to Tailwind theme keys and re-exported for <code class="inl">apps/mobile</code>.</div></div>
+        <div class="rule"><div class="k">primitives</div><div class="t-body-sm muted">Radix + <code class="inl">components/ui</code>. Restyle the primitive; never fork it per screen.</div></div>
+        <div class="rule"><div class="k">patterns</div><div class="t-body-sm muted">Feed item, library row, provenance row, AI callout, social row and staged progress ship as shared components.</div></div>
+        <div class="rule"><div class="k">data</div><div class="t-body-sm muted">Provenance comes from <code class="inl">metadata.openGraph</code> + <code class="inl">sourceUrl</code>; summaries from <code class="inl">cosmicBriefSummary</code>; tags from <code class="inl">cosmicTags</code>; filing from <code class="inl">collectionPath</code>.</div></div>
+        <div class="rule"><div class="k">states</div><div class="t-body-sm muted">Every list needs four: loading skeleton, empty, error, and AI-processing. Ship all four or the pattern is incomplete.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer style="border-top:1px solid var(--border);padding:32px 0 56px">
+  <p class="t-meta">Cosmic Dolphin design system — prototype set. Choose one direction; it becomes the token spec for web and mobile.</p>
+</footer>
+
+</main>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var optButtons = document.querySelectorAll("[data-opt]");
+  var modeButtons = document.querySelectorAll(".segmented [data-mode]");
+
+  function setMode(mode) {
+    root.setAttribute("data-mode", mode);
+    modeButtons.forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-mode") === mode));
+    });
+  }
+
+  function setOption(opt) {
+    if (opt === "signal") root.removeAttribute("data-option");
+    else root.setAttribute("data-option", opt);
+    optButtons.forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-opt") === opt));
+    });
+  }
+
+  optButtons.forEach(function (b) {
+    b.addEventListener("click", function () { setOption(b.getAttribute("data-opt")); });
+  });
+  modeButtons.forEach(function (b) {
+    b.addEventListener("click", function () { setMode(b.getAttribute("data-mode")); });
+  });
+
+  // Open on the host/OS theme, then hand control to the toggle.
+  var dark = false;
+  try {
+    dark = root.dataset.theme === "dark" ||
+      (root.dataset.theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  } catch (e) { dark = false; }
+  setMode(dark ? "dark" : "light");
+  setOption("signal");
+
+  // Demo-only affordances so the prototype feels alive.
+  document.querySelectorAll(".act").forEach(function (b) {
+    b.addEventListener("click", function () {
+      b.setAttribute("data-on", b.getAttribute("data-on") === "true" ? "false" : "true");
+    });
+  });
+  document.querySelectorAll('.segmented[aria-label="Feed filter"] button, .segmented[aria-label="Read status"] button')
+    .forEach(function (b) {
+      b.addEventListener("click", function () {
+        b.parentNode.querySelectorAll("button").forEach(function (s) { s.setAttribute("aria-pressed", "false"); });
+        b.setAttribute("aria-pressed", "true");
+      });
+    });
+})();
+</script>
+</body>
+</html>

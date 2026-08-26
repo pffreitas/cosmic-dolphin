@@ -1,0 +1,164 @@
+{
+  "$schema-note": "Cosmic Dolphin design tokens. Semantic names only \u2014 components must never reference a raw hex.",
+  "id": "signal",
+  "name": "Signal",
+  "tagline": "Deep blue-cyan on cool neutrals. Bordered feed panels, accent rail on AI.",
+  "typography": {
+    "families": {
+      "sans": "\"Inter\",system-ui,-apple-system,\"Segoe UI\",sans-serif",
+      "serif": "\"Source Serif 4\",Georgia,\"Times New Roman\",serif",
+      "mono": "\"IBM Plex Mono\",ui-monospace,SFMono-Regular,monospace"
+    },
+    "usage": {
+      "serif": "Content the user evaluates: feed titles, library titles, detail titles, headings inside saved content, pull quotes.",
+      "sans": "Everything the user operates: nav, buttons, metadata, tags, comments, forms, counts.",
+      "mono": "Machine facts: domains, counts, keyboard shortcuts, ids."
+    },
+    "scale": {
+      "display": {
+        "family": "serif",
+        "size": "40px",
+        "line": "1.1",
+        "weight": 600
+      },
+      "title-1": {
+        "family": "serif",
+        "size": "29px",
+        "line": "1.2",
+        "weight": 600
+      },
+      "title-2": {
+        "family": "serif",
+        "size": "20px",
+        "line": "1.3",
+        "weight": 600
+      },
+      "title-3": {
+        "family": "serif",
+        "size": "17px",
+        "line": "1.35",
+        "weight": 600
+      },
+      "body": {
+        "family": "sans",
+        "size": "15px",
+        "line": "1.65",
+        "weight": 400
+      },
+      "body-sm": {
+        "family": "sans",
+        "size": "13.5px",
+        "line": "1.55",
+        "weight": 400
+      },
+      "meta": {
+        "family": "sans",
+        "size": "12.5px",
+        "line": "1.4",
+        "weight": 400
+      },
+      "label": {
+        "family": "sans",
+        "size": "11px",
+        "line": "1.3",
+        "weight": 600,
+        "transform": "uppercase",
+        "tracking": "0.09em"
+      },
+      "quote": {
+        "family": "serif",
+        "size": "19px",
+        "line": "1.5",
+        "weight": 400,
+        "style": "italic"
+      }
+    }
+  },
+  "color": {
+    "light": {
+      "bg": "#FFFFFF",
+      "bg-subtle": "#F7F9FB",
+      "bg-panel": "#FFFFFF",
+      "bg-inset": "#EEF2F6",
+      "fg": "#0C1622",
+      "fg-secondary": "#4C5A68",
+      "fg-tertiary": "#657485",
+      "border": "#E2E8EE",
+      "border-strong": "#C9D4DE",
+      "accent": "#0B6F9C",
+      "accent-hover": "#0A5C82",
+      "accent-fg": "#FFFFFF",
+      "accent-soft": "#EAF4FA",
+      "accent-border": "#BEDDEC",
+      "ai": "#0B6F9C",
+      "ai-bg": "#F2F8FC",
+      "ai-border": "#D3E7F1",
+      "like": "#D6336C",
+      "success": "#15803D",
+      "warning": "#B45309",
+      "danger": "#DC2626",
+      "hl-bg": "#EAF4FA",
+      "hl-line": "#BEDDEC",
+      "focus": "#0B6F9C"
+    },
+    "dark": {
+      "bg": "#0A1119",
+      "bg-subtle": "#0E1720",
+      "bg-panel": "#101A24",
+      "bg-inset": "#16222E",
+      "fg": "#E9F0F6",
+      "fg-secondary": "#9FB1C0",
+      "fg-tertiary": "#6E8394",
+      "border": "#1E2C39",
+      "border-strong": "#2C3E4E",
+      "accent": "#5CC2E8",
+      "accent-hover": "#8AD5F0",
+      "accent-fg": "#04222F",
+      "accent-soft": "#0E2634",
+      "accent-border": "#1C4256",
+      "ai": "#5CC2E8",
+      "ai-bg": "#0C202C",
+      "ai-border": "#193A4B",
+      "like": "#F472A0",
+      "success": "#4ADE80",
+      "warning": "#FBBF24",
+      "danger": "#F87171",
+      "hl-bg": "#0E2634",
+      "hl-line": "#2B6E8C",
+      "focus": "#5CC2E8"
+    }
+  },
+  "shape": {
+    "radius": {
+      "r-xs": "4px",
+      "r-sm": "6px",
+      "r-md": "8px",
+      "r-lg": "12px",
+      "r-pill": "999px"
+    },
+    "usage": {
+      "r-sm": "buttons, inputs, chips, ghost hit areas",
+      "r-md": "cards, panels, thumbnails, dialogs, AI callouts",
+      "r-lg": "full app frames only",
+      "r-pill": "tags, avatars, segmented filters, primary CTA \u2014 nothing else"
+    }
+  },
+  "space": {
+    "scale": {
+      "s-1": "4px",
+      "s-2": "8px",
+      "s-3": "12px",
+      "s-4": "16px",
+      "s-5": "24px",
+      "s-6": "32px",
+      "s-7": "48px",
+      "s-8": "64px"
+    },
+    "measure": "68ch"
+  },
+  "framing": {
+    "feed-item": "bordered-panels",
+    "library-row": "separator-rows",
+    "elevation": "Shadows only on dialogs, popovers and the command palette. Nothing in a feed or list floats."
+  }
+}
