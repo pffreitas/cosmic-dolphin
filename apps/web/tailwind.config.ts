@@ -96,23 +96,17 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        chart: {
-          "1": "hsl(var(--chart-1))",
-          "2": "hsl(var(--chart-2))",
-          "3": "hsl(var(--chart-3))",
-          "4": "hsl(var(--chart-4))",
-          "5": "hsl(var(--chart-5))",
-        },
-        sidebar: {
-          DEFAULT: "hsl(var(--sidebar-background))",
-          foreground: "hsl(var(--sidebar-foreground))",
-          primary: "hsl(var(--sidebar-primary))",
-          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
-          accent: "hsl(var(--sidebar-accent))",
-          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
-          border: "hsl(var(--sidebar-border))",
-          ring: "hsl(var(--sidebar-ring))",
-        },
+      },
+      // Signal motion. `duration-cd-fast` (150ms) for colour and background,
+      // `duration-cd` (220ms) for size and position, `ease-cd` everywhere.
+      // Named rather than arbitrary because `duration-[var(--x)]` and
+      // `ease-[var(--x)]` are ambiguous to Tailwind and get dropped silently.
+      transitionDuration: {
+        cd: "var(--cd-duration)",
+        "cd-fast": "var(--cd-duration-fast)",
+      },
+      transitionTimingFunction: {
+        cd: "var(--cd-ease)",
       },
       borderRadius: {
         xs: "var(--cd-radius-xs)",
@@ -122,6 +116,16 @@ const config = {
         pill: "var(--cd-radius-pill)",
       },
       keyframes: {
+        // Skeleton shimmer. Named for the component so it cannot collide with
+        // the legacy `.shimmer` keyframes still in globals.css.
+        "skeleton-sweep": {
+          "0%": {
+            transform: "translateX(-100%)",
+          },
+          "100%": {
+            transform: "translateX(100%)",
+          },
+        },
         "accordion-down": {
           from: {
             height: "0",
@@ -172,6 +176,7 @@ const config = {
         },
       },
       animation: {
+        "skeleton-sweep": "skeleton-sweep 1.6s linear infinite",
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         spin_right: "spin_right 3s linear infinite",

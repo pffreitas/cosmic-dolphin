@@ -77,6 +77,7 @@ second brand.
 | `--cd-danger` | Failed processing, destructive confirmation, form error. |
 | `--cd-hl-bg` / `--cd-hl-line` | User highlights inside reader content. |
 | `--cd-focus` | Focus ring. Identical to accent by design — focus is an action affordance. |
+| `--cd-overlay` | The scrim behind a dialog or bottom sheet. Dark in both modes — it dims the page, it does not restate the theme. |
 
 ### Header capsule
 

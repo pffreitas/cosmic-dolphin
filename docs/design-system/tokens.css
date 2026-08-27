@@ -79,6 +79,7 @@
   --cd-hl-bg: #EAF4FA;
   --cd-hl-line: #BEDDEC;
   --cd-focus: #0B6F9C;
+  --cd-overlay: rgba(9,15,22,.45);
 
   /* Header capsule */
   --cd-nav-band-top: #CFE6F3;
@@ -136,6 +137,7 @@
   --cd-hl-bg: #0E2634;
   --cd-hl-line: #2B6E8C;
   --cd-focus: #5CC2E8;
+  --cd-overlay: rgba(9,15,22,.45);
 
   /* Header capsule */
   --cd-nav-band-top: #0C1E2B;

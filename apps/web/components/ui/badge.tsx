@@ -1,36 +1,97 @@
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { X } from "lucide-react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
+import { focusRing } from "./focus-ring";
 
-const badgeVariants = cva(
-  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+/**
+ * Tag — see docs/design-system/components.md#tag.
+ *
+ * Pill, accent-soft fill, accent text, 12px/500, 5×10px, no border. The
+ * `neutral` variant carries non-topical facts (read state, reading time,
+ * counts). AI-suggested tags and user tags render identically: the user cannot
+ * be asked to care which is which.
+ *
+ * `Badge` stays exported as an alias so existing callers keep working; new code
+ * should reach for `Tag`.
+ */
+const tagVariants = cva(
+  cn(
+    "inline-flex items-center gap-1 rounded-pill border-0",
+    "px-2.5 py-[5px] font-sans text-xs font-medium leading-none",
+    "transition-colors duration-cd-fast ease-cd",
+  ),
   {
     variants: {
       variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
-        outline: "text-foreground",
+        accent: "bg-accent-soft text-accent",
+        neutral: "bg-bg-inset text-fg-secondary",
+        danger: "bg-bg-inset text-[color:var(--cd-danger)]",
+
+        // ---- compatibility aliases -------------------------------------
+        default: "bg-accent-soft text-accent",
+        secondary: "bg-bg-inset text-fg-secondary",
+        outline: "bg-bg-inset text-fg-secondary",
+        destructive: "bg-bg-inset text-[color:var(--cd-danger)]",
       },
     },
     defaultVariants: {
-      variant: "default",
+      variant: "accent",
     },
-  }
-)
+  },
+);
 
-export interface BadgeProps
+export interface TagProps
   extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
-
-function Badge({ className, variant, ...props }: BadgeProps) {
-  return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
-  )
+    VariantProps<typeof tagVariants> {
+  /**
+   * Makes the tag removable: adds a 12px × at the trailing edge. It gets its
+   * own accessible name, because "×" alone says nothing.
+   */
+  onRemove?: () => void;
+  /** Accessible name for the remove control. Defaults to "Remove tag". */
+  removeLabel?: string;
 }
 
-export { Badge, badgeVariants }
+function Tag({
+  className,
+  variant,
+  onRemove,
+  removeLabel,
+  children,
+  ...props
+}: TagProps) {
+  return (
+    <div className={cn(tagVariants({ variant }), className)} {...props}>
+      {children}
+      {onRemove ? (
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={
+            removeLabel ??
+            (typeof children === "string"
+              ? `Remove ${children}`
+              : "Remove tag")
+          }
+          className={cn(
+            "-mr-1 grid size-4 place-items-center rounded-pill",
+            "text-current opacity-70 transition-opacity hover:opacity-100",
+            focusRing,
+          )}
+        >
+          <X aria-hidden="true" className="size-3 [stroke-width:1.7]" />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** @deprecated Use `Tag`. Kept so existing callers keep compiling. */
+const Badge = Tag;
+/** @deprecated Use `tagVariants`. */
+const badgeVariants = tagVariants;
+
+export type BadgeProps = TagProps;
+export { Tag, tagVariants, Badge, badgeVariants };
