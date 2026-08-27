@@ -63,6 +63,20 @@ export function useToast() {
   return context;
 }
 
+/**
+ * Same context, but `null` instead of a throw when there is no provider.
+ *
+ * For shared components that toast as a courtesy rather than as their reason
+ * for existing — the social action row's "Link copied", for instance. Those
+ * have to keep working on a surface that has not mounted a `<ToastProvider>`
+ * yet, and a copied link with no toast is a smaller failure than a crashed
+ * feed. Anything whose whole job is the toast should use `useToast()` and get
+ * the loud error.
+ */
+export function useOptionalToast(): ToastContextValue | null {
+  return React.useContext(ToastContext);
+}
+
 export function ToastProvider({ children }: { children?: React.ReactNode }) {
   const [toasts, setToasts] = React.useState<ToastRecord[]>([]);
 
