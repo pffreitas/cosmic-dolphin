@@ -625,41 +625,52 @@ export class BookmarkServiceImpl implements BookmarkService {
   }
 
   private mapDatabaseToBookmark(data: any): Bookmark {
-    return {
-      id: data.id,
-      sourceUrl: data.source_url,
-      title: data.title,
-      metadata: data.metadata,
-      collectionId: data.collection_id,
-      filingSource: data.filing_source ?? "ai",
-      savedFromBookmarkId: data.saved_from_bookmark_id ?? undefined,
-      userId: data.user_id,
-      isArchived: data.is_archived,
-      isFavorite: data.is_favorite,
-      cosmicSummary: data.cosmic_summary,
-      cosmicBriefSummary: data.cosmic_brief_summary,
-      cosmicKeyPoints: data.cosmic_key_points ?? undefined,
-      cosmicTags: data.cosmic_tags,
-      cosmicImages: data.cosmic_images,
-      cosmicLinks: data.cosmic_links,
-      quickAccess: data.quick_access,
-      searchDocument: data.search_document,
-      isPrivateLink: data.is_private_link ?? false,
-      likeCount: data.like_count ?? 0,
-      isPublic: data.is_public ?? false,
-      shareSlug: data.share_slug ?? undefined,
-      readAt: data.read_at ? new Date(data.read_at) : undefined,
-      isRead: data.read_at != null,
-      processingStatus: data.processing_status || "idle",
-      processingStartedAt: data.processing_started_at
-        ? new Date(data.processing_started_at)
-        : undefined,
-      processingCompletedAt: data.processing_completed_at
-        ? new Date(data.processing_completed_at)
-        : undefined,
-      processingError: data.processing_error,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at),
-    };
+    return mapDatabaseRowToBookmark(data);
   }
+}
+
+/**
+ * A bookmark row as the API's `Bookmark`.
+ *
+ * Lifted out of `BookmarkServiceImpl` so the reading service can map the rows
+ * its Continue reading join returns without either depending on the other. The
+ * mapping is pure and has no business being a method.
+ */
+export function mapDatabaseRowToBookmark(data: any): Bookmark {
+  return {
+    id: data.id,
+    sourceUrl: data.source_url,
+    title: data.title,
+    metadata: data.metadata,
+    collectionId: data.collection_id,
+    filingSource: data.filing_source ?? "ai",
+    savedFromBookmarkId: data.saved_from_bookmark_id ?? undefined,
+    userId: data.user_id,
+    isArchived: data.is_archived,
+    isFavorite: data.is_favorite,
+    cosmicSummary: data.cosmic_summary,
+    cosmicBriefSummary: data.cosmic_brief_summary,
+    cosmicKeyPoints: data.cosmic_key_points ?? undefined,
+    cosmicTags: data.cosmic_tags,
+    cosmicImages: data.cosmic_images,
+    cosmicLinks: data.cosmic_links,
+    quickAccess: data.quick_access,
+    searchDocument: data.search_document,
+    isPrivateLink: data.is_private_link ?? false,
+    likeCount: data.like_count ?? 0,
+    isPublic: data.is_public ?? false,
+    shareSlug: data.share_slug ?? undefined,
+    readAt: data.read_at ? new Date(data.read_at) : undefined,
+    isRead: data.read_at != null,
+    processingStatus: data.processing_status || "idle",
+    processingStartedAt: data.processing_started_at
+      ? new Date(data.processing_started_at)
+      : undefined,
+    processingCompletedAt: data.processing_completed_at
+      ? new Date(data.processing_completed_at)
+      : undefined,
+    processingError: data.processing_error,
+    createdAt: new Date(data.created_at),
+    updatedAt: new Date(data.updated_at),
+  };
 }

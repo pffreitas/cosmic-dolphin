@@ -131,6 +131,39 @@ export interface ProfilesTable {
   updated_at: Generated<Date>;
 }
 
+/**
+ * How far into a bookmark a reader got. A cursor, not a history: one row per
+ * (user, bookmark), and `percent` only ever moves up — the guard is on the
+ * upsert in `BookmarkReadingRepository`, not here.
+ *
+ * Distinct from `bookmarks.read_at`, which stays the only record of *read*.
+ */
+export interface BookmarkReadingProgressTable {
+  user_id: string;
+  bookmark_id: string;
+  percent: Generated<number>;
+  scroll_offset: number | null;
+  updated_at: Generated<Date>;
+}
+
+/**
+ * A span of extracted content the reader kept, anchored by quote plus context
+ * rather than by offsets — see `packages/shared/src/highlight-anchor.ts`.
+ *
+ * Private to `user_id` even when the bookmark is public. Every query against
+ * this table is scoped to the reader in SQL.
+ */
+export interface BookmarkHighlightsTable {
+  id: Generated<string>;
+  user_id: string;
+  bookmark_id: string;
+  quote: string;
+  prefix: string | null;
+  suffix: string | null;
+  note: string | null;
+  created_at: Generated<Date>;
+}
+
 export interface BookmarkProcessingRunsTable extends BaseTable {
   bookmark_id: string;
   user_id: string;
@@ -183,6 +216,8 @@ export interface Database {
   profiles: ProfilesTable;
   bookmark_processing_runs: BookmarkProcessingRunsTable;
   bookmark_processing_events: BookmarkProcessingEventsTable;
+  bookmark_reading_progress: BookmarkReadingProgressTable;
+  bookmark_highlights: BookmarkHighlightsTable;
 }
 
 // Type helpers for each table
@@ -225,6 +260,17 @@ export type ProfileUpdate = Updateable<ProfilesTable>;
 export type BookmarkProcessingRun = Selectable<BookmarkProcessingRunsTable>;
 export type NewBookmarkProcessingRun = Insertable<BookmarkProcessingRunsTable>;
 export type BookmarkProcessingRunUpdate = Updateable<BookmarkProcessingRunsTable>;
+
+export type BookmarkReadingProgressRow =
+  Selectable<BookmarkReadingProgressTable>;
+export type NewBookmarkReadingProgress =
+  Insertable<BookmarkReadingProgressTable>;
+export type BookmarkReadingProgressUpdate =
+  Updateable<BookmarkReadingProgressTable>;
+
+export type BookmarkHighlightRow = Selectable<BookmarkHighlightsTable>;
+export type NewBookmarkHighlight = Insertable<BookmarkHighlightsTable>;
+export type BookmarkHighlightUpdate = Updateable<BookmarkHighlightsTable>;
 
 export type BookmarkProcessingEvent = Selectable<BookmarkProcessingEventsTable>;
 export type NewBookmarkProcessingEvent =

@@ -6,6 +6,7 @@ import "./notes.tsp";
 import "./pipeline.tsp";
 import "./bookmarks.tsp";
 import "./collections.tsp";
+import "./reading.tsp";
 import "./search.tsp";
 
 using TypeSpec.Http;

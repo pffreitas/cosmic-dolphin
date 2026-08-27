@@ -68,6 +68,20 @@ export const RATE_LIMITS = {
   // a retry loop would otherwise walk straight through the daily processing
   // budget — which deliberately does not refuse an explicit reprocess. This is
   // the guard rail on that exception, not a second budget.
+  // Reading progress is the only endpoint a client writes to on a timer, so
+  // it is the only one where a bug in the client — a throttle that resets on
+  // every render, a retry loop on a 404 — turns into sustained write load
+  // without anyone noticing. The product limit is the 5-second client throttle
+  // (`PROGRESS_WRITE_INTERVAL_MS`); this is the ceiling that keeps a broken
+  // client from becoming an incident, set an order of magnitude above what a
+  // person reading several things at once can legitimately generate.
+  progress: {
+    name: "progress",
+    max: envInt("RATE_LIMIT_PROGRESS_MAX", 300),
+    timeWindow: process.env.RATE_LIMIT_PROGRESS_WINDOW ?? "5 minutes",
+    message: (retryIn) =>
+      `Too many reading-progress updates. Try again in ${retryIn}.`,
+  },
   reprocess: {
     name: "reprocess",
     max: envInt("RATE_LIMIT_REPROCESS_MAX", 30),

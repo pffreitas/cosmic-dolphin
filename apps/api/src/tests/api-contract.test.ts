@@ -20,4 +20,30 @@ describe("API contract", () => {
     expect(bookmarkModel).toContain("createdAt: utcDateTime;");
     expect(bookmarkModel).toContain("updatedAt: utcDateTime;");
   });
+
+  it("anchors highlights on quote and context, never on offsets", async () => {
+    // The contract is where this rule has to hold: a client cannot send an
+    // offset it has nowhere to put. If a `startOffset` ever appears in this
+    // model, re-extraction starts silently moving highlights onto the wrong
+    // sentence and nothing else in the system will notice.
+    const typeSpec = await Bun.file(
+      repoPath("packages/apispec/reading.tsp")
+    ).text();
+    const highlight = typeSpec.match(/model Highlight \{[\s\S]*?\n\}/)?.[0];
+
+    expect(highlight).toContain("quote: string;");
+    expect(highlight).toContain("prefix?: string;");
+    expect(highlight).toContain("suffix?: string;");
+    expect(highlight).not.toMatch(/offset/i);
+  });
+
+  it("keeps reading progress on its own routes, not folded into Bookmark", async () => {
+    const reading = await Bun.file(
+      repoPath("packages/apispec/reading.tsp")
+    ).text();
+
+    expect(reading).toContain('@route("/{id}/progress")');
+    expect(reading).toContain('@route("/continue-reading")');
+    expect(reading).toContain('@route("/{id}/highlights")');
+  });
 });

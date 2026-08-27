@@ -13,6 +13,7 @@ export * from "./bookmark.model-ids";
 export * from "./chunking.service";
 export * from "./embedding.service";
 export * from "./search.service";
+export * from "./reading.service";
 export * from "./http-client";
 
 import {
@@ -28,6 +29,7 @@ import {
 import { CollectionService, CollectionServiceImpl } from "./collection.service";
 import { ProfileService, ProfileServiceImpl } from "./profile.service";
 import { SearchService, SearchServiceImpl } from "./search.service";
+import { ReadingService, ReadingServiceImpl } from "./reading.service";
 import {
   ProcessingBudgetService,
   ProcessingBudgetServiceImpl,
@@ -43,6 +45,7 @@ import {
   ProfileRepositoryImpl,
   BookmarkProcessingRepository,
   BookmarkProcessingRepositoryImpl,
+  BookmarkReadingRepositoryImpl,
 } from "../repositories";
 import { AI } from "../ai";
 
@@ -56,6 +59,7 @@ export interface ServiceContainer {
   search: SearchService;
   bookmarkProcessing: BookmarkProcessingRepository;
   processingBudget: ProcessingBudgetService;
+  reading: ReadingService;
 }
 
 export function createServiceContainer(
@@ -68,6 +72,7 @@ export function createServiceContainer(
   const collectionRepository = new CollectionRepositoryImpl(db);
   const profileRepository = new ProfileRepositoryImpl(db);
   const bookmarkProcessingRepository = new BookmarkProcessingRepositoryImpl(db);
+  const bookmarkReadingRepository = new BookmarkReadingRepositoryImpl(db);
 
   const ai = new AI();
   const embeddingService = new EmbeddingServiceImpl();
@@ -93,5 +98,6 @@ export function createServiceContainer(
     processingBudget: new ProcessingBudgetServiceImpl(
       bookmarkProcessingRepository
     ),
+    reading: new ReadingServiceImpl(bookmarkReadingRepository),
   };
 }

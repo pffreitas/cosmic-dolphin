@@ -6,6 +6,7 @@ import { config } from './config/environment';
 import { registerRateLimiting } from './plugins/rate-limit';
 import bookmarkRoutes from './routes/bookmarks';
 import collectionRoutes from './routes/collections';
+import readingRoutes from './routes/reading';
 import searchRoutes from './routes/search';
 import profileRoutes from './routes/profile';
 
@@ -57,6 +58,7 @@ server.register(async function (fastify) {
   // Register routes with /api/v1 prefix
   await fastify.register(bookmarkRoutes, { prefix: '/api/v1' });
   await fastify.register(collectionRoutes, { prefix: '/api/v1' });
+  await fastify.register(readingRoutes, { prefix: '/api/v1' });
   await fastify.register(searchRoutes, { prefix: '/api/v1' });
   await fastify.register(profileRoutes, { prefix: '/api/v1' });
 });

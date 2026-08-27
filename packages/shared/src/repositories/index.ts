@@ -33,3 +33,9 @@ export {
   ProfileRepository,
   ProfileRepositoryImpl,
 } from "./profile.repository";
+export {
+  BookmarkReadingRepositoryImpl,
+  IN_PROGRESS_MIN_PERCENT,
+  IN_PROGRESS_MAX_PERCENT,
+} from "./bookmark-reading.repository";
+export type { BookmarkReadingRepository } from "./bookmark-reading.repository";

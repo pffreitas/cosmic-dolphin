@@ -96,7 +96,11 @@ function getApiBasePath(): string {
   return basePath;
 }
 
-async function getConfiguration(): Promise<Configuration> {
+/**
+ * Exported so sibling clients (`reading-client.ts`) share one place that knows
+ * the base path and how to get a token, rather than each growing its own copy.
+ */
+export async function getConfiguration(): Promise<Configuration> {
   const accessToken = await getAccessToken();
 
   return new Configuration({

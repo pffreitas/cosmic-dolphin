@@ -242,6 +242,65 @@ export interface Bookmark extends BaseEntity {
   processingError?: string;
 }
 
+/**
+ * How far into a bookmark the reader has got.
+ *
+ * Deliberately not part of `Bookmark`: progress is written far more often than
+ * a bookmark is read, and folding it into the bookmark row would make every
+ * library query join a table that only the reader and the Home rail care
+ * about.
+ */
+export interface ReadingProgress {
+  bookmarkId: string;
+  /** 0–100. Monotonic — see `SaveReadingProgressResult.accepted`. */
+  percent: number;
+  scrollOffset?: number;
+  updatedAt: Date;
+}
+
+export interface SaveReadingProgressResult {
+  progress: ReadingProgress;
+  /**
+   * False when the submitted percent was below what is already stored, and the
+   * stored value was kept. Not an error: a reader scrolling back up has not
+   * un-read anything. The client uses it to stop resending a stale value.
+   */
+  accepted: boolean;
+}
+
+/** A bookmark the reader is part-way through, for Home's Continue reading rail. */
+export interface ContinueReadingItem {
+  bookmark: Bookmark;
+  progress: ReadingProgress;
+}
+
+/**
+ * A span of extracted content the reader kept.
+ *
+ * `quote`/`prefix`/`suffix` are the anchor — never offsets. Resolution against
+ * the current extraction lives in `highlight-anchor.ts`, so a re-extraction
+ * moves a highlight instead of orphaning it.
+ *
+ * Private to `userId` even when the bookmark is public.
+ */
+export interface Highlight {
+  id: string;
+  bookmarkId: string;
+  userId: string;
+  quote: string;
+  prefix?: string;
+  suffix?: string;
+  note?: string;
+  createdAt: Date;
+}
+
+export interface CreateHighlightRequest {
+  quote: string;
+  prefix?: string;
+  suffix?: string;
+  note?: string;
+}
+
 // TODO rename to ScrapedContent
 export interface ScrapedUrlContents extends BaseEntity {
   bookmarkId: string;
