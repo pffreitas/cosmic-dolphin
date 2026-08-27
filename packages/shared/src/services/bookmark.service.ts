@@ -22,6 +22,17 @@ export interface PrivateLinkMetadata {
   description?: string;
   tags?: string[];
   collectionId?: string;
+  /** The URL exactly as the user pasted it, before normalisation. */
+  originalUrl?: string;
+}
+
+export interface CreateBookmarkOptions {
+  /**
+   * The URL exactly as the user pasted it. Stored in `metadata.originalUrl`;
+   * defaults to the normalised URL when the paste was already normal.
+   */
+  originalUrl?: string;
+  collectionId?: string;
 }
 
 export interface BookmarkService {
@@ -32,7 +43,12 @@ export interface BookmarkService {
     userId: string
   ): Promise<{ bookmark: Bookmark; isLikedByCurrentUser: boolean } | null>;
   getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
-  create(url: string, userId: string): Promise<Bookmark>;
+  create(
+    url: string,
+    userId: string,
+    options?: CreateBookmarkOptions
+  ): Promise<Bookmark>;
+  ensureScrapedContent(bookmark: Bookmark): Promise<ScrapedUrlContents | null>;
   createPrivateLink(
     url: string,
     userId: string,
@@ -102,24 +118,92 @@ export class BookmarkServiceImpl implements BookmarkService {
     return { bookmark, isLikedByCurrentUser: result.isLikedByCurrentUser };
   }
 
-  async create(url: string, userId: string): Promise<Bookmark> {
-    const scrapedUrlContents = await this.webScrapingService.scrape(url);
+  /**
+   * Write the row and return. Nothing here touches the network.
+   *
+   * Saving never blocks (docs/functional-spec/02-capture.md): the page fetch
+   * used to happen here, inline, which put a third-party server's latency on
+   * the critical path of the single most-used action in the product. It now
+   * happens in the worker via `ensureScrapedContent`, and the only metadata
+   * this writes is what can be derived from the URL string itself — a
+   * provisional title from the path, a favicon guess from the host — so the
+   * row is legible the instant it exists.
+   *
+   * `url` is expected to be normalised already; `originalUrl` is the paste.
+   */
+  async create(
+    url: string,
+    userId: string,
+    options: CreateBookmarkOptions = {}
+  ): Promise<Bookmark> {
+    const urlMetadata = this.webScrapingService.extractMetadataFromUrl(url);
+    const provisionalTitle = urlMetadata.title || url;
+
+    const metadata: BookmarkMetadata = {
+      openGraph: {
+        title: provisionalTitle,
+        favicon: urlMetadata.favicon,
+        site_name: urlMetadata.siteName,
+        url,
+      },
+      originalUrl: options.originalUrl ?? url,
+    };
 
     const newBookmark: NewBookmark = {
       source_url: url,
-      title: scrapedUrlContents.title,
-      metadata: scrapedUrlContents.metadata,
+      title: provisionalTitle,
+      metadata,
       user_id: userId,
-      quick_access: `${scrapedUrlContents.title} ${url}`,
+      collection_id: options.collectionId || null,
+      quick_access: `${provisionalTitle} ${url}`,
     };
 
     const bookmark = await this.bookmarkRepository.create(newBookmark);
-    await this.bookmarkRepository.insertScrapedUrlContents(
-      bookmark.id,
-      scrapedUrlContents
-    );
 
     return this.mapDatabaseToBookmark(bookmark);
+  }
+
+  /**
+   * Fetch the page if it has not been fetched yet, and fold what came back
+   * into the bookmark.
+   *
+   * Called by the pipeline, never by the create path. Idempotent: a reprocess
+   * or a redelivered queue message reuses the content already on disk rather
+   * than hitting the origin again.
+   */
+  async ensureScrapedContent(
+    bookmark: Bookmark
+  ): Promise<ScrapedUrlContents | null> {
+    const existing = await this.bookmarkRepository.getScrapedUrlContent(
+      bookmark.id
+    );
+    if (existing) return existing;
+
+    const scraped = await this.webScrapingService.scrape(bookmark.sourceUrl);
+    await this.bookmarkRepository.insertScrapedUrlContents(
+      bookmark.id,
+      scraped
+    );
+
+    // The provisional title and the URL-derived favicon were placeholders.
+    // Now that the real page has been read, replace them — but keep
+    // `originalUrl`, which the scrape knows nothing about.
+    const metadata: BookmarkMetadata = {
+      ...scraped.metadata,
+      originalUrl: bookmark.metadata?.originalUrl,
+    };
+    const title = scraped.title || bookmark.title || bookmark.sourceUrl;
+
+    await this.bookmarkRepository.update(bookmark.id, {
+      title,
+      metadata,
+      quick_access: `${title} ${bookmark.sourceUrl}`,
+    });
+
+    bookmark.title = title;
+    bookmark.metadata = metadata;
+
+    return this.bookmarkRepository.getScrapedUrlContent(bookmark.id);
   }
 
   async createPrivateLink(
@@ -144,7 +228,9 @@ export class BookmarkServiceImpl implements BookmarkService {
     const privateLinkData = this.buildPrivateLinkBookmarkData(
       bookmark.sourceUrl,
       bookmark.userId,
-      metadata,
+      // The paste that created this row is already recorded; converting it to
+      // a private link must not overwrite it with the normalised form.
+      { ...metadata, originalUrl: metadata.originalUrl ?? bookmark.metadata?.originalUrl },
       bookmark.title
     );
     const { source_url, user_id, ...updateData } = privateLinkData;
@@ -181,6 +267,7 @@ export class BookmarkServiceImpl implements BookmarkService {
         userDescription: description,
         userProvidedTitle: metadata.title,
       },
+      originalUrl: metadata.originalUrl ?? url,
     };
 
     return {

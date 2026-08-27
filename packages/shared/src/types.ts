@@ -77,6 +77,12 @@ export interface BookmarkMetadata {
   openGraph?: OpenGraphMetadata;
   wordCount?: number;
   readingTime?: number;
+  /**
+   * The URL exactly as the user pasted it. `sourceUrl` holds the normalised
+   * form — see `normalizeUrl`. The paste is evidence and is never rewritten
+   * out of existence.
+   */
+  originalUrl?: string;
   privateLink?: {
     userDescription: string;
     userProvidedTitle?: string;
@@ -262,6 +268,11 @@ export interface PreviewResponse {
 export interface CreateBookmarkResponse {
   bookmark: Bookmark;
   message: string;
+  /**
+   * The user already had this URL. The bookmark is the existing one — nothing
+   * was created and nothing was re-queued. A duplicate paste is not an error.
+   */
+  alreadySaved?: boolean;
 }
 
 export interface GetBookmarksQuery {

@@ -14,10 +14,12 @@ import {
   BookmarkProcessingTimeline,
   Collection,
   createDatabase,
+  normalizeUrl,
 } from "@cosmic-dolphin/shared";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "../config/environment";
 import { authMiddleware } from "../middleware/auth";
+import { RATE_LIMITS, rateLimited } from "../plugins/rate-limit";
 
 export type CreateBookmarkValidationResult =
   | { ok: true }
@@ -137,7 +139,12 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     Reply: CreateBookmarkResponse | { error: string };
   }>(
     "/bookmarks",
-    { preHandler: authMiddleware },
+    {
+      preHandler: authMiddleware,
+      // 100 saves a day, per user. 429 with `Retry-After` — the client keeps
+      // the URL in the field and shows the wait.
+      config: rateLimited(RATE_LIMITS.saves),
+    },
     async (
       request: FastifyRequest<{ Body: Omit<CreateBookmarkRequest, "user_id"> }>,
       reply: FastifyReply
@@ -165,9 +172,15 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           });
         }
 
+        // Normalise once, here, and key everything below off the result. The
+        // dedupe check, the insert and the queue message all have to agree on
+        // one string or the unique index and the "already saved" answer drift
+        // apart.
+        const { url: normalizedUrl, originalUrl } = normalizeUrl(source_url);
+
         const existingBookmark = await services.bookmark.findByUserAndUrl(
           user_id,
-          source_url
+          normalizedUrl
         );
         if (existingBookmark) {
           if (is_private_link) {
@@ -178,6 +191,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
                 description,
                 tags,
                 collectionId: collection_id,
+                originalUrl,
               }
             );
             const queuedBookmark = await queueBookmarkForProcessing(
@@ -185,7 +199,6 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
               bookmark,
               user_id,
               (queueError) => {
-                console.log("queueError", queueError);
                 fastify.log.error({ queueError }, "Queue post error");
               }
             );
@@ -195,21 +208,26 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
             });
           }
 
-          return reply.status(201).send({
+          // Pasting the same link twice is not an error. Hand back the row the
+          // user already has and let the client toast "Already in your
+          // library" with a link to it — no 409, and nothing re-queued.
+          return reply.status(200).send({
             bookmark: existingBookmark,
-            message: "Bookmark created successfully",
+            alreadySaved: true,
+            message: "Already in your library",
           });
         }
 
         if (is_private_link) {
           const bookmark = await services.bookmark.createPrivateLink(
-            source_url,
+            normalizedUrl,
             user_id,
             {
               title,
               description,
               tags,
               collectionId: collection_id,
+              originalUrl,
             }
           );
           const queuedBookmark = await queueBookmarkForProcessing(
@@ -217,7 +235,6 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
             bookmark,
             user_id,
             (queueError) => {
-              console.log("queueError", queueError);
               fastify.log.error({ queueError }, "Queue post error");
             }
           );
@@ -227,14 +244,19 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           });
         }
 
-        const bookmark = await services.bookmark.create(source_url, user_id);
+        // Two writes and a queue message. No fetch, no extraction, no model
+        // call — every one of those happens in the worker, on a row the user
+        // already has on screen. See docs/functional-spec/02-capture.md.
+        const bookmark = await services.bookmark.create(normalizedUrl, user_id, {
+          originalUrl,
+          collectionId: collection_id,
+        });
 
         const queuedBookmark = await queueBookmarkForProcessing(
           services,
           bookmark,
           user_id,
           (queueError) => {
-            console.log("queueError", queueError);
             fastify.log.error({ queueError }, "Queue post error");
           }
         );
@@ -244,33 +266,12 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           message: "Bookmark created successfully",
         });
       } catch (error) {
+        // The 408 and 422 branches that used to live here mapped scraping
+        // failures — a timeout, a bad content type, an unreadable page. This
+        // handler no longer scrapes, so an unreachable host is now a failed
+        // `fetch` phase on a bookmark the user already has, not a rejected
+        // save. See docs/functional-spec/02-capture.md § Failure.
         fastify.log.error({ error }, "Bookmark creation error");
-        fastify.log.error(error);
-
-        if (error instanceof Error) {
-          if (
-            error.message.includes("timeout") ||
-            error.message.includes("Request timeout")
-          ) {
-            return reply.status(408).send({ error: "URL request timeout" });
-          }
-
-          if (error.message.includes("HTTP")) {
-            return reply
-              .status(422)
-              .send({ error: `URL not accessible: ${error.message}` });
-          }
-
-          if (error.message.includes("Unsupported content type")) {
-            return reply.status(422).send({ error: error.message });
-          }
-
-          if (error.message.includes("Scraped content is not usable")) {
-            return reply
-              .status(422)
-              .send({ error: `URL not accessible: ${error.message}` });
-          }
-        }
 
         return reply.status(500).send({ error: "Internal server error" });
       }

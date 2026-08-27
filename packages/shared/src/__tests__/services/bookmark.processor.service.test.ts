@@ -46,6 +46,7 @@ describe("BookmarkProcessorService", () => {
       findByIdAndUser: jest.fn(),
       findByIdAndUserWithLikeStatus: jest.fn(),
       getScrapedUrlContent: jest.fn(),
+      ensureScrapedContent: jest.fn(),
       update: jest.fn(),
       updateProcessingStatus: jest.fn(),
       create: jest.fn(),
@@ -315,6 +316,10 @@ describe("BookmarkProcessorService", () => {
       };
 
       mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(
+        testScrapedContent
+      );
+      // `chunkContent` re-reads the persisted row for its id.
       mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
         testScrapedContent
       );
@@ -346,8 +351,8 @@ describe("BookmarkProcessorService", () => {
         testBookmark.id,
         testBookmark.userId
       );
-      expect(mockBookmarkService.getScrapedUrlContent).toHaveBeenCalledWith(
-        testBookmark.id
+      expect(mockBookmarkService.ensureScrapedContent).toHaveBeenCalledWith(
+        testBookmark
       );
       expect(mockAI.newSession).toHaveBeenCalledWith(testBookmark.id);
       expect(mockBookmarkProcessingRepository.createRun).toHaveBeenCalledWith(
@@ -373,6 +378,10 @@ describe("BookmarkProcessorService", () => {
       };
 
       mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(
+        testScrapedContent
+      );
+      // `chunkContent` re-reads the persisted row for its id.
       mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
         testScrapedContent
       );
@@ -428,13 +437,25 @@ describe("BookmarkProcessorService", () => {
         service.process("non-existent-id", "user-id")
       ).rejects.toThrow("Bookmark not found: non-existent-id");
 
-      expect(mockBookmarkService.getScrapedUrlContent).not.toHaveBeenCalled();
+      expect(mockBookmarkService.ensureScrapedContent).not.toHaveBeenCalled();
       expect(mockAI.newSession).not.toHaveBeenCalled();
     });
 
-    it("should throw error when scraped content is not found", async () => {
+    it("fails the fetch phase when the page cannot be read", async () => {
+      // The fetch is the pipeline's first phase now, not the API's — the row
+      // already exists, so an unreachable host is a failed phase inside a run
+      // rather than a save that never happened.
+      const mockSession: Session = {
+        sessionID: "test-session-id",
+        refID: testBookmark.id,
+      };
+
       mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
-      mockBookmarkService.getScrapedUrlContent.mockResolvedValue(null);
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(
+        testBookmark
+      );
+      mockAI.newSession.mockResolvedValue(mockSession);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(null);
 
       await expect(
         service.process(testBookmark.id, testBookmark.userId)
@@ -444,10 +465,26 @@ describe("BookmarkProcessorService", () => {
         testBookmark.id,
         testBookmark.userId
       );
-      expect(mockBookmarkService.getScrapedUrlContent).toHaveBeenCalledWith(
-        testBookmark.id
+      expect(mockBookmarkService.ensureScrapedContent).toHaveBeenCalledWith(
+        testBookmark
       );
-      expect(mockAI.newSession).not.toHaveBeenCalled();
+      expect(mockBookmarkService.updateProcessingStatus).toHaveBeenCalledWith(
+        testBookmark.id,
+        "failed",
+        `Scraped url content not found: ${testBookmark.id}`
+      );
+      expect(
+        mockBookmarkProcessingRepository.createEvent.mock.calls.map(
+          ([event]) => event.phase
+        )
+      ).toContain("fetch");
+      expect(mockBookmarkProcessingRepository.updateEvent).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          status: "failed",
+          error: `Scraped url content not found: ${testBookmark.id}`,
+        })
+      );
     });
 
     it("should enrich private links without scraped content or chunks", async () => {
@@ -535,7 +572,7 @@ describe("BookmarkProcessorService", () => {
 
       await service.process(privateBookmark.id, privateBookmark.userId);
 
-      expect(mockBookmarkService.getScrapedUrlContent).not.toHaveBeenCalled();
+      expect(mockBookmarkService.ensureScrapedContent).not.toHaveBeenCalled();
       expect(mockContentChunkRepository.createTextChunk).not.toHaveBeenCalled();
       expect(mockContentChunkRepository.updateTextChunkEmbedding).not.toHaveBeenCalled();
 
@@ -571,6 +608,10 @@ describe("BookmarkProcessorService", () => {
       };
 
       mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(
+        testScrapedContent
+      );
+      // `chunkContent` re-reads the persisted row for its id.
       mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
         testScrapedContent
       );
@@ -589,8 +630,8 @@ describe("BookmarkProcessorService", () => {
       await service.process(testBookmark.id, testBookmark.userId);
 
       // Verify that the service was called with correct parameters
-      expect(mockBookmarkService.getScrapedUrlContent).toHaveBeenCalledWith(
-        testBookmark.id
+      expect(mockBookmarkService.ensureScrapedContent).toHaveBeenCalledWith(
+        testBookmark
       );
       expect(mockBookmarkProcessingRepository.createRun).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -615,6 +656,10 @@ describe("BookmarkProcessorService", () => {
       };
 
       mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(
+        testScrapedContent
+      );
+      // `chunkContent` re-reads the persisted row for its id.
       mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
         testScrapedContent
       );
@@ -654,6 +699,10 @@ describe("BookmarkProcessorService", () => {
       };
 
       mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(
+        testScrapedContent
+      );
+      // `chunkContent` re-reads the persisted row for its id.
       mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
         testScrapedContent
       );
@@ -692,6 +741,10 @@ describe("BookmarkProcessorService", () => {
 
     it("marks the bookmark failed when the durable timeline cannot start", async () => {
       mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(
+        testScrapedContent
+      );
+      // `chunkContent` re-reads the persisted row for its id.
       mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
         testScrapedContent
       );
@@ -737,6 +790,10 @@ describe("BookmarkProcessorService", () => {
       };
 
       mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(
+        testScrapedContent
+      );
+      // `chunkContent` re-reads the persisted row for its id.
       mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
         testScrapedContent
       );

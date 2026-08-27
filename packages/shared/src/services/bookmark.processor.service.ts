@@ -87,12 +87,6 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
 
     let bookmark = existingBookmark;
     const isPrivateLink = bookmark.isPrivateLink;
-    const content = isPrivateLink
-      ? null
-      : await this.bookmarkService.getScrapedUrlContent(bookmark.id);
-    if (!isPrivateLink && !content) {
-      throw new Error(`Scraped url content not found: ${bookmark.id}`);
-    }
 
     // Update processing status to 'processing'
     bookmark = await this.bookmarkService.updateProcessingStatus(
@@ -125,7 +119,23 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         return;
       }
 
-      const scrapedContent = content!;
+      // Fetching the page is the pipeline's first phase, not the API's.
+      // `POST /bookmarks` used to await this before replying, which put a
+      // third-party server on the critical path of every save. Doing it here
+      // means an unreachable host is a failed phase on a row the user already
+      // has — the bookmark and the URL survive, which is the whole point.
+      const scrapedContent = await reporter.trackPhase(
+        "fetch",
+        "Fetch page",
+        async () => {
+          const fetched =
+            await this.bookmarkService.ensureScrapedContent(bookmark);
+          if (!fetched) {
+            throw new Error(`Scraped url content not found: ${bookmark.id}`);
+          }
+          return fetched;
+        }
+      );
 
       // Start independent AI tasks in parallel to minimize total processing time
       const summaryPromise = reporter.trackPhase(

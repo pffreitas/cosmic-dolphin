@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Link as LinkIcon, Loader2 } from "lucide-react";
-import { PreviewResponse } from "@cosmic-dolphin/api-client";
+import { Link as LinkIcon } from "lucide-react";
+import type { PreviewResponse } from "@cosmic-dolphin/api-client";
+
 import {
   Dialog,
   DialogContent,
@@ -14,66 +14,109 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
-import { createBookmark, clearErrors } from "@/lib/store/slices/bookmarksSlice";
-import { buildPrivateLinkCreateRequest } from "./private-link-payload";
+import { useAppDispatch } from "@/lib/store/hooks";
+import {
+  clearErrors,
+  previewUrl,
+  saveCapture,
+} from "@/lib/store/slices/bookmarksSlice";
+import { buildPrivateLinkCapture } from "./private-link-payload";
+import { useCaptureToast } from "./capture-toast";
 
 interface PrivateLinkDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The URL the user typed. Everything here works from this alone. */
   url: string;
-  previewData: PreviewResponse;
 }
 
+/**
+ * Save a link behind a login — docs/functional-spec/02-capture.md
+ * § Private links.
+ *
+ * The dialog is built from the URL and nothing else. `POST /bookmarks/preview`
+ * is fired when the dialog opens and is **never awaited**: a private link is by
+ * definition one the fetcher may not be able to read, so a preview is a bonus.
+ * If it lands while the note is being written it contributes a real title; if
+ * it never lands, the save is identical.
+ *
+ * Saving does not block either. The dialog closes the moment Save is pressed,
+ * the optimistic row is already on screen behind it, and the outcome arrives as
+ * a toast. The single exception is a 429: the note and the URL are too
+ * expensive to lose, so the dialog comes back with both and shows the wait.
+ */
 export default function PrivateLinkDialog({
   open,
   onOpenChange,
   url,
-  previewData,
 }: PrivateLinkDialogProps) {
   const dispatch = useAppDispatch();
-  const router = useRouter();
-  const createLoading = useAppSelector(
-    (state) => state.bookmarks.createLoading
-  );
+  const announce = useCaptureToast();
 
   const [description, setDescription] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<PreviewResponse | null>(null);
 
+  // Keyed on the URL, not on `open`: a 429 re-opens this dialog and the note
+  // the user already wrote has to survive that.
   useEffect(() => {
-    if (open) {
-      setDescription("");
-      setSaveError(null);
-    }
-  }, [open]);
+    setDescription("");
+    setSaveError(null);
+    setPreview(null);
+
+    if (!url) return;
+
+    let live = true;
+    void dispatch(previewUrl(url))
+      .then((result) => {
+        if (live && previewUrl.fulfilled.match(result)) {
+          setPreview(result.payload as PreviewResponse);
+        }
+      })
+      .catch(() => {
+        // Expected, often: the page is behind a login. Nothing is lost.
+      });
+
+    return () => {
+      live = false;
+    };
+  }, [url, dispatch]);
 
   const handleSave = async () => {
     dispatch(clearErrors());
     setSaveError(null);
 
     if (!description.trim()) {
-      setSaveError("Add a brief description so this private link is findable later.");
+      setSaveError(
+        "Add a brief description so this private link is findable later."
+      );
       return;
     }
 
-    const result = await dispatch(
-      createBookmark(
-        buildPrivateLinkCreateRequest({
-          url,
-          previewData,
-          description,
-        })
-      )
-    );
+    const capture = buildPrivateLinkCapture({ url, preview, description });
 
-    if (createBookmark.fulfilled.match(result)) {
-      onOpenChange(false);
-      const bookmarkId = result.payload;
-      router.push(`/bookmarks/${bookmarkId}`);
-    } else if (createBookmark.rejected.match(result)) {
-      setSaveError(result.payload as string);
+    // Closed before the request is answered. The row is already on screen.
+    onOpenChange(false);
+
+    const result = await dispatch(saveCapture(capture));
+
+    if (saveCapture.fulfilled.match(result)) {
+      announce(result.payload);
+      setDescription("");
+      return;
     }
+
+    if (result.payload?.retryIn) {
+      setSaveError(
+        `${result.payload.error} Your link and note are still here — try again in ${result.payload.retryIn}.`
+      );
+      onOpenChange(true);
+    }
+    // Every other failure is an inline error with Retry on the row itself,
+    // and the row carries the note through the retry.
   };
+
+  const errorId = "private-link-error";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -89,19 +132,24 @@ export default function PrivateLinkDialog({
 
         <div className="-mx-1 flex-1 space-y-4 overflow-y-auto px-1 py-2">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-muted-foreground">
+            <p className="font-sans text-sm font-medium text-fg-secondary">
               Link
-            </label>
-            <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2">
-              <LinkIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="truncate text-sm">{url}</span>
+            </p>
+            <div className="flex items-center gap-2 rounded-md border border-line bg-bg-subtle px-3 py-2">
+              <LinkIcon
+                aria-hidden="true"
+                className="size-4 shrink-0 text-fg-tertiary"
+              />
+              <span className="truncate font-sans text-sm text-fg">
+                {preview?.metadata.title || url}
+              </span>
             </div>
           </div>
 
           <div className="space-y-1.5">
             <label
               htmlFor="private-link-description"
-              className="text-sm font-medium"
+              className="font-sans text-sm font-medium text-fg"
             >
               Brief description
             </label>
@@ -111,31 +159,36 @@ export default function PrivateLinkDialog({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is this link, and why will you need it?"
               rows={3}
+              aria-invalid={Boolean(saveError)}
+              aria-describedby={saveError ? errorId : undefined}
             />
           </div>
 
-          {saveError && (
-            <div className="text-sm text-red-600">{saveError}</div>
-          )}
+          {saveError ? (
+            <p
+              id={errorId}
+              className="font-sans text-[12.5px] leading-[1.4] text-[color:var(--cd-danger)]"
+            >
+              {saveError}
+            </p>
+          ) : null}
         </div>
 
         <DialogFooter>
           <Button
-            variant="outline"
+            type="button"
+            variant="ghost"
             onClick={() => onOpenChange(false)}
-            disabled={createLoading}
           >
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={createLoading || !description.trim()}>
-            {createLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save"
-            )}
+          <Button
+            type="button"
+            variant="primary"
+            onClick={handleSave}
+            disabled={!description.trim()}
+          >
+            Save
           </Button>
         </DialogFooter>
       </DialogContent>

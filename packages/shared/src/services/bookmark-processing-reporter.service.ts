@@ -14,6 +14,13 @@ import {
 type BookmarkProcessingReporterRepository = BookmarkProcessingRepositoryContract;
 
 export type BookmarkProcessingPhaseName =
+  // Fetching the page is the pipeline's first phase. It used to happen inside
+  // `POST /bookmarks`, where it had no timeline entry because it ran before
+  // the run started; it is a phase now, so an unreachable host shows as a
+  // failed step on a row the user already has. Named for the spec's
+  // vocabulary (docs/functional-spec/03-ai-pipeline.md), which the rest of
+  // this union is renamed to in D5.
+  | "fetch"
   | "private_link_enrichment"
   | "summarization"
   | "brief_summary"

@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import env from '@fastify/env';
 import { config } from './config/environment';
+import { registerRateLimiting } from './plugins/rate-limit';
 import bookmarkRoutes from './routes/bookmarks';
 import searchRoutes from './routes/search';
 import profileRoutes from './routes/profile';
@@ -25,6 +26,9 @@ server.register(cors, {
 });
 
 server.register(helmet);
+
+// Before the routes: the limiter attaches itself through an onRoute hook.
+registerRateLimiting(server);
 
 server.register(env, {
   dotenv: true,
@@ -58,7 +62,7 @@ server.register(async function (fastify) {
 // Start server
 const start = async () => {
   try {
-    await server.listen({ 
+    await server.listen({
       port: config.PORT, 
       host: config.HOST 
     });

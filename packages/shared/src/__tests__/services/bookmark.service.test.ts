@@ -99,6 +99,205 @@ describe("BookmarkService", () => {
     });
   });
 
+  describe("create", () => {
+    const URL = "https://every.to/p/agent-memory";
+
+    function stubUrlMetadata() {
+      mockWebScrapingService.extractMetadataFromUrl.mockReturnValue({
+        title: "Agent Memory",
+        favicon: "https://every.to/favicon.ico",
+        siteName: "Every",
+        url: URL,
+      });
+    }
+
+    function createdRow(overrides: Record<string, unknown> = {}) {
+      const now = new Date();
+      return {
+        id: "new-bookmark-id",
+        source_url: URL,
+        title: "Agent Memory",
+        metadata: {},
+        collection_id: null,
+        user_id: testUserId,
+        is_archived: false,
+        is_favorite: false,
+        cosmic_summary: null,
+        cosmic_brief_summary: null,
+        cosmic_tags: null,
+        cosmic_images: null,
+        cosmic_links: null,
+        quick_access: null,
+        search_document: null,
+        is_private_link: false,
+        is_public: false,
+        share_slug: null,
+        like_count: 0,
+        processing_status: "idle",
+        processing_started_at: null,
+        processing_completed_at: null,
+        processing_error: null,
+        created_at: now,
+        updated_at: now,
+        ...overrides,
+      } as any;
+    }
+
+    it("never fetches the page — saving must not block on a third party", async () => {
+      stubUrlMetadata();
+      mockRepository.create.mockResolvedValue(createdRow());
+
+      await service.create(URL, testUserId);
+
+      expect(mockWebScrapingService.scrape).not.toHaveBeenCalled();
+      expect(mockRepository.insertScrapedUrlContents).not.toHaveBeenCalled();
+    });
+
+    it("stores the paste in metadata.originalUrl and the normalised URL in source_url", async () => {
+      stubUrlMetadata();
+      mockRepository.create.mockResolvedValue(createdRow());
+
+      await service.create(URL, testUserId, {
+        originalUrl: "https://Every.to/p/agent-memory/?utm_source=twitter",
+      });
+
+      expect(mockRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source_url: URL,
+          user_id: testUserId,
+          metadata: expect.objectContaining({
+            originalUrl: "https://Every.to/p/agent-memory/?utm_source=twitter",
+          }),
+        })
+      );
+    });
+
+    it("falls back to the normalised URL when there was no separate paste", async () => {
+      stubUrlMetadata();
+      mockRepository.create.mockResolvedValue(createdRow());
+
+      await service.create(URL, testUserId);
+
+      expect(mockRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: expect.objectContaining({ originalUrl: URL }),
+        })
+      );
+    });
+
+    it("writes a provisional title and favicon derived from the URL alone", async () => {
+      stubUrlMetadata();
+      mockRepository.create.mockResolvedValue(createdRow());
+
+      await service.create(URL, testUserId);
+
+      expect(mockRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Agent Memory",
+          quick_access: `Agent Memory ${URL}`,
+          metadata: expect.objectContaining({
+            openGraph: expect.objectContaining({
+              title: "Agent Memory",
+              favicon: "https://every.to/favicon.ico",
+              site_name: "Every",
+              url: URL,
+            }),
+          }),
+        })
+      );
+    });
+
+    it("files into the requested collection", async () => {
+      stubUrlMetadata();
+      mockRepository.create.mockResolvedValue(createdRow());
+
+      await service.create(URL, testUserId, { collectionId: "collection-1" });
+
+      expect(mockRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ collection_id: "collection-1" })
+      );
+    });
+  });
+
+  describe("ensureScrapedContent", () => {
+    const bookmark = {
+      id: "bookmark-1",
+      sourceUrl: "https://every.to/p/agent-memory",
+      userId: "user-1",
+      title: "Agent Memory",
+      metadata: { originalUrl: "https://every.to/p/agent-memory/?ref=hn" },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any;
+
+    it("reuses content already on disk rather than hitting the origin again", async () => {
+      const existing = { id: "scraped-1" } as any;
+      mockRepository.getScrapedUrlContent.mockResolvedValue(existing);
+
+      const result = await service.ensureScrapedContent({ ...bookmark });
+
+      expect(result).toBe(existing);
+      expect(mockWebScrapingService.scrape).not.toHaveBeenCalled();
+    });
+
+    it("fetches, persists, and folds the real title back into the bookmark", async () => {
+      const scraped = {
+        title: "How agent memory actually works",
+        content: "<p>…</p>",
+        metadata: { openGraph: { title: "How agent memory actually works" } },
+      } as any;
+      const persisted = { id: "scraped-1", ...scraped } as any;
+
+      mockRepository.getScrapedUrlContent
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(persisted);
+      mockWebScrapingService.scrape.mockResolvedValue(scraped);
+      mockRepository.update.mockResolvedValue({} as any);
+
+      const target = { ...bookmark };
+      const result = await service.ensureScrapedContent(target);
+
+      expect(mockWebScrapingService.scrape).toHaveBeenCalledWith(
+        bookmark.sourceUrl
+      );
+      expect(mockRepository.insertScrapedUrlContents).toHaveBeenCalledWith(
+        bookmark.id,
+        scraped
+      );
+      expect(mockRepository.update).toHaveBeenCalledWith(
+        bookmark.id,
+        expect.objectContaining({
+          title: "How agent memory actually works",
+        })
+      );
+      expect(target.title).toBe("How agent memory actually works");
+      expect(result).toBe(persisted);
+    });
+
+    it("keeps metadata.originalUrl, which the scrape knows nothing about", async () => {
+      mockRepository.getScrapedUrlContent
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: "scraped-1" } as any);
+      mockWebScrapingService.scrape.mockResolvedValue({
+        title: "Real title",
+        content: "",
+        metadata: { openGraph: { title: "Real title" } },
+      } as any);
+      mockRepository.update.mockResolvedValue({} as any);
+
+      await service.ensureScrapedContent({ ...bookmark });
+
+      expect(mockRepository.update).toHaveBeenCalledWith(
+        bookmark.id,
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            originalUrl: "https://every.to/p/agent-memory/?ref=hn",
+          }),
+        })
+      );
+    });
+  });
+
   describe("createPrivateLink", () => {
     it("should save private-link user context without scraped content", async () => {
       const now = new Date();

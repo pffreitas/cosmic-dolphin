@@ -10,6 +10,8 @@ import { GlobalKeyboardShortcuts } from "@/components/global-keyboard-shortcuts"
 import { CommandDialogTrigger } from "@/components/command-dialog-trigger";
 import { CosmicMenu } from "@/components/cosmic-menu";
 import NewBookmarkButton from "@/components/bookmark/new-bookmark";
+import { PendingCaptures } from "@/components/bookmark/pending-captures";
+import { ToastProvider } from "@/components/ui/toast";
 import { MobileHeader } from "@/components/mobile/mobile-header";
 import { BottomNavigation } from "@/components/mobile/bottom-nav";
 import { createClient } from "@/utils/supabase/server";
@@ -77,59 +79,77 @@ export default async function RootLayout({
       </head>
       <body className="bg-bg text-fg">
         <ReduxProvider>
-          <CommandDialogProvider>
-            <Body>
-              <ThemeProvider
-                attribute="class"
-                defaultTheme="light"
-                enableSystem
-                disableTransitionOnChange
-              >
-                {/* Mobile Header */}
-                <MobileHeader isLoggedIn={isLoggedIn} />
+          {/*
+            One <ToastProvider> for the whole app, inside the store so anything
+            that can dispatch can also confirm what it did. It sits at the root
+            rather than on a route group because the thing that toasts most —
+            Save a link — lives in the header, above every route.
+          */}
+          <ToastProvider>
+            <CommandDialogProvider>
+              <Body>
+                <ThemeProvider
+                  attribute="class"
+                  defaultTheme="light"
+                  enableSystem
+                  disableTransitionOnChange
+                >
+                  {/* Mobile Header */}
+                  <MobileHeader isLoggedIn={isLoggedIn} />
 
-                {/* Desktop Layout */}
-                <main className="hidden md:flex w-full h-full p-2">
-                  <div className="w-full mx-auto flex flex-col gap-6">
-                    <DesktopSiteHeader
-                      isLoggedIn={isLoggedIn}
-                      authenticatedNavigation={
-                        isLoggedIn ? <CosmicMenu /> : undefined
-                      }
-                      authenticatedActions={
-                        isLoggedIn ? (
-                          <div className="flex items-center gap-3">
-                            <CommandDialogTrigger />
-                            <NewBookmarkButton />
-                          </div>
-                        ) : undefined
-                      }
-                      authControls={<HeaderAuth />}
-                    />
-                    <div className="flex-1 max-w-screen-lg mx-auto">
-                      {children}
+                  {/* Desktop Layout */}
+                  <main className="hidden md:flex w-full h-full p-2">
+                    <div className="w-full mx-auto flex flex-col gap-6">
+                      <DesktopSiteHeader
+                        isLoggedIn={isLoggedIn}
+                        authenticatedNavigation={
+                          isLoggedIn ? <CosmicMenu /> : undefined
+                        }
+                        authenticatedActions={
+                          isLoggedIn ? (
+                            <div className="flex items-center gap-3">
+                              <CommandDialogTrigger />
+                              <NewBookmarkButton />
+                            </div>
+                          ) : undefined
+                        }
+                        authControls={<HeaderAuth />}
+                      />
+                      <div className="flex-1 max-w-screen-lg mx-auto">
+                        {/*
+                          The optimistic capture row. It sits above the page
+                          because Save a link is in the header and works from
+                          every route — the row has to appear wherever the paste
+                          happened. It renders nothing when nothing is in flight.
+                        */}
+                        {isLoggedIn && <PendingCaptures />}
+                        {children}
+                      </div>
+                      <div className="h-2"></div>
                     </div>
-                    <div className="h-2"></div>
-                  </div>
-                </main>
+                  </main>
 
-                {/* Mobile Layout!! */}
-                <main className="md:hidden flex flex-col min-h-screen">
-                  {/* Content area with padding for fixed header and bottom nav */}
-                  <div className={`flex-1 pt-20 ${isLoggedIn ? 'pb-28' : 'pb-8'} px-4`}>
-                    <div className="max-w-screen-sm mx-auto">{children}</div>
-                  </div>
-                </main>
+                  {/* Mobile Layout!! */}
+                  <main className="md:hidden flex flex-col min-h-screen">
+                    {/* Content area with padding for fixed header and bottom nav */}
+                    <div className={`flex-1 pt-20 ${isLoggedIn ? 'pb-28' : 'pb-8'} px-4`}>
+                      <div className="max-w-screen-sm mx-auto">
+                        {isLoggedIn && <PendingCaptures />}
+                        {children}
+                      </div>
+                    </div>
+                  </main>
 
-                {/* Mobile Bottom Navigation - Only show when logged in */}
-                {isLoggedIn && <BottomNavigation />}
+                  {/* Mobile Bottom Navigation - Only show when logged in */}
+                  {isLoggedIn && <BottomNavigation />}
 
-                {/* Global Command Dialog - Desktop Only */}
-                <GlobalCommandDialog />
-                <GlobalKeyboardShortcuts />
-              </ThemeProvider>
-            </Body>
-          </CommandDialogProvider>
+                  {/* Global Command Dialog - Desktop Only */}
+                  <GlobalCommandDialog />
+                  <GlobalKeyboardShortcuts />
+                </ThemeProvider>
+              </Body>
+            </CommandDialogProvider>
+          </ToastProvider>
         </ReduxProvider>
       </body>
     </html>

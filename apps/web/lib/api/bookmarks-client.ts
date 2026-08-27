@@ -28,6 +28,62 @@ export class ProcessingTimelineFetchError extends Error {
   }
 }
 
+/**
+ * A save refused by the daily limit.
+ *
+ * Carries the wait so the field can show it. The URL stays in the field — a
+ * rate limit is a "not yet", not a "no", and throwing the user's paste away
+ * would make it a "no".
+ */
+export class SaveRateLimitedError extends Error {
+  constructor(
+    message: string,
+    /** Seconds, from the `Retry-After` header. */
+    public readonly retryAfterSeconds: number | null
+  ) {
+    super(message);
+    this.name = "SaveRateLimitedError";
+  }
+}
+
+/**
+ * Pull what we can out of whatever the generated runtime threw.
+ *
+ * `ResponseError` carries the raw `Response`; older call sites in this file
+ * expect an axios-ish `error.response.data.error`. Handle both rather than
+ * betting on one.
+ */
+async function readApiError(
+  error: any
+): Promise<{ status: number | null; message: string | null; response: Response | null }> {
+  const response: Response | null =
+    error?.response && typeof error.response.status === "number"
+      ? (error.response as Response)
+      : null;
+
+  if (error?.response?.data?.error) {
+    return {
+      status: response?.status ?? null,
+      message: error.response.data.error,
+      response,
+    };
+  }
+
+  if (response) {
+    try {
+      const body = await response.clone().json();
+      if (body?.error) {
+        return { status: response.status, message: body.error, response };
+      }
+    } catch {
+      // Not JSON, or already consumed. Fall through to the thrown message.
+    }
+    return { status: response.status, message: null, response };
+  }
+
+  return { status: null, message: null, response: null };
+}
+
 function getApiBasePath(): string {
   const basePath = process.env.NEXT_PUBLIC_API_URL;
   if (!basePath) {
@@ -97,20 +153,32 @@ export namespace BookmarksClientAPI {
     }
   }
 
+  /**
+   * Returns the whole response, not just the id: the caller needs
+   * `alreadySaved` to decide between "Saved" and "Already in your library".
+   */
   export async function create(
     bookmarkData: CreateBookmarkRequest
-  ): Promise<string> {
+  ): Promise<CreateBookmarkResponse> {
     const bookmarksApi = await getApiInstance();
 
     try {
-      const response = await bookmarksApi.bookmarksCreate({
+      return await bookmarksApi.bookmarksCreate({
         createBookmarkRequest: bookmarkData,
       });
-      return response.bookmark.id;
     } catch (error: any) {
-      if (error?.response?.data?.error) {
-        throw new Error(error.response.data.error);
+      const { status, message, response } = await readApiError(error);
+
+      if (status === 429) {
+        const header = response?.headers?.get("retry-after");
+        const seconds = header ? Number.parseInt(header, 10) : NaN;
+        throw new SaveRateLimitedError(
+          message ?? "You have hit today's save limit.",
+          Number.isFinite(seconds) ? seconds : null
+        );
       }
+
+      if (message) throw new Error(message);
       throw error;
     }
   }

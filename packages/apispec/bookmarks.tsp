@@ -112,6 +112,9 @@ model BookmarkMetadata {
     openGraph?: OpenGraphMetadata;
     wordCount?: int32;
     readingTime?: int32;
+
+    @doc("The URL exactly as the user pasted it, before normalisation. `sourceUrl` holds the normalised form.")
+    originalUrl?: string;
 }
 
 model CreateBookmarkRequest {
@@ -137,6 +140,9 @@ model CreateBookmarkRequest {
 model CreateBookmarkResponse {
     bookmark: Bookmark;
     message: string;
+
+    @doc("The user already had this URL. The bookmark returned is the existing one — nothing was created and nothing was re-queued. A duplicate paste is not an error.")
+    alreadySaved?: boolean;
 }
 
 model GetBookmarksQuery {
@@ -276,7 +282,22 @@ model BookmarkError {
 @route("/bookmarks")
 @tag("Bookmarks")
 interface Bookmarks {
-    @doc("Create a new bookmark")
+    @doc("""
+        Create a new bookmark.
+
+        The URL is normalised before anything else (lowercased scheme and host,
+        trailing slash stripped, `utm_*`/`fbclid`/`gclid`/`ref`/`mc_cid`
+        dropped); the normalised form is stored in `sourceUrl` and the paste is
+        preserved in `metadata.originalUrl`.
+
+        If the caller already has that normalised URL, this returns 200 with
+        `alreadySaved: true` and the existing bookmark — a duplicate paste is
+        not an error and never a 409.
+
+        The handler writes the row and enqueues; fetching, extraction,
+        summarising, tagging and filing all happen in the worker. Nothing is
+        awaited that touches the network or a model.
+        """)
     @useAuth(BearerAuth)
     @post
     create(@body request: CreateBookmarkRequest):
@@ -285,19 +306,26 @@ interface Bookmarks {
               @body body: CreateBookmarkResponse;
           }
         | {
-              @statusCode statusCode: 400;
+              @doc("Already in the caller's library. `alreadySaved` is true.")
+              @statusCode
+              statusCode: 200;
+
+              @body body: CreateBookmarkResponse;
+          }
+        | {
+              @doc("Malformed URL, or a private link with no description.")
+              @statusCode
+              statusCode: 400;
+
               @body body: BookmarkError;
           }
         | {
-              @statusCode statusCode: 408;
-              @body body: BookmarkError;
-          }
-        | {
-              @statusCode statusCode: 409;
-              @body body: BookmarkError;
-          }
-        | {
-              @statusCode statusCode: 422;
+              @doc("Save rate limit exceeded. Carries `Retry-After`, in seconds.")
+              @statusCode
+              statusCode: 429;
+
+              @header("Retry-After") retryAfter?: int32;
+
               @body body: BookmarkError;
           }
         | {
