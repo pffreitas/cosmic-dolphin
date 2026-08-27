@@ -15,6 +15,8 @@ import {
   Collection,
   createDatabase,
   normalizeUrl,
+  BOOKMARK_PROCESSING_PHASES,
+  type BookmarkProcessingPhase,
 } from "@cosmic-dolphin/shared";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "../config/environment";
@@ -53,14 +55,48 @@ type BookmarkTimelineServices = Pick<
   "bookmark" | "bookmarkProcessing"
 >;
 
-type BookmarkQueueServices = Pick<ServiceContainer, "bookmark" | "queue">;
+type BookmarkQueueServices = Pick<
+  ServiceContainer,
+  "bookmark" | "queue" | "processingBudget"
+>;
 
+export interface QueueBookmarkResult {
+  bookmark: Bookmark;
+  /** False when the daily processing budget refused the enqueue. */
+  queued: boolean;
+  /** What to tell the user. Empty when the enqueue was unremarkable. */
+  message?: string;
+}
+
+/**
+ * Enqueue a bookmark for processing — unless today's budget says otherwise.
+ *
+ * The budget is checked **here**, before the message is sent, because a job
+ * that will be refused should never enter the queue
+ * (docs/functional-spec/03-ai-pipeline.md § Cost). Over budget the save still
+ * stands: the row lands `idle`, which is a legitimate resting state and not a
+ * failure, and the client offers **Summarise now** on it.
+ */
 export async function queueBookmarkForProcessing(
   services: BookmarkQueueServices,
   bookmark: Bookmark,
   userId: string,
   onQueueError?: (error: unknown) => void
-): Promise<Bookmark> {
+): Promise<QueueBookmarkResult> {
+  const budget = await services.processingBudget.check(userId);
+  if (!budget.withinBudget) {
+    const idleBookmark = await services.bookmark.updateProcessingStatus(
+      bookmark.id,
+      "idle"
+    );
+    return {
+      bookmark: idleBookmark,
+      queued: false,
+      message:
+        "Saved. Today's processing budget is spent — use Summarise now when you want this one processed.",
+    };
+  }
+
   const processingBookmark = await services.bookmark.updateProcessingStatus(
     bookmark.id,
     "processing"
@@ -70,14 +106,17 @@ export async function queueBookmarkForProcessing(
     await services.queue.sendBookmarkProcessingMessage(bookmark.id, userId);
   } catch (queueError) {
     onQueueError?.(queueError);
-    return services.bookmark.updateProcessingStatus(
-      bookmark.id,
-      "failed",
-      "Failed to enqueue bookmark processing"
-    );
+    return {
+      bookmark: await services.bookmark.updateProcessingStatus(
+        bookmark.id,
+        "failed",
+        "Failed to enqueue bookmark processing"
+      ),
+      queued: false,
+    };
   }
 
-  return processingBookmark;
+  return { bookmark: processingBookmark, queued: true };
 }
 
 export async function buildBookmarkProcessingTimelineResponse(
@@ -194,7 +233,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
                 originalUrl,
               }
             );
-            const queuedBookmark = await queueBookmarkForProcessing(
+            const queued = await queueBookmarkForProcessing(
               services,
               bookmark,
               user_id,
@@ -203,8 +242,8 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
               }
             );
             return reply.status(201).send({
-              bookmark: queuedBookmark,
-              message: "Private link saved successfully",
+              bookmark: queued.bookmark,
+              message: queued.message ?? "Private link saved successfully",
             });
           }
 
@@ -230,7 +269,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
               originalUrl,
             }
           );
-          const queuedBookmark = await queueBookmarkForProcessing(
+          const queued = await queueBookmarkForProcessing(
             services,
             bookmark,
             user_id,
@@ -239,8 +278,8 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
             }
           );
           return reply.status(201).send({
-            bookmark: queuedBookmark,
-            message: "Private link saved successfully",
+            bookmark: queued.bookmark,
+            message: queued.message ?? "Private link saved successfully",
           });
         }
 
@@ -252,7 +291,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           collectionId: collection_id,
         });
 
-        const queuedBookmark = await queueBookmarkForProcessing(
+        const queued = await queueBookmarkForProcessing(
           services,
           bookmark,
           user_id,
@@ -262,8 +301,8 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         );
 
         return reply.status(201).send({
-          bookmark: queuedBookmark,
-          message: "Bookmark created successfully",
+          bookmark: queued.bookmark,
+          message: queued.message ?? "Bookmark created successfully",
         });
       } catch (error) {
         // The 408 and 422 branches that used to live here mapped scraping
@@ -460,6 +499,74 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         return reply.send(result.body);
       } catch (error) {
         fastify.log.error({ error }, "Get bookmark processing timeline error");
+        return reply.status(500).send({ error: "Internal server error" });
+      }
+    }
+  );
+
+  // A manual Retry, and the Summarise now action on a bookmark the daily
+  // budget left idle. Both are the same thing: an explicit request to run the
+  // pipeline again, appended to the timeline already on screen.
+  fastify.post<{
+    Params: { id: string };
+    Body: { phase?: BookmarkProcessingPhase } | undefined;
+    Reply: { bookmark: Bookmark; message: string } | { error: string };
+  }>(
+    "/bookmarks/:id/reprocess",
+    {
+      preHandler: authMiddleware,
+      config: rateLimited(RATE_LIMITS.reprocess),
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const user_id = request.userId!;
+        const phase = request.body?.phase;
+
+        if (phase && !BOOKMARK_PROCESSING_PHASES.includes(phase)) {
+          return reply.status(400).send({ error: `Unknown phase: ${phase}` });
+        }
+
+        const bookmark = await services.bookmark.findByIdAndUser(id, user_id);
+        if (!bookmark) {
+          return reply.status(404).send({ error: "Bookmark not found" });
+        }
+
+        // Deliberately not budget-checked. The budget stops the pipeline
+        // spending on its own; a person asking for one bookmark to be
+        // processed is the escape hatch it exists to leave open. The
+        // reprocess rate limit is what keeps a stuck client from abusing it.
+        const processing = await services.bookmark.updateProcessingStatus(
+          bookmark.id,
+          "processing"
+        );
+
+        try {
+          await services.queue.sendBookmarkProcessingMessage(
+            bookmark.id,
+            user_id,
+            { phase, resume: true }
+          );
+        } catch (queueError) {
+          fastify.log.error({ queueError }, "Reprocess queue post error");
+          await services.bookmark.updateProcessingStatus(
+            bookmark.id,
+            "failed",
+            "Failed to enqueue bookmark processing"
+          );
+          return reply
+            .status(500)
+            .send({ error: "Could not start reprocessing" });
+        }
+
+        return reply.status(202).send({
+          bookmark: processing,
+          message: phase
+            ? `Retrying ${phase}`
+            : "Reprocessing this bookmark",
+        });
+      } catch (error) {
+        fastify.log.error({ error }, "Reprocess bookmark error");
         return reply.status(500).send({ error: "Internal server error" });
       }
     }

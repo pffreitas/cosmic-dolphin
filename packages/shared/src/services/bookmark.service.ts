@@ -330,6 +330,8 @@ export class BookmarkServiceImpl implements BookmarkService {
       updateData.cosmic_summary = data.cosmicSummary;
     if (data.cosmicBriefSummary !== undefined)
       updateData.cosmic_brief_summary = data.cosmicBriefSummary;
+    if (data.cosmicKeyPoints !== undefined)
+      updateData.cosmic_key_points = data.cosmicKeyPoints;
     if (data.cosmicTags !== undefined) updateData.cosmic_tags = data.cosmicTags;
     if (data.cosmicImages !== undefined)
       updateData.cosmic_images = data.cosmicImages;
@@ -379,7 +381,13 @@ export class BookmarkServiceImpl implements BookmarkService {
       processing_status: status,
     };
 
-    if (status === "processing") {
+    if (status === "idle") {
+      // No run has started. Anything left over from a previous one would read
+      // as a run in progress or a failure that is no longer true.
+      updateData.processing_started_at = null;
+      updateData.processing_completed_at = null;
+      updateData.processing_error = null;
+    } else if (status === "processing") {
       updateData.processing_started_at = new Date();
       updateData.processing_completed_at = null;
       updateData.processing_error = null;
@@ -536,6 +544,7 @@ export class BookmarkServiceImpl implements BookmarkService {
       isFavorite: data.is_favorite,
       cosmicSummary: data.cosmic_summary,
       cosmicBriefSummary: data.cosmic_brief_summary,
+      cosmicKeyPoints: data.cosmic_key_points ?? undefined,
       cosmicTags: data.cosmic_tags,
       cosmicImages: data.cosmic_images,
       cosmicLinks: data.cosmic_links,

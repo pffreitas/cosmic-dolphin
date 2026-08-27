@@ -64,6 +64,17 @@ export const RATE_LIMITS = {
     message: (retryIn) =>
       `You have hit today's save limit. Try again in ${retryIn}.`,
   },
+  // Retries are cheap to ask for and expensive to serve, and a client stuck in
+  // a retry loop would otherwise walk straight through the daily processing
+  // budget — which deliberately does not refuse an explicit reprocess. This is
+  // the guard rail on that exception, not a second budget.
+  reprocess: {
+    name: "reprocess",
+    max: envInt("RATE_LIMIT_REPROCESS_MAX", 30),
+    timeWindow: process.env.RATE_LIMIT_REPROCESS_WINDOW ?? "1 hour",
+    message: (retryIn) =>
+      `Too many reprocessing requests. Try again in ${retryIn}.`,
+  },
 } as const satisfies Record<string, RateLimitPolicy>;
 
 /**

@@ -34,7 +34,7 @@ describe("BookmarkProcessingRepository", () => {
     const phase = await repository.createEvent({
       runId: run.id,
       kind: "phase",
-      phase: "summarization",
+      phase: "summarise",
       name: "Summarization",
       status: "running",
       sequence: 1,
@@ -46,7 +46,7 @@ describe("BookmarkProcessingRepository", () => {
       runId: run.id,
       parentEventId: phase.id,
       kind: "turn",
-      phase: "summarization",
+      phase: "summarise",
       name: "Generate summary",
       status: "completed",
       sequence: 2,
@@ -77,7 +77,7 @@ describe("BookmarkProcessingRepository", () => {
     expect(timeline?.events[0]).toEqual(
       expect.objectContaining({
         kind: "phase",
-        phase: "summarization",
+        phase: "summarise",
         name: "Summarization",
       })
     );

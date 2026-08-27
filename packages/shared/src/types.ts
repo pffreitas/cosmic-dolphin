@@ -176,6 +176,13 @@ export interface Bookmark extends BaseEntity {
   cosmicLinks?: BookmarkLink[];
   cosmicSummary?: string;
   cosmicBriefSummary?: string;
+  /**
+   * The full brief's key points, 2–5 findings of ≤ 140 characters each, parsed
+   * out of `cosmicSummary` once by the pipeline. Stored so the reader never
+   * has to parse markdown to draw three bullets — see
+   * docs/functional-spec/03-ai-pipeline.md § Outputs.
+   */
+  cosmicKeyPoints?: string[];
   cosmicTags?: string[];
   metadata?: BookmarkMetadata;
   userId: string;
@@ -239,8 +246,28 @@ export interface BookmarkQueuePayload extends QueueTaskPayload {
   data: {
     bookmarkId: string;
     userId: string;
+    /**
+     * Reprocess one phase instead of the whole pipeline. Set by
+     * `POST /bookmarks/{id}/reprocess`; absent on a first save.
+     */
+    phase?: BookmarkProcessingPhase;
+    /** Append to the bookmark's existing timeline rather than opening a run. */
+    resume?: boolean;
   };
 }
+
+/**
+ * The pipeline's phase vocabulary — docs/functional-spec/03-ai-pipeline.md.
+ * Kept here as well as on the reporter so clients and queue payloads can name
+ * a phase without importing the worker's machinery.
+ */
+export type BookmarkProcessingPhase =
+  | "fetch"
+  | "extract"
+  | "summarise"
+  | "tag"
+  | "file"
+  | "embed";
 
 export interface CreateBookmarkRequest {
   source_url: string;

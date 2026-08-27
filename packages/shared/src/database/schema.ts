@@ -34,6 +34,7 @@ export interface BookmarksTable extends BaseTable {
   is_favorite: Generated<boolean>;
   cosmic_summary: string | null;
   cosmic_brief_summary: string | null;
+  cosmic_key_points: any | null; // JSONB — string[]
   cosmic_tags: string[] | null;
   cosmic_images: any | null; // JSONB
   cosmic_links: any | null; // JSONB

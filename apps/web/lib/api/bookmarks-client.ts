@@ -13,6 +13,8 @@ import {
   SearchBookmarksResponse,
   LikeResponse,
   ShareBookmarkResponse,
+  BookmarkProcessingPhase,
+  ReprocessBookmarkResponse,
 } from "@cosmic-dolphin/api-client";
 import { SearchBookmarksQuery } from "@/lib/types/bookmark";
 import { createClient } from "@/utils/supabase/client";
@@ -217,6 +219,25 @@ export namespace BookmarksClientAPI {
     }
 
     return response.json();
+  }
+
+  /**
+   * Start a fresh run, optionally for one phase.
+   *
+   * Backs both **Retry** on a failed line and **Summarise now** on a bookmark
+   * the daily processing budget left idle. The server appends to the existing
+   * timeline, so the phases already on screen stay there.
+   */
+  export async function reprocess(
+    id: string,
+    phase?: BookmarkProcessingPhase
+  ): Promise<ReprocessBookmarkResponse> {
+    const bookmarksApi = await getApiInstance();
+
+    return bookmarksApi.bookmarksReprocess({
+      id,
+      reprocessBookmarkRequest: phase ? { phase } : {},
+    });
   }
 
   export async function search(

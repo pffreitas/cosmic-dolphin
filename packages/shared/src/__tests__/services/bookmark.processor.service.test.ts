@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
-import { BookmarkProcessorServiceImpl } from "../../services/bookmark.processor.service";
+import {
+  BookmarkProcessorServiceImpl,
+  extractKeyPoints,
+} from "../../services/bookmark.processor.service";
 import { BookmarkService } from "../../services/bookmark.service";
 import { ContentChunkRepository } from "../../repositories/content-chunk.repository";
 import { CollectionRepository } from "../../repositories/collection.repository";
@@ -182,7 +185,7 @@ describe("BookmarkProcessorService", () => {
         id,
         runId: "run-1",
         kind: "phase",
-        phase: "summarization",
+        phase: "summarise",
         name: "test",
         status: data.status,
         sequence: 1,
@@ -203,6 +206,7 @@ describe("BookmarkProcessorService", () => {
         updatedAt: new Date(),
       })),
       findLatestTimeline: jest.fn(async () => null),
+      countRunsSince: jest.fn(async () => 0),
     } as any;
 
     mockContentChunkRepository = {
@@ -319,10 +323,6 @@ describe("BookmarkProcessorService", () => {
       mockBookmarkService.ensureScrapedContent.mockResolvedValue(
         testScrapedContent
       );
-      // `chunkContent` re-reads the persisted row for its id.
-      mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
-        testScrapedContent
-      );
       mockBookmarkService.updateProcessingStatus.mockResolvedValue(
         testBookmark
       );
@@ -364,7 +364,7 @@ describe("BookmarkProcessorService", () => {
       );
     });
 
-    it("records durable processing phases and does not publish realtime events", async () => {
+    it("records one event per phase, in the vocabulary the UI renders", async () => {
       const mockSession: Session = {
         sessionID: "test-session-id",
         refID: testBookmark.id,
@@ -379,10 +379,6 @@ describe("BookmarkProcessorService", () => {
 
       mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
       mockBookmarkService.ensureScrapedContent.mockResolvedValue(
-        testScrapedContent
-      );
-      // `chunkContent` re-reads the persisted row for its id.
-      mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
         testScrapedContent
       );
       mockBookmarkService.updateProcessingStatus.mockResolvedValue(
@@ -406,22 +402,18 @@ describe("BookmarkProcessorService", () => {
           status: "running",
         })
       );
+      // The six the UI can name, in order — and nothing else. The old nine
+      // internal names are gone: docs/functional-spec/03-ai-pipeline.md.
       expect(
-        mockBookmarkProcessingRepository.createEvent.mock.calls.map(
-          ([event]) => event.phase
-        )
-      ).toEqual(
-        expect.arrayContaining([
-          "summarization",
-          "brief_summary",
-          "tags",
-          "images",
-          "chunking",
-          "embedding",
-          "categorization",
-          "finalization",
-        ])
-      );
+        mockBookmarkProcessingRepository.createEvent.mock.calls
+          .filter(([event]) => event.kind === "phase")
+          .map(([event]) => event.phase)
+      ).toEqual(["fetch", "extract", "summarise", "tag", "file", "embed"]);
+      // Embedding is retryable, so it replaces this bookmark's chunks rather
+      // than appending a second set of them.
+      expect(
+        mockContentChunkRepository.deleteByScrapedContentId
+      ).toHaveBeenCalledWith(testScrapedContent.id);
       expect(mockBookmarkProcessingRepository.updateRun).toHaveBeenCalledWith(
         "run-1",
         expect.objectContaining({
@@ -611,10 +603,6 @@ describe("BookmarkProcessorService", () => {
       mockBookmarkService.ensureScrapedContent.mockResolvedValue(
         testScrapedContent
       );
-      // `chunkContent` re-reads the persisted row for its id.
-      mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
-        testScrapedContent
-      );
       mockBookmarkService.updateProcessingStatus.mockResolvedValue(
         testBookmark
       );
@@ -659,10 +647,6 @@ describe("BookmarkProcessorService", () => {
       mockBookmarkService.ensureScrapedContent.mockResolvedValue(
         testScrapedContent
       );
-      // `chunkContent` re-reads the persisted row for its id.
-      mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
-        testScrapedContent
-      );
       mockBookmarkService.updateProcessingStatus.mockResolvedValue(
         testBookmark
       );
@@ -692,7 +676,7 @@ describe("BookmarkProcessorService", () => {
       ]);
     });
 
-    it("should handle AI processing errors gracefully", async () => {
+    it("keeps tags and filing when summarise fails", async () => {
       const mockSession: Session = {
         sessionID: "test-session-id",
         refID: testBookmark.id,
@@ -700,10 +684,6 @@ describe("BookmarkProcessorService", () => {
 
       mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
       mockBookmarkService.ensureScrapedContent.mockResolvedValue(
-        testScrapedContent
-      );
-      // `chunkContent` re-reads the persisted row for its id.
-      mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
         testScrapedContent
       );
       mockBookmarkService.updateProcessingStatus.mockResolvedValue(
@@ -722,30 +702,59 @@ describe("BookmarkProcessorService", () => {
         status: "pending",
         subTasks: {},
       });
+      mockBookmarkService.update.mockResolvedValue(testBookmark);
       mockAI.generateText.mockRejectedValueOnce(
         new Error("AI service unavailable")
       );
 
+      // Partial failure does not poison the bookmark. A failed `summarise`
+      // fails its own phase and its own run — and `tag`, `file` and `embed`
+      // still run on the content that was extracted.
       await expect(
         service.process(testBookmark.id, testBookmark.userId)
-      ).rejects.toThrow("AI service unavailable");
+      ).resolves.toBeUndefined();
 
-      expect(mockBookmarkProcessingRepository.updateRun).toHaveBeenCalledWith(
-        "run-1",
+      const phases = mockBookmarkProcessingRepository.createEvent.mock.calls
+        .filter(([event]) => event.kind === "phase")
+        .map(([event]) => event.phase);
+      expect(phases).toEqual([
+        "fetch",
+        "extract",
+        "summarise",
+        "tag",
+        "file",
+        "embed",
+      ]);
+
+      expect(mockBookmarkProcessingRepository.updateEvent).toHaveBeenCalledWith(
+        expect.any(String),
         expect.objectContaining({
           status: "failed",
           error: "AI service unavailable",
         })
       );
+      expect(mockBookmarkService.updateProcessingStatus).toHaveBeenLastCalledWith(
+        testBookmark.id,
+        "failed",
+        "summarise: AI service unavailable"
+      );
+      expect(mockBookmarkProcessingRepository.updateRun).toHaveBeenCalledWith(
+        "run-1",
+        expect.objectContaining({
+          status: "failed",
+          error: "summarise: AI service unavailable",
+        })
+      );
+
+      // The tags the pipeline did manage to produce are still written.
+      const updated = mockBookmarkService.update.mock.calls.at(-1)![1];
+      expect(updated.cosmicTags).toEqual(["test", "bookmark"]);
+      expect(updated.cosmicSummary).toBeUndefined();
     });
 
     it("marks the bookmark failed when the durable timeline cannot start", async () => {
       mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
       mockBookmarkService.ensureScrapedContent.mockResolvedValue(
-        testScrapedContent
-      );
-      // `chunkContent` re-reads the persisted row for its id.
-      mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
         testScrapedContent
       );
       mockBookmarkService.updateProcessingStatus.mockImplementation(
@@ -791,10 +800,6 @@ describe("BookmarkProcessorService", () => {
 
       mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
       mockBookmarkService.ensureScrapedContent.mockResolvedValue(
-        testScrapedContent
-      );
-      // `chunkContent` re-reads the persisted row for its id.
-      mockBookmarkService.getScrapedUrlContent.mockResolvedValue(
         testScrapedContent
       );
       mockBookmarkService.updateProcessingStatus.mockImplementation(
@@ -855,6 +860,170 @@ describe("BookmarkProcessorService", () => {
       } finally {
         consoleErrorSpy.mockRestore();
       }
+    });
+
+    it("reprocesses only the phase it was scoped to, appending to the run", async () => {
+      // A Retry on one failed line runs that line, not the whole pipeline —
+      // and lands in the timeline the user is already watching.
+      const mockSession: Session = {
+        sessionID: "test-session-id",
+        refID: testBookmark.id,
+      };
+
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(
+        testScrapedContent
+      );
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(testBookmark);
+      mockBookmarkService.update.mockResolvedValue(testBookmark);
+      mockAI.newSession.mockResolvedValue(mockSession);
+      mockBookmarkProcessingRepository.findLatestTimeline.mockResolvedValue({
+        run: {
+          id: "run-1",
+          bookmarkId: testBookmark.id,
+          userId: testBookmark.userId,
+          status: "failed",
+          startedAt: new Date(),
+          inputTokens: 5,
+          outputTokens: 5,
+          totalTokens: 10,
+          reasoningTokens: 0,
+          cachedInputTokens: 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        events: [
+          {
+            id: "event-1",
+            runId: "run-1",
+            kind: "run",
+            name: "Processing run",
+            status: "failed",
+            sequence: 1,
+            startedAt: new Date(),
+            inputTokens: 0,
+            outputTokens: 0,
+            totalTokens: 0,
+            reasoningTokens: 0,
+            cachedInputTokens: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+      } as any);
+
+      await service.process(testBookmark.id, testBookmark.userId, {
+        phase: "summarise",
+        resume: true,
+      });
+
+      expect(mockBookmarkProcessingRepository.createRun).not.toHaveBeenCalled();
+      expect(
+        mockBookmarkProcessingRepository.createEvent.mock.calls
+          .filter(([event]) => event.kind === "phase")
+          .map(([event]) => event.phase)
+      ).toEqual(["summarise"]);
+      // The fetch still happens — it is idempotent and reuses what is on disk —
+      // but silently, so a retry does not redraw a step that already succeeded.
+      expect(mockBookmarkService.ensureScrapedContent).toHaveBeenCalledWith(
+        testBookmark
+      );
+    });
+
+    it("stores the brief's key points as an array", async () => {
+      const mockSession: Session = {
+        sessionID: "test-session-id",
+        refID: testBookmark.id,
+      };
+
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(
+        testScrapedContent
+      );
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(testBookmark);
+      mockBookmarkService.update.mockResolvedValue(testBookmark);
+      mockAI.newSession.mockResolvedValue(mockSession);
+      const brief = [
+        "## Memory beats context",
+        "",
+        "A paragraph of overview.",
+        "",
+        "## Key Points",
+        "",
+        "- **Recall** is cheaper than a longer window",
+        "- Eviction policy decides quality",
+        "",
+        "## Takeaways",
+        "",
+        "- Not a key point",
+      ].join("\n");
+      mockAI.generateText.mockResolvedValueOnce({
+        value: brief,
+        text: brief,
+        usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      } as any);
+
+      await service.process(testBookmark.id, testBookmark.userId);
+
+      const updated = mockBookmarkService.update.mock.calls.at(-1)![1];
+      expect(updated.cosmicKeyPoints).toEqual([
+        "Recall is cheaper than a longer window",
+        "Eviction policy decides quality",
+      ]);
+    });
+  });
+
+  describe("extractKeyPoints", () => {
+    it("reads the bullets under the Key Points heading and stops at the next one", () => {
+      const summary = [
+        "## Title",
+        "",
+        "Overview.",
+        "",
+        "## Key Points",
+        "- First finding",
+        "- Second finding",
+        "",
+        "## Takeaways",
+        "- Not a key point",
+      ].join("\n");
+
+      expect(extractKeyPoints(summary)).toEqual([
+        "First finding",
+        "Second finding",
+      ]);
+    });
+
+    it("strips markdown and unwraps links, which are read and never followed", () => {
+      const summary = [
+        "## Key Points",
+        "- **Bold** and _italic_ and `code`",
+        "- See [the RFC](https://example.com/rfc) for detail",
+      ].join("\n");
+
+      expect(extractKeyPoints(summary)).toEqual([
+        "Bold and italic and code",
+        "See the RFC for detail",
+      ]);
+    });
+
+    it("caps at five findings and 140 characters apiece", () => {
+      const long = "word ".repeat(60).trim();
+      const summary = [
+        "## Key Points",
+        ...Array.from({ length: 8 }, (_, i) => `- Finding ${i}`),
+      ].join("\n");
+
+      expect(extractKeyPoints(summary)).toHaveLength(5);
+      expect(extractKeyPoints(`## Key Points\n- ${long}`)[0].length).toBeLessThanOrEqual(
+        140
+      );
+    });
+
+    it("returns nothing when there is no Key Points section", () => {
+      expect(extractKeyPoints("## Summary\n\nJust prose.")).toEqual([]);
+      expect(extractKeyPoints(undefined)).toEqual([]);
+      expect(extractKeyPoints("")).toEqual([]);
     });
   });
 });

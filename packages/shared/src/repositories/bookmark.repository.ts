@@ -274,6 +274,14 @@ export class BookmarkRepositoryImpl
       ) {
         updateData.cosmic_links = JSON.stringify(updateData.cosmic_links);
       }
+      if (
+        updateData.cosmic_key_points &&
+        typeof updateData.cosmic_key_points === "object"
+      ) {
+        updateData.cosmic_key_points = JSON.stringify(
+          updateData.cosmic_key_points
+        );
+      }
 
       const result = await this.db
         .updateTable("bookmarks")

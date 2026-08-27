@@ -8,6 +8,7 @@ export * from "./profile.service";
 export * from "./bookmark.processor.service";
 export * from "./bookmark.categorizer.service";
 export * from "./bookmark-processing-reporter.service";
+export * from "./processing-budget.service";
 export * from "./bookmark.model-ids";
 export * from "./chunking.service";
 export * from "./embedding.service";
@@ -27,6 +28,10 @@ import {
 import { CollectionService, CollectionServiceImpl } from "./collection.service";
 import { ProfileService, ProfileServiceImpl } from "./profile.service";
 import { SearchService, SearchServiceImpl } from "./search.service";
+import {
+  ProcessingBudgetService,
+  ProcessingBudgetServiceImpl,
+} from "./processing-budget.service";
 import { EmbeddingServiceImpl } from "./embedding.service";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Kysely } from "kysely";
@@ -50,6 +55,7 @@ export interface ServiceContainer {
   profile: ProfileService;
   search: SearchService;
   bookmarkProcessing: BookmarkProcessingRepository;
+  processingBudget: ProcessingBudgetService;
 }
 
 export function createServiceContainer(
@@ -79,5 +85,8 @@ export function createServiceContainer(
     profile: new ProfileServiceImpl(profileRepository),
     search: new SearchServiceImpl(bookmarkRepository, embeddingService, ai),
     bookmarkProcessing: bookmarkProcessingRepository,
+    processingBudget: new ProcessingBudgetServiceImpl(
+      bookmarkProcessingRepository
+    ),
   };
 }

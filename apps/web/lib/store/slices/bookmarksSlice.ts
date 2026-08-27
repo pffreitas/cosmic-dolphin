@@ -66,6 +66,11 @@ export interface PendingCapture {
   error?: string;
   /** The saved bookmark's id, once there is one. */
   bookmarkId?: string;
+  /**
+   * What the server did with it. `idle` means the daily processing budget
+   * refused the enqueue — the save stands, and the row offers Summarise now.
+   */
+  processingStatus?: "idle" | "processing" | "completed" | "failed";
   /** Private-link saves carry the user's own context through a Retry. */
   isPrivateLink?: boolean;
   description?: string;
@@ -93,6 +98,7 @@ export interface CaptureResult {
   bookmarkId: string;
   alreadySaved: boolean;
   title?: string;
+  processingStatus?: "idle" | "processing" | "completed" | "failed";
 }
 
 function newCaptureId(): string {
@@ -216,6 +222,7 @@ export const saveCapture = createAsyncThunk<
       bookmarkId: response.bookmark.id,
       alreadySaved: response.alreadySaved === true,
       title: response.bookmark.title ?? undefined,
+      processingStatus: response.bookmark.processingStatus,
     };
   } catch (error: any) {
     if (error instanceof SaveRateLimitedError) {
@@ -354,6 +361,7 @@ const bookmarksSlice = createSlice({
           if (capture) {
             capture.status = "saved";
             capture.bookmarkId = action.payload.bookmarkId;
+            capture.processingStatus = action.payload.processingStatus;
             capture.error = undefined;
             if (action.payload.title) capture.title = action.payload.title;
           }

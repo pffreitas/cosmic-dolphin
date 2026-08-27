@@ -7,20 +7,36 @@ import {
   BookmarkProcessingTimelineEvent,
   BookmarkProcessingTimelineResponse,
 } from "@/lib/types/processing-timeline";
+import {
+  PROCESSING_PHASE_LABELS,
+  type ProcessingPhase,
+  type ProcessingStep,
+  type ProcessingStepState,
+} from "@/components/ai/processing-steps";
 
 const DEFAULT_POLL_AFTER_MS = 2000;
 
-const PHASE_LABELS: Record<string, string> = {
-  private_link_enrichment: "Organizing private link",
-  summarization: "Summarizing content",
-  brief_summary: "Writing brief summary",
-  tags: "Choosing tags",
-  images: "Processing images",
-  chunking: "Preparing content",
-  embedding: "Building semantic search",
-  categorization: "Choosing collection",
-  finalization: "Finalizing bookmark",
-};
+/**
+ * The five phases the checklist shows, in order.
+ *
+ * `embed` is deliberately absent: the pipeline runs it and the timeline
+ * records it, but it has no user-legible output and a line for it would pad
+ * the list with noise — docs/functional-spec/03-ai-pipeline.md § Phases.
+ */
+export const SURFACED_PROCESSING_PHASES: ProcessingPhase[] = [
+  "fetch",
+  "extract",
+  "summarise",
+  "tag",
+  "file",
+];
+
+function isSurfacedPhase(phase?: string): phase is ProcessingPhase {
+  return (
+    phase !== undefined &&
+    (SURFACED_PROCESSING_PHASES as string[]).includes(phase)
+  );
+}
 
 export function shouldPollProcessingTimeline(
   bookmark?: Pick<Bookmark, "processingStatus"> | null,
@@ -57,9 +73,56 @@ export function getActivePhaseLabel(
     .find((event) => event.kind === "phase" && event.status === "running");
 
   if (!runningPhase) return undefined;
-  return runningPhase.phase
-    ? PHASE_LABELS[runningPhase.phase] ?? runningPhase.name
+  return isSurfacedPhase(runningPhase.phase)
+    ? PROCESSING_PHASE_LABELS[runningPhase.phase]
     : runningPhase.name;
+}
+
+/**
+ * The timeline, as the five-line checklist.
+ *
+ * A phase can appear more than once on a run — a Retry appends rather than
+ * replacing, so `summarise` may be there twice, failed and then done. The last
+ * event for a phase is the one that is true now, which is why this reads
+ * forwards and lets later events overwrite earlier ones.
+ *
+ * Phases with no event yet are `pending`, so the list is five lines from the
+ * first paint and nothing reflows as the worker moves through it.
+ */
+export function deriveProcessingSteps(
+  events: BookmarkProcessingTimelineEvent[] = [],
+  bookmark?: Pick<Bookmark, "processingStatus"> | null
+): ProcessingStep[] {
+  const latest = new Map<
+    ProcessingPhase,
+    { state: ProcessingStepState; error?: string }
+  >();
+
+  for (const event of events) {
+    if (event.kind !== "phase" || !isSurfacedPhase(event.phase)) continue;
+    latest.set(event.phase, {
+      state:
+        event.status === "completed"
+          ? "done"
+          : event.status === "failed"
+            ? "failed"
+            : "active",
+      error: event.status === "failed" ? event.error : undefined,
+    });
+  }
+
+  // Nothing has been recorded and nothing is running: the pipeline has not
+  // started on this bookmark (a save over the daily budget, or a private
+  // link). An empty checklist says that better than five grey lines.
+  if (latest.size === 0 && bookmark?.processingStatus !== "processing") {
+    return [];
+  }
+
+  return SURFACED_PROCESSING_PHASES.map((phase) => ({
+    phase,
+    state: latest.get(phase)?.state ?? "pending",
+    error: latest.get(phase)?.error,
+  }));
 }
 
 interface UseBookmarkProcessingTimelineOptions {
@@ -73,6 +136,8 @@ interface UseBookmarkProcessingTimelineResult {
   events: BookmarkProcessingTimelineEvent[];
   isPolling: boolean;
   activePhaseLabel?: string;
+  /** Ready to hand straight to `<ProcessingSteps steps={...} />`. */
+  steps: ProcessingStep[];
   error?: string;
 }
 
@@ -153,6 +218,10 @@ export function useBookmarkProcessingTimeline(
 
   const events = useMemo(() => timeline?.events ?? [], [timeline?.events]);
   const activePhaseLabel = useMemo(() => getActivePhaseLabel(events), [events]);
+  const steps = useMemo(
+    () => deriveProcessingSteps(events, bookmark),
+    [events, bookmark]
+  );
 
   return {
     bookmark,
@@ -160,6 +229,7 @@ export function useBookmarkProcessingTimeline(
     events,
     isPolling,
     activePhaseLabel,
+    steps,
     error,
   };
 }

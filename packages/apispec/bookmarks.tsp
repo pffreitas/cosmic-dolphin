@@ -51,6 +51,16 @@ enum BookmarkProcessingEventKind {
     turn,
 }
 
+@doc("The pipeline's phases, in order - docs/functional-spec/03-ai-pipeline.md. Sequential, each independently retryable. `fetch` through `file` are surfaced in the UI as a five-line checklist; `embed` runs silently because it has no user-legible output.")
+enum BookmarkProcessingPhase {
+    fetch,
+    extract,
+    summarise,
+    tag,
+    file,
+    embed,
+}
+
 model Bookmark {
     id: string;
     sourceUrl: string;
@@ -65,6 +75,10 @@ model Bookmark {
     cosmicLinks?: BookmarkLink[];
     cosmicSummary?: string;
     cosmicBriefSummary?: string;
+
+    @doc("The full brief's key points - 2-5 findings of at most 140 characters, parsed out of `cosmicSummary` once by the pipeline. Rendered with a dot marker, never numbered.")
+    cosmicKeyPoints?: string[];
+
     cosmicTags?: string[];
     metadata?: BookmarkMetadata;
     userId: string;
@@ -220,7 +234,10 @@ model BookmarkProcessingEvent {
     runId: string;
     parentEventId?: string;
     kind: BookmarkProcessingEventKind;
+
+    @doc("One of `BookmarkProcessingPhase` for a phase or turn span. Absent on the run span and on bookkeeping that was never a user-facing phase.")
     phase?: string;
+
     name: string;
     status: BookmarkProcessingTimelineStatus;
     sequence: int32;
@@ -246,6 +263,16 @@ model BookmarkProcessingTimelineResponse {
     run?: BookmarkProcessingRun;
     events: BookmarkProcessingEvent[];
     pollAfterMs: int32;
+}
+
+model ReprocessBookmarkRequest {
+    @doc("Run only this phase. Absent reprocesses the whole pipeline.")
+    phase?: BookmarkProcessingPhase;
+}
+
+model ReprocessBookmarkResponse {
+    bookmark: Bookmark;
+    message: string;
 }
 
 model PreviewMetadata {
@@ -375,6 +402,40 @@ interface Bookmarks {
         @statusCode statusCode: 500;
         @body body: BookmarkError;
     };
+
+    @doc("Start a fresh processing run for a bookmark, optionally scoped to one phase. Appends to the existing timeline rather than replacing it, so the run the user already watched stays on screen. Also the **Summarise now** action on a bookmark left `idle` by the daily processing budget: an explicit request is never refused for budget.")
+    @useAuth(BearerAuth)
+    @post
+    @route("/{id}/reprocess")
+    reprocess(@path id: string, @body request: ReprocessBookmarkRequest):
+        | {
+              @statusCode statusCode: 202;
+              @body body: ReprocessBookmarkResponse;
+          }
+        | {
+              @doc("Unknown phase.")
+              @statusCode
+              statusCode: 400;
+
+              @body body: BookmarkError;
+          }
+        | {
+              @statusCode statusCode: 404;
+              @body body: BookmarkError;
+          }
+        | {
+              @doc("Reprocess rate limit exceeded. Carries `Retry-After`, in seconds.")
+              @statusCode
+              statusCode: 429;
+
+              @header("Retry-After") retryAfter?: int32;
+
+              @body body: BookmarkError;
+          }
+        | {
+              @statusCode statusCode: 500;
+              @body body: BookmarkError;
+          };
 
     @doc("Delete a bookmark and all associated data")
     @useAuth(BearerAuth)

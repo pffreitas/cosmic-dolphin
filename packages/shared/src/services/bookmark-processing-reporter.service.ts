@@ -1,5 +1,6 @@
 import {
   BookmarkProcessingEvent,
+  BookmarkProcessingPhase,
   BookmarkProcessingTimelineStatus,
   BookmarkProcessingUsage,
 } from "../types";
@@ -13,23 +14,79 @@ import {
 
 type BookmarkProcessingReporterRepository = BookmarkProcessingRepositoryContract;
 
-export type BookmarkProcessingPhaseName =
-  // Fetching the page is the pipeline's first phase. It used to happen inside
-  // `POST /bookmarks`, where it had no timeline entry because it ran before
-  // the run started; it is a phase now, so an unreachable host shows as a
-  // failed step on a row the user already has. Named for the spec's
-  // vocabulary (docs/functional-spec/03-ai-pipeline.md), which the rest of
-  // this union is renamed to in D5.
-  | "fetch"
-  | "private_link_enrichment"
-  | "summarization"
-  | "brief_summary"
-  | "tags"
-  | "images"
-  | "chunking"
-  | "embedding"
-  | "categorization"
-  | "finalization";
+/**
+ * The pipeline's phase vocabulary — docs/functional-spec/03-ai-pipeline.md.
+ *
+ * Six phases, in order. Five of them are surfaced in the UI, which labels them
+ * from `PROCESSING_PHASE_LABELS` in `apps/web/components/ai/processing-steps`;
+ * `embed` runs silently because it has no user-legible output.
+ *
+ * These names are a contract with the client, not an implementation detail. A
+ * phase is a thing the user can be told about and can retry — never a unit of
+ * work that happens to be convenient here.
+ */
+export const BOOKMARK_PROCESSING_PHASES = [
+  "fetch",
+  "extract",
+  "summarise",
+  "tag",
+  "file",
+  "embed",
+] as const satisfies readonly BookmarkProcessingPhase[];
+
+/** The union lives in `../types` so queue payloads and clients can name a
+ *  phase without pulling in the reporter. This is the same set. */
+export type BookmarkProcessingPhaseName = BookmarkProcessingPhase;
+
+export function isBookmarkProcessingPhase(
+  value: string
+): value is BookmarkProcessingPhaseName {
+  return (BOOKMARK_PROCESSING_PHASES as readonly string[]).includes(value);
+}
+
+/**
+ * What the pipeline used to call its phases, and where each one lands now.
+ *
+ * The old vocabulary was the worker's internal task list — nine names, several
+ * of them for a single user-visible step ("summarization" and "brief_summary"
+ * are one *Summarising…* line) and one, "finalization", for bookkeeping the
+ * user has no business reading about. That one maps to `null`: it stays in the
+ * timeline under its own name for cost accounting, with no phase to label.
+ *
+ * This table is mirrored by the backfill in
+ * `supabase/migrations/20260827000002_backfill_bookmark_processing_phases.sql`,
+ * so timelines written before the rename read the same as timelines written
+ * after it. Change one and you must change the other.
+ */
+export const LEGACY_BOOKMARK_PROCESSING_PHASES = {
+  fetch: "fetch",
+  private_link_enrichment: "extract",
+  images: "extract",
+  summarization: "summarise",
+  brief_summary: "summarise",
+  tags: "tag",
+  categorization: "file",
+  chunking: "embed",
+  embedding: "embed",
+  finalization: null,
+} as const satisfies Record<string, BookmarkProcessingPhaseName | null>;
+
+export type LegacyBookmarkProcessingPhaseName =
+  keyof typeof LEGACY_BOOKMARK_PROCESSING_PHASES;
+
+/**
+ * Normalises anything the pipeline hands in to the six-phase vocabulary.
+ *
+ * Returns `undefined` for a name with no user-facing phase, which is written
+ * to the event as a null `phase` — the span is still recorded, it just has no
+ * line in the checklist.
+ */
+export function mapBookmarkProcessingPhase(
+  phase: BookmarkProcessingPhaseName | LegacyBookmarkProcessingPhaseName
+): BookmarkProcessingPhaseName | undefined {
+  if (isBookmarkProcessingPhase(phase)) return phase;
+  return LEGACY_BOOKMARK_PROCESSING_PHASES[phase] ?? undefined;
+}
 
 export interface BookmarkProcessingTurnResult<T> {
   value: T;
@@ -94,24 +151,90 @@ export class BookmarkProcessingReporter {
     this.runEventId = runEvent.id;
   }
 
+  /**
+   * Continue the bookmark's most recent run instead of opening a new one.
+   *
+   * A manual **Retry** *appends to* the existing timeline rather than replacing
+   * it (docs/functional-spec/03-ai-pipeline.md § Retries). The timeline
+   * endpoint returns the latest run and its events, so a fresh run row would
+   * make everything the user had already watched vanish — which reads as "that
+   * never happened" rather than "we tried again". Resuming re-opens the run,
+   * carries its sequence counter and its token totals forward, and adds the new
+   * attempt's phases after the ones already there.
+   *
+   * Falls back to `startRun` when there is nothing to resume: a bookmark whose
+   * first run never got off the ground still needs a run.
+   */
+  async resumeRun(bookmarkId: string, userId: string): Promise<void> {
+    const timeline = await this.repository.findLatestTimeline(
+      bookmarkId,
+      userId
+    );
+
+    if (!timeline) {
+      await this.startRun(bookmarkId, userId);
+      return;
+    }
+
+    const { run, events } = timeline;
+    this.runId = run.id;
+    this.runStartedAt = run.startedAt;
+    this.sequence = events.reduce(
+      (highest, event) => Math.max(highest, event.sequence),
+      0
+    );
+    // Seed from what the run already spent. `updateRun` writes absolute totals,
+    // so starting from zero would silently erase the first attempt's cost.
+    this.totals = {
+      inputTokens: run.inputTokens,
+      outputTokens: run.outputTokens,
+      totalTokens: run.totalTokens,
+      reasoningTokens: run.reasoningTokens,
+      cachedInputTokens: run.cachedInputTokens,
+      costUsd: run.costUsd,
+    };
+
+    const runEvent = events.find((event) => event.kind === "run");
+    this.runEventId = runEvent?.id;
+
+    await this.repository.updateRun(run.id, { status: "running", error: null });
+    if (runEvent) {
+      await this.repository.updateEvent(runEvent.id, {
+        status: "running",
+        error: null,
+      });
+    }
+  }
+
   hasStarted(): boolean {
     return Boolean(this.runId && this.runStartedAt);
   }
 
+  /**
+   * One event per phase — created when the phase starts and closed when it
+   * ends. Two writes, at the two moments the UI cares about.
+   *
+   * Deliberately not per token: the checklist is five lines, and streaming a
+   * model's output into it would rewrite the same line hundreds of times,
+   * flickering the row and burning realtime quota for nothing the reader can
+   * use. Token accounting lives on the child `turn` events, one per model
+   * call — see docs/functional-spec/03-ai-pipeline.md § Progress delivery.
+   */
   async trackPhase<T>(
-    phase: BookmarkProcessingPhaseName,
+    phase: BookmarkProcessingPhaseName | LegacyBookmarkProcessingPhaseName,
     name: string,
     work: (phaseReporter: BookmarkProcessingPhaseReporter) => Promise<T>,
     metadata?: Record<string, any>
   ): Promise<T> {
     this.assertRunStarted();
 
+    const mappedPhase = mapBookmarkProcessingPhase(phase);
     const startedAt = this.now();
     const event = await this.repository.createEvent({
       runId: this.runId!,
       parentEventId: this.runEventId,
       kind: "phase",
-      phase,
+      phase: mappedPhase,
       name,
       status: "running",
       sequence: this.nextSequence(),
@@ -122,7 +245,7 @@ export class BookmarkProcessingReporter {
     const phaseReporter = new BookmarkProcessingPhaseReporter(
       this,
       event,
-      phase
+      mappedPhase
     );
 
     try {
@@ -147,7 +270,7 @@ export class BookmarkProcessingReporter {
 
   async trackTurn<T>(
     parentEventId: string,
-    phase: BookmarkProcessingPhaseName,
+    phase: BookmarkProcessingPhaseName | undefined,
     name: string,
     modelId: string | undefined,
     work: () => Promise<BookmarkProcessingTurnResult<T>>
@@ -296,7 +419,7 @@ export class BookmarkProcessingPhaseReporter {
   constructor(
     private reporter: BookmarkProcessingReporter,
     private phaseEvent: BookmarkProcessingEvent,
-    private phase: BookmarkProcessingPhaseName
+    private phase: BookmarkProcessingPhaseName | undefined
   ) {}
 
   async trackTurn<T>(
