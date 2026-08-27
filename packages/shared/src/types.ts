@@ -407,10 +407,18 @@ export interface GetBookmarksQuery {
   limit?: number;
   offset?: number;
   read_status?: "all" | "unread" | "read";
+  /** Which rail row this is. Ignored when `collection_id` names a collection. */
+  scope?: "all" | "inbox" | "archive";
+  /** Defaults to `newest` — chronological, the Library's resting order. */
+  sort?: "newest" | "oldest" | "recently_read" | "longest_unread";
+  /** Opaque keyset cursor from the previous page. Beats `offset`. */
+  cursor?: string;
 }
 
 export interface GetBookmarksResponse {
   bookmarks: Bookmark[];
+  /** Absent when this page is the last one. */
+  nextCursor?: string;
 }
 
 export interface SearchBookmarksQuery {

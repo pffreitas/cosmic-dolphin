@@ -4,7 +4,10 @@ import {
   CollectionsApi,
   Bookmark,
   BookmarkReadStatus,
+  BookmarkScope,
+  BookmarkSort,
   Collection,
+  CollectionSuggestion,
   CreateBookmarkRequest,
   CreateBookmarkResponse,
   DeleteBookmarkResponse,
@@ -370,6 +373,102 @@ export namespace BookmarksClientAPI {
       }
       throw error;
     }
+  }
+
+  /**
+   * The next page, by cursor.
+   *
+   * Not `offset`: the Library is written to while it is being paged — a save
+   * lands, the pipeline files something — and an offset silently repeats rows
+   * across the seam and steps over others.
+   */
+  export async function listPage(query: {
+    collection_id?: string;
+    scope?: BookmarkScope;
+    read_status?: BookmarkReadStatus;
+    sort?: BookmarkSort;
+    limit?: number;
+    cursor?: string;
+  }): Promise<{ bookmarks: Bookmark[]; nextCursor?: string }> {
+    const bookmarksApi = await getApiInstance();
+
+    const response = await bookmarksApi.bookmarksList({
+      collectionId: query.collection_id,
+      scope: query.scope,
+      readStatus: query.read_status,
+      sort: query.sort,
+      limit: query.limit,
+      cursor: query.cursor,
+    });
+
+    return {
+      bookmarks: response.bookmarks ?? [],
+      nextCursor: response.nextCursor,
+    };
+  }
+
+  /**
+   * Move a bookmark, or send it back to Inbox with `null`.
+   *
+   * The server writes `filing_source = 'user'` in the same statement, so this
+   * placement outlives every later run of the pipeline. `collectionId` is
+   * optional in the generated types only because TypeSpec makes PATCH bodies
+   * implicitly optional — it is required server-side, so `null` is passed
+   * explicitly rather than omitted.
+   */
+  export async function refile(
+    bookmarkId: string,
+    collectionId: string | null
+  ): Promise<Bookmark> {
+    const bookmarksApi = await getApiInstance();
+    try {
+      return await bookmarksApi.bookmarksRefile({
+        id: bookmarkId,
+        refileBookmarkRequest: { collectionId },
+      });
+    } catch (error: any) {
+      const { message } = await readApiError(error);
+      if (message) throw new Error(message);
+      throw error;
+    }
+  }
+
+  /** Title, tags, archived. Tags are the whole list, so an undo can restore it. */
+  export async function update(
+    bookmarkId: string,
+    changes: { title?: string; isArchived?: boolean; tags?: string[] }
+  ): Promise<Bookmark> {
+    const bookmarksApi = await getApiInstance();
+    try {
+      return await bookmarksApi.bookmarksUpdate({
+        id: bookmarkId,
+        updateBookmarkRequest: changes,
+      });
+    } catch (error: any) {
+      const { message } = await readApiError(error);
+      if (message) throw new Error(message);
+      throw error;
+    }
+  }
+
+  export async function acceptCollectionSuggestion(
+    suggestionId: string
+  ): Promise<Collection> {
+    const collectionsApi = new CollectionsApi(await getConfiguration());
+    const response = await collectionsApi.collectionsAcceptSuggestion({
+      id: suggestionId,
+    });
+    return response.collection;
+  }
+
+  export async function dismissCollectionSuggestion(
+    suggestionId: string
+  ): Promise<CollectionSuggestion> {
+    const collectionsApi = new CollectionsApi(await getConfiguration());
+    const response = await collectionsApi.collectionsDismissSuggestion({
+      id: suggestionId,
+    });
+    return response.suggestion;
   }
 
   export async function listCollections(): Promise<Collection[]> {

@@ -9,6 +9,7 @@ import {
 } from "../types";
 import { nanoid } from "nanoid";
 import {
+  BookmarkLibraryCounts,
   BookmarkRepository,
   CollectionRepository,
   FindByUserOptions,
@@ -59,6 +60,7 @@ export interface BookmarkService {
     metadata: PrivateLinkMetadata
   ): Promise<Bookmark>;
   findByUser(userId: string, options?: FindByUserOptions): Promise<Bookmark[]>;
+  countLibrary(userId: string): Promise<BookmarkLibraryCounts>;
   findFeed(userId: string, options?: FindByUserOptions): Promise<Bookmark[]>;
   searchByQuickAccess(
     userId: string,
@@ -344,6 +346,11 @@ export class BookmarkServiceImpl implements BookmarkService {
     const bookmarks = await this.bookmarkRepository.findByUser(userId, options);
     const mapped = bookmarks.map((b) => this.mapDatabaseToBookmark(b));
     return this.enrichManyWithCollectionInfo(mapped);
+  }
+
+  /** The Library rail's mono counts. Straight through — no enrichment to do. */
+  async countLibrary(userId: string): Promise<BookmarkLibraryCounts> {
+    return this.bookmarkRepository.countLibrary(userId);
   }
 
   async findFeed(

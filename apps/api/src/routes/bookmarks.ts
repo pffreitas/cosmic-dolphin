@@ -1,5 +1,9 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import {
+  BookmarkKeyset,
+  BookmarkLibraryCounts,
+  BookmarkScope,
+  BookmarkSort,
   CreateBookmarkRequest,
   CreateBookmarkResponse,
   GetBookmarksQuery,
@@ -18,10 +22,119 @@ import {
   type BookmarkProcessingPhase,
 } from "@cosmic-dolphin/shared";
 import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
 import { config } from "../config/environment";
 import { authMiddleware } from "../middleware/auth";
 import { RATE_LIMITS, rateLimited } from "../plugins/rate-limit";
 import { firstZodMessage, refileBookmarkSchema } from "./collections";
+
+export const BOOKMARK_SORTS: BookmarkSort[] = [
+  "newest",
+  "oldest",
+  "recently_read",
+  "longest_unread",
+];
+
+export function isBookmarkSort(value: string): value is BookmarkSort {
+  return (BOOKMARK_SORTS as string[]).includes(value);
+}
+
+/** The Library rail's rows, as a query — see `BookmarkScope`. */
+export const BOOKMARK_SCOPES: BookmarkScope[] = ["all", "inbox", "archive"];
+
+export function isBookmarkScope(value: string): value is BookmarkScope {
+  return (BOOKMARK_SCOPES as string[]).includes(value);
+}
+
+/**
+ * The library cursor.
+ *
+ * Opaque to the client on purpose — it is a keyset, and a client that learns
+ * to read it will start constructing them. It carries the ordering it was
+ * produced under, so a cursor pasted into a request with a different `sort` is
+ * a 400 rather than a page of rows in an order nobody asked for.
+ */
+interface BookmarkCursorPayload {
+  s: BookmarkSort;
+  c: string;
+  r: string | null;
+  i: string;
+}
+
+export function encodeBookmarkCursor(
+  sort: BookmarkSort,
+  bookmark: { id: string; createdAt: Date; readAt?: Date | null }
+): string {
+  const payload: BookmarkCursorPayload = {
+    s: sort,
+    c: new Date(bookmark.createdAt).toISOString(),
+    r: bookmark.readAt ? new Date(bookmark.readAt).toISOString() : null,
+    i: bookmark.id,
+  };
+
+  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+}
+
+export type DecodeCursorResult =
+  | { ok: true; cursor: BookmarkKeyset }
+  | { ok: false; error: string };
+
+export function decodeBookmarkCursor(
+  raw: string,
+  sort: BookmarkSort
+): DecodeCursorResult {
+  let payload: BookmarkCursorPayload;
+
+  try {
+    payload = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
+  } catch {
+    return { ok: false, error: "Invalid cursor" };
+  }
+
+  if (!payload || typeof payload !== "object" || typeof payload.i !== "string") {
+    return { ok: false, error: "Invalid cursor" };
+  }
+
+  if (payload.s !== sort) {
+    return {
+      ok: false,
+      error: "Cursor does not belong to this sort. Start the list again.",
+    };
+  }
+
+  const createdAt = new Date(payload.c);
+  if (Number.isNaN(createdAt.getTime())) {
+    return { ok: false, error: "Invalid cursor" };
+  }
+
+  const readAt = payload.r === null ? null : new Date(payload.r);
+  if (readAt !== null && Number.isNaN(readAt.getTime())) {
+    return { ok: false, error: "Invalid cursor" };
+  }
+
+  return { ok: true, cursor: { createdAt, readAt, id: payload.i } };
+}
+
+/**
+ * Title, tags, archived. Not `collectionId` — moving a bookmark has its own
+ * endpoint because it has to write `filing_source` in the same statement.
+ */
+export const updateBookmarkSchema = z
+  .object({
+    title: z.string().trim().min(1, "title cannot be blank").optional(),
+    isArchived: z.boolean().optional(),
+    tags: z
+      .array(z.string().trim().min(1, "a tag cannot be blank"))
+      .max(50, "at most 50 tags")
+      .optional(),
+  })
+  .refine(
+    (body) =>
+      body.title !== undefined ||
+      body.isArchived !== undefined ||
+      body.tags !== undefined,
+    { message: "nothing to update" }
+  );
 
 export type CreateBookmarkValidationResult =
   | { ok: true }
@@ -375,11 +488,14 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         limit = 50,
         offset = 0,
         read_status = "all",
+        scope = "all",
+        sort = "newest",
+        cursor,
       } = request.query as Omit<GetBookmarksQuery, "user_id">;
       const user_id = request.userId!;
 
       fastify.log.info(
-        { collection_id, limit, offset, read_status, user_id },
+        { collection_id, limit, offset, read_status, scope, sort, user_id },
         "Get bookmarks request"
       );
 
@@ -387,20 +503,67 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: "Invalid read_status" });
       }
 
-      const bookmarks = await services.bookmark.findByUser(user_id, {
+      if (!isBookmarkScope(scope)) {
+        return reply.status(400).send({ error: "Invalid scope" });
+      }
+
+      if (!isBookmarkSort(sort)) {
+        return reply.status(400).send({ error: "Invalid sort" });
+      }
+
+      let keyset: BookmarkKeyset | null = null;
+      if (cursor) {
+        const decoded = decodeBookmarkCursor(cursor, sort);
+        if (!decoded.ok) {
+          return reply.status(400).send({ error: decoded.error });
+        }
+        keyset = decoded.cursor;
+      }
+
+      // One row past the page, then dropped. Without it "is there more?" is a
+      // guess, and a `nextCursor` on a full last page hands the client an
+      // empty page to render before it learns the list has ended.
+      const rows = await services.bookmark.findByUser(user_id, {
         collectionId: collection_id,
-        limit,
+        limit: limit + 1,
         offset,
         includeArchived: false,
         readStatus: read_status,
+        scope,
+        sort,
+        cursor: keyset,
       });
 
-      return reply.send({ bookmarks });
+      const hasMore = rows.length > limit;
+      const bookmarks = hasMore ? rows.slice(0, limit) : rows;
+      const last = bookmarks[bookmarks.length - 1];
+
+      return reply.send({
+        bookmarks,
+        nextCursor:
+          hasMore && last ? encodeBookmarkCursor(sort, last) : undefined,
+      });
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
       fastify.log.error({ errorMessage, errorStack }, "Get bookmarks error");
+      return reply.status(500).send({ error: "Internal server error" });
+    }
+  });
+
+  // The Library rail's counts. A static segment, so it has to be reachable
+  // ahead of `/bookmarks/:id` — find-my-way prefers static over parametric, so
+  // registration order here is not what saves it, but the two are kept apart
+  // anyway for the next person reading the file.
+  fastify.get<{
+    Reply: BookmarkLibraryCounts | { error: string };
+  }>("/bookmarks/counts", { preHandler: authMiddleware }, async (request, reply) => {
+    try {
+      const counts = await services.bookmark.countLibrary(request.userId!);
+      return reply.send(counts);
+    } catch (error) {
+      fastify.log.error({ error }, "Get bookmark counts error");
       return reply.status(500).send({ error: "Internal server error" });
     }
   });
@@ -650,6 +813,47 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
       }
     }
   );
+
+  // Title, tags, archived. What the Library's bulk bar writes through for
+  // **Archive** and **Add tag** — and the reason `tags` is the whole list
+  // rather than a delta: the toast offers an undo for eight seconds, and an
+  // undo that can only remove what it added cannot restore a tag the bulk
+  // action happened to overwrite.
+  fastify.patch<{
+    Params: { id: string };
+    Body: unknown;
+    Reply: Bookmark | { error: string };
+  }>("/bookmarks/:id", { preHandler: authMiddleware }, async (request, reply) => {
+    try {
+      const { id } = request.params;
+      const user_id = request.userId!;
+
+      const parsed = updateBookmarkSchema.safeParse(request.body ?? {});
+      if (!parsed.success) {
+        return reply.status(400).send({ error: firstZodMessage(parsed.error) });
+      }
+
+      // Ownership is a read first: `BookmarkRepository.update` is keyed on id
+      // alone, so without this a valid id belonging to someone else would be
+      // writable.
+      const existing = await services.bookmark.findByIdAndUser(id, user_id);
+      if (!existing) {
+        return reply.status(404).send({ error: "Bookmark not found" });
+      }
+
+      const { title, isArchived, tags } = parsed.data;
+      const bookmark = await services.bookmark.update(id, {
+        ...(title !== undefined ? { title } : {}),
+        ...(isArchived !== undefined ? { isArchived } : {}),
+        ...(tags !== undefined ? { cosmicTags: tags } : {}),
+      });
+
+      return reply.send(bookmark);
+    } catch (error) {
+      fastify.log.error({ error }, "Update bookmark error");
+      return reply.status(500).send({ error: "Internal server error" });
+    }
+  });
 
   fastify.delete<{
     Params: { id: string };

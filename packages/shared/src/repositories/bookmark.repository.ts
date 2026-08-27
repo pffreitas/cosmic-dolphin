@@ -1,4 +1,4 @@
-import { Kysely, sql } from "kysely";
+import { Kysely, sql, type SqlBool } from "kysely";
 import { BaseRepository } from "./base.repository";
 import {
   Database,
@@ -9,12 +9,60 @@ import {
 } from "../database/schema";
 import { ScrapedUrlContents } from "../types";
 
+/**
+ * Library ordering — docs/functional-spec/04-library.md § Ordering.
+ *
+ * `newest` is the default everywhere, because chronological is the order the
+ * Library falls back to and the one every other ordering is an overlay on.
+ */
+export type BookmarkSort =
+  | "newest"
+  | "oldest"
+  | "recently_read"
+  | "longest_unread";
+
+/**
+ * The last row of the previous page, decoded.
+ *
+ * Keyset rather than offset: a library is written to while it is being paged,
+ * and an offset silently duplicates rows across the seam and drops others
+ * entirely. Encoding and decoding the opaque cursor string is the API layer's
+ * job; the repository only ever sees the three columns every ordering sorts on.
+ */
+export interface BookmarkKeyset {
+  createdAt: Date;
+  readAt: Date | null;
+  id: string;
+}
+
+/**
+ * The Library rail's rows, as a query.
+ *
+ * `archive` is the only scope that returns archived rows — which is what makes
+ * archiving a way out of the list rather than a delete.
+ */
+export type BookmarkScope = "all" | "inbox" | "archive";
+
 export interface FindByUserOptions {
   collectionId?: string;
   limit?: number;
   offset?: number;
   includeArchived?: boolean;
   readStatus?: "all" | "unread" | "read";
+  scope?: BookmarkScope;
+  sort?: BookmarkSort;
+  /** Resume after this row. When present, `offset` is ignored. */
+  cursor?: BookmarkKeyset | null;
+}
+
+/** What the Library rail renders beside each of its rows. */
+export interface BookmarkLibraryCounts {
+  all: number;
+  inbox: number;
+  unread: number;
+  archived: number;
+  /** Direct members only — rolling children into a parent is the client's call. */
+  collections: { collectionId: string; count: number }[];
 }
 
 export interface SearchOptions {
@@ -52,6 +100,7 @@ export interface BookmarkRepository {
   getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
   deleteScrapedUrlContents(bookmarkId: string): Promise<void>;
   findByUser(userId: string, options?: FindByUserOptions): Promise<Bookmark[]>;
+  countLibrary(userId: string): Promise<BookmarkLibraryCounts>;
   searchByQuickAccess(
     userId: string,
     query: string,
@@ -113,6 +162,59 @@ export interface BookmarkRepository {
    */
   findTopTags(userId: string, limit: number): Promise<string[]>;
   deleteByUser(id: string, userId: string): Promise<boolean>;
+}
+
+/**
+ * The four orderings, spelled out once.
+ *
+ * `recently_read` puts the never-read last rather than first — a bookmark with
+ * no `read_at` has not been read recently, it has not been read at all.
+ * `longest_unread` is its mirror: unread first, oldest first, which is the
+ * order in which a backlog is most usefully worked through.
+ */
+const ORDER_BY: Record<BookmarkSort, ReturnType<typeof sql>[]> = {
+  newest: [sql`created_at desc`, sql`id desc`],
+  oldest: [sql`created_at asc`, sql`id asc`],
+  recently_read: [
+    sql`read_at desc nulls last`,
+    sql`created_at desc`,
+    sql`id desc`,
+  ],
+  longest_unread: [
+    sql`(read_at is not null) asc`,
+    sql`created_at asc`,
+    sql`id asc`,
+  ],
+};
+
+/**
+ * "Everything strictly after this row, in this ordering."
+ *
+ * The null-handling is the whole difficulty: `read_at` is null for anything
+ * never read, and a tuple comparison against null is null, not false — so the
+ * bucket the cursor sits in decides the shape of the predicate rather than
+ * being folded into it.
+ */
+function keysetPredicate(
+  sort: BookmarkSort,
+  cursor: BookmarkKeyset
+): ReturnType<typeof sql<SqlBool>> {
+  const { createdAt, readAt, id } = cursor;
+
+  switch (sort) {
+    case "newest":
+      return sql<SqlBool>`(created_at, id) < (${createdAt}, ${id})`;
+    case "oldest":
+      return sql<SqlBool>`(created_at, id) > (${createdAt}, ${id})`;
+    case "recently_read":
+      return readAt === null
+        ? sql<SqlBool>`read_at is null and (created_at, id) < (${createdAt}, ${id})`
+        : sql<SqlBool>`read_at is null or (read_at, created_at, id) < (${readAt}, ${createdAt}, ${id})`;
+    case "longest_unread":
+      return readAt === null
+        ? sql<SqlBool>`read_at is not null or (read_at is null and (created_at, id) > (${createdAt}, ${id}))`
+        : sql<SqlBool>`read_at is not null and (created_at, id) > (${createdAt}, ${id})`;
+  }
 }
 
 export class BookmarkRepositoryImpl
@@ -259,18 +361,38 @@ export class BookmarkRepositoryImpl
         offset = 0,
         includeArchived = false,
         readStatus = "all",
+        scope = "all",
+        sort = "newest",
+        cursor,
       } = options;
 
       let query = this.db
         .selectFrom("bookmarks")
         .selectAll()
         .where("user_id", "=", userId)
-        .orderBy("created_at", "desc")
-        .limit(limit)
-        .offset(offset);
+        .limit(limit);
 
-      if (!includeArchived) {
+      // Every ordering ends on `id` so the sort is total. Without that last
+      // key, two rows saved in the same millisecond can swap places between
+      // requests and the keyset cursor either repeats one or steps over it.
+      for (const term of ORDER_BY[sort]) {
+        query = query.orderBy(term);
+      }
+
+      if (cursor) {
+        query = query.where(keysetPredicate(sort, cursor));
+      } else if (offset) {
+        query = query.offset(offset);
+      }
+
+      if (scope === "archive") {
+        query = query.where("is_archived", "=", true);
+      } else if (!includeArchived) {
         query = query.where("is_archived", "=", false);
+      }
+
+      if (scope === "inbox") {
+        query = query.where("collection_id", "is", null);
       }
 
       if (collectionId) {
@@ -285,6 +407,55 @@ export class BookmarkRepositoryImpl
 
       return await query.execute();
     }, "findByUser");
+  }
+
+  /**
+   * Every number the Library rail shows, in two statements rather than one per
+   * row. A count per tree node would be a request per collection, and the rail
+   * has as many rows as the user has collections.
+   */
+  async countLibrary(userId: string): Promise<BookmarkLibraryCounts> {
+    return this.executeQuery(async () => {
+      const totals = await sql<{
+        all: string | number;
+        inbox: string | number;
+        unread: string | number;
+        archived: string | number;
+      }>`
+        SELECT
+          count(*) FILTER (WHERE NOT is_archived) AS "all",
+          count(*) FILTER (WHERE NOT is_archived AND collection_id IS NULL) AS "inbox",
+          count(*) FILTER (WHERE NOT is_archived AND read_at IS NULL) AS "unread",
+          count(*) FILTER (WHERE is_archived) AS "archived"
+        FROM bookmarks
+        WHERE user_id = ${userId}
+      `.execute(this.db);
+
+      const perCollection = await sql<{
+        collection_id: string;
+        count: string | number;
+      }>`
+        SELECT collection_id, count(*) AS count
+        FROM bookmarks
+        WHERE user_id = ${userId}
+          AND NOT is_archived
+          AND collection_id IS NOT NULL
+        GROUP BY collection_id
+      `.execute(this.db);
+
+      const row = totals.rows[0];
+
+      return {
+        all: Number(row?.all ?? 0),
+        inbox: Number(row?.inbox ?? 0),
+        unread: Number(row?.unread ?? 0),
+        archived: Number(row?.archived ?? 0),
+        collections: perCollection.rows.map((entry) => ({
+          collectionId: entry.collection_id,
+          count: Number(entry.count),
+        })),
+      };
+    }, "countLibrary");
   }
 
   async findByShareSlug(slug: string): Promise<Bookmark | null> {

@@ -4,6 +4,10 @@ export {
   BookmarkRepositoryImpl,
 } from "./bookmark.repository";
 export type {
+  BookmarkKeyset,
+  BookmarkLibraryCounts,
+  BookmarkScope,
+  BookmarkSort,
   FindByUserOptions,
   SearchOptions,
   FullTextSearchResult,

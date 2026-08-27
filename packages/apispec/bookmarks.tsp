@@ -20,6 +20,35 @@ enum BookmarkReadStatus {
     read,
 }
 
+@doc("""
+    Library ordering - docs/functional-spec/04-library.md § Ordering.
+
+    `newest` is chronological by `created_at` descending. It is the default and
+    must always be one click away: AI organisation is an overlay on that order,
+    never a replacement for it.
+    """)
+enum BookmarkSort {
+    newest,
+    oldest,
+    recently_read,
+    longest_unread,
+}
+
+@doc("""
+    Which slice of the library a query is about - the Library rail's rows,
+    docs/functional-spec/04-library.md § Collections.
+
+    `all` is every non-archived save. `inbox` narrows that to the ones nothing
+    has filed yet (`collection_id IS NULL`). `archive` is the only scope that
+    returns `is_archived = true` rows, which is what makes archiving a way out
+    of the list rather than a delete.
+    """)
+enum BookmarkScope {
+    all,
+    inbox,
+    archive,
+}
+
 @doc("Durable processing timeline status for runs, phases, and turns")
 enum BookmarkProcessingTimelineStatus {
     running,
@@ -158,10 +187,76 @@ model GetBookmarksQuery {
     @doc("Filter bookmarks by read state")
     @query
     read_status?: BookmarkReadStatus = BookmarkReadStatus.all;
+
+    @doc("Which rail row this is. Ignored when `collection_id` names a collection.")
+    @query
+    scope?: BookmarkScope = BookmarkScope.all;
+
+    @doc("Ordering. Chronological `newest` is the default.")
+    @query
+    sort?: BookmarkSort = BookmarkSort.newest;
+
+    @doc("""
+        Opaque keyset cursor taken verbatim from the previous page's
+        `nextCursor`. Present, it wins over `offset` - a library is written to
+        while it is being paged, and an offset silently duplicates and skips.
+        A cursor produced under a different `sort` is rejected with 400.
+        """)
+    @query
+    cursor?: string;
 }
 
 model GetBookmarksResponse {
     bookmarks: Bookmark[];
+
+    @doc("Cursor for the next page. Absent when this page is the last one.")
+    nextCursor?: string;
+}
+
+@doc("Non-archived bookmarks filed in one collection.")
+model BookmarkCollectionCount {
+    collectionId: string;
+    count: int32;
+}
+
+@doc("""
+    The counts the Library rail renders beside its rows. One query rather than
+    one request per node - the rail has as many rows as the user has
+    collections, and a count per row would be a request per row.
+    """)
+model BookmarkLibraryCounts {
+    @doc("Every non-archived bookmark - the `All saves` row.")
+    all: int32;
+
+    @doc("Non-archived with `collection_id IS NULL` - the `Inbox` row.")
+    inbox: int32;
+
+    @doc("Non-archived with `read_at IS NULL` - the `Read later` row.")
+    unread: int32;
+
+    @doc("`is_archived = true` - the `Archive` row.")
+    archived: int32;
+
+    @doc("Per-collection counts. A collection holding nothing is absent, not zero.")
+    collections: BookmarkCollectionCount[];
+}
+
+@doc("""
+    Partial update of a bookmark. Every field is optional and an absent field is
+    left alone.
+
+    Where the bookmark is filed is deliberately not here: moving a bookmark is
+    `PATCH /bookmarks/{id}/collection`, which writes `filing_source` in the same
+    statement as the move.
+    """)
+model UpdateBookmarkRequest {
+    title?: string;
+
+    @doc("Archive or restore. Archiving keeps the bookmark searchable and is reversible; it is never a delete.")
+    isArchived?: boolean;
+
+    @doc("The complete tag list after the edit, not a delta - so an undo can restore exactly what was there.")
+    tags?: string[];
 }
 
 model SearchBookmarksQuery {
@@ -339,10 +434,35 @@ interface Bookmarks {
               @body body: BookmarkError;
           };
 
-    @doc("Get user's bookmarks")
+    @doc("""
+        Get the caller's bookmarks.
+
+        Ordered by `sort`, which defaults to `newest` - chronological, the order
+        the Library falls back to and the one every other ordering is an overlay
+        on.
+
+        Paging is keyset: read `nextCursor` off the response and hand it back as
+        `cursor`. `offset` remains for callers that have not moved over, but it
+        is not safe on a list being written to while it is paged.
+        """)
     @useAuth(BearerAuth)
     @get
     list(...GetBookmarksQuery): GetBookmarksResponse | {
+        @doc("Unknown `sort`, `scope` or `read_status`, or a cursor that does not belong to this `sort`.")
+        @statusCode
+        statusCode: 400;
+
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+
+    @doc("The counts beside every row of the Library rail, in one query.")
+    @useAuth(BearerAuth)
+    @get
+    @route("/counts")
+    counts(): BookmarkLibraryCounts | {
         @statusCode statusCode: 500;
         @body body: BookmarkError;
     };
@@ -415,6 +535,29 @@ interface Bookmarks {
               @statusCode statusCode: 500;
               @body body: BookmarkError;
           };
+
+    @doc("""
+        Update a bookmark's title, tags, or archived flag.
+
+        This is what the Library's bulk bar writes through for **Archive** and
+        **Add tag**. It takes the whole tag list rather than a delta so the
+        8-second undo can put back exactly what was there.
+        """)
+    @useAuth(BearerAuth)
+    @patch
+    update(@path id: string, @body request: UpdateBookmarkRequest): Bookmark | {
+        @doc("Malformed body - a blank tag, or nothing to change.")
+        @statusCode
+        statusCode: 400;
+
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 404;
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
 
     @doc("Delete a bookmark and all associated data")
     @useAuth(BearerAuth)
