@@ -23,12 +23,112 @@ export interface AcceptedCollectionSuggestion {
   filedCount: number;
 }
 
+/**
+ * How deep the tree is allowed to go — a root and one level of children.
+ *
+ * "A third level is where folder systems start to fail people, and the AI has
+ * no way to justify one" (docs/functional-spec/04-library.md § Collections).
+ * The cap is enforced here, in the service, so every path into the tree —
+ * create, reparent, and accepting a suggestion — is checked by the same code.
+ */
+export const COLLECTION_MAX_DEPTH = 2;
+
+/** One wording for the cap, so every rejection reads the same. */
+export const COLLECTION_MAX_DEPTH_MESSAGE =
+  'Collections are limited to two levels';
+
+export type CollectionErrorCode =
+  | "invalid"
+  | "not_found"
+  | "parent_not_found"
+  | "max_depth"
+  | "conflict";
+
+/**
+ * A rule the caller broke, with enough information for a route to pick a status
+ * code without string-matching on messages.
+ */
+export class CollectionError extends Error {
+  constructor(
+    readonly code: CollectionErrorCode,
+    message: string
+  ) {
+    super(message);
+    this.name = "CollectionError";
+  }
+}
+
+export const MAX_COLLECTION_NAME_LENGTH = 120;
+
+export interface CreateCollectionInput {
+  name: string;
+  description?: string | null;
+  color?: string | null;
+  icon?: string | null;
+  parentId?: string | null;
+  isPublic?: boolean;
+}
+
+/**
+ * Rename, recolour, reparent. Every field is optional and an absent field is
+ * left alone; `null` on a nullable field clears it, and `parentId: null` moves
+ * the collection back to the root.
+ */
+export type UpdateCollectionInput = Partial<CreateCollectionInput>;
+
+function normaliseName(name: string | undefined): string {
+  const trimmed = (name ?? '').trim();
+  if (trimmed.length === 0) {
+    throw new CollectionError('invalid', 'name is required');
+  }
+  if (trimmed.length > MAX_COLLECTION_NAME_LENGTH) {
+    throw new CollectionError(
+      'invalid',
+      `name must be at most ${MAX_COLLECTION_NAME_LENGTH} characters`
+    );
+  }
+  return trimmed;
+}
+
 export interface CollectionService {
   findByIdAndUser(id: string, userId: string): Promise<Collection | null>;
   findByUser(userId: string): Promise<Collection[]>;
   create(data: Omit<Collection, 'id' | 'createdAt' | 'updatedAt'>): Promise<Collection>;
   update(id: string, data: Partial<Collection>): Promise<Collection>;
   delete(id: string): Promise<void>;
+
+  /**
+   * Create a collection for a user, with the two-level cap enforced.
+   *
+   * Throws `CollectionError`. The plain `create` above stays as it is because
+   * the worker and the suggestion path use it with ids they have already
+   * checked; anything reachable from HTTP goes through this.
+   */
+  createForUser(
+    userId: string,
+    input: CreateCollectionInput
+  ): Promise<Collection>;
+  /**
+   * Rename, recolour, or reparent a collection the user owns.
+   *
+   * Reparenting is checked from **both** ends: the new parent must be a root
+   * collection, and a collection that has children of its own cannot be moved
+   * under anything — either would put some collection at a third level.
+   */
+  updateForUser(
+    id: string,
+    userId: string,
+    input: UpdateCollectionInput
+  ): Promise<Collection>;
+  /**
+   * Delete a collection the user owns.
+   *
+   * Its bookmarks move to Inbox and are never deleted: `bookmarks.collection_id`
+   * is `ON DELETE SET NULL`, and Inbox *is* `collection_id IS NULL`. Child
+   * collections go with it (`parent_id` is `ON DELETE CASCADE`) and their
+   * bookmarks land in Inbox by the same rule.
+   */
+  deleteForUser(id: string, userId: string): Promise<void>;
 
   /**
    * The proposals worth showing: pending, and supported by at least
@@ -101,6 +201,140 @@ export class CollectionServiceImpl implements CollectionService {
     await this.collectionRepository.delete(id);
   }
 
+  async createForUser(
+    userId: string,
+    input: CreateCollectionInput
+  ): Promise<Collection> {
+    const name = normaliseName(input.name);
+    const parentId = input.parentId ?? null;
+
+    if (parentId !== null) {
+      await this.assertUsableParent(parentId, userId);
+    }
+
+    const collection = await this.collectionRepository.create({
+      name,
+      description: input.description ?? null,
+      color: input.color ?? null,
+      icon: input.icon ?? null,
+      parent_id: parentId,
+      user_id: userId,
+      is_public: input.isPublic ?? false,
+    });
+
+    return this.mapDatabaseToCollection(collection);
+  }
+
+  async updateForUser(
+    id: string,
+    userId: string,
+    input: UpdateCollectionInput
+  ): Promise<Collection> {
+    const existing = await this.collectionRepository.findByIdAndUser(id, userId);
+    if (!existing) {
+      throw new CollectionError('not_found', 'Collection not found');
+    }
+
+    const updateData: CollectionUpdate = {};
+
+    if (input.name !== undefined) {
+      updateData.name = normaliseName(input.name);
+    }
+    if (input.description !== undefined) {
+      updateData.description = input.description ?? null;
+    }
+    if (input.color !== undefined) updateData.color = input.color ?? null;
+    if (input.icon !== undefined) updateData.icon = input.icon ?? null;
+    if (input.isPublic !== undefined) updateData.is_public = input.isPublic;
+
+    if (input.parentId !== undefined) {
+      const parentId = input.parentId ?? null;
+      await this.assertReparentable(id, userId, parentId);
+      updateData.parent_id = parentId;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return this.mapDatabaseToCollection(existing);
+    }
+
+    const collection = await this.collectionRepository.update(id, updateData);
+    return this.mapDatabaseToCollection(collection);
+  }
+
+  async deleteForUser(id: string, userId: string): Promise<void> {
+    const existing = await this.collectionRepository.findByIdAndUser(id, userId);
+    if (!existing) {
+      throw new CollectionError('not_found', 'Collection not found');
+    }
+    await this.collectionRepository.delete(id);
+  }
+
+  /**
+   * A collection may be a parent only if it exists, belongs to the caller, and
+   * is itself at the root. Anything else makes the new child a third level.
+   */
+  private async assertUsableParent(
+    parentId: string,
+    userId: string
+  ): Promise<void> {
+    const parent = await this.collectionRepository.findByIdAndUser(
+      parentId,
+      userId
+    );
+    if (!parent) {
+      throw new CollectionError(
+        'parent_not_found',
+        'Parent collection not found'
+      );
+    }
+    if (parent.parent_id !== null) {
+      throw new CollectionError('max_depth', COLLECTION_MAX_DEPTH_MESSAGE);
+    }
+  }
+
+  /**
+   * The reparent path, which has two ways to smuggle in a third level and
+   * needs both closed.
+   *
+   * 1. The new parent is itself a child — the moved collection would sit at
+   *    level three. Caught by `assertUsableParent`.
+   * 2. The moved collection has children of its own — *they* would sit at
+   *    level three, even though the moved collection lands at level two. This
+   *    one is invisible if you only look at the collection being moved.
+   *
+   * A collection naming itself as its parent is the degenerate cycle; with the
+   * cap at two levels it is the only cycle reachable, because every other
+   * candidate parent is either a root (no ancestors) or already rejected by (1).
+   */
+  private async assertReparentable(
+    id: string,
+    userId: string,
+    parentId: string | null
+  ): Promise<void> {
+    if (parentId === null) {
+      // Moving to the root can never deepen anything.
+      return;
+    }
+
+    if (parentId === id) {
+      throw new CollectionError(
+        'invalid',
+        'A collection cannot be its own parent'
+      );
+    }
+
+    await this.assertUsableParent(parentId, userId);
+
+    const tree = await this.collectionRepository.findByUser(userId);
+    const hasChildren = tree.some((c) => c.parent_id === id);
+    if (hasChildren) {
+      throw new CollectionError(
+        'max_depth',
+        `${COLLECTION_MAX_DEPTH_MESSAGE}: move or delete this collection's children first`
+      );
+    }
+  }
+
   async findOfferableSuggestions(
     userId: string
   ): Promise<CollectionSuggestion[]> {
@@ -125,27 +359,22 @@ export class CollectionServiceImpl implements CollectionService {
       userId
     );
     if (!row) {
-      throw new Error('Collection suggestion not found');
+      throw new CollectionError('not_found', 'Collection suggestion not found');
     }
     if (row.status !== 'pending') {
-      throw new Error(`Collection suggestion already ${row.status}`);
+      throw new CollectionError(
+        'conflict',
+        `Collection suggestion already ${row.status}`
+      );
     }
 
     const parentId = row.parent_id ?? null;
     if (parentId !== null) {
-      const parent = await this.collectionRepository.findByIdAndUser(
-        parentId,
-        userId
-      );
-      // Two levels, and no deeper — the same cap the API enforces. A proposal
-      // whose parent has itself moved under something else since it was made
-      // would otherwise create the third level by the back door.
-      if (!parent) {
-        throw new Error('Parent collection not found');
-      }
-      if (parent.parent_id !== null) {
-        throw new Error('Collections are limited to two levels');
-      }
+      // Two levels, and no deeper — the same check, and the same code, the
+      // create and reparent paths run. A proposal whose parent has itself moved
+      // under something else since it was made would otherwise create the third
+      // level by the back door.
+      await this.assertUsableParent(parentId, userId);
     }
 
     // The user may have created the collection by hand in the meantime.
@@ -198,7 +427,7 @@ export class CollectionServiceImpl implements CollectionService {
       dismissedUntil
     );
     if (!dismissed) {
-      throw new Error('Collection suggestion not found');
+      throw new CollectionError('not_found', 'Collection suggestion not found');
     }
     return mapSuggestionRow(dismissed);
   }

@@ -12,7 +12,6 @@ import {
   createServiceContainer,
   Bookmark,
   BookmarkProcessingTimeline,
-  Collection,
   createDatabase,
   normalizeUrl,
   BOOKMARK_PROCESSING_PHASES,
@@ -22,6 +21,7 @@ import { createClient } from "@supabase/supabase-js";
 import { config } from "../config/environment";
 import { authMiddleware } from "../middleware/auth";
 import { RATE_LIMITS, rateLimited } from "../plugins/rate-limit";
+import { firstZodMessage, refileBookmarkSchema } from "./collections";
 
 export type CreateBookmarkValidationResult =
   | { ok: true }
@@ -162,6 +162,54 @@ export async function buildBookmarkProcessingTimelineResponse(
           : 0,
     },
   };
+}
+
+type BookmarkRefileServices = Pick<ServiceContainer, "bookmark" | "collection">;
+
+/**
+ * The override. A person has said where this bookmark belongs, and that answer
+ * outlives every future run of the pipeline.
+ *
+ * The whole point is the single call to `refileByUser`: it writes
+ * `collection_id` and `filing_source = 'user'` in one statement
+ * (`BookmarkRepository.updateUserFiling`), so there is no instant at which the
+ * bookmark has moved but is still marked as the AI's to move again. A refile
+ * the next run can undo is worse than no refile at all
+ * (docs/functional-spec/08-api-surface.md § Collections).
+ *
+ * `refileByUser` is also scoped to `userId` in SQL, which is what makes the
+ * bookmark's ownership check a 404 rather than a separate read.
+ */
+export async function refileBookmarkForUser(
+  services: BookmarkRefileServices,
+  bookmarkId: string,
+  userId: string,
+  collectionId: string | null
+): Promise<
+  | { statusCode?: undefined; body: Bookmark }
+  | { statusCode: 404; body: { error: string } }
+> {
+  if (collectionId !== null) {
+    const collection = await services.collection.findByIdAndUser(
+      collectionId,
+      userId
+    );
+    if (!collection) {
+      return { statusCode: 404, body: { error: "Collection not found" } };
+    }
+  }
+
+  const bookmark = await services.bookmark.refileByUser(
+    bookmarkId,
+    userId,
+    collectionId
+  );
+
+  if (!bookmark) {
+    return { statusCode: 404, body: { error: "Bookmark not found" } };
+  }
+
+  return { body: bookmark };
 }
 
 export default async function bookmarkRoutes(fastify: FastifyInstance) {
@@ -765,18 +813,45 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     }
   );
 
-  fastify.get<{
-    Reply: { collections: Collection[] } | { error: string };
-  }>("/collections", { preHandler: authMiddleware }, async (request, reply) => {
-    try {
-      const user_id = request.userId!;
-      const collections = await services.collection.findByUser(user_id);
-      return reply.send({ collections });
-    } catch (error) {
-      fastify.log.error({ error }, "Get collections error");
-      return reply.status(500).send({ error: "Internal server error" });
+  // Manual refile. Lives here, not in `collections.ts`, because it is addressed
+  // as a bookmark — the resource-domain convention keys on the path.
+  fastify.patch<{
+    Params: { id: string };
+    Body: unknown;
+    Reply: Bookmark | { error: string };
+  }>(
+    "/bookmarks/:id/collection",
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const user_id = request.userId!;
+
+        const parsed = refileBookmarkSchema.safeParse(request.body ?? {});
+        if (!parsed.success) {
+          return reply
+            .status(400)
+            .send({ error: firstZodMessage(parsed.error) });
+        }
+
+        const result = await refileBookmarkForUser(
+          services,
+          id,
+          user_id,
+          parsed.data.collectionId
+        );
+
+        if (result.statusCode) {
+          return reply.status(result.statusCode).send(result.body);
+        }
+
+        return reply.send(result.body);
+      } catch (error) {
+        fastify.log.error({ error }, "Refile bookmark error");
+        return reply.status(500).send({ error: "Internal server error" });
+      }
     }
-  });
+  );
 
   fastify.get<{
     Params: { slug: string };

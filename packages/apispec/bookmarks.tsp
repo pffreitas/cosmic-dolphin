@@ -5,23 +5,6 @@ import "@typespec/openapi3";
 using TypeSpec.Http;
 namespace CosmicDolphinService;
 
-model Collection {
-    id: string;
-    name: string;
-    description?: string;
-    color?: string;
-    icon?: string;
-    parentId?: string;
-    userId: string;
-    isPublic?: boolean;
-}
-
-@doc("Path item for breadcrumb navigation in collection hierarchy")
-model CollectionPathItem {
-    id: string;
-    name: string;
-}
-
 @doc("Processing state of AI pipeline for a bookmark")
 enum ProcessingStatus {
     idle,
@@ -294,10 +277,6 @@ model PreviewResponse {
     scrapable: boolean;
 }
 
-model GetCollectionsResponse {
-    collections: Collection[];
-}
-
 model DeleteBookmarkResponse {
     message: string;
 }
@@ -472,6 +451,28 @@ interface Bookmarks {
         @body body: BookmarkError;
     };
 
+    @doc("""
+        Move a bookmark into a collection, or to Inbox with `collectionId: null`.
+
+        This is the override endpoint. It sets `filing_source = 'user'` in the
+        same statement as the move, so the pipeline's `file` phase will never
+        touch this bookmark again. A refile the pipeline can undo on its next
+        run is worse than no refile at all.
+        """)
+    @useAuth(BearerAuth)
+    @patch
+    @route("/{id}/collection")
+    refile(@path id: string, @body request: RefileBookmarkRequest): Bookmark | {
+        @doc("The named collection is not the caller's.")
+        @statusCode
+        statusCode: 404;
+
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+
     @doc("Search bookmarks")
     @useAuth(BearerAuth)
     @get
@@ -531,18 +532,6 @@ interface Bookmarks {
         @statusCode statusCode: 400;
         @body body: BookmarkError;
     } | {
-        @statusCode statusCode: 500;
-        @body body: BookmarkError;
-    };
-}
-
-@route("/collections")
-@tag("Collections")
-interface Collections {
-    @doc("Get user's collections")
-    @useAuth(BearerAuth)
-    @get
-    list(): GetCollectionsResponse | {
         @statusCode statusCode: 500;
         @body body: BookmarkError;
     };
