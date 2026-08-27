@@ -13,6 +13,9 @@ import bookmarksReducer, {
   searchBookmarks,
 } from "./bookmarksSlice";
 
+const fixtureCreatedAt = new Date("2026-06-17T00:00:00.000Z");
+const fixtureUpdatedAt = new Date("2026-06-17T00:00:00.000Z");
+
 describe("bookmarksSlice", () => {
   it("stores search result processing dates as serializable strings", () => {
     const processingStartedAt = new Date("2026-06-17T02:34:24.000Z");
@@ -24,6 +27,8 @@ describe("bookmarksSlice", () => {
           userId: "user-1",
           title: "Example",
           processingStartedAt,
+          createdAt: fixtureCreatedAt,
+          updatedAt: fixtureUpdatedAt,
         } satisfies Bookmark,
       ],
       total: 1,
@@ -53,6 +58,8 @@ describe("bookmarksSlice", () => {
         userId: "user-1",
         title: "Done",
         processingCompletedAt,
+        createdAt: fixtureCreatedAt,
+        updatedAt: fixtureUpdatedAt,
       } satisfies Bookmark,
     ];
 
