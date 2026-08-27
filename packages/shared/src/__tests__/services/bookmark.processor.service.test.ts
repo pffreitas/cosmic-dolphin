@@ -64,6 +64,12 @@ describe("BookmarkProcessorService", () => {
       markRead: jest.fn(),
       markUnread: jest.fn(),
       findByShareSlug: jest.fn(),
+      fileByPipeline: jest.fn<any>().mockImplementation(async (id: string) => ({
+        ...testBookmark,
+        id,
+      })),
+      refileByUser: jest.fn<any>(),
+      getTopTags: jest.fn<any>().mockResolvedValue([]),
       delete: jest.fn(),
     } as jest.Mocked<BookmarkService>;
 
@@ -94,11 +100,14 @@ describe("BookmarkProcessorService", () => {
           tags: ["test", "bookmark"],
         };
       }
+      // The filing phase's default answer: no good home, stay in the Inbox.
+      // The pipeline no longer has a "create something so the field is not
+      // empty" branch, so this is what most bookmarks get on an empty tree.
       return {
-        existingCategoryId: null,
-        newCategoryPath: ["Uncategorized"],
-        confidence: 0.9,
-        reasoning: "Default categorization",
+        existingCollectionId: null,
+        newCollection: null,
+        confidence: 0.4,
+        reasoning: "Nothing in the tree is close.",
       };
     };
 
@@ -227,18 +236,25 @@ describe("BookmarkProcessorService", () => {
       findByNameAndParent: jest.fn<any>(),
       findTreeByUser: jest.fn<any>().mockResolvedValue([]),
       create: jest.fn<any>(),
-      createPath: jest.fn<any>().mockResolvedValue({
-        id: "00000000-0000-0000-0000-000000000001",
-        name: "Uncategorized",
-        parent_id: null,
-        user_id: "test-user-id",
-        created_at: new Date(),
-        updated_at: new Date(),
-      }),
       update: jest.fn<any>(),
       delete: jest.fn<any>(),
       getCollectionPath: jest.fn<any>().mockResolvedValue([]),
       getCollectionsByIds: jest.fn<any>().mockResolvedValue([]),
+      recordSuggestionSupport: jest.fn<any>().mockImplementation(
+        async (userId: string, name: string, parentId: string | null, bookmarkId: string) => ({
+          id: "suggestion-1",
+          user_id: userId,
+          name,
+          parent_id: parentId,
+          bookmark_ids: [bookmarkId],
+          status: "pending",
+          dismissed_until: null,
+          created_at: new Date(),
+        })
+      ),
+      findSuggestionsByUser: jest.fn<any>().mockResolvedValue([]),
+      findSuggestionByIdAndUser: jest.fn<any>().mockResolvedValue(null),
+      updateSuggestionStatus: jest.fn<any>().mockResolvedValue(null),
     } as jest.Mocked<CollectionRepository>;
 
     mockChunkingService = {
@@ -540,8 +556,8 @@ describe("BookmarkProcessorService", () => {
         }
 
         return {
-          existingCategoryId: null,
-          newCategoryPath: ["Design", "Reviews"],
+          existingCollectionId: null,
+          newCollection: { name: "Reviews", parentId: null },
           confidence: 0.91,
           reasoning: "The description is about a design review.",
         };
@@ -553,20 +569,22 @@ describe("BookmarkProcessorService", () => {
           usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
         })
       );
-      mockCollectionRepository.createPath.mockResolvedValue({
-        id: "design-reviews-id",
-        name: "Reviews",
-        parent_id: "design-id",
-        user_id: privateBookmark.userId,
-        created_at: new Date(),
-        updated_at: new Date(),
-      } as any);
-
       await service.process(privateBookmark.id, privateBookmark.userId);
 
       expect(mockBookmarkService.ensureScrapedContent).not.toHaveBeenCalled();
       expect(mockContentChunkRepository.createTextChunk).not.toHaveBeenCalled();
       expect(mockContentChunkRepository.updateTextChunkEmbedding).not.toHaveBeenCalled();
+
+      // The model proposed a collection; a proposal is not a collection. The
+      // private link stays in the Inbox and the proposal collects support.
+      expect(mockCollectionRepository.create).not.toHaveBeenCalled();
+      expect(mockCollectionRepository.recordSuggestionSupport).toHaveBeenCalledWith(
+        privateBookmark.userId,
+        "Reviews",
+        null,
+        privateBookmark.id
+      );
+      expect(mockBookmarkService.fileByPipeline).not.toHaveBeenCalled();
 
       const updateCall = mockBookmarkService.update.mock.calls[0];
       expect(updateCall[0]).toBe(privateBookmark.id);
@@ -576,9 +594,9 @@ describe("BookmarkProcessorService", () => {
           cosmicBriefSummary:
             "Private Figma file for the checkout design review and payment polish handoff.",
           cosmicTags: ["figma", "checkout", "design-review"],
-          collectionId: "design-reviews-id",
         })
       );
+      expect((updateCall[1] as any).collectionId).toBeUndefined();
       expect(updateCall[1].cosmicSummary).toBeUndefined();
       expect(updateCall[1].searchDocument).toBeUndefined();
       expect(updateCall[1].quickAccess).toContain("payments polish");
@@ -750,6 +768,100 @@ describe("BookmarkProcessorService", () => {
       const updated = mockBookmarkService.update.mock.calls.at(-1)![1];
       expect(updated.cosmicTags).toEqual(["test", "bookmark"]);
       expect(updated.cosmicSummary).toBeUndefined();
+    });
+
+    describe("filing", () => {
+      const runPipeline = async (bookmark: Bookmark) => {
+        const mockSession: Session = {
+          sessionID: "test-session-id",
+          refID: bookmark.id,
+        };
+
+        mockBookmarkService.findByIdAndUser.mockResolvedValue(bookmark);
+        mockBookmarkService.ensureScrapedContent.mockResolvedValue(
+          testScrapedContent
+        );
+        mockBookmarkService.updateProcessingStatus.mockResolvedValue(bookmark);
+        mockBookmarkService.update.mockResolvedValue(bookmark);
+        mockAI.newSession.mockResolvedValue(mockSession);
+        mockAI.newTask.mockResolvedValue({
+          taskID: "test-task-id",
+          sessionID: mockSession.sessionID,
+          name: "test-task",
+          status: "pending",
+          subTasks: {},
+        });
+        mockAI.newSubTask.mockResolvedValue({
+          taskID: "subtask-id",
+          name: "test-subtask",
+          status: "pending",
+        });
+
+        await service.process(bookmark.id, bookmark.userId);
+      };
+
+      it("a manual refile survives a reprocess untouched", async () => {
+        const refiled: Bookmark = {
+          ...testBookmark,
+          collectionId: "the-collection-the-user-chose",
+          filingSource: "user",
+        };
+
+        await runPipeline(refiled);
+
+        // The phase runs and completes — it simply has nothing it may do.
+        const phases = mockBookmarkProcessingRepository.createEvent.mock.calls
+          .filter(([event]) => event.kind === "phase")
+          .map(([event]) => event.phase);
+        expect(phases).toContain("file");
+
+        expect(mockBookmarkService.fileByPipeline).not.toHaveBeenCalled();
+        expect(mockCollectionRepository.recordSuggestionSupport).not.toHaveBeenCalled();
+
+        // And the run's one write cannot carry a move: `update` has no
+        // `collectionId` to give it.
+        const updated = mockBookmarkService.update.mock.calls.at(-1)![1];
+        expect((updated as any).collectionId).toBeUndefined();
+        expect(mockBookmarkService.updateProcessingStatus).toHaveBeenLastCalledWith(
+          refiled.id,
+          "completed"
+        );
+      });
+
+      it("creates no collection, and leaves a bookmark with no good home in the Inbox", async () => {
+        await runPipeline(testBookmark);
+
+        expect(mockCollectionRepository.create).not.toHaveBeenCalled();
+        expect(mockBookmarkService.fileByPipeline).not.toHaveBeenCalled();
+
+        const updated = mockBookmarkService.update.mock.calls.at(-1)![1];
+        expect((updated as any).collectionId).toBeUndefined();
+        // Inbox is a resting place, not a failure: the run still completes.
+        expect(mockBookmarkService.updateProcessingStatus).toHaveBeenLastCalledWith(
+          testBookmark.id,
+          "completed"
+        );
+      });
+
+      it("shows the tag phase the user's own vocabulary", async () => {
+        (mockBookmarkService.getTopTags as jest.Mock<any>).mockResolvedValue([
+          "machine-learning",
+          "rust",
+        ]);
+
+        await runPipeline(testBookmark);
+
+        expect(mockBookmarkService.getTopTags).toHaveBeenCalledWith(
+          testBookmark.userId,
+          50
+        );
+        const tagPrompt = (mockAI.generateObjectWithUsage as jest.Mock).mock
+          .calls.map(([input]: any[]) => input.prompt)
+          .find((prompt: string) =>
+            prompt.includes("Your task is to generate the tags")
+          );
+        expect(tagPrompt).toContain("machine-learning, rust");
+      });
     });
 
     it("marks the bookmark failed when the durable timeline cannot start", async () => {

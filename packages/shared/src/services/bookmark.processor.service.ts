@@ -3,7 +3,8 @@ import { BookmarkService } from "./bookmark.service";
 import { AI } from "../ai";
 import { z } from "zod";
 import {
-  GENERATE_TAGS_PROMPT,
+  buildTagsPrompt,
+  TAG_CANDIDATE_LIMIT,
   FILTER_IMAGES_PROMPT,
   SUMMARIZE_PROMPT,
   BRIEF_SUMMARY_PROMPT,
@@ -17,9 +18,10 @@ import { Identifier } from "../ai/id";
 import { ContentChunkRepository } from "../repositories/content-chunk.repository";
 import { HttpClient, CosmicHttpClient } from "./http-client";
 import {
-  BookmarkCategorizerService,
-  BookmarkCategorizerServiceImpl,
-} from "./bookmark.categorizer.service";
+  BookmarkFilingService,
+  BookmarkFilingServiceImpl,
+  FilingResult,
+} from "./bookmark.filing.service";
 import { CollectionRepository } from "../repositories/collection.repository";
 import { ChunkingService, ChunkingServiceImpl } from "./chunking.service";
 import { EmbeddingService, EmbeddingServiceImpl } from "./embedding.service";
@@ -140,7 +142,7 @@ interface SummariseResult {
 }
 
 export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
-  private categorizerService: BookmarkCategorizerService;
+  private filingService: BookmarkFilingService;
   private chunkingService: ChunkingService;
   private embeddingService: EmbeddingService;
 
@@ -154,8 +156,9 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     chunkingService?: ChunkingService,
     embeddingService?: EmbeddingService
   ) {
-    this.categorizerService = new BookmarkCategorizerServiceImpl(
+    this.filingService = new BookmarkFilingServiceImpl(
       collectionRepository,
+      bookmarkService,
       ai
     );
     this.chunkingService = chunkingService ?? new ChunkingServiceImpl();
@@ -297,22 +300,19 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         }
 
         if (inScope("file")) {
-          // Filing runs on whatever summarise and tag actually produced. It is
-          // a suggestion either way — see D6 for the override rule.
-          const categorization = await this.runPhase(
+          // Filing runs on whatever summarise and tag actually produced, and it
+          // owns its own write: the phase either files the bookmark through the
+          // guarded path, records a proposal, or leaves it in the Inbox. The
+          // processor's own `update` below cannot move a bookmark at all.
+          const filing = await this.runPhase(
             reporter,
             "file",
             "File into a collection",
             failures,
             (phaseReporter) =>
-              this.categorizerService.categorize(
-                session,
-                bookmark,
-                scrapedContent,
-                phaseReporter
-              )
+              this.filingService.file(session, bookmark, phaseReporter)
           );
-          if (categorization) bookmark.collectionId = categorization.categoryId;
+          this.applyFilingResult(bookmark, filing);
         }
 
         if (inScope("embed")) {
@@ -339,7 +339,14 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       // One write for everything the run produced. Fields a failed phase never
       // filled in keep whatever the bookmark already had — a failure subtracts
       // nothing from the row.
-      await this.bookmarkService.update(id, bookmark);
+      //
+      // Filing is not in it. `collectionId` and `filingSource` are destructured
+      // away rather than merely ignored downstream, so that the object handed
+      // to `update` cannot express a move at all. The `file` phase has already
+      // written its decision through the guarded path; this write must not be
+      // able to undo a manual refile as a side effect of saving a summary.
+      const { collectionId, filingSource, ...writableFields } = bookmark;
+      await this.bookmarkService.update(id, writableFields);
 
       if (failures.length > 0) {
         const message = failures
@@ -498,24 +505,44 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     }
 
     if (inScope("file")) {
-      const syntheticContent = this.buildPrivateLinkSyntheticContent(enriched);
-      const categorization = await this.runPhase(
+      const filing = await this.runPhase(
         reporter,
         "file",
         "File private link into a collection",
         failures,
         (phaseReporter) =>
-          this.categorizerService.categorize(
-            session,
-            enriched,
-            syntheticContent,
-            phaseReporter
-          )
+          this.filingService.file(session, enriched, phaseReporter)
       );
-      if (categorization) enriched.collectionId = categorization.categoryId;
+      this.applyFilingResult(enriched, filing);
     }
 
     return enriched;
+  }
+
+  /**
+   * Reflect the filing phase's decision in the in-memory bookmark.
+   *
+   * Only `filed` changes anything, and only to keep the object consistent with
+   * the row the phase already wrote — the write itself happened inside the
+   * phase, through `fileByPipeline`. Every other outcome leaves the bookmark
+   * where it is:
+   *
+   * - `proposed` — the collection does not exist yet, so there is nothing to
+   *   file into. The bookmark waits in the Inbox until the user accepts.
+   * - `inbox` — the model had no good answer. That is a resting place, not a
+   *   failure, and the phase is recorded as completed.
+   * - `override` — a person filed this bookmark. Nothing about it is the
+   *   pipeline's to change, now or on any later run.
+   *
+   * `undefined` means the phase threw and `runPhase` already recorded it.
+   */
+  private applyFilingResult(
+    bookmark: Bookmark,
+    filing: FilingResult | undefined
+  ): void {
+    if (filing?.outcome === "filed") {
+      bookmark.collectionId = filing.collectionId;
+    }
   }
 
   private normalizeTags(tags: string[]): string[] {
@@ -544,29 +571,6 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     ]
       .filter(Boolean)
       .join(" ");
-  }
-
-  private buildPrivateLinkSyntheticContent(
-    bookmark: Bookmark
-  ): ScrapedUrlContents {
-    return {
-      id: `private-link-${bookmark.id}`,
-      bookmarkId: bookmark.id,
-      title: bookmark.title || "",
-      content: [
-        bookmark.title || "",
-        bookmark.sourceUrl,
-        bookmark.cosmicBriefSummary || "",
-        bookmark.cosmicTags?.join(" ") || "",
-      ]
-        .filter(Boolean)
-        .join("\n"),
-      metadata: bookmark.metadata || {},
-      images: [],
-      links: [],
-      createdAt: bookmark.createdAt,
-      updatedAt: bookmark.updatedAt,
-    };
   }
 
   private promoteTweetImages(content: ScrapedUrlContents): BookmarkImage[] {
@@ -662,12 +666,27 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     );
   }
 
+  /**
+   * The `tag` phase.
+   *
+   * The model is shown the user's own vocabulary — their 50 most-used tags —
+   * before it is asked for new ones. Without that, each bookmark is tagged in
+   * isolation and the library fragments: "ml", "machine-learning" and
+   * "machineLearning" all describing the same shelf, none of them collecting
+   * anything. docs/functional-spec/03-ai-pipeline.md § Outputs.
+   *
+   * A failure to read the vocabulary is not a failure to tag — an empty
+   * candidate list simply means the model invents freely, which is what it did
+   * before this existed.
+   */
   private async generateMetadata(
     session: Session,
     bookmark: Bookmark,
     content: ScrapedUrlContents,
     phaseReporter: BookmarkProcessingPhaseReporter
   ): Promise<string[]> {
+    const candidateTags = await this.getCandidateTags(bookmark.userId);
+
     const response = await phaseReporter.trackTurn(
       "Generate tags",
       BOOKMARK_MODEL_IDS.small,
@@ -675,17 +694,26 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         this.ai.generateObjectWithUsage({
           sessionID: session.sessionID,
           modelId: BOOKMARK_MODEL_IDS.small,
-          prompt: GENERATE_TAGS_PROMPT.replace(
-            "{{CONTENT}}",
-            this.getProcessableText(bookmark, content)
-          ),
+          prompt: buildTagsPrompt({
+            content: this.getProcessableText(bookmark, content),
+            candidateTags,
+          }),
           schema: z.object({
             tags: z.array(z.string()).describe("The array of tag strings"),
           }),
         })
     );
 
-    return response.tags;
+    return this.normalizeTags(response.tags);
+  }
+
+  private async getCandidateTags(userId: string): Promise<string[]> {
+    try {
+      return await this.bookmarkService.getTopTags(userId, TAG_CANDIDATE_LIMIT);
+    } catch (error) {
+      console.error("Failed to read the user's tag vocabulary:", error);
+      return [];
+    }
   }
 
   private getSummarizationContext(

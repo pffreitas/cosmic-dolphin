@@ -70,7 +70,48 @@ export interface BookmarkRepository {
   findByShareSlug(slug: string): Promise<Bookmark | null>;
   markRead(id: string, userId: string): Promise<Bookmark | null>;
   markUnread(id: string, userId: string): Promise<Bookmark | null>;
-  update(id: string, data: BookmarkUpdate): Promise<Bookmark>;
+  /**
+   * Everything about a bookmark except where it is filed.
+   *
+   * `collection_id` and `filing_source` are deliberately not writable here.
+   * Moving a bookmark goes through `updateAiFiling` or `updateUserFiling`, and
+   * the override rule lives inside the first of those, in SQL. A generic update
+   * that could also set `collection_id` is exactly the door a later refactor
+   * would walk through without noticing.
+   */
+  update(
+    id: string,
+    data: Omit<BookmarkUpdate, "collection_id" | "filing_source">
+  ): Promise<Bookmark>;
+  /**
+   * File a bookmark from the pipeline.
+   *
+   * `WHERE filing_source = 'ai'` **is** the override rule
+   * (docs/functional-spec/03-ai-pipeline.md § Filing). It is a predicate on the
+   * write rather than a check before it, so a run that reads a bookmark, thinks
+   * for thirty seconds, and writes after the user has refiled it still cannot
+   * move the row. Returns `null` when the write was refused — the caller
+   * reports that as an override, not as a failure.
+   */
+  updateAiFiling(id: string, collectionId: string | null): Promise<Bookmark | null>;
+  /**
+   * File a bookmark on a person's behalf, and mark it theirs.
+   *
+   * One statement: the move and `filing_source = 'user'` cannot come apart,
+   * so there is no window in which a bookmark is where the user put it but
+   * still flagged as the pipeline's to move.
+   */
+  updateUserFiling(
+    id: string,
+    userId: string,
+    collectionId: string | null
+  ): Promise<Bookmark | null>;
+  /**
+   * The user's most-used tags, most-used first. Passed to the `tag` phase as
+   * candidates so the vocabulary converges instead of fragmenting — see
+   * docs/functional-spec/03-ai-pipeline.md § Outputs.
+   */
+  findTopTags(userId: string, limit: number): Promise<string[]>;
   deleteByUser(id: string, userId: string): Promise<boolean>;
 }
 
@@ -259,9 +300,12 @@ export class BookmarkRepositoryImpl
     }, "findByShareSlug");
   }
 
-  async update(id: string, data: BookmarkUpdate): Promise<Bookmark> {
+  async update(
+    id: string,
+    data: Omit<BookmarkUpdate, "collection_id" | "filing_source">
+  ): Promise<Bookmark> {
     return this.executeQuery(async () => {
-      const updateData = { ...data };
+      const updateData: BookmarkUpdate = { ...data };
       if (
         updateData.cosmic_images &&
         typeof updateData.cosmic_images === "object"
@@ -320,6 +364,66 @@ export class BookmarkRepositoryImpl
 
       return result || null;
     }, "markUnread");
+  }
+
+  /**
+   * The override rule, as a predicate.
+   *
+   * See the interface for why this is a `WHERE` and not an `if`. A refused
+   * write returns `null`; it is not an error, and the pipeline must not treat
+   * it as one.
+   */
+  async updateAiFiling(
+    id: string,
+    collectionId: string | null
+  ): Promise<Bookmark | null> {
+    return this.executeQuery(async () => {
+      const result = await this.db
+        .updateTable("bookmarks")
+        .set({ collection_id: collectionId })
+        .where("id", "=", id)
+        .where("filing_source", "=", "ai")
+        .returningAll()
+        .executeTakeFirst();
+
+      return result || null;
+    }, "updateAiFiling");
+  }
+
+  async updateUserFiling(
+    id: string,
+    userId: string,
+    collectionId: string | null
+  ): Promise<Bookmark | null> {
+    return this.executeQuery(async () => {
+      const result = await this.db
+        .updateTable("bookmarks")
+        .set({ collection_id: collectionId, filing_source: "user" })
+        .where("id", "=", id)
+        .where("user_id", "=", userId)
+        .returningAll()
+        .executeTakeFirst();
+
+      return result || null;
+    }, "updateUserFiling");
+  }
+
+  async findTopTags(userId: string, limit: number): Promise<string[]> {
+    if (limit <= 0) return [];
+
+    return this.executeQuery(async () => {
+      const result = await sql<{ tag: string }>`
+        SELECT tag, count(*) AS uses
+        FROM bookmarks, unnest(cosmic_tags) AS tag
+        WHERE user_id = ${userId}
+          AND cosmic_tags IS NOT NULL
+        GROUP BY tag
+        ORDER BY uses DESC, tag ASC
+        LIMIT ${limit}
+      `.execute(this.db);
+
+      return result.rows.map((row) => row.tag);
+    }, "findTopTags");
   }
 
   async deleteByUser(id: string, userId: string): Promise<boolean> {

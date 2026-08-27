@@ -18,10 +18,29 @@ export interface CollectionsTable extends BaseTable {
   is_public: Generated<boolean>;
 }
 
+// Collection suggestions table — a proposed collection, not a created one.
+// The file phase never creates a collection; it accumulates support here until
+// the user accepts. See docs/functional-spec/03-ai-pipeline.md § Filing.
+export interface CollectionSuggestionsTable {
+  id: Generated<string>;
+  user_id: string;
+  name: string;
+  parent_id: string | null;
+  bookmark_ids: string[];
+  status: Generated<CollectionSuggestionStatus>;
+  dismissed_until: Date | null;
+  created_at: Generated<Date>;
+}
+
 // Processing status type
 export type ProcessingStatus = "idle" | "processing" | "completed" | "failed";
 export type BookmarkProcessingTimelineStatus = "running" | "completed" | "failed";
 export type BookmarkProcessingEventKind = "run" | "phase" | "turn";
+
+/** Who chose a bookmark's collection. `user` is the override flag. */
+export type FilingSource = "ai" | "user";
+
+export type CollectionSuggestionStatus = "pending" | "accepted" | "dismissed";
 
 // Bookmarks table
 export interface BookmarksTable extends BaseTable {
@@ -29,6 +48,13 @@ export interface BookmarksTable extends BaseTable {
   title: string | null;
   metadata: any | null; // JSONB
   collection_id: string | null;
+  /**
+   * `ai` — the file phase chose `collection_id` and a later run may revise it.
+   * `user` — a human chose it, and the pipeline never moves the row again.
+   */
+  filing_source: Generated<FilingSource>;
+  /** Reshare provenance: the bookmark this one was saved from (D13). */
+  saved_from_bookmark_id: string | null;
   user_id: string;
   is_archived: Generated<boolean>;
   is_favorite: Generated<boolean>;
@@ -147,6 +173,7 @@ export interface BookmarkProcessingEventsTable extends BaseTable {
 // Database schema interface
 export interface Database {
   collections: CollectionsTable;
+  collection_suggestions: CollectionSuggestionsTable;
   bookmarks: BookmarksTable;
   bookmark_likes: BookmarkLikesTable;
   scraped_url_contents: ScrapedUrlContentsTable;
@@ -162,6 +189,11 @@ export interface Database {
 export type Collection = Selectable<CollectionsTable>;
 export type NewCollection = Insertable<CollectionsTable>;
 export type CollectionUpdate = Updateable<CollectionsTable>;
+
+export type CollectionSuggestionRow = Selectable<CollectionSuggestionsTable>;
+export type NewCollectionSuggestion = Insertable<CollectionSuggestionsTable>;
+export type CollectionSuggestionUpdate =
+  Updateable<CollectionSuggestionsTable>;
 
 export type Bookmark = Selectable<BookmarksTable>;
 export type NewBookmark = Insertable<BookmarksTable>;

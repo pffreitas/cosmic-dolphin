@@ -6,7 +6,7 @@ export * from "./bookmark-like.service";
 export * from "./collection.service";
 export * from "./profile.service";
 export * from "./bookmark.processor.service";
-export * from "./bookmark.categorizer.service";
+export * from "./bookmark.filing.service";
 export * from "./bookmark-processing-reporter.service";
 export * from "./processing-budget.service";
 export * from "./bookmark.model-ids";
@@ -72,16 +72,21 @@ export function createServiceContainer(
   const ai = new AI();
   const embeddingService = new EmbeddingServiceImpl();
 
+  const bookmarkService = new BookmarkServiceImpl(
+    bookmarkRepository,
+    webScrapingService,
+    collectionRepository
+  );
+
   return {
     webScraping: webScrapingService,
     queue: new QueueServiceImpl(supabaseClient),
-    bookmark: new BookmarkServiceImpl(
-      bookmarkRepository,
-      webScrapingService,
-      collectionRepository
-    ),
+    bookmark: bookmarkService,
     bookmarkLike: new BookmarkLikeServiceImpl(bookmarkLikeRepository),
-    collection: new CollectionServiceImpl(collectionRepository),
+    // Accepting a collection suggestion creates the collection *and* moves its
+    // supporting bookmarks, so the collection service needs the bookmark
+    // service's guarded filing write.
+    collection: new CollectionServiceImpl(collectionRepository, bookmarkService),
     profile: new ProfileServiceImpl(profileRepository),
     search: new SearchServiceImpl(bookmarkRepository, embeddingService, ai),
     bookmarkProcessing: bookmarkProcessingRepository,

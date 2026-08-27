@@ -52,6 +52,40 @@ export interface CollectionPathItem {
   name: string;
 }
 
+/**
+ * Who chose a bookmark's collection.
+ *
+ * `ai` — the `file` phase did, and a later run may revise it.
+ * `user` — a person did, and the pipeline never moves the bookmark again.
+ *
+ * The second is the override rule (docs/functional-spec/03-ai-pipeline.md
+ * § Filing). It is enforced in SQL, on the write, not by whoever remembers to
+ * check it before calling.
+ */
+export type FilingSource = "ai" | "user";
+
+export type CollectionSuggestionStatus = "pending" | "accepted" | "dismissed";
+
+/**
+ * A collection the pipeline thinks should exist. It does not exist yet.
+ *
+ * The `file` phase never creates a collection. When the model proposes one,
+ * the proposal accumulates supporting bookmarks here; once
+ * `MIN_SUGGESTION_SUPPORT` of them agree it is offered in the Library rail with
+ * Create / Not now. Until the user presses Create, the supporting bookmarks sit
+ * in Inbox.
+ */
+export interface CollectionSuggestion {
+  id: string;
+  userId: string;
+  name: string;
+  parentId?: string;
+  bookmarkIds: string[];
+  status: CollectionSuggestionStatus;
+  dismissedUntil?: Date;
+  createdAt: Date;
+}
+
 // Open Graph metadata interface
 export interface OpenGraphMetadata {
   favicon?: string;
@@ -169,6 +203,13 @@ export interface Bookmark extends BaseEntity {
   sourceUrl: string;
   collectionId?: string;
   collectionPath?: CollectionPathItem[];
+  /**
+   * Defaults to `ai`. Once it is `user`, no pipeline run may change
+   * `collectionId` again — see `FilingSource`.
+   */
+  filingSource?: FilingSource;
+  /** The bookmark this one was saved from, when it came from a reshare (D13). */
+  savedFromBookmarkId?: string;
   title?: string;
   isArchived?: boolean;
   isFavorite?: boolean;

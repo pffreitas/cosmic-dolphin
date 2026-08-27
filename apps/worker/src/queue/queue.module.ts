@@ -62,11 +62,11 @@ import { Kysely } from "kysely";
     },
     {
       provide: COLLECTION_SERVICE,
-      useFactory: (db: Kysely<Database>) => {
+      useFactory: (db: Kysely<Database>, bookmarkService: BookmarkService) => {
         const collectionRepository = new CollectionRepositoryImpl(db);
-        return new CollectionServiceImpl(collectionRepository);
+        return new CollectionServiceImpl(collectionRepository, bookmarkService);
       },
-      inject: [DATABASE_INSTANCE],
+      inject: [DATABASE_INSTANCE, BOOKMARK_SERVICE],
     },
     {
       provide: BOOKMARK_PROCESSOR_SERVICE,

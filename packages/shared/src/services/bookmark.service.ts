@@ -65,7 +65,35 @@ export interface BookmarkService {
     query: string,
     options?: SearchOptions
   ): Promise<Bookmark[]>;
-  update(id: string, data: Partial<Bookmark>): Promise<Bookmark>;
+  /**
+   * Everything except where the bookmark is filed. `collectionId` and
+   * `filingSource` are absent from the accepted shape on purpose — moving a
+   * bookmark is `fileByPipeline` or `refileByUser`, never a side effect of
+   * writing something else.
+   */
+  update(
+    id: string,
+    data: Partial<Omit<Bookmark, "collectionId" | "filingSource">>
+  ): Promise<Bookmark>;
+  /**
+   * File a bookmark from the pipeline. Refused, and returns `null`, when the
+   * bookmark's `filingSource` is `'user'`.
+   *
+   * The refusal happens in SQL (`BookmarkRepository.updateAiFiling`), so it
+   * holds even when the decision was taken before the user refiled.
+   */
+  fileByPipeline(id: string, collectionId: string | null): Promise<Bookmark | null>;
+  /**
+   * File a bookmark on the user's behalf and mark it theirs, permanently.
+   * The move and `filing_source = 'user'` happen in one statement.
+   */
+  refileByUser(
+    id: string,
+    userId: string,
+    collectionId: string | null
+  ): Promise<Bookmark | null>;
+  /** The user's most-used tags — candidates for the `tag` phase. */
+  getTopTags(userId: string, limit?: number): Promise<string[]>;
   updateProcessingStatus(
     id: string,
     status: ProcessingStatus,
@@ -155,6 +183,9 @@ export class BookmarkServiceImpl implements BookmarkService {
       metadata,
       user_id: userId,
       collection_id: options.collectionId || null,
+      // A collection named at save time was named by a person, so the pipeline
+      // does not get to second-guess it — same rule as a manual refile.
+      filing_source: options.collectionId ? "user" : "ai",
       quick_access: `${provisionalTitle} ${url}`,
     };
 
@@ -233,15 +264,28 @@ export class BookmarkServiceImpl implements BookmarkService {
       { ...metadata, originalUrl: metadata.originalUrl ?? bookmark.metadata?.originalUrl },
       bookmark.title
     );
-    const { source_url, user_id, ...updateData } = privateLinkData;
+    // Filing is not part of a generic update — see `BookmarkRepository.update`.
+    // A collection named in the conversion form was named by a person, so it
+    // goes through the user path and takes the override flag with it.
+    const { source_url, user_id, collection_id, filing_source, ...updateData } =
+      privateLinkData;
 
     await this.bookmarkRepository.deleteScrapedUrlContents(bookmark.id);
-    const updatedBookmark = await this.bookmarkRepository.update(bookmark.id, {
+    let updatedBookmark = await this.bookmarkRepository.update(bookmark.id, {
       ...updateData,
       processing_started_at: null,
       processing_completed_at: null,
       processing_error: null,
     });
+
+    if (metadata.collectionId) {
+      updatedBookmark =
+        (await this.bookmarkRepository.updateUserFiling(
+          bookmark.id,
+          bookmark.userId,
+          metadata.collectionId
+        )) ?? updatedBookmark;
+    }
 
     return this.mapDatabaseToBookmark(updatedBookmark);
   }
@@ -276,6 +320,7 @@ export class BookmarkServiceImpl implements BookmarkService {
       metadata: bookmarkMetadata,
       user_id: userId,
       collection_id: metadata.collectionId || null,
+      filing_source: metadata.collectionId ? "user" : "ai",
       cosmic_summary: null,
       cosmic_brief_summary: description || null,
       cosmic_tags: metadata.tags || null,
@@ -312,18 +357,37 @@ export class BookmarkServiceImpl implements BookmarkService {
     });
   }
 
+  /**
+   * Everything a run produces except where the bookmark is filed.
+   *
+   * `collectionId` and `filingSource` are absent by design: the pipeline hands
+   * this method a whole `Bookmark`, and if filing were part of it, every
+   * unrelated write would carry a move with it — including on a bookmark the
+   * user had refiled by hand. Moving a bookmark is `fileByPipeline` or
+   * `refileByUser`, and the repository will not accept it any other way.
+   */
   async update(
     id: string,
     data: Partial<
-      Omit<Bookmark, "id" | "createdAt" | "updatedAt" | "sourceUrl" | "userId">
+      Omit<
+        Bookmark,
+        | "id"
+        | "createdAt"
+        | "updatedAt"
+        | "sourceUrl"
+        | "userId"
+        | "collectionId"
+        | "filingSource"
+      >
     >
   ): Promise<Bookmark> {
-    const updateData: BookmarkUpdate = {};
+    const updateData: Omit<
+      BookmarkUpdate,
+      "collection_id" | "filing_source"
+    > = {};
 
     if (data.title !== undefined) updateData.title = data.title;
     if (data.metadata !== undefined) updateData.metadata = data.metadata;
-    if (data.collectionId !== undefined)
-      updateData.collection_id = data.collectionId;
     if (data.isArchived !== undefined) updateData.is_archived = data.isArchived;
     if (data.isFavorite !== undefined) updateData.is_favorite = data.isFavorite;
     if (data.cosmicSummary !== undefined)
@@ -344,6 +408,34 @@ export class BookmarkServiceImpl implements BookmarkService {
 
     const bookmark = await this.bookmarkRepository.update(id, updateData);
     return this.mapDatabaseToBookmark(bookmark);
+  }
+
+  async fileByPipeline(
+    id: string,
+    collectionId: string | null
+  ): Promise<Bookmark | null> {
+    const bookmark = await this.bookmarkRepository.updateAiFiling(
+      id,
+      collectionId
+    );
+    return bookmark ? this.mapDatabaseToBookmark(bookmark) : null;
+  }
+
+  async refileByUser(
+    id: string,
+    userId: string,
+    collectionId: string | null
+  ): Promise<Bookmark | null> {
+    const bookmark = await this.bookmarkRepository.updateUserFiling(
+      id,
+      userId,
+      collectionId
+    );
+    return bookmark ? this.mapDatabaseToBookmark(bookmark) : null;
+  }
+
+  async getTopTags(userId: string, limit = 50): Promise<string[]> {
+    return this.bookmarkRepository.findTopTags(userId, limit);
   }
 
   async delete(id: string, userId: string): Promise<void> {
@@ -539,6 +631,8 @@ export class BookmarkServiceImpl implements BookmarkService {
       title: data.title,
       metadata: data.metadata,
       collectionId: data.collection_id,
+      filingSource: data.filing_source ?? "ai",
+      savedFromBookmarkId: data.saved_from_bookmark_id ?? undefined,
       userId: data.user_id,
       isArchived: data.is_archived,
       isFavorite: data.is_favorite,
