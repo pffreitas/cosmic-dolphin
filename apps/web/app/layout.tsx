@@ -1,5 +1,5 @@
 import HeaderAuth from "@/components/header-auth";
-import { GeistSans } from "geist/font/sans";
+import { Inter, Source_Serif_4 } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import Body from "./body";
@@ -15,6 +15,23 @@ import { BottomNavigation } from "@/components/mobile/bottom-nav";
 import { createClient } from "@/utils/supabase/server";
 import { DesktopSiteHeader } from "@/components/desktop-site-header";
 
+// The two voices. Signal's token file stays authoritative: next/font only fills
+// in --cd-font-sans / --cd-font-serif with the locally hosted faces.
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  variable: "--cd-font-sans",
+});
+
+const sourceSerif = Source_Serif_4({
+  subsets: ["latin"],
+  weight: ["400", "600"],
+  style: ["normal", "italic"],
+  display: "swap",
+  variable: "--cd-font-serif",
+});
+
 export default async function RootLayout({
   children,
 }: {
@@ -28,7 +45,11 @@ export default async function RootLayout({
   const isLoggedIn = !!user;
 
   return (
-    <html lang="en" className={GeistSans.className} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${inter.variable} ${sourceSerif.variable} font-sans`}
+      suppressHydrationWarning
+    >
       <head>
         <meta
           name="viewport"
@@ -37,6 +58,7 @@ export default async function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        {/* cd-tokens-allow: a meta tag cannot read a CSS custom property */}
         <meta name="theme-color" content="#ffffff" />
         <script
           async
@@ -52,18 +74,8 @@ export default async function RootLayout({
         `,
           }}
         />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Karla:ital,wght@0,200..800;1,200..800&family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap"
-          rel="stylesheet"
-        />
       </head>
-      <body className="bg-background bg-gray-50 text-foreground">
+      <body className="bg-bg text-fg">
         <ReduxProvider>
           <CommandDialogProvider>
             <Body>

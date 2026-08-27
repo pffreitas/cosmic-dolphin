@@ -6,7 +6,8 @@
     "dev": "next dev --port 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
+    "lint": "eslint . && bun run lint:tokens",
+    "lint:tokens": "node scripts/lint-tokens.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -45,7 +46,6 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "embla-carousel-react": "^8.6.0",
-    "geist": "^1.2.1",
     "lodash": "^4.17.21",
     "lucide-react": "^0.436.0",
     "marked": "^16.0.0",

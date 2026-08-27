@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import defaultTheme from "tailwindcss/defaultTheme";
 
 const config = {
   darkMode: ["class"],
@@ -25,10 +26,47 @@ const config = {
     },
     extend: {
       fontFamily: {
-        karla: ["Karla", "sans-serif"],
-        noto: ["Noto sans", "sans-serif"],
+        sans: ["var(--cd-font-sans)", ...defaultTheme.fontFamily.sans],
+        serif: ["var(--cd-font-serif)", ...defaultTheme.fontFamily.serif],
+        mono: ["var(--cd-font-mono)", ...defaultTheme.fontFamily.mono],
       },
       colors: {
+        // ---- Signal tokens ----------------------------------------------
+        // `accent` deliberately shadows shadcn's, which meant "muted hover
+        // surface"; that meaning now lives on `bg-inset`.
+        bg: {
+          DEFAULT: "var(--cd-bg)",
+          subtle: "var(--cd-bg-subtle)",
+          panel: "var(--cd-bg-panel)",
+          inset: "var(--cd-bg-inset)",
+        },
+        fg: {
+          DEFAULT: "var(--cd-fg)",
+          secondary: "var(--cd-fg-secondary)",
+          tertiary: "var(--cd-fg-tertiary)",
+        },
+        line: {
+          DEFAULT: "var(--cd-border)",
+          strong: "var(--cd-border-strong)",
+        },
+        accent: {
+          DEFAULT: "var(--cd-accent)",
+          hover: "var(--cd-accent-hover)",
+          fg: "var(--cd-accent-fg)",
+          soft: "var(--cd-accent-soft)",
+          border: "var(--cd-accent-border)",
+        },
+        ai: {
+          DEFAULT: "var(--cd-ai)",
+          bg: "var(--cd-ai-bg)",
+          border: "var(--cd-ai-border)",
+          chip: "var(--cd-ai-chip)",
+        },
+        like: "var(--cd-like)",
+
+        // ---- shadcn bridge ----------------------------------------------
+        // Stays until every primitive has been migrated off it; then delete
+        // these keys and the compatibility layer at the foot of tokens.css.
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -49,10 +87,6 @@ const config = {
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",
@@ -81,9 +115,11 @@ const config = {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        xs: "var(--cd-radius-xs)",
+        sm: "var(--cd-radius-sm)",
+        md: "var(--cd-radius-md)",
+        lg: "var(--cd-radius-lg)",
+        pill: "var(--cd-radius-pill)",
       },
       keyframes: {
         "accordion-down": {
