@@ -55,6 +55,28 @@ export interface FeedItemKeyPoint {
   text: React.ReactNode;
 }
 
+/**
+ * One source in a digest's `Built from` row — `DigestSource` from the API,
+ * with the detail route it links to.
+ */
+export interface DigestSourceLink {
+  bookmarkId: string;
+  /** Bare domain: "every.to". */
+  domain: string;
+  /** `/bookmarks/{id}`. A source that is not a link is not provenance. */
+  href: string;
+  faviconUrl?: string | null;
+}
+
+/**
+ * How many sources the `Built from` row names before it tails into `+n more`.
+ *
+ * A display decision over a complete list, never a truncation of it: the whole
+ * list is always in the props, and three chips plus a tail is what fits on one
+ * line at 12.5px without pushing the row to two.
+ */
+export const DIGEST_SOURCES_SHOWN = 3;
+
 interface FeedItemBase {
   /** Detail route — `/bookmarks/{id}`, or the digest's own route. */
   href: string;
@@ -115,7 +137,20 @@ export type FeedItemProps =
       label?: React.ReactNode;
       /** 2–5 findings. Rendered with dots — never numbered. */
       keyPoints?: FeedItemKeyPoint[];
-    } & FeedItemContent)
+      /**
+       * Every bookmark the digest was built from — `Digest.sources` from the
+       * API, whole and in order.
+       *
+       * **Required, and the variant builds its own `Built from` row from it.**
+       * The provenance obligation is not the caller's to remember: a digest
+       * that cannot name its sources is a digest that does not render, so the
+       * only way to construct one is to hand it the list. The row shows the
+       * first `DIGEST_SOURCES_SHOWN` and tails the rest as `+n more`, which is
+       * a display decision taken over a complete list — nothing here truncates
+       * what the digest was built from.
+       */
+      sources: DigestSourceLink[];
+    } & Omit<FeedItemContent, "provenance">)
   | ({
       variant: "pending";
       /** One line per surfaced phase. Required: that is the whole variant. */
@@ -208,8 +243,15 @@ function FeedItem(props: FeedItemProps) {
   // ---- digest ------------------------------------------------------------
   // The panel border and padding are dropped; the AI callout *is* the frame.
   if (variant === "digest") {
-    const { href, title, provenance, menu, summary, keyPoints, label, social, className } =
+    const { href, title, sources, menu, summary, keyPoints, label, social, className } =
       props as Extract<FeedItemProps, { variant: "digest" }>;
+
+    // The provenance row is built here, from the sources, rather than accepted
+    // as a prop. "Built from" is not a caption a caller chooses — it is the
+    // obligation every AI output in this product carries, and the only way to
+    // render a digest is to have handed over what it was built from.
+    const shown = sources.slice(0, DIGEST_SOURCES_SHOWN);
+    const overflow = sources.length - shown.length;
 
     return (
       <article className={cn("mb-3 last:mb-0", className)}>
@@ -218,7 +260,15 @@ function FeedItem(props: FeedItemProps) {
           action={menu}
           footer={
             <div className="flex flex-col gap-3">
-              <ProvenanceRow {...provenance} />
+              <ProvenanceRow
+                lead="Built from"
+                sources={shown.map((source) => ({
+                  domain: source.domain,
+                  faviconUrl: source.faviconUrl,
+                  href: source.href,
+                }))}
+                moreCount={overflow > 0 ? overflow : undefined}
+              />
               {social ? <ActionRow saveLabel="Save digest" {...social} /> : null}
             </div>
           }

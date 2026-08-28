@@ -62,9 +62,23 @@ export type {
   BookmarkVisibilityRow,
   CommentWithAuthorRow,
 } from "./comment.repository";
+export {
+  DigestRepositoryImpl,
+  digestDomainOf,
+  mapDigestSources,
+  parseKeyPoints,
+  parseVector,
+} from "./digest.repository";
+export type {
+  DigestRepository,
+  DigestCandidateSave,
+  DigestSourceRow,
+  CreateDigestInput,
+} from "./digest.repository";
 export { FeedRepositoryImpl, impressionKey } from "./feed.repository";
 export type {
   FeedRepository,
+  EligibleDigestRow,
   FollowedSaveRow,
   FinishedReadRow,
   SaveOutcomeRow,

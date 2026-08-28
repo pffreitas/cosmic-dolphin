@@ -3,10 +3,13 @@ import { BaseRepository } from "./base.repository";
 import {
   Bookmark as BookmarkRow,
   Database,
+  FeedDigestRow,
   FeedImpressionItemType,
   FeedImpressionRow,
 } from "../database/schema";
 import { PublicProfileRow } from "./social.repository";
+import { DigestSourceRow, mapDigestSources } from "./digest.repository";
+import { DigestSource } from "../types";
 import { FeedRankingConfigOverrides } from "../services/feed-ranking.config";
 
 /**
@@ -44,6 +47,30 @@ export interface FinishedReadRow {
    * something, rather than a flat 0.5 for every candidate.
    */
   tags: string[] | null;
+}
+
+/**
+ * A digest eligible to appear in this user's feed, with the domains of the
+ * saves it was built from.
+ *
+ * The domains ride along because the ranker needs them and a second query per
+ * digest would be three queries to place three items. They are the *source*
+ * domains, not the digest's own — a digest has no domain of its own, which is
+ * also why it can never extend an author-diversity run.
+ */
+export interface EligibleDigestRow {
+  digest: FeedDigestRow;
+  /**
+   * The `Built from` row, complete. Fetched with the candidate rather than
+   * after the ordering, because a digest with no sources is not a digest that
+   * may be rendered — carrying them from the start means the render path has
+   * no branch in which they are missing.
+   */
+  sources: DigestSource[];
+  sourceDomains: string[];
+  /** `cosmic_tags` of the sources, deduplicated. Feeds topic affinity's fallback. */
+  sourceTags: string[];
+  likedByViewer: boolean;
 }
 
 /** A save the user made, whether or not they ever read it. */
@@ -99,6 +126,20 @@ export interface FeedRepository {
 
   /** The user's saves that are still being processed. Pinned, never ranked. */
   findPending(userId: string, limit: number): Promise<BookmarkRow[]>;
+
+  /**
+   * Digests eligible for this user's feed, newest first.
+   *
+   * The third leg of the candidate set (docs/functional-spec/05-feed.md
+   * § Ranking). A digest is built from the viewer's own library, so there is
+   * no "followed digests" case: `user_id` is always the viewer, and a shared
+   * digest reaches other people through its own link, not through their feed.
+   */
+  findEligibleDigests(
+    userId: string,
+    since: Date,
+    limit: number
+  ): Promise<EligibleDigestRow[]>;
 
   /**
    * Cosine similarity between each candidate and the viewer's interest vector,
@@ -274,6 +315,78 @@ export class FeedRepositoryImpl
         .limit(limit)
         .execute();
     }, "findPending");
+  }
+
+  async findEligibleDigests(
+    userId: string,
+    since: Date,
+    limit: number
+  ): Promise<EligibleDigestRow[]> {
+    return this.executeQuery(async () => {
+      const digests = await this.db
+        .selectFrom("feed_digests")
+        .selectAll()
+        .where("user_id", "=", userId)
+        .where("created_at", ">=", since)
+        .orderBy("created_at", "desc")
+        .limit(limit)
+        .execute();
+
+      if (digests.length === 0) return [];
+
+      // Two queries for the whole page: every source of every digest, and the
+      // viewer's likes across them. Not one query per digest — the digest
+      // spacing rule means there are at most three of these, and it would
+      // still be the wrong shape at three.
+      const sourceIds = [
+        ...new Set(digests.flatMap((row) => row.source_bookmark_ids ?? [])),
+      ];
+
+      const [sources, likes] = await Promise.all([
+        this.db
+          .selectFrom("bookmarks")
+          .select(["id", "title", "source_url", "metadata", "cosmic_tags"])
+          .where("id", "in", sourceIds)
+          .execute(),
+        this.db
+          .selectFrom("feed_digest_likes")
+          .select("digest_id")
+          .where("user_id", "=", userId)
+          .where(
+            "digest_id",
+            "in",
+            digests.map((row) => row.id)
+          )
+          .execute(),
+      ]);
+
+      const byId = new Map(sources.map((row) => [row.id, row]));
+      const liked = new Set(likes.map((row) => row.digest_id));
+
+      return digests.map((digest) => {
+        const domains = new Set<string>();
+        const tags = new Set<string>();
+
+        for (const id of digest.source_bookmark_ids ?? []) {
+          const source = byId.get(id);
+          if (!source) continue;
+          const domain = domainOfUrl(source.source_url);
+          if (domain) domains.add(domain);
+          for (const tag of source.cosmic_tags ?? []) tags.add(tag);
+        }
+
+        return {
+          digest,
+          sources: mapDigestSources(
+            digest.source_bookmark_ids ?? [],
+            sources as DigestSourceRow[]
+          ),
+          sourceDomains: [...domains],
+          sourceTags: [...tags],
+          likedByViewer: liked.has(digest.id),
+        };
+      });
+    }, "findEligibleDigests");
   }
 
   async similarityToInterestVector(
@@ -592,6 +705,15 @@ export function impressionKey(
   itemId: string
 ): string {
   return `${itemType}:${itemId}`;
+}
+
+/** Bare host, no `www.`, never throws. Mirrors the ranker's own `domainOf`. */
+function domainOfUrl(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
 }
 
 function toFiniteNumber(value: string | number | null): number | null {

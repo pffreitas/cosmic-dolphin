@@ -275,6 +275,47 @@ export interface FeedImpressionsTable {
 export type FeedImpressionItemType = "bookmark" | "digest";
 
 /**
+ * An AI-authored grouping of the user's own recent saves —
+ * docs/functional-spec/05-feed.md § Digests.
+ *
+ * `source_bookmark_ids` is NOT NULL and constrained to 3–6 entries in SQL, so
+ * a digest that cannot name what it was built from is not a row this table can
+ * hold. `coherence` records the cluster's measured mean pairwise similarity:
+ * every stored row cleared the generator's threshold, because a weak cluster
+ * produces no digest at all rather than a hedged one.
+ */
+export interface FeedDigestsTable {
+  id: Generated<string>;
+  user_id: string;
+  title: string;
+  summary: string;
+  /** JSONB — `DigestKeyPoint[]`. */
+  key_points: any;
+  source_bookmark_ids: string[];
+  coherence: number;
+  model_id: string | null;
+  window_start: Date;
+  window_end: Date;
+  is_public: Generated<boolean>;
+  share_slug: string | null;
+  like_count: Generated<number>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+/**
+ * A like on a digest. Its own table, not a row in `bookmark_likes`: a digest
+ * is a first-class social object, and pointing one column at two tables is how
+ * a count starts counting the wrong things. The denormalised
+ * `feed_digests.like_count` is maintained by trigger.
+ */
+export interface FeedDigestLikesTable {
+  digest_id: string;
+  user_id: string;
+  created_at: Generated<Date>;
+}
+
+/**
  * Ranking weights and parameters, one row per environment, read at request
  * time. **Overrides, not a definition** — anything absent falls back to the
  * values in `feed-ranking.config.ts`, so an empty table is a working ranker.
@@ -346,6 +387,8 @@ export interface Database {
   content_reports: ContentReportsTable;
   feed_impressions: FeedImpressionsTable;
   feed_ranking_config: FeedRankingConfigTable;
+  feed_digests: FeedDigestsTable;
+  feed_digest_likes: FeedDigestLikesTable;
 }
 
 // Type helpers for each table
@@ -403,6 +446,12 @@ export type NewFeedImpression = Insertable<FeedImpressionsTable>;
 export type FeedImpressionUpdate = Updateable<FeedImpressionsTable>;
 
 export type FeedRankingConfigRow = Selectable<FeedRankingConfigTable>;
+
+export type FeedDigestRow = Selectable<FeedDigestsTable>;
+export type NewFeedDigest = Insertable<FeedDigestsTable>;
+export type FeedDigestUpdate = Updateable<FeedDigestsTable>;
+
+export type FeedDigestLikeRow = Selectable<FeedDigestLikesTable>;
 
 export type BookmarkProcessingRun = Selectable<BookmarkProcessingRunsTable>;
 export type NewBookmarkProcessingRun = Insertable<BookmarkProcessingRunsTable>;

@@ -5,6 +5,8 @@ import { QueueService } from "./queue.service";
 import { QueueProcessor } from "./queue.processor";
 import { DefaultMessageHandler } from "./handlers/default-message.handler";
 import { BookmarkProcessorHandler } from "./handlers/bookmark-processor.handler";
+import { DigestGeneratorHandler } from "./handlers/digest-generator.handler";
+import { DigestSchedulerService } from "../digest/digest-scheduler.service";
 import { MessageHandler } from "./interfaces/message-handler.interface";
 import {
   AI,
@@ -19,6 +21,9 @@ import {
   Database,
   ContentChunkRepositoryImpl,
   BookmarkProcessingRepositoryImpl,
+  DigestRepository,
+  DigestRepositoryImpl,
+  DigestServiceImpl,
 } from "@cosmic-dolphin/shared";
 import { ConfigService } from "@nestjs/config";
 import {
@@ -27,6 +32,8 @@ import {
   COLLECTION_SERVICE,
   BOOKMARK_PROCESSOR_SERVICE,
   WEB_SCRAPING_SERVICE,
+  DIGEST_REPOSITORY,
+  DIGEST_SERVICE,
 } from "./tokens";
 import { Kysely } from "kysely";
 
@@ -93,22 +100,44 @@ import { Kysely } from "kysely";
       provide: WEB_SCRAPING_SERVICE,
       useFactory: () => new WebScrapingServiceImpl(),
     },
+    // Digests. The repository is provided on its own because the scheduler
+    // needs it without needing the service: a tick decides *who* gets a job,
+    // and only the handler decides what is in one.
+    {
+      provide: DIGEST_REPOSITORY,
+      useFactory: (db: Kysely<Database>) => new DigestRepositoryImpl(db),
+      inject: [DATABASE_INSTANCE],
+    },
+    {
+      provide: DIGEST_SERVICE,
+      useFactory: (digestRepository: DigestRepository, ai: AI) =>
+        new DigestServiceImpl(digestRepository, ai),
+      inject: [DIGEST_REPOSITORY, AI],
+    },
+    DigestSchedulerService,
     QueueService,
     QueueProcessor,
     DefaultMessageHandler,
     BookmarkProcessorHandler,
+    DigestGeneratorHandler,
     {
       provide: "MESSAGE_HANDLERS",
       useFactory: (
         defaultHandler: DefaultMessageHandler,
         bookmarkHandler: BookmarkProcessorHandler,
+        digestHandler: DigestGeneratorHandler,
       ): MessageHandler[] => [
         bookmarkHandler,
+        digestHandler,
         defaultHandler, // Keep default handler last as fallback
       ],
-      inject: [DefaultMessageHandler, BookmarkProcessorHandler],
+      inject: [
+        DefaultMessageHandler,
+        BookmarkProcessorHandler,
+        DigestGeneratorHandler,
+      ],
     },
   ],
-  exports: [QueueService, QueueProcessor],
+  exports: [QueueService, QueueProcessor, DigestSchedulerService],
 })
 export class QueueModule {}

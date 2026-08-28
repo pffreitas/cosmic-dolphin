@@ -558,6 +558,75 @@ export type FeedItemType =
   | "pending";
 
 /**
+ * One bookmark a digest was built from — the `Built from` provenance row's
+ * contract.
+ *
+ * It carries the url and the domain, not just the id, because the row renders
+ * a favicon chip and a linked domain: a client holding only ids would have to
+ * fetch every source to draw the one line that makes the digest trustworthy.
+ */
+export interface DigestSource {
+  bookmarkId: string;
+  title: string;
+  url: string;
+  /** Bare domain, derived from `url`. */
+  domain: string;
+  faviconUrl?: string;
+}
+
+/** One finding in a digest. Findings, never a numbered sequence. */
+export interface DigestKeyPoint {
+  /** Optional lead-in run: "Memory beats context." */
+  term?: string;
+  text: string;
+}
+
+/**
+ * An AI-authored grouping of 3–6 of the user's own recent saves —
+ * docs/functional-spec/05-feed.md § Digests.
+ *
+ * There is no `confidence` field, and that is the deliberate part: a digest
+ * that exists has already cleared the coherence bar, because a weak cluster
+ * produces **no digest**, not a hedged one. `coherence` is the measurement it
+ * cleared with, returned so the bar can be read off a response.
+ *
+ * A digest is a first-class social object: its own likes, its own share link,
+ * its own route. Sharing it shares the digest, never its sources.
+ */
+export interface Digest {
+  id: string;
+  title: string;
+  summary: string;
+  keyPoints: DigestKeyPoint[];
+  /** Every bookmark it was built from, in cluster order. Never truncated. */
+  sources: DigestSource[];
+  coherence: number;
+  createdAt: Date;
+  likeCount: number;
+  isLikedByCurrentUser: boolean;
+  isPublic: boolean;
+  shareUrl?: string;
+}
+
+/**
+ * The per-user digest generation job, enqueued by the worker's scheduler onto
+ * the `digests` pgmq queue and drained by the same poll loop as every other
+ * job — docs/plans/signal-revamp-plan.md, open decision 1.
+ */
+export interface DigestQueuePayload extends QueueTaskPayload {
+  type: "digest_generate";
+  data: {
+    userId: string;
+    /**
+     * ISO instant the scheduler ticked. The generator's 14-day window is
+     * measured back from here rather than from when the message was picked
+     * up, so a queue backlog cannot silently widen the window.
+     */
+    scheduledAt: string;
+  };
+}
+
+/**
  * One signal's contribution to one item. Debugging only — the API omits these
  * in production. Never the source of `rankingReason`: the sentence is written
  * from the signals by the ranker, because only the ranker knows what it
@@ -591,6 +660,12 @@ export interface FeedItem {
   type: FeedItemType;
   /** Present on every type except `digest`. */
   bookmark?: Bookmark;
+  /**
+   * Present on `digest` and nothing else — it is exactly the field `bookmark`
+   * is absent for. Always complete, sources included: an AI output that cannot
+   * name what it was built from does not get rendered.
+   */
+  digest?: Digest;
   /** Who this reached the viewer through. Absent on their own saves. */
   actor?: FeedActor;
   /** "Why this appeared", server-generated. Absent on `pending`, which is pinned. */

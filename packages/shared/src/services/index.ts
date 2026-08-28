@@ -16,6 +16,9 @@ export * from "./search.service";
 export * from "./reading.service";
 export * from "./social.service";
 export * from "./comment.service";
+export * from "./digest.config";
+export * from "./digest.prompt";
+export * from "./digest.service";
 export * from "./feed-ranking.config";
 export * from "./feed-ranking.service";
 export * from "./http-client";
@@ -40,6 +43,7 @@ import {
   FeedRankingService,
   FeedRankingServiceImpl,
 } from "./feed-ranking.service";
+import { DigestService, DigestServiceImpl } from "./digest.service";
 import {
   ProcessingBudgetService,
   ProcessingBudgetServiceImpl,
@@ -58,6 +62,7 @@ import {
   BookmarkReadingRepositoryImpl,
   SocialRepositoryImpl,
   CommentRepositoryImpl,
+  DigestRepositoryImpl,
   FeedRepositoryImpl,
 } from "../repositories";
 import { AI } from "../ai";
@@ -76,6 +81,7 @@ export interface ServiceContainer {
   social: SocialService;
   comment: CommentService;
   feed: FeedRankingService;
+  digest: DigestService;
 }
 
 /**
@@ -98,6 +104,7 @@ export function createServiceContainer(
   const socialRepository = new SocialRepositoryImpl(db);
   const commentRepository = new CommentRepositoryImpl(db);
   const feedRepository = new FeedRepositoryImpl(db);
+  const digestRepository = new DigestRepositoryImpl(db);
 
   const ai = new AI();
   const embeddingService = new EmbeddingServiceImpl();
@@ -136,5 +143,9 @@ export function createServiceContainer(
       socialService,
       environment
     ),
+    // The generation half of this service runs in the worker; the API only
+    // ever reaches its read, like and share paths. Same object either way —
+    // the AI call lives in `packages/shared`, never in an app.
+    digest: new DigestServiceImpl(digestRepository, ai),
   };
 }

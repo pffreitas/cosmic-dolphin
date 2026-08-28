@@ -12,6 +12,7 @@ import profileRoutes from './routes/profile';
 import userRoutes from './routes/users';
 import commentRoutes from './routes/comments';
 import feedRoutes from './routes/feed';
+import digestRoutes from './routes/digests';
 
 const server = Fastify({
   logger: config.NODE_ENV === 'development' ? {
@@ -69,6 +70,9 @@ server.register(async function (fastify) {
   // The ranked feed. Registered after the bookmark routes, which no longer
   // carry `/bookmarks/feed` — the route moved, it was not duplicated.
   await fastify.register(feedRoutes, { prefix: '/api/v1' });
+  // Digests are their own resource, not a corner of the feed: they have a
+  // detail route, likes and a share link of their own.
+  await fastify.register(digestRoutes, { prefix: '/api/v1' });
 });
 
 // Start server

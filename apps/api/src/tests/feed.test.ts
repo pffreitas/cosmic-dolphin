@@ -18,6 +18,7 @@ import {
   type FollowedSaveRow,
   type RecentlyServedRow,
   type SaveOutcomeRow,
+  type EligibleDigestRow,
   type SocialProofRow,
   type SocialService,
 } from "@cosmic-dolphin/shared";
@@ -107,6 +108,7 @@ class FakeFeedRepository implements FeedRepository {
   saveOutcomes: SaveOutcomeRow[] = [];
   socialProof: SocialProofRow[] = [];
   impressions = new Map<string, FeedImpressionRow>();
+  digests: EligibleDigestRow[] = [];
   recentlyServed: RecentlyServedRow[] = [];
   servedSince: string[] = [];
   rankingConfig: FeedRankingConfigOverrides | null = null;
@@ -139,6 +141,16 @@ class FakeFeedRepository implements FeedRepository {
 
   async findPending(_userId: string, limit: number): Promise<BookmarkRow[]> {
     return this.pending.slice(0, limit);
+  }
+
+  async findEligibleDigests(
+    _userId: string,
+    since: Date,
+    limit: number
+  ): Promise<EligibleDigestRow[]> {
+    return this.digests
+      .filter((row) => row.digest.created_at >= since)
+      .slice(0, limit);
   }
 
   async similarityToInterestVector(): Promise<Map<string, number>> {
@@ -186,6 +198,18 @@ class FakeFeedRepository implements FeedRepository {
 
   async findRankingConfig(): Promise<FeedRankingConfigOverrides | null> {
     return this.rankingConfig;
+  }
+
+  /** Convenience: n unopened serves of one digest. */
+  digestSeen(digestId: string, servedCount: number, opened = false): void {
+    this.impressions.set(`digest:${digestId}`, {
+      user_id: VIEWER,
+      item_type: "digest",
+      item_id: digestId,
+      served_count: servedCount,
+      opened_at: opened ? daysAgo(1) : null,
+      last_served_at: daysAgo(0.1),
+    });
   }
 
   /** Convenience: n unopened serves of one bookmark. */
@@ -617,6 +641,153 @@ describe("author diversity", () => {
       longest = Math.max(longest, current);
     }
     expect(longest).toBeLessThanOrEqual(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Digests in the ranked feed (D15)
+//
+// The spacing pass has always been here; until digests existed it ran over an
+// empty set. These assert it still holds now that it has something to space,
+// which is the only version of the claim worth making.
+// ---------------------------------------------------------------------------
+
+function digestRow(
+  id: string,
+  overrides: Partial<EligibleDigestRow["digest"]> = {}
+): EligibleDigestRow {
+  const sourceIds = [`${id}-s1`, `${id}-s2`, `${id}-s3`];
+
+  return {
+    digest: {
+      id,
+      user_id: VIEWER,
+      title: `Digest ${id}`,
+      summary: "Four of your saves are circling the same argument.",
+      key_points: [{ text: "Memory beats context." }, { text: "Evaluation is unresolved." }],
+      source_bookmark_ids: sourceIds,
+      coherence: 0.91,
+      model_id: "test-model",
+      window_start: daysAgo(14),
+      window_end: NOW,
+      is_public: false,
+      share_slug: null,
+      like_count: 0,
+      created_at: daysAgo(0.5),
+      updated_at: daysAgo(0.5),
+      ...overrides,
+    },
+    sources: sourceIds.map((sourceId, index) => ({
+      bookmarkId: sourceId,
+      title: `Source ${index + 1}`,
+      url: `https://source-${index + 1}.example/${sourceId}`,
+      domain: `source-${index + 1}.example`,
+    })),
+    sourceDomains: ["source-1.example", "source-2.example", "source-3.example"],
+    sourceTags: ["agents"],
+    likedByViewer: false,
+  };
+}
+
+describe("digests in the feed", () => {
+  it("never places two digests within one screenful", async () => {
+    const repository = new FakeFeedRepository();
+    // Thirty saves and five digests spread across the same fortnight, so the
+    // merged ordering genuinely interleaves them rather than stacking every
+    // digest at the top where a single one would satisfy the assertion.
+    repository.ownUnread = Array.from({ length: 30 }, (_, index) =>
+      bookmarkRow({
+        id: `b-${String(index).padStart(3, "0")}`,
+        source_url: `https://site-${index}.example/x`,
+        created_at: daysAgo(index * 0.4),
+        updated_at: daysAgo(index * 0.4),
+      })
+    );
+    repository.digests = [0.2, 2.4, 4.8, 7.2, 9.6].map((age, index) =>
+      digestRow(`dg-${index + 1}`, { created_at: daysAgo(age) })
+    );
+
+    const page = await makeService(repository).getFeed(VIEWER, {
+      now: NOW,
+      limit: 50,
+    });
+
+    const positions = page.items
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => item.type === "digest")
+      .map(({ index }) => index);
+
+    // The point of the test: more than one digest actually got placed, so the
+    // gap assertion below is not vacuous.
+    expect(positions.length).toBeGreaterThan(1);
+    expect(positions.length).toBeLessThanOrEqual(
+      DEFAULT_FEED_RANKING_PARAMETERS.maxDigestsPerSession
+    );
+
+    for (let i = 1; i < positions.length; i += 1) {
+      expect(positions[i] - positions[i - 1]).toBeGreaterThanOrEqual(
+        DEFAULT_FEED_RANKING_PARAMETERS.digestSpacing
+      );
+    }
+  });
+
+  it("carries the digest instead of a bookmark, sources and all", async () => {
+    const repository = new FakeFeedRepository();
+    repository.ownUnread = [bookmarkRow({ id: "b1" })];
+    repository.digests = [digestRow("dg-1")];
+
+    const page = await makeService(repository).getFeed(VIEWER, { now: NOW });
+    const digest = page.items.find((item) => item.type === "digest");
+
+    expect(digest).toBeDefined();
+    expect(digest!.bookmark).toBeUndefined();
+    expect(digest!.digest).toBeDefined();
+    // Every bookmark it was built from reaches the reader, each one a link.
+    expect(digest!.digest!.sources).toHaveLength(3);
+    expect(digest!.digest!.sources.every((source) => source.url !== "")).toBe(true);
+    // And it explains itself, like every other ranked item.
+    expect(digest!.rankingReason).toBeTruthy();
+  });
+
+  it("decays a digest through the same path as a bookmark", async () => {
+    const repository = new FakeFeedRepository();
+    repository.ownUnread = [bookmarkRow({ id: "b1" })];
+    repository.digests = [digestRow("dg-1")];
+    repository.digestSeen("dg-1", DEFAULT_FEED_RANKING_PARAMETERS.seenDropAfter);
+
+    const page = await makeService(repository).getFeed(VIEWER, { now: NOW });
+
+    // Five unopened serves and it leaves For you, exactly as a bookmark would.
+    expect(page.items.some((item) => item.type === "digest")).toBe(false);
+  });
+
+  it("records a digest impression under its own item type", async () => {
+    const repository = new FakeFeedRepository();
+    repository.digests = [digestRow("dg-1")];
+
+    await makeService(repository).getFeed(VIEWER, { now: NOW });
+
+    expect(repository.recorded).toContainEqual({
+      itemType: "digest",
+      itemId: "dg-1",
+    });
+  });
+
+  it("keeps digests out of Following and Unread", async () => {
+    const repository = new FakeFeedRepository();
+    repository.ownUnread = [bookmarkRow({ id: "b1" })];
+    repository.digests = [digestRow("dg-1")];
+
+    const service = makeService(repository);
+
+    const unread = await service.getFeed(VIEWER, { now: NOW, scope: "unread" });
+    expect(unread.items.some((item) => item.type === "digest")).toBe(false);
+
+    const following = await service.getFeed(VIEWER, {
+      now: NOW,
+      scope: "following",
+    });
+    expect(following.items.some((item) => item.type === "digest")).toBe(false);
   });
 });
 

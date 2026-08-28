@@ -249,9 +249,9 @@ enum FeedScope {
 
     `pending` is a save still being processed. It is pinned to the top of the
     feed regardless of score, because the user just created it and expects to
-    see it. `digest` is an AI-authored grouping of the user's own saves; the
-    ranker reserves the type and enforces its spacing, and the digest payload
-    itself arrives with the digests deliverable.
+    see it. `digest` is an AI-authored grouping of the user's own saves; it
+    carries a `digest` payload instead of a `bookmark`, and the ranker spaces
+    it at one per eight items, three per session.
     """)
 enum FeedItemType {
     own_save,
@@ -311,6 +311,17 @@ model FeedItem {
 
     @doc("The bookmark, on every type except `digest`.")
     bookmark?: Bookmark;
+
+    @doc("""
+        The digest, on `digest` items and nothing else — it is exactly the
+        field `bookmark` is absent for.
+
+        It arrives complete, sources included, because the `Built from`
+        provenance row is not optional decoration: an AI output that cannot
+        name what it was built from does not get rendered
+        (docs/functional-spec/05-feed.md § Digests).
+        """)
+    digest?: Digest;
 
     @doc("Who this reached the user through - the saver, or the resharer. Absent on the user's own saves.")
     actor?: FeedActor;

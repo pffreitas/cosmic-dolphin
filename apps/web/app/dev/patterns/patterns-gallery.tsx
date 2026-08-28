@@ -708,11 +708,17 @@ export function PatternsGallery() {
                 title="Four of your saves are circling the same argument"
                 label="This week in your library"
                 menu={<MenuButton />}
-                provenance={{
-                  lead: "Built from",
-                  sources: [EVERY, ARXIV],
-                  moreCount: 2,
-                }}
+                sources={[
+                  { bookmarkId: "bk_8f2a", href: "/bookmarks/bk_8f2a", ...EVERY },
+                  { bookmarkId: "bk_91ff", href: "/bookmarks/bk_91ff", ...ARXIV },
+                  {
+                    bookmarkId: "bk_3e77",
+                    href: "/bookmarks/bk_3e77",
+                    ...STRATECHERY,
+                  },
+                  { bookmarkId: "bk_1d4c", href: "/bookmarks/bk_1d4c", ...YOUTUBE },
+                  { bookmarkId: "bk_5ad3", href: "/bookmarks/bk_5ad3", domain: "notion.so" },
+                ]}
                 summary="You've been collecting pieces that all push back on scale-first agent design. Two of them contradict each other on evaluation."
                 keyPoints={[
                   {

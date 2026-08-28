@@ -22,6 +22,18 @@ export type {
   ContentReportsTable,
   ContentReportRow,
   NewContentReport,
-  ContentReportStatus
+  ContentReportStatus,
+  // Feed impressions and digests (D14, D15). Exported for the same reason as
+  // the comment rows above: the API's tests build fakes against these shapes,
+  // and a fake typed against anything looser stops catching drift.
+  FeedImpressionsTable,
+  FeedImpressionRow,
+  FeedImpressionItemType,
+  FeedDigestsTable,
+  FeedDigestRow,
+  NewFeedDigest,
+  FeedDigestUpdate,
+  FeedDigestLikesTable,
+  FeedDigestLikeRow
 } from './schema';
 export * from './connection';

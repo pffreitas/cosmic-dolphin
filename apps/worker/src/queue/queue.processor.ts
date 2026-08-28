@@ -232,7 +232,7 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
 
   private getProcessorOptions(): ProcessorOptions {
     const queueNames = this.configService
-      .get<string>("QUEUE_NAMES", "bookmarks")
+      .get<string>("QUEUE_NAMES", "bookmarks,digests")
       .split(",");
     const defaultPollInterval = this.configService.get<number>(
       "QUEUE_POLL_INTERVAL",

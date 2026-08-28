@@ -8,12 +8,14 @@ import {
 } from "../types";
 import { Bookmark as BookmarkRow, FeedImpressionItemType } from "../database/schema";
 import {
+  EligibleDigestRow,
   FeedRepository,
   FinishedReadRow,
   RecentlyServedRow,
   SaveOutcomeRow,
   impressionKey,
 } from "../repositories/feed.repository";
+import { toDigestWithSources } from "./digest.service";
 import { PublicProfileRow } from "../repositories/social.repository";
 import { SocialService } from "./social.service";
 import { mapDatabaseRowToBookmark } from "./bookmark.service";
@@ -112,6 +114,14 @@ export interface FeedRankingService {
    */
   recordOpen(userId: string, bookmarkId: string): Promise<void>;
 
+  /**
+   * The same event for a digest: opening its detail route is the only thing in
+   * the product that means "they went in" for an AI item. Without it a digest
+   * the user reads every time would still be dropped after five serves, which
+   * would make seen decay a timer rather than a signal.
+   */
+  recordDigestOpen(userId: string, digestId: string): Promise<void>;
+
   /** Drop this user's cached ranking. Used by the tests, and by nothing else. */
   invalidate(userId: string): void;
 }
@@ -139,6 +149,40 @@ interface ScoredCandidate {
   unopenedServes: number;
 }
 
+interface ScoredDigest {
+  row: EligibleDigestRow;
+  score: number;
+  signals: RankingSignal[];
+  reason: string;
+  unopenedServes: number;
+}
+
+/**
+ * One item in the single ordering the post-processing passes walk.
+ *
+ * Bookmarks and digests are ranked **together**, on one scale, because the
+ * question the feed answers is "what should I read now" and an item that is
+ * ranked separately and inserted afterwards has not been asked that question.
+ * The structural fields — `type`, `authorId`, `domain`, `unopenedServes` — are
+ * what the diversity, spacing and drop passes key on, and they are present on
+ * both arms so those passes need to know nothing about either.
+ */
+type OrderedItem = {
+  score: number;
+  signals: RankingSignal[];
+  reason: string;
+  unopenedServes: number;
+  type: FeedItemType;
+  authorId: string;
+  domain: string;
+  /** The stable tiebreak, so identical scores do not reshuffle per request. */
+  createdAt: Date;
+  id: string;
+} & (
+  | { kind: "bookmark"; candidate: Candidate }
+  | { kind: "digest"; digest: EligibleDigestRow }
+);
+
 /** One entry of a materialised ranking session. */
 interface SessionEntry {
   item: FeedItem;
@@ -161,6 +205,17 @@ interface RankedSession {
 // ---------------------------------------------------------------------------
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * How many digests to fetch per session slot.
+ *
+ * The spacing pass admits at most `maxDigestsPerSession`, but some of the ones
+ * it is offered will have been dropped by seen decay first. Fetching a small
+ * multiple means a user who has ignored their last three digests still sees
+ * the fourth, without turning "at most three per session" into a query for
+ * everything they have ever been sent.
+ */
+const DIGEST_CANDIDATE_HEADROOM = 4;
 
 /**
  * Exponential decay with the configured half-life. 1.0 at the moment of
@@ -569,6 +624,23 @@ export function finishedTagWeights(
   return weights;
 }
 
+/**
+ * Topic affinity's fallback: how much of this item's vocabulary the reader has
+ * actually been finishing.
+ *
+ * 0.5 — neutral — when either side is empty. An item with no tags has not
+ * failed the test, it has not taken it, and scoring it zero would bury
+ * everything the pipeline has not tagged yet.
+ */
+export function tagOverlap(
+  tags: string[],
+  finishedTags: Map<string, number>
+): number {
+  if (finishedTags.size === 0 || tags.length === 0) return 0.5;
+  const hits = tags.filter((tag) => finishedTags.has(tag.toLowerCase())).length;
+  return hits / tags.length;
+}
+
 // ---------------------------------------------------------------------------
 // The service
 // ---------------------------------------------------------------------------
@@ -658,6 +730,14 @@ export class FeedRankingServiceImpl implements FeedRankingService {
     } catch {
       // An impression that did not record is a slightly worse ranking. A read
       // that returned 500 is a broken product.
+    }
+  }
+
+  async recordDigestOpen(userId: string, digestId: string): Promise<void> {
+    try {
+      await this.feedRepository.markOpened(userId, "digest", digestId);
+    } catch {
+      // As above.
     }
   }
 
@@ -824,8 +904,12 @@ export class FeedRankingServiceImpl implements FeedRankingService {
 
     const wantsOwn = scope !== "following";
     const wantsFollowed = scope !== "unread";
+    // Digests are For you only. `following` is other people's saves and a
+    // digest is not one; `unread` is a chronological list of the user's own
+    // unread links, and an AI item in it would be neither unread nor a link.
+    const wantsDigests = scope === "for_you";
 
-    const [pendingRows, ownRows, followedRows] = await Promise.all([
+    const [pendingRows, ownRows, followedRows, digestRows] = await Promise.all([
       wantsOwn
         ? this.feedRepository.findPending(userId, parameters.pageSize)
         : Promise.resolve([]),
@@ -843,6 +927,16 @@ export class FeedRankingServiceImpl implements FeedRankingService {
             userId,
             followedSince,
             parameters.candidateCap
+          )
+        : Promise.resolve([]),
+      wantsDigests
+        ? this.feedRepository.findEligibleDigests(
+            userId,
+            // The same window followed saves get. A digest is an observation
+            // about a fortnight of reading, and one about the fortnight before
+            // last is not news.
+            followedSince,
+            parameters.maxDigestsPerSession * DIGEST_CANDIDATE_HEADROOM
           )
         : Promise.resolve([]),
     ]);
@@ -947,10 +1041,20 @@ export class FeedRankingServiceImpl implements FeedRankingService {
         this.feedRepository.findSocialProof(userId, bookmarkIds),
         this.feedRepository.findImpressions(
           userId,
-          bookmarkIds.map((id) => ({
-            itemType: "bookmark" as FeedImpressionItemType,
-            itemId: id,
-          }))
+          [
+            ...bookmarkIds.map((id) => ({
+              itemType: "bookmark" as FeedImpressionItemType,
+              itemId: id,
+            })),
+            // Digests decay through exactly the same path as bookmarks: served
+            // three times unopened and the score is multiplied by 0.6, five and
+            // it leaves For you. An AI item that outlived its welcome is the
+            // one most worth dropping, not the one to make an exception for.
+            ...digestRows.map((row) => ({
+              itemType: "digest" as FeedImpressionItemType,
+              itemId: row.digest.id,
+            })),
+          ]
         ),
         this.feedRepository.findRecentlyServed(
           userId,
@@ -970,27 +1074,74 @@ export class FeedRankingServiceImpl implements FeedRankingService {
       recentlyServed,
     });
 
+    const scoredDigests = this.scoreDigests({
+      digests: digestRows,
+      config,
+      now,
+      similarity,
+      finishedReads,
+      saveOutcomes,
+      impressions,
+      recentlyServed,
+    });
+
+    // One ordering over both kinds. A digest that scores below the tenth
+    // bookmark belongs below the tenth bookmark; ranking it separately and
+    // inserting it afterwards would make its position a layout decision rather
+    // than a ranking one.
+    const merged: OrderedItem[] = [
+      ...scored.map(
+        (entry): OrderedItem => ({
+          kind: "bookmark",
+          candidate: entry.candidate,
+          score: entry.score,
+          signals: entry.signals,
+          reason: entry.reason,
+          unopenedServes: entry.unopenedServes,
+          type: entry.candidate.type,
+          // Own saves carry no author for spacing purposes. Every one of
+          // them is "from" the viewer, so keying on the person would make
+          // the pass see one endless run, give up, and stop spacing by
+          // domain — which is the only dimension a personal library has.
+          authorId: entry.candidate.actor ? entry.candidate.bookmark.user_id : "",
+          domain: entry.candidate.domain,
+          createdAt: entry.candidate.createdAt,
+          id: entry.candidate.bookmark.id,
+        })
+      ),
+      ...scoredDigests.map(
+        (entry): OrderedItem => ({
+          kind: "digest",
+          digest: entry.row,
+          score: entry.score,
+          signals: entry.signals,
+          reason: entry.reason,
+          unopenedServes: entry.unopenedServes,
+          type: "digest",
+          // A digest has neither an author nor a domain of its own: it is the
+          // viewer's, and it is built from several domains at once. Empty
+          // strings, which `extendsRun` reads as "cannot extend a run" — a
+          // digest between two saves from one blog genuinely does break it up.
+          authorId: "",
+          domain: "",
+          createdAt: entry.row.digest.created_at,
+          id: entry.row.digest.id,
+        })
+      ),
+    ].sort(
+      (a, b) =>
+        b.score - a.score ||
+        b.createdAt.getTime() - a.createdAt.getTime() ||
+        a.id.localeCompare(b.id)
+    );
+
     // Post-processing, in the order docs/functional-spec/05-feed.md gives it.
     // The ×0.6 half of seen decay is already in the scores above, because a
     // multiplier applied after the ordering would not move anything; what is
     // left for this pass is the drop.
     const ordered = applySeenDrop(
       applyDigestSpacing(
-        applyAuthorDiversity(
-          scored.map((entry) => ({
-            ...entry,
-            // Own saves carry no author for spacing purposes. Every one of
-            // them is "from" the viewer, so keying on the person would make
-            // the pass see one endless run, give up, and stop spacing by
-            // domain — which is the only dimension a personal library has.
-            authorId: entry.candidate.actor
-              ? entry.candidate.bookmark.user_id
-              : "",
-            domain: entry.candidate.domain,
-            type: entry.candidate.type,
-          })),
-          parameters.maxConsecutiveFromSource
-        ),
+        applyAuthorDiversity(merged, parameters.maxConsecutiveFromSource),
         parameters.digestSpacing,
         parameters.maxDigestsPerSession
       ),
@@ -1005,13 +1156,15 @@ export class FeedRankingServiceImpl implements FeedRankingService {
         this.toSessionEntry(candidate.type, candidate.bookmark, candidate.actor)
       ),
       ...ordered.map((entry) =>
-        this.toSessionEntry(
-          entry.candidate.type,
-          entry.candidate.bookmark,
-          entry.candidate.actor,
-          entry.reason,
-          entry.signals
-        )
+        entry.kind === "digest"
+          ? toDigestSessionEntry(entry.digest, entry.reason, entry.signals)
+          : this.toSessionEntry(
+              entry.candidate.type,
+              entry.candidate.bookmark,
+              entry.candidate.actor,
+              entry.reason,
+              entry.signals
+            )
       ),
     ];
 
@@ -1019,11 +1172,147 @@ export class FeedRankingServiceImpl implements FeedRankingService {
       session: this.materialise(userId, scope, config, now, entries),
       metrics: {
         cacheHit: false,
-        candidateCount: ranked.length + pending.length,
+        candidateCount: ranked.length + pending.length + digestRows.length,
         interestVectorMs,
         totalMs: Date.now() - startedAt,
       },
     };
+  }
+
+  /**
+   * Digests, on the same six signals as everything else.
+   *
+   * Four of them are computed from the digest's *sources*, which is the only
+   * honest reading: a digest has no text of its own the ranker has embedded, no
+   * domain, and no reading time. What it has is the set of saves it was built
+   * from, and "how close is this to what you finish" is a question those can
+   * answer.
+   *
+   * Two are fixed, and both deserve stating:
+   *
+   *  - **`social_proof` is 0.** A digest is built from one person's private
+   *    library and nobody the viewer follows has engaged with it. Passing it
+   *    the viewer's own like would be the ranker rewarding the viewer for
+   *    agreeing with it.
+   *  - **`effort_fit` is neutral.** A digest is four sentences. It has not
+   *    failed the length test; there is no length test to take.
+   */
+  private scoreDigests(input: {
+    digests: EligibleDigestRow[];
+    config: FeedRankingConfig;
+    now: Date;
+    similarity: Map<string, number>;
+    finishedReads: FinishedReadRow[];
+    saveOutcomes: SaveOutcomeRow[];
+    impressions: Map<string, { served_count: number; opened_at: Date | null }>;
+    recentlyServed: RecentlyServedRow[];
+  }): ScoredDigest[] {
+    const { digests, config, now, similarity } = input;
+    if (digests.length === 0) return [];
+
+    const { weights, parameters } = config;
+
+    const outcomes = domainOutcomes(input.saveOutcomes);
+    const recent = input.recentlyServed.map((row) => ({
+      domain: domainOf(row.sourceUrl),
+      tags: row.tags ?? [],
+    }));
+    const finishedTags = finishedTagWeights(
+      input.finishedReads.map((row) => ({ cosmicTags: row.tags }))
+    );
+
+    return digests.map((row) => {
+      const sourceIds = row.digest.source_bookmark_ids ?? [];
+
+      // Topic affinity, averaged over the sources the embedding path knows
+      // about. A digest whose sources are all close to what the viewer
+      // finishes is close to it too — that is what the cluster means.
+      const similarities = sourceIds
+        .map((id) => similarity.get(id))
+        .filter((value): value is number => value !== undefined);
+
+      const topic =
+        similarities.length > 0
+          ? clamp(
+              similarities.reduce((total, value) => total + value, 0) /
+                similarities.length /
+                2 +
+                0.5,
+              0,
+              1
+            )
+          : tagOverlap(row.sourceTags, finishedTags);
+
+      // Source affinity, averaged over the domains it draws on.
+      const perDomain = row.sourceDomains.map((domain) => {
+        const outcome = outcomes.get(domain) ?? { saved: 0, finished: 0 };
+        return sourceAffinityScore(outcome.finished, outcome.saved);
+      });
+      const source =
+        perDomain.length > 0
+          ? perDomain.reduce((total, value) => total + value, 0) /
+            perDomain.length
+          : 0;
+
+      const recency = recencyScore(
+        row.digest.created_at,
+        now,
+        parameters.recencyHalfLifeDays
+      );
+
+      // Novelty over the digest's own subject matter, with no domain of its
+      // own to penalise — a digest is never "another link from that site".
+      const novelty = noveltyScore("", row.sourceTags, recent);
+
+      const values: Record<FeedSignalName, number> = {
+        topic_affinity: topic,
+        source_affinity: source,
+        recency,
+        social_proof: 0,
+        effort_fit: 0.5,
+        novelty,
+      };
+
+      const signals: RankingSignal[] = FEED_SIGNAL_NAMES.map((name) => ({
+        name,
+        weight: weights[name],
+        value: values[name],
+        contribution: weights[name] * values[name],
+      }));
+
+      const base = signals.reduce(
+        (total, signal) => total + signal.contribution,
+        0
+      );
+
+      const impression = input.impressions.get(
+        impressionKey("digest", row.digest.id)
+      );
+      const unopenedServes =
+        impression && impression.opened_at === null
+          ? impression.served_count
+          : 0;
+
+      const score =
+        base *
+        seenDecayMultiplier(
+          unopenedServes,
+          parameters.seenDecayAfter,
+          parameters.seenDecayFactor
+        );
+
+      return {
+        row,
+        score,
+        signals,
+        unopenedServes,
+        // A digest's reason is not assembled from signal clauses. Those are
+        // written about a link someone else shared or a page the viewer saved,
+        // and "you finish most of what you save from every.to" is not why this
+        // appeared. What is true is stated instead, in the same voice.
+        reason: `You saved ${sourceIds.length} links that turned out to be about the same thing, so this pulls them together.`,
+      };
+    });
   }
 
   private score(input: {
@@ -1056,13 +1345,8 @@ export class FeedRankingServiceImpl implements FeedRankingService {
     const finishedTags = finishedTagWeights(
       input.finishedReads.map((row) => ({ cosmicTags: row.tags }))
     );
-    const tagFallback = (tags: string[]): number => {
-      if (finishedTags.size === 0 || tags.length === 0) return 0.5;
-      const hits = tags.filter((tag) =>
-        finishedTags.has(tag.toLowerCase())
-      ).length;
-      return hits / tags.length;
-    };
+    const tagFallback = (tags: string[]): number =>
+      tagOverlap(tags, finishedTags);
 
     return candidates.map((candidate) => {
       const id = candidate.bookmark.id;
@@ -1234,6 +1518,32 @@ export class FeedRankingServiceImpl implements FeedRankingService {
 // ---------------------------------------------------------------------------
 // Small mappings
 // ---------------------------------------------------------------------------
+
+/**
+ * A ranked digest into a feed item.
+ *
+ * `bookmark` is deliberately absent and `digest` deliberately present: the
+ * `FeedItem.bookmark` field is optional precisely so a digest can omit it. The
+ * sources come along complete — the item cannot be constructed without them,
+ * which is the render-path half of "a digest names every bookmark it was built
+ * from".
+ */
+function toDigestSessionEntry(
+  row: EligibleDigestRow,
+  reason: string,
+  signals: RankingSignal[]
+): SessionEntry {
+  return {
+    item: {
+      type: "digest",
+      digest: toDigestWithSources(row.digest, row.sources, row.likedByViewer),
+      rankingReason: reason,
+      signals,
+    },
+    itemType: "digest",
+    itemId: row.digest.id,
+  };
+}
 
 function toCandidate(
   type: FeedItemType,
