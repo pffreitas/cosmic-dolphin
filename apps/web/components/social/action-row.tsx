@@ -55,6 +55,16 @@ export interface ActionRowProps
   saved?: boolean;
   /** Reshares into the current user's library. */
   onSaveChange?: (saved: boolean) => void;
+  /**
+   * The save has no undo — the feed's Save is a reshare, and un-resharing is
+   * deleting a bookmark, which happens in the Library where the consequences
+   * are visible (docs/functional-spec/06-social.md § Reshare).
+   *
+   * Once saved, the control announces itself as done and stops toggling.
+   * Without this the row would flip back to "Save" on a second press while
+   * the bookmark stayed in the library, and say something untrue.
+   */
+  saveOnce?: boolean;
   /** "Save" by default; a digest says "Save digest". */
   saveLabel?: string;
   /** Always "Saved" unless a surface has a reason to say otherwise. */
@@ -86,6 +96,7 @@ const ActionRow = React.forwardRef<HTMLDivElement, ActionRowProps>(
       onComment,
       saved = false,
       onSaveChange,
+      saveOnce = false,
       saveLabel = "Save",
       savedLabel = "Saved",
       shareUrl,
@@ -118,7 +129,10 @@ const ActionRow = React.forwardRef<HTMLDivElement, ActionRowProps>(
       onLikeChange?.(next);
     };
 
+    const saveIsDone = saveOnce && savedNow;
+
     const toggleSave = () => {
+      if (saveIsDone) return;
       const next = !savedNow;
       setSavedNow(next);
       onSaveChange?.(next);
@@ -184,6 +198,9 @@ const ActionRow = React.forwardRef<HTMLDivElement, ActionRowProps>(
           variant="ghost"
           size="sm"
           disabled={disabled}
+          // Focusable but inert, rather than `disabled`: a saved item's state
+          // is worth reaching and reading, it just has nothing left to do.
+          aria-disabled={saveIsDone || undefined}
           aria-pressed={savedNow}
           onClick={toggleSave}
           className={cn(

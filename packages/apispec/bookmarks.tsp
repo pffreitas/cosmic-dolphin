@@ -101,6 +101,16 @@ model Bookmark {
     @doc("Live comments on this bookmark, tombstones excluded. Denormalised and maintained by trigger — the feed reads it on every item.")
     commentCount?: int32;
 
+    @doc("""
+        Reshare provenance: the bookmark this one was saved from, when the save
+        came from someone else's. Absent on a save made from a URL.
+
+        It goes null rather than dangling when the original is deleted, so a
+        provenance row must degrade to the domain alone rather than assume the
+        original is still there.
+        """)
+    savedFromBookmarkId?: string;
+
     isPublic?: boolean;
     shareSlug?: string;
     readAt?: utcDateTime;
@@ -541,6 +551,61 @@ interface Bookmarks {
           }
         | {
               @doc("Reprocess rate limit exceeded. Carries `Retry-After`, in seconds.")
+              @statusCode
+              statusCode: 429;
+
+              @header("Retry-After") retryAfter?: int32;
+
+              @body body: BookmarkError;
+          }
+        | {
+              @statusCode statusCode: 500;
+              @body body: BookmarkError;
+          };
+
+    @doc("""
+        Reshare a bookmark into the caller's own library — the feed's **Save**
+        action, docs/functional-spec/06-social.md § Reshare.
+
+        The new bookmark is the caller's: it inherits only the source URL and
+        carries `savedFromBookmarkId` pointing at the original. Nothing else
+        travels. The pipeline runs again for the new owner, so the summary,
+        tags and filing are theirs and not the original saver's, and the
+        comment thread stays on the original — a reshare starts at zero.
+
+        Because it inherits the URL it meets the same per-user uniqueness
+        constraint `POST /bookmarks` does: resharing something already in the
+        library returns 200 with `alreadySaved: true` and the row the caller
+        already has. Nothing is created and nothing is re-queued.
+
+        404 covers "no such bookmark", "not public", and "blocked in either
+        direction" alike — the same refusal the social routes make, for the
+        same reason.
+        """)
+    @useAuth(BearerAuth)
+    @post
+    @route("/{id}/reshare")
+    reshare(@path id: string):
+        | {
+              @statusCode statusCode: 201;
+              @body body: CreateBookmarkResponse;
+          }
+        | {
+              @doc("Already in the caller's library. `alreadySaved` is true.")
+              @statusCode
+              statusCode: 200;
+
+              @body body: CreateBookmarkResponse;
+          }
+        | {
+              @doc("No such bookmark, not public, or blocked.")
+              @statusCode
+              statusCode: 404;
+
+              @body body: BookmarkError;
+          }
+        | {
+              @doc("Save rate limit exceeded — a reshare is a save. Carries `Retry-After`, in seconds.")
               @statusCode
               statusCode: 429;
 

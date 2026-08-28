@@ -85,6 +85,16 @@ export interface VectorSearchResult {
 export interface BookmarkRepository {
   findByUserAndUrl(userId: string, sourceUrl: string): Promise<Bookmark | null>;
   findByIdAndUser(id: string, userId: string): Promise<Bookmark | null>;
+  /**
+   * A row by id, whoever owns it. The caller decides whether it may be seen —
+   * this is the read behind a reshare, where the bookmark being saved belongs
+   * to someone else by definition.
+   *
+   * Every other read here is scoped to a user in SQL, which is what makes
+   * "not yours" a 404 without a second query. Use that one unless the point is
+   * explicitly cross-user.
+   */
+  findById(id: string): Promise<Bookmark | null>;
   findByIdAndUserWithLikeStatus(
     id: string,
     userId: string
@@ -239,6 +249,18 @@ export class BookmarkRepositoryImpl
 
       return result || null;
     }, "findByUserAndUrl");
+  }
+
+  async findById(id: string): Promise<Bookmark | null> {
+    return this.executeQuery(async () => {
+      const result = await this.db
+        .selectFrom("bookmarks")
+        .selectAll()
+        .where("id", "=", id)
+        .executeTakeFirst();
+
+      return result || null;
+    }, "findById");
   }
 
   async findByIdAndUser(id: string, userId: string): Promise<Bookmark | null> {

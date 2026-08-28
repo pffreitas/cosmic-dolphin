@@ -93,6 +93,19 @@ export interface SocialService {
 
   block(blockerId: string, handle: string): Promise<BlockResponse | null>;
   unblock(blockerId: string, handle: string): Promise<BlockResponse | null>;
+
+  /**
+   * May these two people's content reach each other at all?
+   *
+   * False when either has blocked the other — a block is symmetric in effect
+   * even though the row is not, because content flowing either way defeats it.
+   * True for a user and themselves.
+   *
+   * Keyed on ids rather than handles because the caller already has a row: a
+   * reshare knows the bookmark's `userId` and would have to look a handle up
+   * only to hand it back for a second lookup.
+   */
+  canInteract(viewerId: string, otherUserId: string): Promise<boolean>;
 }
 
 export class SocialServiceImpl implements SocialService {
@@ -271,6 +284,17 @@ export class SocialServiceImpl implements SocialService {
         ? { createdAt: new Date(page.last.created_at), id: page.last.id }
         : null,
     };
+  }
+
+  async canInteract(viewerId: string, otherUserId: string): Promise<boolean> {
+    if (viewerId === otherUserId) return true;
+
+    const relationship = await this.socialRepository.relationship(
+      viewerId,
+      otherUserId
+    );
+
+    return !relationship.blockedViewer && !relationship.viewerBlocked;
   }
 
   /**

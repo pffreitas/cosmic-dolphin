@@ -15,6 +15,7 @@ describe("BookmarkService", () => {
     mockRepository = {
       create: jest.fn(),
       findByUserAndUrl: jest.fn(),
+      findById: jest.fn(),
       findByIdAndUser: jest.fn(),
       findByIdAndUserWithLikeStatus: jest.fn(),
       insertScrapedUrlContents: jest.fn(),

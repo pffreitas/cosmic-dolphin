@@ -330,6 +330,96 @@ export async function refileBookmarkForUser(
   return { body: bookmark };
 }
 
+type BookmarkReshareServices = BookmarkQueueServices &
+  Pick<ServiceContainer, "social">;
+
+/**
+ * The feed's **Save** action — docs/functional-spec/06-social.md § Reshare.
+ *
+ * A reshare is a save, not a copy. The new row is the caller's, inherits the
+ * source URL and nothing else, and carries `savedFromBookmarkId` so the
+ * provenance row can credit the person it came from. Everything that makes a
+ * bookmark *mean* something — the summary, the tags, where it is filed — is
+ * produced by running the pipeline again for the new owner, against their
+ * tree. Copying the original's would file a stranger's judgement into this
+ * user's library under their own name.
+ *
+ * Three refusals, all 404, all indistinguishable from outside: no such
+ * bookmark, a bookmark that is not public, and a block in either direction.
+ * The last one is why this takes `social` — a block that still let its subject
+ * reshare you is not a block.
+ *
+ * The already-saved answer is `POST /bookmarks`'s, deliberately reached the
+ * same way: the URL is inherited, so it meets the same
+ * `(user_id, source_url)` uniqueness constraint, and a second reshare of the
+ * same link is the same non-event as a second paste of it. 200, the row you
+ * already have, `alreadySaved: true`, nothing queued.
+ */
+export async function reshareBookmarkForUser(
+  services: BookmarkReshareServices,
+  bookmarkId: string,
+  userId: string,
+  onQueueError?: (error: unknown) => void
+): Promise<
+  | { statusCode: 201 | 200; body: CreateBookmarkResponse }
+  | { statusCode: 404; body: { error: string } }
+> {
+  const original = await services.bookmark.findVisibleById(bookmarkId, userId);
+  if (!original) {
+    return { statusCode: 404, body: { error: "Bookmark not found" } };
+  }
+
+  if (
+    original.userId !== userId &&
+    !(await services.social.canInteract(userId, original.userId))
+  ) {
+    return { statusCode: 404, body: { error: "Bookmark not found" } };
+  }
+
+  const existing = await services.bookmark.findByUserAndUrl(
+    userId,
+    original.sourceUrl
+  );
+  if (existing) {
+    return {
+      statusCode: 200,
+      body: {
+        bookmark: existing,
+        alreadySaved: true,
+        message: "Already in your library",
+      },
+    };
+  }
+
+  // No `collectionId`: a reshare lands in Inbox like every other save, and the
+  // `file` phase decides where it belongs in *this* user's tree. The
+  // original's collection belongs to someone else's tree and is not a
+  // suggestion about this one.
+  const bookmark = await services.bookmark.create(original.sourceUrl, userId, {
+    savedFromBookmarkId: original.id,
+    title: original.title,
+    originalUrl: original.metadata?.originalUrl ?? original.sourceUrl,
+  });
+
+  // The same budget every other save is subject to, checked against the
+  // *resharer*. Over budget the row still stands, idle, with Summarise now on
+  // it — a save is never refused for the pipeline's sake.
+  const queued = await queueBookmarkForProcessing(
+    services,
+    bookmark,
+    userId,
+    onQueueError
+  );
+
+  return {
+    statusCode: 201,
+    body: {
+      bookmark: queued.bookmark,
+      message: queued.message ?? "Saved to your library",
+    },
+  };
+}
+
 export default async function bookmarkRoutes(fastify: FastifyInstance) {
   const supabase = createClient(
     config.SUPABASE_URL,
@@ -783,6 +873,40 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         });
       } catch (error) {
         fastify.log.error({ error }, "Reprocess bookmark error");
+        return reply.status(500).send({ error: "Internal server error" });
+      }
+    }
+  );
+
+  // The feed's Save action. Rate limited as a save, because it is one — a
+  // reshare that walked around the daily save limit would make the limit a
+  // property of which button you pressed.
+  fastify.post<{
+    Params: { id: string };
+    Reply: CreateBookmarkResponse | { error: string };
+  }>(
+    "/bookmarks/:id/reshare",
+    {
+      preHandler: authMiddleware,
+      config: rateLimited(RATE_LIMITS.saves),
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const user_id = request.userId!;
+
+        const result = await reshareBookmarkForUser(
+          services,
+          id,
+          user_id,
+          (queueError) => {
+            fastify.log.error({ queueError }, "Reshare queue post error");
+          }
+        );
+
+        return reply.status(result.statusCode).send(result.body);
+      } catch (error) {
+        fastify.log.error({ error }, "Reshare bookmark error");
         return reply.status(500).send({ error: "Internal server error" });
       }
     }

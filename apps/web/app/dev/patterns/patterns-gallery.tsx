@@ -22,6 +22,7 @@ import {
 } from "@/components/ai/processing-steps";
 import { ActionRow } from "@/components/social/action-row";
 import { CommentDrawer } from "@/components/social/comment-drawer";
+import { useReshare } from "@/components/social/use-reshare";
 import { AppHeader } from "@/components/app-header";
 import {
   LibraryList,
@@ -167,6 +168,38 @@ function MenuButton() {
   );
 }
 
+/**
+ * The Save action, wired to `useReshare` — the same binding a feed item will
+ * use, minus the feed.
+ *
+ * `offline`, like the comment drawer above it: the gallery has no API behind
+ * it, so the hook answers with the outcome named here instead of calling
+ * `POST /bookmarks/{id}/reshare`. Everything else — the optimistic press, the
+ * toast the server's `alreadySaved` chooses, the fact that a saved item has no
+ * undo — is the real thing.
+ */
+function ReshareCase({
+  bookmarkId,
+  outcome = "saved",
+}: {
+  bookmarkId: string;
+  outcome?: "saved" | "alreadySaved";
+}) {
+  const reshare = useReshare({ bookmarkId, offline: true, offlineOutcome: outcome });
+
+  return (
+    <ActionRow
+      likeCount={41}
+      commentCount={3}
+      saved={reshare.saved}
+      onSaveChange={reshare.onSaveChange}
+      saveOnce
+      itemTitle="The Bottleneck Was Never Retrieval"
+      shareUrl="https://cosmicdolphin.app/s/bk_8f2a"
+    />
+  );
+}
+
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
@@ -239,6 +272,24 @@ export function PatternsGallery() {
                 sources={[EVERY]}
                 timestamp="2d"
               />
+            </Case>
+            <Case
+              label="Reshare · and the same row once the original is gone"
+              note="A reshare credits the person it came from. Deleting the original does not touch the reshare — its provenance simply goes null — so the row has to be able to lose the credit and still say something true. That is the second line: the domain alone."
+            >
+              <div className="flex flex-col gap-2.5">
+                <ProvenanceRow
+                  sources={[EVERY]}
+                  attribution="via Maya Chen"
+                  action="you saved this"
+                  timestamp="2d"
+                />
+                <ProvenanceRow
+                  sources={[EVERY]}
+                  action="you saved this"
+                  timestamp="2d"
+                />
+              </div>
             </Case>
             <Case label="Social signal">
               <ProvenanceRow
@@ -432,6 +483,18 @@ export function PatternsGallery() {
                 itemTitle="Building an agent that actually finishes things"
                 shareUrl="https://cosmicdolphin.app/s/bk_1d4c"
               />
+            </Case>
+            <Case
+              label="Save · a reshare"
+              note="Save is a reshare: it creates your own bookmark, files it in your Inbox, and runs the pipeline for you, so the summary is yours. Press it — the toast is the server's answer. There is no undo here; un-saving is deleting the bookmark, in the Library."
+            >
+              <ReshareCase bookmarkId="bk_8f2a" />
+            </Case>
+            <Case
+              label="Save · already in your library"
+              note="A reshare inherits the URL, so it meets the same per-user uniqueness constraint a duplicate paste does. Nothing is created, nothing is queued, and the toast is the same one a duplicate paste raises."
+            >
+              <ReshareCase bookmarkId="bk_1d4c" outcome="alreadySaved" />
             </Case>
             <Case label="Digest labels">
               <ActionRow

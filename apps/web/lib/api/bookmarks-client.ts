@@ -192,6 +192,40 @@ export namespace BookmarksClientAPI {
     }
   }
 
+  /**
+   * The feed's **Save** action — a reshare.
+   *
+   * Returns the whole response for the same reason `create` does: the caller
+   * needs `alreadySaved` to choose between "Saved" and "Already in your
+   * library". The server reaches that answer through the same per-user URL
+   * constraint a duplicate paste hits, so both actions share one toast.
+   *
+   * Errors are thrown, never swallowed. A save the user pressed for and did
+   * not get has to say so, and a 429 arrives as `SaveRateLimitedError` because
+   * a reshare spends the same daily save limit.
+   */
+  export async function reshare(id: string): Promise<CreateBookmarkResponse> {
+    const bookmarksApi = await getApiInstance();
+
+    try {
+      return await bookmarksApi.bookmarksReshare({ id });
+    } catch (error: any) {
+      const { status, message, response } = await readApiError(error);
+
+      if (status === 429) {
+        const header = response?.headers?.get("retry-after");
+        const seconds = header ? Number.parseInt(header, 10) : NaN;
+        throw new SaveRateLimitedError(
+          message ?? "You have hit today's save limit.",
+          Number.isFinite(seconds) ? seconds : null
+        );
+      }
+
+      if (message) throw new Error(message);
+      throw error;
+    }
+  }
+
   export async function findById(id: string): Promise<Bookmark | null> {
     const bookmarksApi = await getApiInstance();
 

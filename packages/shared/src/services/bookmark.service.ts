@@ -34,11 +34,39 @@ export interface CreateBookmarkOptions {
    */
   originalUrl?: string;
   collectionId?: string;
+  /**
+   * Reshare provenance — the bookmark this save came from
+   * (docs/functional-spec/06-social.md § Reshare).
+   *
+   * It is the *only* thing a reshare inherits beyond the URL. The summary,
+   * tags, filing and thread are not copied: the pipeline runs again for the
+   * new owner, against their tree.
+   *
+   * The column is `ON DELETE SET NULL`, so deleting the original leaves this
+   * save intact with no provenance rather than deleting or orphaning it.
+   */
+  savedFromBookmarkId?: string;
+  /**
+   * A title already known — the original's, on a reshare. Saves the row
+   * showing a bare URL until the `fetch` phase lands. The pipeline overwrites
+   * it with the scraped title either way, so this is legibility, not data.
+   */
+  title?: string;
 }
 
 export interface BookmarkService {
   findByUserAndUrl(userId: string, sourceUrl: string): Promise<Bookmark | null>;
   findByIdAndUser(id: string, userId: string): Promise<Bookmark | null>;
+  /**
+   * A bookmark someone else may own, if the viewer is allowed to see it at
+   * all: public, or the viewer's own. `null` otherwise — never a "you are not
+   * allowed" distinguishable from "it does not exist".
+   *
+   * The same rule `CommentService` reads a thread by. It is deliberately *not*
+   * the whole of "may this caller reshare it": a block is a property of the
+   * two people, not of the bookmark, and lives in `SocialService`.
+   */
+  findVisibleById(id: string, viewerId: string): Promise<Bookmark | null>;
   findByIdAndUserWithLikeStatus(
     id: string,
     userId: string
@@ -136,6 +164,19 @@ export class BookmarkServiceImpl implements BookmarkService {
     return this.enrichWithCollectionPath(mapped);
   }
 
+  async findVisibleById(
+    id: string,
+    viewerId: string
+  ): Promise<Bookmark | null> {
+    const row = await this.bookmarkRepository.findById(id);
+    if (!row) return null;
+
+    const mapped = this.mapDatabaseToBookmark(row);
+    if (!mapped.isPublic && mapped.userId !== viewerId) return null;
+
+    return mapped;
+  }
+
   async findByIdAndUserWithLikeStatus(
     id: string,
     userId: string
@@ -167,7 +208,7 @@ export class BookmarkServiceImpl implements BookmarkService {
     options: CreateBookmarkOptions = {}
   ): Promise<Bookmark> {
     const urlMetadata = this.webScrapingService.extractMetadataFromUrl(url);
-    const provisionalTitle = urlMetadata.title || url;
+    const provisionalTitle = options.title || urlMetadata.title || url;
 
     const metadata: BookmarkMetadata = {
       openGraph: {
@@ -188,6 +229,10 @@ export class BookmarkServiceImpl implements BookmarkService {
       // A collection named at save time was named by a person, so the pipeline
       // does not get to second-guess it — same rule as a manual refile.
       filing_source: options.collectionId ? "user" : "ai",
+      // Provenance only. A reshare lands in Inbox like any other save, so the
+      // `file` phase files it against the resharer's tree — the original
+      // owner's collection is not theirs and must not travel with the URL.
+      saved_from_bookmark_id: options.savedFromBookmarkId ?? null,
       quick_access: `${provisionalTitle} ${url}`,
     };
 
