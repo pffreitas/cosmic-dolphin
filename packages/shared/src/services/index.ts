@@ -16,6 +16,8 @@ export * from "./search.service";
 export * from "./reading.service";
 export * from "./social.service";
 export * from "./comment.service";
+export * from "./feed-ranking.config";
+export * from "./feed-ranking.service";
 export * from "./http-client";
 
 import {
@@ -35,6 +37,10 @@ import { ReadingService, ReadingServiceImpl } from "./reading.service";
 import { SocialService, SocialServiceImpl } from "./social.service";
 import { CommentService, CommentServiceImpl } from "./comment.service";
 import {
+  FeedRankingService,
+  FeedRankingServiceImpl,
+} from "./feed-ranking.service";
+import {
   ProcessingBudgetService,
   ProcessingBudgetServiceImpl,
 } from "./processing-budget.service";
@@ -52,6 +58,7 @@ import {
   BookmarkReadingRepositoryImpl,
   SocialRepositoryImpl,
   CommentRepositoryImpl,
+  FeedRepositoryImpl,
 } from "../repositories";
 import { AI } from "../ai";
 
@@ -68,11 +75,18 @@ export interface ServiceContainer {
   reading: ReadingService;
   social: SocialService;
   comment: CommentService;
+  feed: FeedRankingService;
 }
 
+/**
+ * @param environment Which `feed_ranking_config` row the ranker reads its
+ *   weight overrides from. One row per environment, so staging can be tuned
+ *   without moving production — see `docs/functional-spec/05-feed.md`.
+ */
 export function createServiceContainer(
   supabaseClient: SupabaseClient,
-  db: Kysely<Database>
+  db: Kysely<Database>,
+  environment: string = process.env.NODE_ENV ?? "development"
 ): ServiceContainer {
   const webScrapingService = new WebScrapingServiceImpl();
   const bookmarkRepository = new BookmarkRepositoryImpl(db);
@@ -83,9 +97,12 @@ export function createServiceContainer(
   const bookmarkReadingRepository = new BookmarkReadingRepositoryImpl(db);
   const socialRepository = new SocialRepositoryImpl(db);
   const commentRepository = new CommentRepositoryImpl(db);
+  const feedRepository = new FeedRepositoryImpl(db);
 
   const ai = new AI();
   const embeddingService = new EmbeddingServiceImpl();
+
+  const socialService = new SocialServiceImpl(socialRepository);
 
   const bookmarkService = new BookmarkServiceImpl(
     bookmarkRepository,
@@ -109,7 +126,15 @@ export function createServiceContainer(
       bookmarkProcessingRepository
     ),
     reading: new ReadingServiceImpl(bookmarkReadingRepository),
-    social: new SocialServiceImpl(socialRepository),
+    social: socialService,
     comment: new CommentServiceImpl(commentRepository),
+    // The ranker asks the social graph about each distinct author it got back,
+    // once per author rather than once per item — so it takes the service, not
+    // a second copy of the repository.
+    feed: new FeedRankingServiceImpl(
+      feedRepository,
+      socialService,
+      environment
+    ),
   };
 }

@@ -9,6 +9,8 @@ import {
   Collection,
   CollectionsApi,
   CollectionSuggestion,
+  FeedResponse,
+  FeedScope,
 } from "@cosmic-dolphin/api-client";
 import { createClient } from "@/utils/supabase/server";
 
@@ -112,18 +114,27 @@ export namespace BookmarksAPI {
     }
   }
 
+  /**
+   * The ranked Home feed.
+   *
+   * Cursor-based, never offset — the set is re-ranked between requests, so an
+   * offset into it duplicates some items and skips others. Hand `nextCursor`
+   * back verbatim. The whole `FeedResponse` is returned rather than a bookmark
+   * array: `rankingReason` and `computedAt` are the surface, and unwrapping to
+   * bookmarks here would throw away the half of the response the feed is for.
+   */
   export async function feed(query?: {
+    scope?: FeedScope;
+    cursor?: string;
     limit?: number;
-    offset?: number;
-  }): Promise<Bookmark[]> {
+  }): Promise<FeedResponse> {
     const bookmarksApi = await getApiInstance();
 
     try {
-      const response = await bookmarksApi.bookmarksFeed(query);
-      return response.bookmarks || [];
+      return await bookmarksApi.bookmarksFeed(query);
     } catch (error) {
       console.error("Error fetching bookmark feed", error);
-      return [];
+      return { items: [], computedAt: new Date() };
     }
   }
 

@@ -533,6 +533,79 @@ export interface UpdateProfileRequest {
   handle?: string;
 }
 
+// ---------------------------------------------------------------------------
+// The Home feed — docs/functional-spec/05-feed.md
+// ---------------------------------------------------------------------------
+
+/**
+ * Which slice of the feed. `unread` is the only one that does not rank, which
+ * is what makes it the place an item the ranker has stopped serving is still
+ * reachable.
+ */
+export type FeedScope = "for_you" | "following" | "unread";
+
+export const FEED_SCOPES: FeedScope[] = ["for_you", "following", "unread"];
+
+export function isFeedScope(value: string): value is FeedScope {
+  return (FEED_SCOPES as string[]).includes(value);
+}
+
+export type FeedItemType =
+  | "own_save"
+  | "followed_save"
+  | "reshare"
+  | "digest"
+  | "pending";
+
+/**
+ * One signal's contribution to one item. Debugging only — the API omits these
+ * in production. Never the source of `rankingReason`: the sentence is written
+ * from the signals by the ranker, because only the ranker knows what it
+ * actually weighted.
+ */
+export interface RankingSignal {
+  name: string;
+  /** The configured weight for this signal. */
+  weight: number;
+  /** The signal's own value for this item, normalised to 0..1. */
+  value: number;
+  /** `weight * value`. */
+  contribution: number;
+}
+
+/**
+ * The person a feed item reached the viewer through.
+ *
+ * Deliberately not `PublicProfile`: a page of 20 items can carry 20 distinct
+ * authors, and a `PublicProfile` carries four counts that cost a query each.
+ * The handle is here, so the full profile is one link away.
+ */
+export interface FeedActor {
+  id: string;
+  handle: string;
+  name?: string;
+  pictureUrl?: string;
+}
+
+export interface FeedItem {
+  type: FeedItemType;
+  /** Present on every type except `digest`. */
+  bookmark?: Bookmark;
+  /** Who this reached the viewer through. Absent on their own saves. */
+  actor?: FeedActor;
+  /** "Why this appeared", server-generated. Absent on `pending`, which is pinned. */
+  rankingReason?: string;
+  signals?: RankingSignal[];
+}
+
+export interface FeedResponse {
+  items: FeedItem[];
+  /** Opaque. Carries the ranking session, not a position in a list. */
+  nextCursor?: string;
+  /** When this ranking was computed. Drives "Updated n min ago". */
+  computedAt: Date;
+}
+
 export interface FollowResponse {
   /** The state after the call, so an optimistic client can reconcile. */
   following: boolean;

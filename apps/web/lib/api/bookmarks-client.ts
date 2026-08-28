@@ -18,6 +18,8 @@ import {
   ShareBookmarkResponse,
   BookmarkProcessingPhase,
   ReprocessBookmarkResponse,
+  FeedResponse,
+  FeedScope,
 } from "@cosmic-dolphin/api-client";
 import { SearchBookmarksQuery } from "@/lib/types/bookmark";
 import { createClient } from "@/utils/supabase/client";
@@ -147,18 +149,25 @@ export namespace BookmarksClientAPI {
     }
   }
 
+  /**
+   * The ranked Home feed.
+   *
+   * Cursor-based, never offset — the set is re-ranked between requests, so an
+   * offset into it duplicates some items and skips others. Hand `nextCursor`
+   * back verbatim.
+   */
   export async function feed(query?: {
+    scope?: FeedScope;
+    cursor?: string;
     limit?: number;
-    offset?: number;
-  }): Promise<Bookmark[]> {
+  }): Promise<FeedResponse> {
     const bookmarksApi = await getApiInstance();
 
     try {
-      const response = await bookmarksApi.bookmarksFeed(query);
-      return response.bookmarks || [];
+      return await bookmarksApi.bookmarksFeed(query);
     } catch (error) {
       console.error("Error fetching bookmark feed", error);
-      return [];
+      return { items: [], computedAt: new Date() };
     }
   }
 

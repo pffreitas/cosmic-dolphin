@@ -227,6 +227,131 @@ model GetBookmarksResponse {
     nextCursor?: string;
 }
 
+@doc("""
+    Which slice of the Home feed a request is about -
+    docs/functional-spec/05-feed.md § Scopes.
+
+    `for_you` is the default and the only one that mixes sources: own unread
+    saves, saves from followed users, and AI digests, ranked. `following` is
+    the same ranking over followed saves alone. `unread` is the user's own
+    unread saves in reverse chronological order with **no ranking at all** —
+    which is what makes it the place an item the ranker has stopped serving is
+    still reachable.
+    """)
+enum FeedScope {
+    for_you,
+    following,
+    unread,
+}
+
+@doc("""
+    What a feed item *is* - docs/functional-spec/05-feed.md § Item types.
+
+    `pending` is a save still being processed. It is pinned to the top of the
+    feed regardless of score, because the user just created it and expects to
+    see it. `digest` is an AI-authored grouping of the user's own saves; the
+    ranker reserves the type and enforces its spacing, and the digest payload
+    itself arrives with the digests deliverable.
+    """)
+enum FeedItemType {
+    own_save,
+    followed_save,
+    reshare,
+    digest,
+    pending,
+}
+
+@doc("""
+    One signal's contribution to one item's score. Debugging only - present
+    outside production, absent in it. Never the source of the reason string:
+    `rankingReason` is written by the ranker, which is the only thing that
+    knows what it actually weighted.
+    """)
+model RankingSignal {
+    @doc("`topic_affinity`, `source_affinity`, `recency`, `social_proof`, `effort_fit`, `novelty`.")
+    name: string;
+
+    @doc("The configured weight, from the ranking configuration row for this environment.")
+    weight: float32;
+
+    @doc("The signal's own value for this item, normalised to 0..1.")
+    value: float32;
+
+    @doc("`weight * value` - what actually moved this item.")
+    contribution: float32;
+}
+
+@doc("""
+    The person a feed item reached the viewer through — everything the
+    provenance row draws, and nothing else.
+
+    Deliberately **not** `PublicProfile`. A page of 20 items can carry 20
+    distinct authors, and a `PublicProfile` carries four counts that cost a
+    query each; 80 count queries to render a name and a 22px avatar is not a
+    trade worth making. The handle is here, so the profile — counts and all —
+    is one link away at `GET /users/{handle}`.
+    """)
+model FeedActor {
+    id: string;
+    handle: string;
+    name?: string;
+    pictureUrl?: string;
+}
+
+@doc("""
+    One row of the Home feed - docs/functional-spec/05-feed.md.
+
+    `rankingReason` is generated **server-side** from the top two contributing
+    signals and is never synthesised on the client: the client cannot know what
+    the ranker weighted, and a plausible-sounding wrong answer is worse than
+    none. It is absent on `pending`, which is pinned rather than ranked.
+    """)
+model FeedItem {
+    type: FeedItemType;
+
+    @doc("The bookmark, on every type except `digest`.")
+    bookmark?: Bookmark;
+
+    @doc("Who this reached the user through - the saver, or the resharer. Absent on the user's own saves.")
+    actor?: FeedActor;
+
+    @doc("\"Why this appeared\", in one sentence of plain second-person language.")
+    rankingReason?: string;
+
+    @doc("Per-signal breakdown. Omitted in production responses.")
+    signals?: RankingSignal[];
+}
+
+model FeedResponse {
+    items: FeedItem[];
+
+    @doc("""
+        Opaque cursor for the next page. Absent when this page is the last one.
+
+        It carries the ranking session it was produced under, not a position in
+        a list: the candidate set is re-ranked between requests, so an offset
+        would duplicate and skip.
+        """)
+    nextCursor?: string;
+
+    @doc("When this ranking was computed. Drives Home's \"Updated n min ago\".")
+    computedAt: utcDateTime;
+}
+
+model GetFeedQuery {
+    @doc("Which slice. Defaults to `for_you`.")
+    @query
+    scope?: FeedScope = FeedScope.for_you;
+
+    @doc("Opaque cursor taken verbatim from the previous page's `nextCursor`. A cursor produced under a different `scope` is rejected with 400.")
+    @query
+    cursor?: string;
+
+    @doc("Page size. 20 is the product default; 50 is the ceiling.")
+    @query
+    limit?: int32 = 20;
+}
+
 @doc("Non-archived bookmarks filed in one collection.")
 model BookmarkCollectionCount {
     collectionId: string;
@@ -494,14 +619,32 @@ interface Bookmarks {
         @body body: BookmarkError;
     };
 
-    @doc("Get user's unread bookmark feed")
+    @doc("""
+        The ranked Home feed — docs/functional-spec/05-feed.md.
+
+        Not a bookmark list. Each row is a `FeedItem` that says what it is, who
+        it came through, and — in one sentence the server wrote — why it is
+        here.
+
+        **Cursor-based, never offset.** The candidate set is re-ranked between
+        requests; an offset into a list that has been reordered duplicates some
+        items and skips others. Hand `nextCursor` back verbatim.
+
+        The ranking's head is cached per user for five minutes, which is what
+        `computedAt` reports. Bookmarks saved after that point bypass the cache
+        and are prepended, so a save the user just made is on the first page
+        whatever the cache says.
+        """)
     @useAuth(BearerAuth)
     @get
     @route("/feed")
-    feed(
-        @query limit?: int32 = 50,
-        @query offset?: int32 = 0,
-    ): GetBookmarksResponse | {
+    feed(...GetFeedQuery): FeedResponse | {
+        @doc("Unknown `scope`, a `limit` out of range, or a cursor that does not belong to this `scope`.")
+        @statusCode
+        statusCode: 400;
+
+        @body body: BookmarkError;
+    } | {
         @statusCode statusCode: 500;
         @body body: BookmarkError;
     };

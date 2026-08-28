@@ -62,3 +62,12 @@ export type {
   BookmarkVisibilityRow,
   CommentWithAuthorRow,
 } from "./comment.repository";
+export { FeedRepositoryImpl, impressionKey } from "./feed.repository";
+export type {
+  FeedRepository,
+  FollowedSaveRow,
+  FinishedReadRow,
+  SaveOutcomeRow,
+  RecentlyServedRow,
+  SocialProofRow,
+} from "./feed.repository";

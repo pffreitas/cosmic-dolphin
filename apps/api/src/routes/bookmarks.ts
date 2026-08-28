@@ -663,30 +663,9 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     }
   });
 
-  fastify.get<{
-    Querystring: { limit?: number; offset?: number };
-    Reply: GetBookmarksResponse | { error: string };
-  }>("/bookmarks/feed", { preHandler: authMiddleware }, async (request, reply) => {
-    try {
-      const { limit = 50, offset = 0 } = request.query;
-      const user_id = request.userId!;
-
-      fastify.log.info({ limit, offset, user_id }, "Get bookmark feed request");
-
-      const bookmarks = await services.bookmark.findFeed(user_id, {
-        limit,
-        offset,
-      });
-
-      return reply.send({ bookmarks });
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      fastify.log.error({ errorMessage, errorStack }, "Get bookmark feed error");
-      return reply.status(500).send({ error: "Internal server error" });
-    }
-  });
+  // `GET /bookmarks/feed` used to live here as a `limit`/`offset` list of the
+  // user's own unread saves. It is now the ranked feed and lives in
+  // `routes/feed.ts` — the route survived, the behaviour did not.
 
   fastify.get<{
     Querystring: Omit<SearchBookmarksQuery, "user_id">;
@@ -1021,6 +1000,12 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         const user_id = request.userId!;
 
         const bookmark = await services.bookmark.markRead(id, user_id);
+
+        // Marking read is the only event in the product that means "they
+        // actually went in", which is what stops seen decay from eventually
+        // dropping something the reader *did* open. It never throws — see
+        // `FeedRankingService.recordOpen`.
+        await services.feed.recordOpen(user_id, id);
 
         return reply.send(bookmark);
       } catch (error) {

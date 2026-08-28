@@ -255,6 +255,37 @@ export interface BookmarkHighlightsTable {
   created_at: Generated<Date>;
 }
 
+/**
+ * What the feed served someone, and whether they went in.
+ *
+ * One row per (person, item), incremented in place — this table grows with the
+ * size of a library, not with the number of page views. `opened_at` NULL is
+ * the state seen-decay acts on: served, ignored. Without it the ranker has no
+ * way of knowing it is showing the same thing for the fourth time.
+ */
+export interface FeedImpressionsTable {
+  user_id: string;
+  item_type: FeedImpressionItemType;
+  item_id: string;
+  served_count: Generated<number>;
+  opened_at: Date | null;
+  last_served_at: Generated<Date>;
+}
+
+export type FeedImpressionItemType = "bookmark" | "digest";
+
+/**
+ * Ranking weights and parameters, one row per environment, read at request
+ * time. **Overrides, not a definition** — anything absent falls back to the
+ * values in `feed-ranking.config.ts`, so an empty table is a working ranker.
+ */
+export interface FeedRankingConfigTable {
+  environment: string;
+  weights: any; // JSONB — Partial<Record<FeedSignalName, number>>
+  parameters: any; // JSONB — Partial<FeedRankingParameters>
+  updated_at: Generated<Date>;
+}
+
 export interface BookmarkProcessingRunsTable extends BaseTable {
   bookmark_id: string;
   user_id: string;
@@ -313,6 +344,8 @@ export interface Database {
   user_blocks: UserBlocksTable;
   bookmark_comments: BookmarkCommentsTable;
   content_reports: ContentReportsTable;
+  feed_impressions: FeedImpressionsTable;
+  feed_ranking_config: FeedRankingConfigTable;
 }
 
 // Type helpers for each table
@@ -364,6 +397,12 @@ export type BookmarkCommentUpdate = Updateable<BookmarkCommentsTable>;
 
 export type ContentReportRow = Selectable<ContentReportsTable>;
 export type NewContentReport = Insertable<ContentReportsTable>;
+
+export type FeedImpressionRow = Selectable<FeedImpressionsTable>;
+export type NewFeedImpression = Insertable<FeedImpressionsTable>;
+export type FeedImpressionUpdate = Updateable<FeedImpressionsTable>;
+
+export type FeedRankingConfigRow = Selectable<FeedRankingConfigTable>;
 
 export type BookmarkProcessingRun = Selectable<BookmarkProcessingRunsTable>;
 export type NewBookmarkProcessingRun = Insertable<BookmarkProcessingRunsTable>;

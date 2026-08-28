@@ -11,14 +11,21 @@ import {
 import { toLibraryItem } from "@/components/bookmark/library/row-data";
 
 /**
- * Home, still the plain unread list.
+ * Home, still the plain list.
  *
- * The ranked feed is D11's; this file only moved off the card component the
- * Library replaced, onto the same library row, so no card survives anywhere in
- * the tree. Nothing else about this page has been decided here.
+ * The ranker behind `BookmarksAPI.feed()` is now the real one, and its response
+ * carries a `rankingReason` per item that this page does not yet render — the
+ * Home surface is its own deliverable. All that changed here is the unwrapping:
+ * a `FeedResponse` of `FeedItem`s rather than a bookmark array. Nothing else
+ * about this page has been decided here.
  */
 async function FeedList() {
-  const bookmarks = await BookmarksAPI.feed();
+  const { items } = await BookmarksAPI.feed();
+  const bookmarks = items
+    .map((item) => item.bookmark)
+    .filter((bookmark): bookmark is NonNullable<typeof bookmark> =>
+      Boolean(bookmark)
+    );
 
   if (!bookmarks || bookmarks.length === 0) {
     return (

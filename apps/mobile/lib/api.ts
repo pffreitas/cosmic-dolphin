@@ -66,6 +66,48 @@ export interface GetBookmarksResponse {
   bookmarks: Bookmark[];
 }
 
+/**
+ * The ranked Home feed — docs/functional-spec/05-feed.md.
+ *
+ * A feed row is not a bookmark: it says what it is, who it came through, and
+ * — in one sentence the server wrote — why it is here. `rankingReason` is
+ * never synthesised on the client; the client does not know what the ranker
+ * weighted, and a plausible-sounding wrong answer is worse than none.
+ */
+export type FeedScope = 'for_you' | 'following' | 'unread';
+
+export type FeedItemType =
+  | 'own_save'
+  | 'followed_save'
+  | 'reshare'
+  | 'digest'
+  | 'pending';
+
+export interface FeedActor {
+  id: string;
+  handle: string;
+  name?: string;
+  pictureUrl?: string;
+}
+
+export interface FeedItem {
+  type: FeedItemType;
+  bookmark?: Bookmark;
+  actor?: FeedActor;
+  rankingReason?: string;
+}
+
+export interface FeedResponse {
+  items: FeedItem[];
+  nextCursor?: string;
+  computedAt: string;
+}
+
+export interface FeedPage {
+  bookmarks: Bookmark[];
+  nextCursor?: string;
+}
+
 export interface GetBookmarksParams {
   limit?: number;
   offset?: number;
@@ -166,14 +208,29 @@ export namespace BookmarksAPI {
     }
   }
 
-  export async function feed(params: Pick<GetBookmarksParams, 'limit' | 'offset'> = {}): Promise<Bookmark[]> {
-    const { limit = 20, offset = 0 } = params;
+  /**
+   * The ranked feed, one page at a time.
+   *
+   * **Cursor, never offset.** The candidate set is re-ranked between requests,
+   * so an offset into it is an offset into a list that no longer exists: some
+   * items come back twice and others are never shown. `nextCursor` goes back
+   * verbatim or not at all.
+   *
+   * Returns bookmarks rather than feed items because this app does not render
+   * a reason line yet; the rest of `FeedItem` is dropped here, deliberately and
+   * in one place, rather than being unavailable.
+   */
+  export async function feed(
+    params: { limit?: number; cursor?: string; scope?: FeedScope } = {}
+  ): Promise<FeedPage> {
+    const { limit = 20, cursor, scope } = params;
 
     try {
       const headers = await getAuthHeaders();
       const queryParams = new URLSearchParams();
       queryParams.append('limit', limit.toString());
-      queryParams.append('offset', offset.toString());
+      if (cursor) queryParams.append('cursor', cursor);
+      if (scope) queryParams.append('scope', scope);
 
       const response = await fetch(`${API_URL}/bookmarks/feed?${queryParams.toString()}`, {
         method: 'GET',
@@ -184,8 +241,14 @@ export namespace BookmarksAPI {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data: GetBookmarksResponse = await response.json();
-      return data.bookmarks || [];
+      const data: FeedResponse = await response.json();
+
+      return {
+        bookmarks: (data.items || [])
+          .map((item) => item.bookmark)
+          .filter((bookmark): bookmark is Bookmark => Boolean(bookmark)),
+        nextCursor: data.nextCursor,
+      };
     } catch (error) {
       console.error('Error fetching bookmark feed:', error);
       throw error;
