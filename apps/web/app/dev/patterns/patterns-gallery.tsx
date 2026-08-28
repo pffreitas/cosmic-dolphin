@@ -21,6 +21,7 @@ import {
   type ProcessingStep,
 } from "@/components/ai/processing-steps";
 import { ActionRow } from "@/components/social/action-row";
+import { CommentDrawer } from "@/components/social/comment-drawer";
 import { AppHeader } from "@/components/app-header";
 import {
   LibraryList,
@@ -187,6 +188,10 @@ function ThemeToggle() {
 /* ------------------------------------------------------------------------- */
 
 export function PatternsGallery() {
+  // The feed's comment action, wired to the thing it actually opens. Never
+  // inline: decisions.md #18, and patterns.md § Feed item's "don't".
+  const [commentsOpen, setCommentsOpen] = React.useState(false);
+
   return (
     <ToastProvider>
       <div className="w-full pb-16">
@@ -629,6 +634,7 @@ export function PatternsGallery() {
                 social={{
                   likeCount: 128,
                   commentCount: 14,
+                  onComment: () => setCommentsOpen(true),
                   shareUrl: "https://cosmicdolphin.app/s/bk_8f2a",
                 }}
               />
@@ -759,6 +765,18 @@ export function PatternsGallery() {
             </div>
           </Grid>
         </Section>
+
+        {/* A drawer on desktop, a sheet below 640px — one component, because
+            D2's dialog primitive already is both. Offline here: the gallery
+            has no API behind it. */}
+        <CommentDrawer
+          bookmarkId="bk_8f2a"
+          open={commentsOpen}
+          onOpenChange={setCommentsOpen}
+          title="The Bottleneck Was Never Retrieval"
+          commentCount={14}
+          offline
+        />
       </div>
     </ToastProvider>
   );

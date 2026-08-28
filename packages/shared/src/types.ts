@@ -249,6 +249,8 @@ export interface Bookmark extends BaseEntity {
   isPrivateLink: boolean;
   likeCount?: number;
   isLikedByCurrentUser?: boolean;
+  /** Live comments, tombstones excluded. Maintained by trigger. */
+  commentCount?: number;
   isPublic: boolean;
   shareSlug?: string;
   readAt?: Date;
@@ -553,3 +555,86 @@ export interface PublicProfileListResponse {
   /** Absent when this page is the last one. */
   nextCursor?: string;
 }
+
+/**
+ * A comment on a bookmark.
+ *
+ * One level of nesting: `parentId` is absent, or it is a *top-level* comment's
+ * id. It is never a reply's id — `CommentService` re-points a reply-to-a-reply
+ * at its grandparent rather than refusing the request.
+ *
+ * A deleted comment that still has replies survives as a tombstone: no body, no
+ * author, `isDeleted: true`. Everything that identifies the person who wrote it
+ * is gone; only the position in the thread remains, so its replies still have
+ * something to hang off.
+ */
+export interface Comment {
+  id: string;
+  bookmarkId: string;
+  parentId?: string;
+  /** Absent on a tombstone. */
+  body?: string;
+  /** Absent on a tombstone. */
+  author?: CommentAuthor;
+  createdAt: Date;
+  updatedAt: Date;
+  isEdited: boolean;
+  isDeleted: boolean;
+  isOwn: boolean;
+  /** Still inside the 15-minute edit window. Re-checked server-side on PATCH. */
+  canEdit: boolean;
+}
+
+/** The public identity behind a comment. Structurally incapable of holding an email. */
+export interface CommentAuthor {
+  id: string;
+  handle?: string;
+  name?: string;
+  pictureUrl?: string;
+}
+
+/** A thread, chronological. There is no field here in which to express a ranking. */
+export interface CommentsResponse {
+  comments: Comment[];
+  commentCount: number;
+}
+
+export interface CreateCommentRequest {
+  body: string;
+  parentId?: string;
+}
+
+export interface UpdateCommentRequest {
+  body: string;
+}
+
+/**
+ * A delete is one of two different outcomes, and the client renders them
+ * differently: `deleted: false` means the comment had replies and became a
+ * tombstone, which `comment` carries.
+ */
+export interface DeleteCommentResult {
+  deleted: boolean;
+  comment?: Comment;
+  commentCount: number;
+}
+
+export interface CreateReportRequest {
+  bookmarkId?: string;
+  commentId?: string;
+  reason: string;
+}
+
+export interface CreateReportResult {
+  reported: boolean;
+}
+
+/**
+ * The same guard as `assertPublicProfileHasNoEmail`, one model further out.
+ *
+ * A comment author is a public identity attached to public text. If `email`
+ * ever appears on `CommentAuthor`, this file stops compiling.
+ */
+export type assertCommentAuthorHasNoEmail = Assert<
+  "email" extends keyof CommentAuthor ? false : true
+>;

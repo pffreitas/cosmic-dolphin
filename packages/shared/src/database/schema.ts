@@ -72,6 +72,13 @@ export interface BookmarksTable extends BaseTable {
   processing_error: string | null;
   is_private_link: Generated<boolean>;
   like_count: Generated<number>;
+  /**
+   * Live comments, tombstones excluded. `Generated` because it is maintained
+   * by the `bookmark_comments_count_sync` trigger and never written by
+   * application code — an INSERT that tried to set it would be overwritten by
+   * the first comment anyway.
+   */
+  comment_count: Generated<number>;
   is_public: Generated<boolean>;
   share_slug: string | null;
   read_at: Date | null;
@@ -173,6 +180,49 @@ export interface UserBlocksTable {
 }
 
 /**
+ * A comment on a bookmark.
+ *
+ * `parent_id` is only ever NULL or a *top-level* comment's id. The database
+ * cannot express that — the column references its own table and a reply's
+ * parent is a legal value as far as the FK is concerned — so the rule lives in
+ * `CommentService`, which re-points a reply-to-a-reply at its grandparent
+ * rather than refusing it.
+ *
+ * `deleted_at` marks a tombstone: a comment whose author removed it while
+ * replies still hung off it. A comment with no replies is hard-deleted and
+ * this table has no row for it at all.
+ */
+export interface BookmarkCommentsTable {
+  id: Generated<string>;
+  bookmark_id: string;
+  user_id: string;
+  parent_id: string | null;
+  body: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+/**
+ * A report of a bookmark or a comment. Exactly one target, enforced by a CHECK.
+ *
+ * `status` is a marker for the internal review queue. Nothing on the serving
+ * path reads it: reported content stays visible pending review, because
+ * auto-hide is trivially weaponised.
+ */
+export interface ContentReportsTable {
+  id: Generated<string>;
+  reporter_id: string;
+  bookmark_id: string | null;
+  comment_id: string | null;
+  reason: string;
+  status: Generated<ContentReportStatus>;
+  created_at: Generated<Date>;
+}
+
+export type ContentReportStatus = "open" | "reviewed" | "actioned";
+
+/**
  * How far into a bookmark a reader got. A cursor, not a history: one row per
  * (user, bookmark), and `percent` only ever moves up — the guard is on the
  * upsert in `BookmarkReadingRepository`, not here.
@@ -261,6 +311,8 @@ export interface Database {
   bookmark_highlights: BookmarkHighlightsTable;
   follows: FollowsTable;
   user_blocks: UserBlocksTable;
+  bookmark_comments: BookmarkCommentsTable;
+  content_reports: ContentReportsTable;
 }
 
 // Type helpers for each table
@@ -305,6 +357,13 @@ export type NewFollow = Insertable<FollowsTable>;
 
 export type UserBlockRow = Selectable<UserBlocksTable>;
 export type NewUserBlock = Insertable<UserBlocksTable>;
+
+export type BookmarkCommentRow = Selectable<BookmarkCommentsTable>;
+export type NewBookmarkComment = Insertable<BookmarkCommentsTable>;
+export type BookmarkCommentUpdate = Updateable<BookmarkCommentsTable>;
+
+export type ContentReportRow = Selectable<ContentReportsTable>;
+export type NewContentReport = Insertable<ContentReportsTable>;
 
 export type BookmarkProcessingRun = Selectable<BookmarkProcessingRunsTable>;
 export type NewBookmarkProcessingRun = Insertable<BookmarkProcessingRunsTable>;

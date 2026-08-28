@@ -30,6 +30,7 @@ import { useToast } from "@/components/ui/toast";
 import { ProcessingSteps } from "@/components/ai/processing-steps";
 import { ProvenanceRow } from "@/components/provenance-row";
 import { ActionRow } from "@/components/social/action-row";
+import { CommentThread } from "@/components/social/comment-thread";
 import { BookmarksClientAPI } from "@/lib/api/bookmarks-client";
 import { useBookmarkProcessingTimeline } from "@/lib/hooks/useBookmarkProcessingTimeline";
 import { ReadingProgressTracker } from "@/lib/reading/progress";
@@ -116,6 +117,10 @@ export function BookmarkDetail({
     count: model.likeCount,
     liked: model.isLiked,
   });
+  // Server truth until the thread's own fetch lands, then whatever the thread
+  // reports. The action row and the thread heading must never disagree, and
+  // the thread is the one that just spoke to the server.
+  const [commentCount, setCommentCount] = React.useState(model.commentCount);
 
   const commentsRef = React.useRef<HTMLDivElement>(null);
 
@@ -547,6 +552,7 @@ export function BookmarkDetail({
           likeCount={likeState.count}
           liked={likeState.liked}
           onLikeChange={(next) => void like(next)}
+          commentCount={commentCount}
           onComment={() =>
             commentsRef.current?.scrollIntoView({ behavior: "smooth" })
           }
@@ -564,16 +570,23 @@ export function BookmarkDetail({
         ) : null}
       </div>
 
-      {/* 5 · Comments — D12 owns the thread. This is only its seam. ----- */}
+      {/* 5 · Comments ------------------------------------------------- */}
+      {/* In full, not in a drawer. The drawer is the *feed's* answer to a
+          thread, where a conversation expanded in place would bury the next
+          four items; here the reader has reached the end of the thing they
+          came for, and the conversation is what comes next. */}
       <div
         ref={commentsRef}
         id="comments"
         data-detail-slot="comments"
         className="scroll-mt-24"
       >
-        <p className="font-sans text-[12.5px] leading-[1.4] text-fg-tertiary">
-          Comments arrive with the social layer.
-        </p>
+        <CommentThread
+          bookmarkId={model.id}
+          initialCount={commentCount}
+          onCountChange={setCommentCount}
+          offline={offline}
+        />
       </div>
     </article>
   );

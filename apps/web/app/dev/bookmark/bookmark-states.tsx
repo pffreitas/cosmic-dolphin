@@ -138,6 +138,7 @@ function model(
         ? "The page returned 403 to the fetcher after three attempts."
         : undefined,
     likeCount: 12,
+    commentCount: 3,
     isLiked: false,
     shareUrl: "https://cosmicdolphin.com/s/fixture",
     isPublic: true,

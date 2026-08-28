@@ -95,6 +95,19 @@ export const RATE_LIMITS = {
     message: (retryIn) =>
       `You have followed a lot of people just now. Try again in ${retryIn}.`,
   },
+  // docs/functional-spec/06-social.md § Comment: "rate limited to 10 per
+  // minute per user". Tighter than follows by two orders of magnitude, and
+  // deliberately so — a comment is the only thing in this product one user can
+  // put in front of another, and the abuse pattern it bounds is a burst, not a
+  // sustained rate. Ten a minute is faster than anyone types something worth
+  // reading and slower than a script is worth writing.
+  comments: {
+    name: "comments",
+    max: envInt("RATE_LIMIT_COMMENTS_MAX", 10),
+    timeWindow: process.env.RATE_LIMIT_COMMENTS_WINDOW ?? "1 minute",
+    message: (retryIn) =>
+      `You are commenting very quickly. Try again in ${retryIn}.`,
+  },
   reprocess: {
     name: "reprocess",
     max: envInt("RATE_LIMIT_REPROCESS_MAX", 30),

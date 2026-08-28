@@ -9,6 +9,7 @@ import "./collections.tsp";
 import "./reading.tsp";
 import "./search.tsp";
 import "./social.tsp";
+import "./comments.tsp";
 
 using TypeSpec.Http;
 

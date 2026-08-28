@@ -665,6 +665,7 @@ export function mapDatabaseRowToBookmark(data: any): Bookmark {
     searchDocument: data.search_document,
     isPrivateLink: data.is_private_link ?? false,
     likeCount: data.like_count ?? 0,
+    commentCount: data.comment_count ?? 0,
     isPublic: data.is_public ?? false,
     shareSlug: data.share_slug ?? undefined,
     readAt: data.read_at ? new Date(data.read_at) : undefined,

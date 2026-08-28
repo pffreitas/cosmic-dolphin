@@ -97,6 +97,10 @@ model Bookmark {
     isPrivateLink?: boolean;
     likeCount?: int32;
     isLikedByCurrentUser?: boolean;
+
+    @doc("Live comments on this bookmark, tombstones excluded. Denormalised and maintained by trigger — the feed reads it on every item.")
+    commentCount?: int32;
+
     isPublic?: boolean;
     shareSlug?: string;
     readAt?: utcDateTime;

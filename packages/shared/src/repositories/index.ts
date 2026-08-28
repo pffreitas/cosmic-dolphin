@@ -54,3 +54,11 @@ export type {
   RelationshipState,
   SocialKeyset,
 } from "./social.repository";
+export {
+  CommentRepository,
+  CommentRepositoryImpl,
+} from "./comment.repository";
+export type {
+  BookmarkVisibilityRow,
+  CommentWithAuthorRow,
+} from "./comment.repository";

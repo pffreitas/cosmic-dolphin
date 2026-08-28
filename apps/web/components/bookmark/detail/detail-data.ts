@@ -68,6 +68,8 @@ export interface BookmarkDetailModel {
   processingError?: string;
 
   likeCount: number;
+  /** Live comments on this save. The thread's own fetch is the later truth. */
+  commentCount: number;
   isLiked: boolean;
   /** Absolute share URL, when the save has been shared. */
   shareUrl?: string;
@@ -157,6 +159,7 @@ export function toDetailModel(
     processingError: bookmark.processingError || undefined,
 
     likeCount: bookmark.likeCount ?? 0,
+    commentCount: bookmark.commentCount ?? 0,
     isLiked: Boolean(bookmark.isLikedByCurrentUser),
     shareUrl: slug ? shareUrlForSlug(slug) : undefined,
     isPublic: Boolean(bookmark.isPublic),

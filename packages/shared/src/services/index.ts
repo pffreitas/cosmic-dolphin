@@ -15,6 +15,7 @@ export * from "./embedding.service";
 export * from "./search.service";
 export * from "./reading.service";
 export * from "./social.service";
+export * from "./comment.service";
 export * from "./http-client";
 
 import {
@@ -32,6 +33,7 @@ import { ProfileService, ProfileServiceImpl } from "./profile.service";
 import { SearchService, SearchServiceImpl } from "./search.service";
 import { ReadingService, ReadingServiceImpl } from "./reading.service";
 import { SocialService, SocialServiceImpl } from "./social.service";
+import { CommentService, CommentServiceImpl } from "./comment.service";
 import {
   ProcessingBudgetService,
   ProcessingBudgetServiceImpl,
@@ -49,6 +51,7 @@ import {
   BookmarkProcessingRepositoryImpl,
   BookmarkReadingRepositoryImpl,
   SocialRepositoryImpl,
+  CommentRepositoryImpl,
 } from "../repositories";
 import { AI } from "../ai";
 
@@ -64,6 +67,7 @@ export interface ServiceContainer {
   processingBudget: ProcessingBudgetService;
   reading: ReadingService;
   social: SocialService;
+  comment: CommentService;
 }
 
 export function createServiceContainer(
@@ -78,6 +82,7 @@ export function createServiceContainer(
   const bookmarkProcessingRepository = new BookmarkProcessingRepositoryImpl(db);
   const bookmarkReadingRepository = new BookmarkReadingRepositoryImpl(db);
   const socialRepository = new SocialRepositoryImpl(db);
+  const commentRepository = new CommentRepositoryImpl(db);
 
   const ai = new AI();
   const embeddingService = new EmbeddingServiceImpl();
@@ -105,5 +110,6 @@ export function createServiceContainer(
     ),
     reading: new ReadingServiceImpl(bookmarkReadingRepository),
     social: new SocialServiceImpl(socialRepository),
+    comment: new CommentServiceImpl(commentRepository),
   };
 }
