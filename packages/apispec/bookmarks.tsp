@@ -257,6 +257,19 @@ model UpdateBookmarkRequest {
 
     @doc("The complete tag list after the edit, not a delta - so an undo can restore exactly what was there.")
     tags?: string[];
+
+    @doc("""
+        The reader's own summary, in markdown, written into the same field the
+        pipeline would have filled.
+
+        The detail page offers this on a **private link**: a page behind auth
+        that the fetcher could not read has no AI summary and never will, and
+        the alternative to letting the user write one is a permanently empty
+        reader. One field rather than two because there is only ever one
+        summary on a bookmark - a private link's pipeline does not write this
+        field, so there is nothing to collide with.
+        """)
+    cosmicSummary?: string;
 }
 
 model SearchBookmarksQuery {

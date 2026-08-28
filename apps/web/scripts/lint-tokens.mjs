@@ -46,7 +46,6 @@ const IGNORED = [
 const LEGACY = [
   ["app/(auth-pages)", "D15 — auth pages"],
   ["components/desktop-site-header.tsx", "D3 — header capsule"],
-  ["components/opengraph/OpenGraphWebpage.tsx", "D12 — bookmark detail"],
 ];
 
 const RULES = [

@@ -47,6 +47,18 @@ model SaveReadingProgressResponse {
     accepted: boolean;
 }
 
+@doc("""
+    Where the reader left off, or nothing if they never started.
+
+    `null` and a `percent` of 0 are different answers: the first says the
+    bookmark has never been opened, the second that it was opened and not
+    scrolled. The reader restores a scroll position for the second and not for
+    the first.
+    """)
+model GetReadingProgressResponse {
+    progress: ReadingProgress | null;
+}
+
 @doc("A bookmark the reader is part-way through, for Home's Continue reading rail.")
 model ContinueReadingItem {
     bookmark: Bookmark;
@@ -172,6 +184,30 @@ interface Reading {
     @get
     @route("/continue-reading")
     continueReading(@query limit?: int32 = 12): ContinueReadingResponse | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+
+    @doc("""
+        Where the caller left off in one bookmark.
+
+        The counterpart to `saveProgress`, and the reason progress survives a
+        reload: the reader asks for it once on mount and restores the scroll
+        position before it starts recording a new one. `continueReading`
+        cannot answer this - it is windowed to 5-95% and to a page of items,
+        so a reader 2% or 97% into an article would be told they had never
+        opened it.
+        """)
+    @useAuth(BearerAuth)
+    @get
+    @route("/{id}/progress")
+    getProgress(@path id: string): GetReadingProgressResponse | {
+        @doc("No such bookmark, or not the caller's.")
+        @statusCode
+        statusCode: 404;
+
+        @body body: BookmarkError;
+    } | {
         @statusCode statusCode: 500;
         @body body: BookmarkError;
     };

@@ -127,12 +127,17 @@ export const updateBookmarkSchema = z
       .array(z.string().trim().min(1, "a tag cannot be blank"))
       .max(50, "at most 50 tags")
       .optional(),
+    // The reader's own summary, for a private link the pipeline could not
+    // read. Empty is meaningful — it clears one that was written by hand —
+    // so this is not `.min(1)`.
+    cosmicSummary: z.string().max(20000, "summary is too long").optional(),
   })
   .refine(
     (body) =>
       body.title !== undefined ||
       body.isArchived !== undefined ||
-      body.tags !== undefined,
+      body.tags !== undefined ||
+      body.cosmicSummary !== undefined,
     { message: "nothing to update" }
   );
 
@@ -841,11 +846,12 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: "Bookmark not found" });
       }
 
-      const { title, isArchived, tags } = parsed.data;
+      const { title, isArchived, tags, cosmicSummary } = parsed.data;
       const bookmark = await services.bookmark.update(id, {
         ...(title !== undefined ? { title } : {}),
         ...(isArchived !== undefined ? { isArchived } : {}),
         ...(tags !== undefined ? { cosmicTags: tags } : {}),
+        ...(cosmicSummary !== undefined ? { cosmicSummary } : {}),
       });
 
       return reply.send(bookmark);

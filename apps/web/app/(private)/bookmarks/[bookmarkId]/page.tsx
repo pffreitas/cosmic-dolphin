@@ -1,49 +1,34 @@
-import { BookmarkBody } from "@/components/bookmark/BookmarkBody";
-import { BookmarkDetailSkeleton } from "@/components/bookmark/BookmarkDetailSkeleton";
-import { BookmarksAPI } from "@/lib/api/bookmarks";
-import { BookmarkXIcon } from "lucide-react";
-import Link from "next/link";
-import { Suspense } from "react";
+import { notFound } from "next/navigation";
 
+import { BookmarkDetail } from "@/components/bookmark/detail/bookmark-detail";
+import { toDetailModel } from "@/components/bookmark/detail/detail-data";
+import { BookmarksAPI } from "@/lib/api/bookmarks";
+
+/**
+ * `/bookmarks/[bookmarkId]` — the reading surface, owner's side.
+ *
+ * The composition lives in `components/bookmark/detail/bookmark-detail.tsx`
+ * and is shared with `/s/[slug]`; this route's whole job is to fetch, decide
+ * whether there is anything to show, and pick the owner's variant.
+ *
+ * The fourth state — not found — is a real 404 from `not-found.tsx` rather
+ * than a panel rendered at 200, because "there is no bookmark" is not a state
+ * of a bookmark page. It is deliberately the same answer for a deleted save
+ * and for someone else's: telling a stranger that an id exists but is not
+ * theirs is telling them something about another person's library.
+ */
 interface PageProps {
-  params: Promise<{
-    bookmarkId: string;
-  }>;
+  params: Promise<{ bookmarkId: string }>;
 }
 
-export default async function Index({ params }: PageProps) {
+export default async function BookmarkDetailPage({ params }: PageProps) {
   const { bookmarkId } = await params;
-
   const bookmark = await BookmarksAPI.findById(bookmarkId);
 
-  if (!bookmark || !bookmark.id) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-        <div className="rounded-full bg-muted p-4">
-          <BookmarkXIcon className="size-8 text-muted-foreground" />
-        </div>
-        <div className="space-y-1.5">
-          <h2 className="text-lg font-semibold tracking-tight">
-            Bookmark not found
-          </h2>
-          <p className="text-sm text-muted-foreground max-w-sm">
-            This bookmark may have been deleted or you don&apos;t have access to
-            it.
-          </p>
-        </div>
-        <Link
-          href="/my/library"
-          className="mt-2 text-sm font-medium text-primary hover:underline underline-offset-4"
-        >
-          Back to library
-        </Link>
-      </div>
-    );
-  }
+  // `notFound()` rather than a rendered panel: the page has to answer 404,
+  // not 200 with an apology in it. The copy and the way back to Library live
+  // in this route's `not-found.tsx`.
+  if (!bookmark?.id) notFound();
 
-  return (
-    <Suspense fallback={<BookmarkDetailSkeleton />}>
-      <BookmarkBody bookmark={bookmark} />
-    </Suspense>
-  );
+  return <BookmarkDetail model={toDetailModel(bookmark, { mode: "owner" })} />;
 }

@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyReply } from "fastify";
 import {
   ContinueReadingItem,
   Highlight,
+  ReadingProgress,
   ReadingValidationError,
   SaveReadingProgressResult,
   ServiceContainer,
@@ -194,6 +195,38 @@ export default async function readingRoutes(fastify: FastifyInstance) {
         const handled = replyForReadingError(reply, error);
         if (handled) return handled;
         fastify.log.error({ error }, "Save reading progress error");
+        return reply.status(500).send({ error: "Internal server error" });
+      }
+    }
+  );
+
+  // The read side of progress, and the reason progress survives a reload.
+  //
+  // `continue-reading` cannot stand in for it: that route is windowed to
+  // 5–95% and to a page of items, so a reader 2% or 97% into an article would
+  // be told they had never opened it. This one answers about exactly one
+  // bookmark and distinguishes "never opened" (`null`) from "opened and not
+  // scrolled" (`percent: 0`) — the reader restores a position for the second
+  // and not for the first.
+  fastify.get<{
+    Params: { id: string };
+    Reply: { progress: ReadingProgress | null } | { error: string };
+  }>(
+    "/bookmarks/:id/progress",
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const user_id = request.userId!;
+
+        const progress = await services.reading.getProgress(id, user_id);
+
+        // No row is not a 404. A bookmark the caller owns and has never
+        // opened has no progress, and that is a successful answer to the
+        // question the reader asked.
+        return reply.send({ progress });
+      } catch (error) {
+        fastify.log.error({ error }, "Get reading progress error");
         return reply.status(500).send({ error: "Internal server error" });
       }
     }

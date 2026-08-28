@@ -436,7 +436,13 @@ export namespace BookmarksClientAPI {
   /** Title, tags, archived. Tags are the whole list, so an undo can restore it. */
   export async function update(
     bookmarkId: string,
-    changes: { title?: string; isArchived?: boolean; tags?: string[] }
+    changes: {
+      title?: string;
+      isArchived?: boolean;
+      tags?: string[];
+      /** The reader's own summary — private links only. See the detail page. */
+      cosmicSummary?: string;
+    }
   ): Promise<Bookmark> {
     const bookmarksApi = await getApiInstance();
     try {

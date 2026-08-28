@@ -2,6 +2,7 @@ import {
   ReadingApi,
   ContinueReadingItem,
   Highlight,
+  ReadingProgress,
   SaveReadingProgressResponse,
 } from "@cosmic-dolphin/api-client";
 import { getConfiguration } from "@/lib/api/bookmarks-client";
@@ -41,6 +42,29 @@ export namespace ReadingClientAPI {
       });
     } catch (error) {
       console.error("Error saving reading progress", error);
+      return null;
+    }
+  }
+
+  /**
+   * Where the reader left off, or `null` when they never started.
+   *
+   * Read once on mount, before the tracker starts recording: this is what
+   * makes progress survive a reload. Failures are swallowed like the write
+   * side's — a reader who cannot be told where they were is no worse off than
+   * one who never had a position, and an error toast would be about
+   * bookkeeping.
+   */
+  export async function getProgress(
+    bookmarkId: string
+  ): Promise<ReadingProgress | null> {
+    try {
+      const response = await (await api()).readingGetProgress({
+        id: bookmarkId,
+      });
+      return response.progress ?? null;
+    } catch (error) {
+      console.error("Error fetching reading progress", error);
       return null;
     }
   }

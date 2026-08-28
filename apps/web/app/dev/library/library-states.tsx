@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useTheme } from "next-themes";
 import {
   BookmarkLibraryCounts,
   BookmarkReadStatus,
@@ -12,6 +11,7 @@ import {
 } from "@cosmic-dolphin/api-client";
 
 import { Button } from "@/components/ui/button";
+import { DevThemeToggle } from "@/app/dev/dev-theme-toggle";
 import { Segmented, SegmentedItem } from "@/components/ui/segmented";
 import {
   LibraryFallback,
@@ -193,7 +193,6 @@ const STATES: { value: StateKey; label: string }[] = [
  */
 export function LibraryStates() {
   const [state, setState] = React.useState<StateKey>("populated");
-  const { resolvedTheme, setTheme } = useTheme();
 
   return (
     <div className="mx-auto w-full max-w-screen-lg px-4 py-8 sm:px-6">
@@ -206,12 +205,7 @@ export function LibraryStates() {
             The real components on fixture data. Dev only.
           </p>
         </div>
-        <Button
-          size="sm"
-          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-        >
-          {resolvedTheme === "dark" ? "Light" : "Dark"}
-        </Button>
+        <DevThemeToggle />
       </div>
 
       <div className="py-4">

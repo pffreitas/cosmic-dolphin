@@ -1,4 +1,27 @@
 /**
+ * MIRRORED FILE — the client copy of `packages/shared/src/highlight-anchor.ts`.
+ *
+ * Everything below the marker is that file, byte for byte, and
+ * `__tests__/highlight-anchor.mirror.test.ts` fails the build if the two ever
+ * drift. Edit the shared original and re-run
+ * `bun run sync:highlight-anchor` from `apps/web`; never edit this half.
+ *
+ * Why a mirror rather than an import: `packages/shared` is backend-only by
+ * repo convention — it pulls in Kysely, the Supabase service client and the
+ * AI services, none of which belong in a browser bundle, and its `index.ts`
+ * re-exports all of them. The anchoring module itself was written with zero
+ * imports precisely so it could live on both sides of the wire, and both
+ * sides genuinely need it: the API validates and stores anchors, and the
+ * reader resolves them against the document it is about to paint.
+ *
+ * The alternative — a third package for one pure file — buys a build step, a
+ * version, and a place for the two copies to disagree anyway. A generated
+ * copy with a test that asserts equality cannot disagree at all.
+ *
+ * ---- generated below this line; do not edit ----------------------------
+ */
+
+/**
  * Where a highlight lives in a document that keeps changing under it.
  *
  * A highlight is stored as three strings — the `quote` the reader selected,
