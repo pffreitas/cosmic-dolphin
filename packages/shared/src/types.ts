@@ -25,12 +25,29 @@ export interface QueueTaskPayload {
   };
 }
 
-// Profile interface
+/**
+ * The caller's own profile — the private shape, and the only one that carries
+ * an email. Anything anyone else can see is a `PublicProfile`, which is a
+ * separate type on purpose (see its doc comment).
+ */
 export interface Profile {
   id: string;
   name?: string;
   email?: string;
   pictureUrl?: string;
+  /** The stable public identity. `/u/{handle}` is the canonical profile URL. */
+  handle?: string;
+  /**
+   * False when the handle was reserved from the email local part and never
+   * confirmed by a person. The web app prompts once on the strength of this.
+   */
+  handleClaimed: boolean;
+  /**
+   * When the handle may next be changed, or absent when it may be changed now.
+   * A handle changes at most once every 30 days; confirming a reserved handle
+   * unchanged is not a change and does not start the clock.
+   */
+  handleChangeAvailableAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -449,4 +466,90 @@ export interface UrlContents {
 export interface ValidationError {
   field: string;
   message: string;
+}
+
+// ---------------------------------------------------------------------------
+// Social graph — docs/functional-spec/06-social.md
+// ---------------------------------------------------------------------------
+
+/**
+ * A profile as anyone is allowed to see it.
+ *
+ * **There is no `email` here, and there must never be one.** This is not a
+ * convention to remember at the call site — it is the type every public route
+ * returns, the repository selects an explicit column list that omits `email`
+ * so the value is not even in scope on the way out, and `assertPublicProfileHasNoEmail`
+ * below fails the build if the field is ever added back.
+ *
+ * `PublicProfile` is deliberately *not* derived from `Profile` with an `Omit`.
+ * An `Omit` keeps the two shapes coupled: a field added to `Profile` appears
+ * here for free, which is exactly the accident this type exists to prevent.
+ */
+export interface PublicProfile {
+  id: string;
+  /** The stable public identity. `/u/{handle}` is the canonical URL. */
+  handle: string;
+  name?: string;
+  pictureUrl?: string;
+  /** When the account was created. The only date a public profile carries. */
+  joinedAt: Date;
+  counts: PublicProfileCounts;
+  /** True when this profile is the caller's own. */
+  isSelf: boolean;
+  /** True when the caller follows this profile. Absent for anonymous callers. */
+  isFollowedByViewer?: boolean;
+  /** True when this profile follows the caller. */
+  followsViewer?: boolean;
+  /** True when the caller has blocked this profile. */
+  isBlockedByViewer?: boolean;
+}
+
+export interface PublicProfileCounts {
+  followers: number;
+  following: number;
+  /** Public saves only. The size of someone's private library is theirs. */
+  publicSaves: number;
+  /** Public collections only, for the same reason. */
+  collections: number;
+}
+
+/**
+ * A compile-time guard, not documentation.
+ *
+ * `Assert<false>` does not satisfy `Assert<T extends true>`, so the moment
+ * `email` appears anywhere in `PublicProfile` this file stops compiling and the
+ * leak is caught before it is written, let alone deployed.
+ */
+type Assert<T extends true> = T;
+export type assertPublicProfileHasNoEmail = Assert<
+  "email" extends keyof PublicProfile ? false : true
+>;
+
+export interface UpdateProfileRequest {
+  name?: string | null;
+  pictureUrl?: string | null;
+  handle?: string;
+}
+
+export interface FollowResponse {
+  /** The state after the call, so an optimistic client can reconcile. */
+  following: boolean;
+  /** The target's follower count after the call. */
+  followerCount: number;
+}
+
+export interface BlockResponse {
+  blocked: boolean;
+}
+
+export interface PublicSavesResponse {
+  bookmarks: Bookmark[];
+  /** Absent when this page is the last one. */
+  nextCursor?: string;
+}
+
+export interface PublicProfileListResponse {
+  profiles: PublicProfile[];
+  /** Absent when this page is the last one. */
+  nextCursor?: string;
 }

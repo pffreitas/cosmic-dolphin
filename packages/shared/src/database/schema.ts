@@ -127,8 +127,49 @@ export interface ProfilesTable {
   name: string | null;
   email: string | null;
   picture_url: string | null;
+
+  /**
+   * Public identity, unique, `^[a-z0-9_]{3,30}$`. Nullable only because a
+   * profile row is created by a trigger on `auth.users` and sign-in must never
+   * fail over a handle that could not be minted.
+   */
+  handle: string | null;
+
+  /**
+   * When a human last *changed* the handle. `null` means never — the reserved
+   * handle came from the email local part, which is not a change the user made
+   * and does not consume their 30-day allowance.
+   */
+  handle_changed_at: Date | null;
+
+  /**
+   * When a human confirmed the handle. `null` means reserved-and-unclaimed:
+   * the value in `handle` is a guess and the user has never been asked.
+   */
+  handle_claimed_at: Date | null;
+
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
+}
+
+/**
+ * A directed follow edge. No approval, no reciprocity, two states: the row
+ * exists or it does not — docs/functional-spec/06-social.md § Follow.
+ */
+export interface FollowsTable {
+  follower_id: string;
+  following_id: string;
+  created_at: Generated<Date>;
+}
+
+/**
+ * `blocker_id` blocked `blocked_id`. Blocking drops both follow edges and
+ * hides the blocker's public saves from the blocked user.
+ */
+export interface UserBlocksTable {
+  blocker_id: string;
+  blocked_id: string;
+  created_at: Generated<Date>;
 }
 
 /**
@@ -218,6 +259,8 @@ export interface Database {
   bookmark_processing_events: BookmarkProcessingEventsTable;
   bookmark_reading_progress: BookmarkReadingProgressTable;
   bookmark_highlights: BookmarkHighlightsTable;
+  follows: FollowsTable;
+  user_blocks: UserBlocksTable;
 }
 
 // Type helpers for each table
@@ -256,6 +299,12 @@ export type ImageChunkUpdate = Updateable<ImageChunksTable>;
 export type Profile = Selectable<ProfilesTable>;
 export type NewProfile = Insertable<ProfilesTable>;
 export type ProfileUpdate = Updateable<ProfilesTable>;
+
+export type FollowRow = Selectable<FollowsTable>;
+export type NewFollow = Insertable<FollowsTable>;
+
+export type UserBlockRow = Selectable<UserBlocksTable>;
+export type NewUserBlock = Insertable<UserBlocksTable>;
 
 export type BookmarkProcessingRun = Selectable<BookmarkProcessingRunsTable>;
 export type NewBookmarkProcessingRun = Insertable<BookmarkProcessingRunsTable>;

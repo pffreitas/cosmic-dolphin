@@ -16,6 +16,7 @@ import { MobileHeader } from "@/components/mobile/mobile-header";
 import { BottomNavigation } from "@/components/mobile/bottom-nav";
 import { createClient } from "@/utils/supabase/server";
 import { DesktopSiteHeader } from "@/components/desktop-site-header";
+import { HandleClaimPrompt } from "@/components/social/handle-claim-prompt";
 
 // The two voices. Signal's token file stays authoritative: next/font only fills
 // in --cd-font-sans / --cd-font-serif with the locally hosted faces.
@@ -142,6 +143,13 @@ export default async function RootLayout({
 
                   {/* Mobile Bottom Navigation - Only show when logged in */}
                   {isLoggedIn && <BottomNavigation />}
+
+                  {/*
+                    Outside both <main>s, which each render {children}. This
+                    one has to appear exactly once — a dialog rendered twice is
+                    two overlays, two focus traps and one very confused user.
+                  */}
+                  <HandleClaimPrompt isLoggedIn={isLoggedIn} />
 
                   {/* Global Command Dialog - Desktop Only */}
                   <GlobalCommandDialog />

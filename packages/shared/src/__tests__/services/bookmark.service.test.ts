@@ -32,6 +32,7 @@ describe("BookmarkService", () => {
       deleteScrapedUrlContents: jest.fn(),
       deleteByUser: jest.fn(),
       findByShareSlug: jest.fn(),
+      countLibrary: jest.fn(),
     } as jest.Mocked<BookmarkRepository>;
 
     mockWebScrapingService = {

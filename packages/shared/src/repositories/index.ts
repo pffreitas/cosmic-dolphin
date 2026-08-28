@@ -43,3 +43,14 @@ export {
   IN_PROGRESS_MAX_PERCENT,
 } from "./bookmark-reading.repository";
 export type { BookmarkReadingRepository } from "./bookmark-reading.repository";
+export {
+  SocialRepository,
+  SocialRepositoryImpl,
+  PUBLIC_PROFILE_COLUMNS,
+} from "./social.repository";
+export type {
+  PublicProfileRow,
+  ProfileCountsRow,
+  RelationshipState,
+  SocialKeyset,
+} from "./social.repository";

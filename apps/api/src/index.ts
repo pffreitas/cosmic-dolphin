@@ -9,6 +9,7 @@ import collectionRoutes from './routes/collections';
 import readingRoutes from './routes/reading';
 import searchRoutes from './routes/search';
 import profileRoutes from './routes/profile';
+import userRoutes from './routes/users';
 
 const server = Fastify({
   logger: config.NODE_ENV === 'development' ? {
@@ -61,6 +62,7 @@ server.register(async function (fastify) {
   await fastify.register(readingRoutes, { prefix: '/api/v1' });
   await fastify.register(searchRoutes, { prefix: '/api/v1' });
   await fastify.register(profileRoutes, { prefix: '/api/v1' });
+  await fastify.register(userRoutes, { prefix: '/api/v1' });
 });
 
 // Start server

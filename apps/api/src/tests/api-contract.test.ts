@@ -37,6 +37,46 @@ describe("API contract", () => {
     expect(highlight).not.toMatch(/offset/i);
   });
 
+  it("keeps `email` out of the public profile contract", async () => {
+    // The contract is the outermost of the four locks on this rule. A client
+    // cannot read a field the schema does not describe, and a reviewer looking
+    // at one file can see the guarantee holds. The other three are in
+    // `packages/shared`: the explicit column list the query selects, the
+    // standalone `PublicProfile` type, and `assertPublicProfileHasNoEmail`,
+    // which stops the build if the field is ever added.
+    const typeSpec = await Bun.file(
+      repoPath("packages/apispec/social.tsp")
+    ).text();
+    const publicProfile = typeSpec.match(
+      /model PublicProfile \{[\s\S]*?\n\}/
+    )?.[0];
+
+    expect(publicProfile).toContain("handle: string;");
+    expect(publicProfile).not.toMatch(/\bemail\b/);
+  });
+
+  it("keys every social route on the handle, never on an id", async () => {
+    // `/u/{handle}` is the canonical profile URL. A route that took an id
+    // would make the shareable link a second lookup away.
+    const typeSpec = await Bun.file(
+      repoPath("packages/apispec/social.tsp")
+    ).text();
+
+    for (const route of [
+      '@route("/{handle}")',
+      '@route("/{handle}/saves")',
+      '@route("/{handle}/followers")',
+      '@route("/{handle}/following")',
+      '@route("/{handle}/follow")',
+      '@route("/{handle}/block")',
+    ]) {
+      expect(typeSpec).toContain(route);
+    }
+
+    const users = typeSpec.match(/interface Users \{[\s\S]*\n\}/)?.[0];
+    expect(users).not.toContain("@path id");
+  });
+
   it("keeps reading progress on its own routes, not folded into Bookmark", async () => {
     const reading = await Bun.file(
       repoPath("packages/apispec/reading.tsp")

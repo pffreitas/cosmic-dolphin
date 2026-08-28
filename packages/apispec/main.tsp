@@ -8,6 +8,7 @@ import "./bookmarks.tsp";
 import "./collections.tsp";
 import "./reading.tsp";
 import "./search.tsp";
+import "./social.tsp";
 
 using TypeSpec.Http;
 

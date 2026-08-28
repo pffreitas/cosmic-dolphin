@@ -82,6 +82,19 @@ export const RATE_LIMITS = {
     message: (retryIn) =>
       `Too many reading-progress updates. Try again in ${retryIn}.`,
   },
+  // docs/functional-spec/06-social.md § Abuse and moderation. A follow is one
+  // row and no notification, so the cost of an individual one is negligible —
+  // what this bounds is the *pattern*: follow-unfollow churn to farm attention,
+  // and mass-following to seed a feed. A hundred an hour is far above what
+  // reading someone's profile and deciding to follow them looks like, and far
+  // below what a script does.
+  follows: {
+    name: "follows",
+    max: envInt("RATE_LIMIT_FOLLOWS_MAX", 100),
+    timeWindow: process.env.RATE_LIMIT_FOLLOWS_WINDOW ?? "1 hour",
+    message: (retryIn) =>
+      `You have followed a lot of people just now. Try again in ${retryIn}.`,
+  },
   reprocess: {
     name: "reprocess",
     max: envInt("RATE_LIMIT_REPROCESS_MAX", 30),

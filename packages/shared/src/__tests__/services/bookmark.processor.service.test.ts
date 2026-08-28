@@ -50,6 +50,7 @@ describe("BookmarkProcessorService", () => {
       findByIdAndUserWithLikeStatus: jest.fn(),
       getScrapedUrlContent: jest.fn(),
       ensureScrapedContent: jest.fn(),
+      countLibrary: jest.fn(),
       update: jest.fn(),
       updateProcessingStatus: jest.fn(),
       create: jest.fn(),
