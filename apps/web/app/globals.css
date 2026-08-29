@@ -24,6 +24,33 @@
   }
 }
 
+/*
+ * Rule ten, motion half — the safety net.
+ *
+ * foundations.md § Motion: "Every animation must be neutralised under
+ * prefers-reduced-motion: reduce." `scripts/lint-a11y.mjs` makes sure every
+ * `animate-*` in the source ships the SPECIFIED still state — the shimmer flat
+ * on `--cd-bg-inset`, the progress ring whole at 60%. This block is what
+ * catches the rest: a keyframe from a dependency, a third-party stylesheet, a
+ * `transition` nobody thought of. The lint decides what the still state looks
+ * like; this decides that there is one.
+ *
+ * 0.01ms rather than `none`: an animation that never starts also never fires
+ * `animationend`, and code that waits for it hangs. This lets every animation
+ * run to completion within a frame, so listeners still fire and the user still
+ * sees no movement.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 
 
 /* TipTap Editor Styles */

@@ -17,6 +17,7 @@ touches both; neither document alone is enough to build a screen.
 | [patterns.md](./patterns.md) | The seven composite patterns that carry the product's identity. |
 | [pages.md](./pages.md) | Route-by-route composition and required states. |
 | [implementation.md](./implementation.md) | How to land it in `apps/web` and `apps/mobile`, phase by phase. |
+| [audit.md](./audit.md) | The accessibility gate: what enforces rule ten, what the D20 audit found, and the one accepted deviation. |
 
 | Artifact | What it is |
 | --- | --- |
@@ -62,7 +63,9 @@ Everything else in this directory elaborates on these.
    auto-move a link the user has filed by hand.
 10. **Accessibility is build-breaking, not polish.** 4.5:1 on all text in both modes, a visible focus
     ring on every interactive element, 32px targets (44px on touch), and `prefers-reduced-motion`
-    honoured everywhere.
+    honoured everywhere. Enforced, not asserted: `apps/web/__tests__/accessibility/` and
+    `apps/web/scripts/lint-a11y.mjs`, both wired into CI. [audit.md](./audit.md) records what they
+    check, what the audit found, and the one deviation that was accepted.
 
 ## Not the spec
 

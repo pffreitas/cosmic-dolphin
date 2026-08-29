@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CollectionSuggestion } from "@cosmic-dolphin/api-client";
 
+import { cn } from "@/lib/utils";
 import { AiCallout } from "@/components/ai/ai-callout";
+import { focusRing } from "@/components/ui/focus-ring";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { BookmarksClientAPI } from "@/lib/api/bookmarks-client";
@@ -90,7 +92,10 @@ export function CollectionSuggestionCallout({
           Drawn from{" "}
           <Link
             href={libraryHref({ scope: BookmarkScope.Inbox })}
-            className="text-accent underline-offset-4 hover:underline"
+            className={cn(
+              "rounded-xs text-accent underline-offset-4 hover:underline",
+              focusRing,
+            )}
           >
             {supporters} unfiled {supporters === 1 ? "save" : "saves"}
           </Link>

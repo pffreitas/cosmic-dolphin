@@ -76,7 +76,11 @@ function Tag({
               : "Remove tag")
           }
           className={cn(
-            "-mr-1 grid size-4 place-items-center rounded-pill",
+            "relative -mr-1 grid size-4 place-items-center rounded-pill",
+            // A tag is 22px tall, so the 32px target is a transparent ::after
+            // rather than a box — foundations.md § Accessibility.
+            "after:absolute after:left-1/2 after:top-1/2 after:size-8",
+            "after:-translate-x-1/2 after:-translate-y-1/2",
             "text-current opacity-70 transition-opacity hover:opacity-100",
             focusRing,
           )}

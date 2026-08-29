@@ -19,6 +19,17 @@ export const focusRingInset =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--cd-focus)]";
 
 /**
+ * Same ring, drawn around a wrapper when the field *inside* it takes focus.
+ *
+ * For composite fields where the focusable node is not the thing with the
+ * border — the command palette's search row is an icon and a borderless input
+ * sharing one bordered row, and ringing the bare input would draw a rectangle
+ * inside a rectangle.
+ */
+export const focusRingWithin =
+  "focus-within:ring-2 focus-within:ring-inset focus-within:ring-[color:var(--cd-focus)]";
+
+/**
  * For Radix parts that expose focus through `data-[state]`/`:focus` rather than
  * `:focus-visible` (menu items, select items) — same ring, no `-visible`.
  */

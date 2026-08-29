@@ -6,6 +6,7 @@ import { Command as CommandPrimitive } from "cmdk";
 import { Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { focusRingWithin } from "@/components/ui/focus-ring";
 import { Dialog, DialogOverlay, DialogPortal } from "@/components/ui/dialog";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 
@@ -85,7 +86,10 @@ const CommandInput = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(({ className, ...props }, ref) => (
   <div
-    className="flex items-center gap-2.5 border-b border-line px-4"
+    className={cn(
+      "flex items-center gap-2.5 border-b border-line px-4",
+      focusRingWithin,
+    )}
     cmdk-input-wrapper=""
   >
     <Search

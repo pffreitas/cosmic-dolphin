@@ -23,7 +23,7 @@ export const colors = {
     /* Text */
     fg: '#0C1622',
     fgSecondary: '#4C5A68',
-    fgTertiary: '#657485',
+    fgTertiary: '#617080',
     /* Lines */
     border: '#E2E8EE',
     borderStrong: '#C9D4DE',
@@ -42,10 +42,10 @@ export const colors = {
     aiGlow: 'rgba(11,111,156,.11)',
     aiSheen: 'rgba(255,255,255,.9)',
     /* State */
-    like: '#D6336C',
-    success: '#15803D',
-    warning: '#B45309',
-    danger: '#DC2626',
+    like: '#CE2963',
+    success: '#157F3D',
+    warning: '#B35209',
+    danger: '#D62323',
     hlBg: '#EAF4FA',
     hlLine: '#BEDDEC',
     focus: '#0B6F9C',
@@ -66,7 +66,7 @@ export const colors = {
     /* Text */
     fg: '#E9F0F6',
     fgSecondary: '#9FB1C0',
-    fgTertiary: '#6E8394',
+    fgTertiary: '#768A9A',
     /* Lines */
     border: '#1E2C39',
     borderStrong: '#2C3E4E',

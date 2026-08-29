@@ -213,7 +213,10 @@ export function HandleClaimPrompt({ isLoggedIn }: { isLoggedIn: boolean }) {
             disabled={saving || handle.trim().length < 3}
           >
             {saving ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              <Loader2
+                className="h-4 w-4 animate-spin motion-reduce:animate-none motion-reduce:opacity-60"
+                aria-hidden
+              />
             ) : null}
             {unchanged ? "Keep this handle" : "Claim handle"}
           </Button>

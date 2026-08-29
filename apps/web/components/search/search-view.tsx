@@ -226,7 +226,7 @@ export function SearchView({ view, collections }: SearchViewProps) {
           {running ? (
             <Loader2
               aria-hidden="true"
-              className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 animate-spin text-fg-tertiary motion-reduce:animate-none"
+              className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 animate-spin text-fg-tertiary motion-reduce:animate-none motion-reduce:opacity-60"
             />
           ) : (
             <SearchIcon

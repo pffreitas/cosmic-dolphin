@@ -105,6 +105,15 @@ A surface is migrated when all of the following hold:
 - [ ] `prefers-reduced-motion` honoured.
 - [ ] The component it replaces has been deleted.
 
+Four of the seven are machine-checked and break the build: raw values
+(`apps/web/scripts/lint-tokens.mjs`), contrast
+(`apps/web/__tests__/accessibility/contrast.test.ts`), the focus ring and the 32px target
+(`apps/web/scripts/lint-a11y.mjs`), and reduced motion (both of those plus the global block in
+`app/globals.css`). `.github/workflows/accessibility.yml` runs them on every pull request. The other
+three — the two voices, the four states, and deleting the predecessor — are still read rather than
+run. [audit.md](./audit.md) records this checklist walked route by route, every violation the D20
+audit found, and what remains open.
+
 ## Reference
 
 [`prototypes/index.html`](./prototypes/index.html) is the visual source of truth for Signal — open

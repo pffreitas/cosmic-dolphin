@@ -49,7 +49,7 @@
   /* Text */
   --cd-fg: #0C1622;
   --cd-fg-secondary: #4C5A68;
-  --cd-fg-tertiary: #657485;
+  --cd-fg-tertiary: #617080;
 
   /* Lines */
   --cd-border: #E2E8EE;
@@ -72,10 +72,10 @@
   --cd-ai-sheen: rgba(255,255,255,.9);
 
   /* State */
-  --cd-like: #D6336C;
-  --cd-success: #15803D;
-  --cd-warning: #B45309;
-  --cd-danger: #DC2626;
+  --cd-like: #CE2963;
+  --cd-success: #157F3D;
+  --cd-warning: #B35209;
+  --cd-danger: #D62323;
   --cd-hl-bg: #EAF4FA;
   --cd-hl-line: #BEDDEC;
   --cd-focus: #0B6F9C;
@@ -107,7 +107,7 @@
   /* Text */
   --cd-fg: #E9F0F6;
   --cd-fg-secondary: #9FB1C0;
-  --cd-fg-tertiary: #6E8394;
+  --cd-fg-tertiary: #768A9A;
 
   /* Lines */
   --cd-border: #1E2C39;
@@ -178,7 +178,7 @@
   --muted-foreground: 210.0 15.6% 35.3%;
   --accent: 210.0 30.8% 94.9%;
   --accent-foreground: 212.7 47.8% 9.0%;
-  --destructive: 0.0 72.2% 50.6%;
+  --destructive: 0.0 71.9% 48.8%;
   --destructive-foreground: 0.0 0.0% 100.0%;
   --border: 210.0 26.1% 91.0%;
   --input: 208.6 24.1% 82.9%;

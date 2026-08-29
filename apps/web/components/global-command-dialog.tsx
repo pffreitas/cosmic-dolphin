@@ -275,7 +275,7 @@ export function GlobalCommandDialog() {
                 <CommandItem value="searching" disabled>
                   <Loader2
                     aria-hidden="true"
-                    className="animate-spin motion-reduce:animate-none"
+                    className="animate-spin motion-reduce:animate-none motion-reduce:opacity-60"
                   />
                   <span>Searching your library…</span>
                 </CommandItem>

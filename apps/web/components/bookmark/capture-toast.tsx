@@ -3,6 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 
+import { cn } from "@/lib/utils";
+import { focusRing } from "@/components/ui/focus-ring";
 import { useOptionalToast } from "@/components/ui/toast";
 import type { CaptureResult } from "@/lib/store/slices/bookmarksSlice";
 
@@ -30,7 +32,10 @@ export function useCaptureToast() {
         description: (
           <Link
             href={`/bookmarks/${bookmarkId}`}
-            className="text-accent underline underline-offset-2"
+            className={cn(
+              "rounded-xs text-accent underline underline-offset-2",
+              focusRing,
+            )}
           >
             {alreadySaved ? "Open it" : "Open"}
           </Link>

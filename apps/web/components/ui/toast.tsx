@@ -226,7 +226,11 @@ function ToastItem({
         onClick={() => onDismiss(id)}
         aria-label="Dismiss"
         className={cn(
-          "-my-1 -mr-1 grid size-6 shrink-0 place-items-center rounded-sm",
+          "relative -my-1 -mr-1 grid size-6 shrink-0 place-items-center rounded-sm",
+          // 32px pointer target without a 32px box: the toast is only 40px
+          // tall and a square that size would swallow the row.
+          "after:absolute after:left-1/2 after:top-1/2 after:size-8",
+          "after:-translate-x-1/2 after:-translate-y-1/2",
           "text-fg-tertiary hover:bg-bg-inset hover:text-fg",
           "transition-colors duration-cd-fast ease-cd",
           focusRing,
