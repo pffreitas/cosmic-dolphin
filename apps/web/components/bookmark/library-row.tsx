@@ -42,9 +42,15 @@ export interface LibraryRowProps
   extends Omit<React.HTMLAttributes<HTMLElement>, "title"> {
   /** Detail route — `/bookmarks/{id}`. */
   href: string;
-  title: string;
+  /**
+   * Usually a string. `ReactNode` because `/search` renders the same row with
+   * the matched span wrapped in a `--cd-hl-bg` `<mark>` — highlighting is the
+   * only difference between a result and a library entry, and it is not worth
+   * a second row that would then have to be kept in step with this one.
+   */
+  title: React.ReactNode;
   /** `cosmicBriefSummary`, falling back to `metadata.openGraph.description`. */
-  summary?: string | null;
+  summary?: React.ReactNode;
 
   /** `collectionPath`, root first. Empty or absent renders as Inbox. */
   collectionPath?: LibraryRowCollection[];
@@ -54,6 +60,12 @@ export interface LibraryRowProps
   unread?: boolean;
   /** `cosmicTags`. Trimmed to three, with `+n` for the rest. */
   tags?: string[];
+  /**
+   * A row-level qualifier the surface adds ahead of the topical tags —
+   * `/search`'s neutral `Related`, which is how a semantic-only hit explains
+   * why it is in a list with none of the reader's words in it.
+   */
+  badge?: React.ReactNode;
 
   /** Bare domain for the meta line. */
   domain?: string;
@@ -142,6 +154,7 @@ const LibraryRow = React.forwardRef<HTMLElement, LibraryRowProps>(
       filing = false,
       unread = false,
       tags,
+      badge,
       domain,
       savedAt,
       readingTime,
@@ -219,6 +232,7 @@ const LibraryRow = React.forwardRef<HTMLElement, LibraryRowProps>(
                 Read
               </Tag>
             )}
+            {badge}
             {shownTags.map((tag) => (
               <Tag key={tag}>{tag}</Tag>
             ))}

@@ -127,7 +127,14 @@ export function createServiceContainer(
     // service's guarded filing write.
     collection: new CollectionServiceImpl(collectionRepository, bookmarkService),
     profile: new ProfileServiceImpl(profileRepository),
-    search: new SearchServiceImpl(bookmarkRepository, embeddingService, ai),
+    // The collection repository is what lets a search result carry the same
+    // breadcrumb the Library row does — without it every hit reads "Inbox".
+    search: new SearchServiceImpl(
+      bookmarkRepository,
+      embeddingService,
+      ai,
+      collectionRepository
+    ),
     bookmarkProcessing: bookmarkProcessingRepository,
     processingBudget: new ProcessingBudgetServiceImpl(
       bookmarkProcessingRepository

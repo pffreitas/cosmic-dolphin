@@ -2,6 +2,9 @@ import {
   Configuration,
   SearchApi,
   HybridSearchResponse,
+  SearchAnswerSource,
+  SearchDateRange,
+  SearchReadStatus,
 } from "@cosmic-dolphin/api-client";
 import { createClient } from "@/utils/supabase/client";
 
@@ -33,22 +36,46 @@ async function getSearchApiInstance(): Promise<SearchApi> {
   );
 }
 
+export interface SearchQuery {
+  q: string;
+  limit?: number;
+  collectionId?: string;
+  tag?: string;
+  readStatus?: SearchReadStatus;
+  dateRange?: SearchDateRange;
+}
+
 export namespace SearchClientAPI {
+  /**
+   * Throws rather than returning an empty list on failure.
+   *
+   * A swallowed error here is a search that reports "nothing matches" when the
+   * truth is "the request never landed" — the same screen for two states that
+   * need different words and different offers. `/search` renders its error
+   * state from this throwing; the palette catches it and shows nothing.
+   */
   export async function hybridSearch(
-    query: string,
-    limit?: number
+    query: SearchQuery
   ): Promise<HybridSearchResponse> {
     const searchApi = await getSearchApiInstance();
-    try {
-      return await searchApi.searchHybridSearch({ q: query, limit });
-    } catch (error) {
-      console.error("Error performing hybrid search", error);
-      return { results: [] };
-    }
+    return searchApi.searchHybridSearch({
+      q: query.q,
+      limit: query.limit,
+      collectionId: query.collectionId,
+      tag: query.tag,
+      readStatus: query.readStatus,
+      dateRange: query.dateRange,
+    });
   }
 
   export interface SSECallbacks {
     onResults: (results: HybridSearchResponse["results"]) => void;
+    /**
+     * The bookmarks the answer will be built from. Always arrives before the
+     * first chunk, and an empty array means no answer is coming — the server
+     * will not write one it cannot attribute.
+     */
+    onSources: (sources: SearchAnswerSource[]) => void;
     onChunk: (text: string) => void;
     onDone: () => void;
     onError: (error: string) => void;
@@ -56,7 +83,8 @@ export namespace SearchClientAPI {
 
   export async function askWithStream(
     query: string,
-    callbacks: SSECallbacks
+    callbacks: SSECallbacks,
+    signal?: AbortSignal
   ): Promise<void> {
     const accessToken = await getAccessToken();
     const basePath = getApiBasePath();
@@ -68,6 +96,7 @@ export namespace SearchClientAPI {
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({ query }),
+      signal,
     });
 
     if (!response.ok) {
@@ -105,6 +134,9 @@ export namespace SearchClientAPI {
             switch (currentEvent) {
               case "results":
                 callbacks.onResults(parsed.results);
+                break;
+              case "sources":
+                callbacks.onSources(parsed.sources ?? []);
                 break;
               case "chunk":
                 callbacks.onChunk(parsed.text);

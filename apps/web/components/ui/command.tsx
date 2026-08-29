@@ -6,8 +6,24 @@ import { Command as CommandPrimitive } from "cmdk";
 import { Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogOverlay, DialogPortal } from "@/components/ui/dialog";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 
+/**
+ * Command palette — see docs/design-system/components.md#command-palette.
+ *
+ * `--cd-bg-panel`, `--cd-radius-md`, `--cd-shadow-dialog`, **560px wide,
+ * anchored 15vh from the top**. That geometry is the whole reason this file
+ * builds on the dialog *primitives* rather than on `DialogContent`: the shared
+ * content is a bottom sheet below 640px and a vertically centred panel above
+ * it, and a palette is neither. A palette that slides up from the bottom edge
+ * of a laptop screen is a sheet, and a palette centred in the viewport puts
+ * the field the user is typing into halfway down the page.
+ *
+ * It also drops `DialogContent`'s close button. A palette closes on Escape, on
+ * a click outside, and on picking something; an X in the corner would sit on
+ * top of the input.
+ */
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive>
@@ -15,7 +31,7 @@ const Command = React.forwardRef<
   <CommandPrimitive
     ref={ref}
     className={cn(
-      "flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground",
+      "flex h-full w-full flex-col overflow-hidden rounded-md bg-bg-panel text-fg",
       className
     )}
     {...props}
@@ -25,23 +41,41 @@ Command.displayName = CommandPrimitive.displayName;
 
 interface CommandDialogProps extends DialogProps {
   shouldFilter?: boolean;
+  /** Accessible name for the dialog. Rendered for screen readers only. */
+  label?: string;
+  className?: string;
 }
 
 const CommandDialog = ({
   children,
   shouldFilter = true,
+  label = "Command palette",
+  className,
   ...props
 }: CommandDialogProps) => {
   return (
     <Dialog {...props}>
-      <DialogContent className="overflow-hidden p-0">
-        <Command
-          shouldFilter={shouldFilter}
-          className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5"
+      <DialogPortal>
+        <DialogOverlay />
+        <DialogPrimitive.Content
+          className={cn(
+            "fixed left-1/2 top-[15vh] z-50 w-[calc(100vw-2rem)] max-w-[560px]",
+            "-translate-x-1/2 overflow-hidden rounded-md border border-line",
+            "bg-bg-panel text-fg shadow-[var(--cd-shadow-dialog)]",
+            "duration-cd ease-cd",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+            "motion-reduce:animate-none",
+            className
+          )}
         >
-          {children}
-        </Command>
-      </DialogContent>
+          <DialogPrimitive.Title className="sr-only">
+            {label}
+          </DialogPrimitive.Title>
+          <Command shouldFilter={shouldFilter}>{children}</Command>
+        </DialogPrimitive.Content>
+      </DialogPortal>
     </Dialog>
   );
 };
@@ -50,12 +84,19 @@ const CommandInput = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Input>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(({ className, ...props }, ref) => (
-  <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
-    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+  <div
+    className="flex items-center gap-2.5 border-b border-line px-4"
+    cmdk-input-wrapper=""
+  >
+    <Search
+      aria-hidden="true"
+      className="size-4 shrink-0 text-fg-tertiary [stroke-width:1.8]"
+    />
     <CommandPrimitive.Input
       ref={ref}
       className={cn(
-        "flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-12 w-full bg-transparent font-sans text-[15px] text-fg outline-none",
+        "placeholder:text-fg-tertiary disabled:cursor-not-allowed disabled:opacity-45",
         className
       )}
       {...props}
@@ -71,7 +112,12 @@ const CommandList = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <CommandPrimitive.List
     ref={ref}
-    className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
+    className={cn(
+      // Taller than a plain command list: the palette's saves are the same
+      // library rows `/search` renders, and three of those is a screenful.
+      "max-h-[min(60vh,480px)] overflow-y-auto overflow-x-hidden overscroll-contain",
+      className
+    )}
     {...props}
   />
 ));
@@ -84,7 +130,7 @@ const CommandEmpty = React.forwardRef<
 >((props, ref) => (
   <CommandPrimitive.Empty
     ref={ref}
-    className="py-6 text-center text-sm"
+    className="px-4 py-8 text-center font-sans text-sm text-fg-secondary"
     {...props}
   />
 ));
@@ -98,7 +144,11 @@ const CommandGroup = React.forwardRef<
   <CommandPrimitive.Group
     ref={ref}
     className={cn(
-      "overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground",
+      "overflow-hidden p-2 text-fg",
+      "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2",
+      "[&_[cmdk-group-heading]]:font-sans [&_[cmdk-group-heading]]:text-[11px]",
+      "[&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase",
+      "[&_[cmdk-group-heading]]:tracking-[.08em] [&_[cmdk-group-heading]]:text-fg-tertiary",
       className
     )}
     {...props}
@@ -113,7 +163,7 @@ const CommandSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <CommandPrimitive.Separator
     ref={ref}
-    className={cn("-mx-1 h-px bg-border", className)}
+    className={cn("h-px bg-line", className)}
     {...props}
   />
 ));
@@ -126,7 +176,12 @@ const CommandItem = React.forwardRef<
   <CommandPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-default gap-2 select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled=true]:pointer-events-none data-[selected=true]:bg-bg-inset data-[selected=true]:text-fg data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+      "relative flex cursor-default select-none items-center gap-2.5 rounded-sm px-2.5 py-2",
+      "font-sans text-sm text-fg outline-none",
+      "transition-colors duration-cd-fast ease-cd",
+      "data-[selected=true]:bg-bg-inset data-[selected=true]:text-fg",
+      "data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-45",
+      "[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
       className
     )}
     {...props}
@@ -142,7 +197,7 @@ const CommandShortcut = ({
   return (
     <span
       className={cn(
-        "ml-auto text-xs tracking-widest text-muted-foreground",
+        "ml-auto flex items-center gap-1 font-sans text-xs text-fg-tertiary",
         className
       )}
       {...props}
