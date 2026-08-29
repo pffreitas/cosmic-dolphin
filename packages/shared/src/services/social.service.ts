@@ -1,6 +1,7 @@
 import {
   BlockResponse,
   FollowResponse,
+  PublicCollectionListResponse,
   PublicProfile,
   PublicProfileListResponse,
   PublicSavesResponse,
@@ -70,6 +71,24 @@ export interface SocialService {
   ): Promise<PublicProfile | null>;
 
   listPublicSaves(
+    handle: string,
+    options?: SocialPageOptions
+  ): Promise<(PublicSavesResponse & { lastRow: SocialPageCursor | null }) | null>;
+
+  /** The Collections tab on `/u/{handle}`. Public collections only. */
+  listPublicCollections(
+    handle: string,
+    options?: SocialPageOptions
+  ): Promise<
+    | (PublicCollectionListResponse & { lastRow: SocialPageCursor | null })
+    | null
+  >;
+
+  /**
+   * The Likes tab on `/u/{handle}`. Public bookmarks only, paged on the
+   * **like's** timestamp because "recently liked" is a fact about the like.
+   */
+  listLikes(
     handle: string,
     options?: SocialPageOptions
   ): Promise<(PublicSavesResponse & { lastRow: SocialPageCursor | null }) | null>;
@@ -159,6 +178,81 @@ export class SocialServiceImpl implements SocialService {
       bookmarks: page.items.map((item) => mapDatabaseRowToBookmark(item)),
       lastRow: page.last
         ? { createdAt: new Date(page.last.created_at), id: page.last.id }
+        : null,
+    };
+  }
+
+  async listPublicCollections(
+    handle: string,
+    options: SocialPageOptions = {}
+  ): Promise<
+    | (PublicCollectionListResponse & { lastRow: SocialPageCursor | null })
+    | null
+  > {
+    const resolved = await this.resolveVisible(handle, options.viewerId);
+    if (!resolved) return null;
+
+    const { row, relationship } = resolved;
+
+    // Same rule as `listPublicSaves`: the profile stays reachable so the block
+    // can be undone from it, its content does not.
+    if (relationship?.viewerBlocked) {
+      return { collections: [], lastRow: null };
+    }
+
+    const limit = clampLimit(options.limit);
+    const rows = await this.socialRepository.listPublicCollections(
+      row.id,
+      limit + 1,
+      options.cursor ?? null
+    );
+
+    const page = takePage(rows, limit);
+
+    return {
+      collections: page.items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        description: item.description ?? undefined,
+        saveCount: item.save_count,
+        createdAt: new Date(item.created_at),
+      })),
+      lastRow: page.last
+        ? { createdAt: new Date(page.last.created_at), id: page.last.id }
+        : null,
+    };
+  }
+
+  async listLikes(
+    handle: string,
+    options: SocialPageOptions = {}
+  ): Promise<
+    (PublicSavesResponse & { lastRow: SocialPageCursor | null }) | null
+  > {
+    const resolved = await this.resolveVisible(handle, options.viewerId);
+    if (!resolved) return null;
+
+    const { row, relationship } = resolved;
+
+    if (relationship?.viewerBlocked) {
+      return { bookmarks: [], lastRow: null };
+    }
+
+    const limit = clampLimit(options.limit);
+    const rows = await this.socialRepository.listLikedPublicBookmarks(
+      row.id,
+      limit + 1,
+      options.cursor ?? null
+    );
+
+    const page = takePage(rows, limit);
+
+    return {
+      bookmarks: page.items.map((item) => mapDatabaseRowToBookmark(item)),
+      // The cursor is the *like's* position, not the bookmark's — the ordering
+      // it has to resume is the one the query used.
+      lastRow: page.last
+        ? { createdAt: new Date(page.last.liked_at), id: page.last.like_id }
         : null,
     };
   }

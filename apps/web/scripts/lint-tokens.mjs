@@ -42,11 +42,15 @@ const IGNORED = [
   "app/tokens.css",
 ];
 
-/** Temporarily tolerated. Delete the entry with the deliverable that fixes it. */
-const LEGACY = [
-  ["app/(auth-pages)", "D15 — auth pages"],
-  ["components/desktop-site-header.tsx", "D3 — header capsule"],
-];
+/**
+ * Temporarily tolerated. Delete the entry with the deliverable that fixes it.
+ *
+ * Empty as of D18, and it should stay that way: the auth pages were migrated
+ * and `desktop-site-header.tsx` was deleted outright along with the rest of
+ * the pre-revamp chrome. Nothing new goes here — a new surface with a raw
+ * colour in it is a surface that has not been designed yet.
+ */
+const LEGACY = [];
 
 const RULES = [
   {

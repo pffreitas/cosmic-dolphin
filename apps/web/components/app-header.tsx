@@ -82,8 +82,13 @@ function isActive(currentPath: string | undefined, href: string): boolean {
   return currentPath === href || currentPath.startsWith(`${href}/`);
 }
 
-/** 20px accent square with an offset dot, then the wordmark at 14px/600. */
-function Brandmark() {
+/**
+ * 20px accent square with an offset dot, then the wordmark at 14px/600.
+ *
+ * Exported because the auth pages need the same mark above their form, and a
+ * second hand-drawn copy of it is how two brandmarks start disagreeing.
+ */
+export function Brandmark() {
   return (
     <Link
       href="/"
@@ -184,6 +189,13 @@ const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
           </div>
 
           <div className="flex items-center gap-2 justify-self-end max-[900px]:flex-wrap max-[900px]:justify-self-start">
+            {/*
+              No handler, no chip. A search button that opens nothing is worse
+              than an absent one — it is a control that lies about what the
+              surface can do, and the signed-out header has no palette behind
+              it.
+            */}
+            {onSearch ? (
             <button
               type="button"
               onClick={onSearch}
@@ -200,6 +212,7 @@ const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
               Search
               <Kbd className="border-transparent border-b bg-transparent">⌘K</Kbd>
             </button>
+            ) : null}
 
             {saveButton}
 

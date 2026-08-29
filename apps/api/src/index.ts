@@ -12,6 +12,7 @@ import profileRoutes from './routes/profile';
 import userRoutes from './routes/users';
 import commentRoutes from './routes/comments';
 import feedRoutes from './routes/feed';
+import exploreRoutes from './routes/explore';
 import digestRoutes from './routes/digests';
 
 const server = Fastify({
@@ -73,6 +74,10 @@ server.register(async function (fastify) {
   // Digests are their own resource, not a corner of the feed: they have a
   // detail route, likes and a share link of their own.
   await fastify.register(digestRoutes, { prefix: '/api/v1' });
+  // Discovery. Its own resource rather than a fourth `FeedScope`: Explore
+  // ranks over everybody's public saves with no personalisation at all, and
+  // sharing the feed's route would have shared the feed's ranker.
+  await fastify.register(exploreRoutes, { prefix: '/api/v1' });
 });
 
 // Start server

@@ -705,6 +705,74 @@ export interface PublicProfileListResponse {
 }
 
 /**
+ * A collection as anyone is allowed to see it — the Collections tab on
+ * `/u/{handle}`.
+ *
+ * Not `Collection` with a field removed. `saveCount` counts **public,
+ * non-archived** bookmarks only, so a public collection full of private links
+ * reports zero rather than reporting how much is behind the door. `userId`,
+ * `parentId`, `color` and `icon` are absent because none of them is anybody
+ * else's business.
+ */
+export interface PublicCollection {
+  id: string;
+  name: string;
+  description?: string;
+  saveCount: number;
+  createdAt: Date;
+}
+
+export interface PublicCollectionListResponse {
+  collections: PublicCollection[];
+  /** Absent when this page is the last one. */
+  nextCursor?: string;
+}
+
+/**
+ * A topic Explore's segmented control offers, counted over **everyone's**
+ * public saves inside the discovery window.
+ *
+ * Deliberately not `FeedRailTopic`, which counts the reader's own saves. Same
+ * shape, different question: one is "what have I been reading", the other is
+ * "what is the product reading". Sharing the type would invite sharing the
+ * query, and Explore would become a mirror of Home.
+ */
+export interface ExploreTopic {
+  topic: string;
+  count: number;
+}
+
+/** A public collection with public saves in it, and who it belongs to. */
+export interface TrendingCollection {
+  id: string;
+  name: string;
+  description?: string;
+  saveCount: number;
+  owner: FeedActor;
+}
+
+/** Someone worth following, with their public output for the window. */
+export interface TrendingPerson {
+  person: FeedActor;
+  savesThisWeek: number;
+  followers: number;
+  isFollowedByViewer: boolean;
+}
+
+export interface ExploreRailResponse {
+  collections: TrendingCollection[];
+  people: TrendingPerson[];
+}
+
+export interface ExploreResponse {
+  items: FeedItem[];
+  topics: ExploreTopic[];
+  /** Keyset, opaque. Absent when this page is the last one. */
+  nextCursor?: string;
+  computedAt: Date;
+}
+
+/**
  * A comment on a bookmark.
  *
  * One level of nesting: `parentId` is absent, or it is a *top-level* comment's

@@ -1,31 +1,24 @@
+/**
+ * Auth — docs/design-system/pages.md § Auth.
+ *
+ * **A single centred column at 400px on `--cd-bg-subtle`.** What was here: a
+ * `fixed inset-0 z-50 bg-white` overlay splitting the viewport in half, with a
+ * hand-rolled slate gradient and a raw translucent grid pattern filling the
+ * right side. Two problems, beyond the raw colours: `bg-white` meant dark
+ * mode was a white page, and `fixed inset-0 z-50` meant the auth pages painted
+ * over the app frame rather than sitting inside it.
+ *
+ * This sits in the flow, so the header capsule above it stays reachable and
+ * the sign-in page is a page rather than a takeover.
+ */
 export default async function Layout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-50 bg-white flex overflow-hidden">
-      {/* Left side - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center px-6 py-4 lg:px-10 overflow-y-auto">
-        <div className="w-full max-w-md">
-          {children}
-        </div>
-      </div>
-      
-      {/* Right side - Background */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 items-center justify-center relative overflow-hidden">
-        {/* Subtle grid pattern overlay */}
-        <div 
-          className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage: `
-              linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
-            `,
-            backgroundSize: '20px 20px'
-          }}
-        />
-      </div>
+    <div className="-mx-4 flex min-h-[70vh] justify-center bg-bg-subtle px-4 py-16 md:-mx-6 md:px-6">
+      <div className="w-full max-w-[400px]">{children}</div>
     </div>
   );
 }

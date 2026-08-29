@@ -212,6 +212,56 @@ class FakeSocialRepository implements SocialRepository {
       .filter((s) => s.user_id === userId && s.is_public && !s.is_archived)
       .slice(0, limit);
   }
+
+  /** Public collections, and the public saves filed in each. */
+  collections: {
+    id: string;
+    user_id: string;
+    name: string;
+    description: string | null;
+    is_public: boolean;
+    created_at: Date;
+    save_count: number;
+  }[] = [];
+
+  /** `bookmark_likes`, joined to `saves` by `bookmark_id`. */
+  likes: {
+    id: string;
+    user_id: string;
+    bookmark_id: string;
+    created_at: Date;
+  }[] = [];
+
+  collectionsQueried = false;
+  likesQueried = false;
+
+  async listPublicCollections(
+    userId: string,
+    limit: number,
+    _cursor?: SocialKeyset | null
+  ): Promise<any[]> {
+    this.collectionsQueried = true;
+    return this.collections
+      .filter((c) => c.user_id === userId && c.is_public)
+      .slice(0, limit);
+  }
+
+  async listLikedPublicBookmarks(
+    userId: string,
+    limit: number,
+    _cursor?: SocialKeyset | null
+  ): Promise<any[]> {
+    this.likesQueried = true;
+    return this.likes
+      .filter((like) => like.user_id === userId)
+      .map((like) => {
+        const save = this.saves.find((s) => s.id === like.bookmark_id);
+        if (!save || !save.is_public || save.is_archived) return null;
+        return { ...save, liked_at: like.created_at, like_id: like.id };
+      })
+      .filter(Boolean)
+      .slice(0, limit);
+  }
 }
 
 const ALICE = "11111111-1111-1111-1111-111111111111";
@@ -605,5 +655,140 @@ describe("social cursors", () => {
         )
       ).ok
     ).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D18's profile tabs — Collections and Likes
+// ---------------------------------------------------------------------------
+
+/**
+ * Both tabs go through the same `resolveVisible` gate the saves tab does, so
+ * what is worth testing is not that the gate exists a third time — it is that
+ * neither tab found a way around it, and that each is honest about what it
+ * counts.
+ */
+function buildTabs() {
+  const { repo, service } = buildGraph();
+
+  repo.collections.push(
+    {
+      id: "cccccccc-0000-0000-0000-000000000001",
+      user_id: ALICE,
+      name: "Public reading",
+      description: "Things worth keeping",
+      is_public: true,
+      created_at: new Date("2026-02-10T00:00:00Z"),
+      save_count: 3,
+    },
+    {
+      id: "cccccccc-0000-0000-0000-000000000002",
+      user_id: ALICE,
+      name: "Private drafts",
+      description: null,
+      is_public: false,
+      created_at: new Date("2026-02-11T00:00:00Z"),
+      save_count: 9,
+    }
+  );
+
+  // A private save of Bob's that Alice liked. The like is real; the bookmark
+  // is not public, so the Likes tab must not surface it.
+  repo.saves.push({
+    id: "bbbbbbbb-0000-0000-0000-000000000001",
+    user_id: BOB,
+    source_url: "https://example.com/private",
+    title: "Bob's private save",
+    is_public: false,
+    is_archived: false,
+    created_at: new Date("2026-03-02T00:00:00Z"),
+    updated_at: new Date("2026-03-02T00:00:00Z"),
+    processing_status: "completed",
+    is_private_link: false,
+  });
+
+  repo.likes.push(
+    {
+      id: "11111111-aaaa-0000-0000-000000000001",
+      user_id: ALICE,
+      bookmark_id: "aaaaaaaa-0000-0000-0000-000000000001",
+      created_at: new Date("2026-03-05T00:00:00Z"),
+    },
+    {
+      id: "11111111-aaaa-0000-0000-000000000002",
+      user_id: ALICE,
+      bookmark_id: "bbbbbbbb-0000-0000-0000-000000000001",
+      created_at: new Date("2026-03-06T00:00:00Z"),
+    }
+  );
+
+  return { repo, service };
+}
+
+describe("public collections tab", () => {
+  it("lists only the public collections", async () => {
+    const { service } = buildTabs();
+
+    const page = await service.listPublicCollections("alice", { viewerId: BOB });
+
+    expect(page?.collections.map((c) => c.name)).toEqual(["Public reading"]);
+    expect(page?.collections[0]?.saveCount).toBe(3);
+  });
+
+  it("returns nothing to someone the profile has blocked", async () => {
+    const { service } = buildTabs();
+    await service.block(ALICE, "bob");
+
+    // Alice blocked Bob, so from Bob's side Alice does not exist at all.
+    expect(await service.listPublicCollections("alice", { viewerId: BOB })).toBe(
+      null
+    );
+  });
+
+  it("returns an empty page — not the rows — to someone the viewer blocked", async () => {
+    const { repo, service } = buildTabs();
+    await service.block(BOB, "alice");
+
+    const page = await service.listPublicCollections("alice", { viewerId: BOB });
+
+    expect(page?.collections).toEqual([]);
+    // The refusal happened before the query, not after it.
+    expect(repo.collectionsQueried).toBe(false);
+  });
+
+  it("carries no email, however deeply nested", async () => {
+    const { service } = buildTabs();
+    const page = await service.listPublicCollections("alice", { viewerId: BOB });
+
+    expect(collectKeys(page)).not.toContain("email");
+  });
+});
+
+describe("likes tab", () => {
+  it("lists liked bookmarks that are public and drops the ones that are not", async () => {
+    const { service } = buildTabs();
+
+    const page = await service.listLikes("alice", { viewerId: BOB });
+
+    expect(page?.bookmarks.map((b) => b.title)).toEqual([
+      "Alice's public save",
+    ]);
+  });
+
+  it("returns nothing to someone the profile has blocked", async () => {
+    const { service } = buildTabs();
+    await service.block(ALICE, "bob");
+
+    expect(await service.listLikes("alice", { viewerId: BOB })).toBe(null);
+  });
+
+  it("does not query at all for someone the viewer blocked", async () => {
+    const { repo, service } = buildTabs();
+    await service.block(BOB, "alice");
+
+    const page = await service.listLikes("alice", { viewerId: BOB });
+
+    expect(page?.bookmarks).toEqual([]);
+    expect(repo.likesQueried).toBe(false);
   });
 });

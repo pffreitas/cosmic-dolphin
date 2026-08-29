@@ -121,6 +121,28 @@ model PublicProfileListResponse {
     nextCursor?: string;
 }
 
+@doc("""
+    A collection as anyone is allowed to see it.
+
+    `saveCount` counts **public, non-archived** saves only. The size of the
+    private half of a public collection is not a number anyone else gets, which
+    is why this is not `Collection` with a field removed.
+    """)
+model PublicCollection {
+    id: string;
+    name: string;
+    description?: string;
+    saveCount: int32;
+    createdAt: utcDateTime;
+}
+
+model PublicCollectionListResponse {
+    collections: PublicCollection[];
+
+    @doc("Absent when this page is the last one.")
+    nextCursor?: string;
+}
+
 model SocialError {
     error: string;
 }
@@ -208,6 +230,59 @@ interface Users {
         @doc("Opaque keyset cursor from the previous page.")
         @query
         cursor?: string,
+    ): PublicSavesResponse | {
+        @statusCode statusCode: 400;
+        @body body: SocialError;
+    } | {
+        @statusCode statusCode: 404;
+        @body body: SocialError;
+    } | {
+        @statusCode statusCode: 500;
+        @body body: SocialError;
+    };
+
+    @doc("""
+        A profile's **public** collections, newest first - the Collections tab
+        on `/u/{handle}`.
+
+        A collection is listed when `is_public` is set, whatever is filed
+        inside it. `saveCount` then counts only the public saves in it, so a
+        public collection full of private links reports zero rather than
+        leaking its size.
+        """)
+    @useAuth(BearerAuth)
+    @get
+    @route("/{handle}/collections")
+    getCollections(
+        @path handle: string,
+        @query limit?: int32 = 24,
+        @query cursor?: string,
+    ): PublicCollectionListResponse | {
+        @statusCode statusCode: 400;
+        @body body: SocialError;
+    } | {
+        @statusCode statusCode: 404;
+        @body body: SocialError;
+    } | {
+        @statusCode statusCode: 500;
+        @body body: SocialError;
+    };
+
+    @doc("""
+        The **public** bookmarks this profile has liked, most recently liked
+        first - the Likes tab on `/u/{handle}`.
+
+        A like on a bookmark that is not public is not listed, whoever owns it.
+        A like is a public act on a public thing; it is not a licence to see
+        somebody's private library through the back door.
+        """)
+    @useAuth(BearerAuth)
+    @get
+    @route("/{handle}/likes")
+    getLikes(
+        @path handle: string,
+        @query limit?: int32 = 24,
+        @query cursor?: string,
     ): PublicSavesResponse | {
         @statusCode statusCode: 400;
         @body body: SocialError;

@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyReply } from "fastify";
 import {
   BlockResponse,
   FollowResponse,
+  PublicCollectionListResponse,
   PublicProfile,
   PublicProfileListResponse,
   PublicSavesResponse,
@@ -207,6 +208,112 @@ export default async function userRoutes(fastify: FastifyInstance) {
         });
       } catch (error) {
         fastify.log.error({ error }, "Get public saves error");
+        return reply.status(500).send({ error: "Internal server error" });
+      }
+    }
+  );
+
+  /**
+   * The Collections and Likes tabs on `/u/{handle}`.
+   *
+   * Both go through `SocialService`, which is where the block rule lives, so
+   * neither handler has a visibility branch of its own to get wrong. The only
+   * thing they differ in is which service method they call and what the page
+   * is called in the response.
+   */
+  fastify.get<{
+    Params: { handle: string };
+    Querystring: { limit?: string; cursor?: string };
+    Reply: PublicCollectionListResponse | { error: string };
+  }>(
+    "/users/:handle/collections",
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      try {
+        const { handle } = request.params;
+        if (!isPossibleHandle(handle)) return notFound(reply);
+
+        const parsed = socialPageQuerySchema.safeParse(request.query ?? {});
+        if (!parsed.success) {
+          return reply
+            .status(400)
+            .send({ error: firstZodMessage(parsed.error) });
+        }
+
+        let cursor: SocialKeyset | null = null;
+        if (parsed.data.cursor) {
+          const decoded = decodeSocialCursor(parsed.data.cursor);
+          if (!decoded.ok) {
+            return reply.status(400).send({ error: decoded.error });
+          }
+          cursor = decoded.cursor;
+        }
+
+        const page = await services.social.listPublicCollections(handle, {
+          viewerId: request.userId,
+          limit: parsed.data.limit,
+          cursor,
+        });
+
+        if (!page) return notFound(reply);
+
+        return reply.send({
+          collections: page.collections,
+          ...(page.lastRow
+            ? { nextCursor: encodeSocialCursor(page.lastRow) }
+            : {}),
+        });
+      } catch (error) {
+        fastify.log.error({ error }, "Get public collections error");
+        return reply.status(500).send({ error: "Internal server error" });
+      }
+    }
+  );
+
+  fastify.get<{
+    Params: { handle: string };
+    Querystring: { limit?: string; cursor?: string };
+    Reply: PublicSavesResponse | { error: string };
+  }>(
+    "/users/:handle/likes",
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      try {
+        const { handle } = request.params;
+        if (!isPossibleHandle(handle)) return notFound(reply);
+
+        const parsed = socialPageQuerySchema.safeParse(request.query ?? {});
+        if (!parsed.success) {
+          return reply
+            .status(400)
+            .send({ error: firstZodMessage(parsed.error) });
+        }
+
+        let cursor: SocialKeyset | null = null;
+        if (parsed.data.cursor) {
+          const decoded = decodeSocialCursor(parsed.data.cursor);
+          if (!decoded.ok) {
+            return reply.status(400).send({ error: decoded.error });
+          }
+          cursor = decoded.cursor;
+        }
+
+        const page = await services.social.listLikes(handle, {
+          viewerId: request.userId,
+          limit: parsed.data.limit,
+          cursor,
+        });
+
+        if (!page) return notFound(reply);
+
+        return reply.send({
+          bookmarks: page.bookmarks,
+          ...(page.lastRow
+            ? { nextCursor: encodeSocialCursor(page.lastRow) }
+            : {}),
+        });
+      } catch (error) {
+        fastify.log.error({ error }, "Get likes error");
         return reply.status(500).send({ error: "Internal server error" });
       }
     }

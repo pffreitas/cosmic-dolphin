@@ -67,6 +67,21 @@ export interface ProfileCountsRow {
   collections: number;
 }
 
+/**
+ * A public collection row, with the public half of its contents counted.
+ *
+ * The count is computed in the same statement rather than per row: the
+ * Collections tab renders a page of them and a count query per collection is a
+ * query per row, which is the thing keyset pagination exists to avoid.
+ */
+export interface PublicCollectionRow {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: Date;
+  save_count: number;
+}
+
 export interface SocialRepository {
   findPublicProfileByHandle(handle: string): Promise<PublicProfileRow | null>;
   findPublicProfileById(id: string): Promise<PublicProfileRow | null>;
@@ -102,6 +117,36 @@ export interface SocialRepository {
     limit: number,
     cursor?: SocialKeyset | null
   ): Promise<BookmarkRow[]>;
+
+  /**
+   * The profile's public collections, newest first, each with its public save
+   * count.
+   *
+   * `is_public` on the collection is what makes it listed; `is_public` on each
+   * bookmark is what makes it counted. The two are separate decisions and the
+   * query keeps them separate — a public collection of private links is a
+   * legitimate thing to have, and it reports zero.
+   */
+  listPublicCollections(
+    userId: string,
+    limit: number,
+    cursor?: SocialKeyset | null
+  ): Promise<PublicCollectionRow[]>;
+
+  /**
+   * Public bookmarks this profile has liked, most recently liked first.
+   *
+   * Ordered and paged on the **like's** `created_at`, not the bookmark's:
+   * "recently liked" is a fact about the like. `is_public` is re-checked on
+   * the bookmark every time rather than trusted from when the like was made,
+   * because a save can be made private after it was liked and the like must
+   * not keep it visible.
+   */
+  listLikedPublicBookmarks(
+    userId: string,
+    limit: number,
+    cursor?: SocialKeyset | null
+  ): Promise<(BookmarkRow & { liked_at: Date; like_id: string })[]>;
 }
 
 export class SocialRepositoryImpl
@@ -378,5 +423,105 @@ export class SocialRepositoryImpl
 
       return await query.execute();
     }, "listPublicSaves");
+  }
+
+  async listPublicCollections(
+    userId: string,
+    limit: number,
+    cursor?: SocialKeyset | null
+  ): Promise<PublicCollectionRow[]> {
+    return this.executeQuery(async () => {
+      let query = this.db
+        .selectFrom("collections")
+        .select([
+          "collections.id",
+          "collections.name",
+          "collections.description",
+          "collections.created_at",
+        ])
+        // A correlated count rather than a join plus GROUP BY: the page is at
+        // most a hundred rows and the subquery keeps the keyset ordering on
+        // `collections` alone, which is what makes the cursor comparable.
+        .select((eb) =>
+          eb
+            .selectFrom("bookmarks")
+            .select((inner) =>
+              inner.fn.countAll<number>().as("count")
+            )
+            .whereRef("bookmarks.collection_id", "=", "collections.id")
+            .where("bookmarks.is_public", "=", true)
+            .where("bookmarks.is_archived", "=", false)
+            .as("save_count")
+        )
+        .where("collections.user_id", "=", userId)
+        .where("collections.is_public", "=", true)
+        .orderBy("collections.created_at", "desc")
+        .orderBy("collections.id", "desc")
+        .limit(limit);
+
+      if (cursor) {
+        query = query.where((eb) =>
+          eb.or([
+            eb("collections.created_at", "<", cursor.createdAt),
+            eb.and([
+              eb("collections.created_at", "=", cursor.createdAt),
+              eb("collections.id", "<", cursor.id),
+            ]),
+          ])
+        );
+      }
+
+      const rows = await query.execute();
+
+      return rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        created_at: row.created_at,
+        // Postgres counts come back as strings through the driver.
+        save_count: Number(row.save_count ?? 0),
+      }));
+    }, "listPublicCollections");
+  }
+
+  async listLikedPublicBookmarks(
+    userId: string,
+    limit: number,
+    cursor?: SocialKeyset | null
+  ): Promise<(BookmarkRow & { liked_at: Date; like_id: string })[]> {
+    return this.executeQuery(async () => {
+      let query = this.db
+        .selectFrom("bookmark_likes")
+        .innerJoin("bookmarks", "bookmarks.id", "bookmark_likes.bookmark_id")
+        .selectAll("bookmarks")
+        .select([
+          "bookmark_likes.created_at as liked_at",
+          "bookmark_likes.id as like_id",
+        ])
+        .where("bookmark_likes.user_id", "=", userId)
+        // Re-checked here, not trusted from when the like was made.
+        .where("bookmarks.is_public", "=", true)
+        .where("bookmarks.is_archived", "=", false)
+        .orderBy("bookmark_likes.created_at", "desc")
+        .orderBy("bookmark_likes.id", "desc")
+        .limit(limit);
+
+      if (cursor) {
+        query = query.where((eb) =>
+          eb.or([
+            eb("bookmark_likes.created_at", "<", cursor.createdAt),
+            eb.and([
+              eb("bookmark_likes.created_at", "=", cursor.createdAt),
+              eb("bookmark_likes.id", "<", cursor.id),
+            ]),
+          ])
+        );
+      }
+
+      return (await query.execute()) as unknown as (BookmarkRow & {
+        liked_at: Date;
+        like_id: string;
+      })[];
+    }, "listLikedPublicBookmarks");
   }
 }

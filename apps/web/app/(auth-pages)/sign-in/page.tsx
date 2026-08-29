@@ -1,145 +1,177 @@
 "use client";
 
-import { signInAction } from "@/app/actions";
-import { FormMessage, Message } from "@/components/form-message";
-import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { SignInWith } from "./sign-in-with";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
+import { signInAction } from "@/app/actions";
+import { FormMessage, fieldForAuthError } from "@/components/form-message";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { focusRing } from "@/components/ui/focus-ring";
+import { cn } from "@/lib/utils";
+import { AuthField, AuthShell } from "../auth-shell";
+import { SignInWith } from "./sign-in-with";
+
+/**
+ * Sign in — docs/design-system/pages.md § Auth.
+ *
+ * Two bugs went out with the restyle, and both were worse than the styling:
+ *
+ *  1. **The page rendered nothing when there was a message.** The whole body
+ *     sat inside `if (!error && !success && !messageParam)`, with no `else`.
+ *     So a failed sign-in redirected back to `/sign-in?error=…` and the user
+ *     got a blank page — the one moment the form is most needed.
+ *  2. **Two of the three provider buttons did nothing.** Apple and Facebook
+ *     were rendered `disabled` with no explanation. A control for something
+ *     the product cannot do is a promise it cannot keep; they are gone rather
+ *     than greyed.
+ *
+ * The error now renders under the field it is about, never as a banner.
+ */
 export default function Login() {
+  return (
+    // `useSearchParams` needs a boundary or the whole route opts out of static
+    // rendering with a build-time warning. The fallback cannot be the form
+    // itself — it reads the same hook and would suspend again.
+    <Suspense fallback={null}>
+      <SignInForm />
+    </Suspense>
+  );
+}
+
+function SignInForm() {
   const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
-  
-  // Build message object from search params
+
   const error = searchParams.get("error");
   const success = searchParams.get("success");
-  const messageParam = searchParams.get("message");
+  const notice = searchParams.get("message");
 
-  let message: Message = { message: "" };
-  if (error) message = { error };
-  else if (success) message = { success };
-  else if (messageParam) message = { message: messageParam };
+  // Which field the sentence is about. Sign-in failures are overwhelmingly
+  // about the credential pair, so the password field is the fallback.
+  const errorField = error ? fieldForAuthError(error, "password") : null;
 
-  if (!error && !success && !messageParam) {
-    return (
-      <div className="w-full">
-        {/* Logo */}
-        <div className="flex items-center gap-2 mb-6">
-          <div className="text-2xl">🐬</div>
-          <h2 className="font-noto text-lg font-normal text-gray-800">Cosmic Dolphin</h2>
-        </div>
-
-        {/* Header */}
-        <h1 className="text-3xl font-bold text-gray-900 mb-1" style={{ fontFamily: 'Georgia, serif' }}>
-          Welcome back!
-        </h1>
-        <p className="text-sm text-gray-600 mb-5">
-          Simplify your workflow and boost your productivity with <span className="font-semibold">Cosmic Dolphin</span>.
-        </p>
-
-        {/* Form */}
-        <form action={signInAction} className="space-y-2.5">
-          {/* Email field */}
+  return (
+    <AuthShell
+      title="Welcome back"
+      subtitle="Sign in to reach your library, your feed and everything you have saved."
+      footer={
+        <>
+          Not a member yet?{" "}
+          <Link
+            href="/sign-up"
+            className={cn(
+              "rounded-sm font-medium text-accent underline-offset-4 hover:underline",
+              focusRing,
+            )}
+          >
+            Create an account
+          </Link>
+        </>
+      }
+    >
+      <form action={signInAction} className="flex flex-col gap-4">
+        <AuthField
+          label="Email"
+          htmlFor="sign-in-email"
+          message={
+            errorField === "email" ? (
+              <FormMessage id="sign-in-email-message" message={{ error: error! }} />
+            ) : null
+          }
+        >
           <Input
+            id="sign-in-email"
             name="email"
             type="email"
-            placeholder="Username"
+            autoComplete="email"
+            placeholder="you@example.com"
             required
-            className="h-11 rounded-full border-gray-300 px-5 text-sm placeholder:text-gray-400 focus:border-gray-400 focus:ring-0"
+            aria-invalid={errorField === "email"}
+            aria-describedby={
+              errorField === "email" ? "sign-in-email-message" : undefined
+            }
           />
+        </AuthField>
 
-          {/* Password field */}
+        <AuthField
+          label="Password"
+          htmlFor="sign-in-password"
+          message={
+            errorField === "password" ? (
+              <FormMessage
+                id="sign-in-password-message"
+                message={{ error: error! }}
+              />
+            ) : null
+          }
+        >
           <div className="relative">
             <Input
-              type={showPassword ? "text" : "password"}
+              id="sign-in-password"
               name="password"
-              placeholder="Password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              placeholder="Your password"
               required
-              className="h-11 rounded-full border-gray-300 px-5 pr-11 text-sm placeholder:text-gray-400 focus:border-gray-400 focus:ring-0"
+              className="pr-10"
+              aria-invalid={errorField === "password"}
+              aria-describedby={
+                errorField === "password" ? "sign-in-password-message" : undefined
+              }
             />
             <button
               type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              aria-label="Toggle password visibility"
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 rounded-sm"
+              onClick={() => setShowPassword((shown) => !shown)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              className={cn(
+                "absolute right-1 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-sm",
+                "text-fg-tertiary transition-colors duration-cd-fast ease-cd hover:text-fg-secondary",
+                focusRing,
+              )}
             >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              {showPassword ? (
+                <EyeOff aria-hidden="true" className="size-4" />
+              ) : (
+                <Eye aria-hidden="true" className="size-4" />
+              )}
             </button>
           </div>
+        </AuthField>
 
-          {/* Forgot password link */}
-          <div className="flex justify-end pt-0.5">
-            <Link
-              href="/forgot-password"
-              className="text-xs text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              Forgot Password?
-            </Link>
-          </div>
+        {/* Not an error, so not attached to a field. */}
+        {success ? <FormMessage message={{ success }} /> : null}
+        {notice ? <FormMessage message={{ message: notice }} /> : null}
 
-          {/* Login button */}
-          <button
-            type="submit"
-            className="w-full h-11 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-full text-sm transition-colors"
-          >
-            Login
-          </button>
-        </form>
-
-        {/* Divider */}
-        <div className="flex items-center gap-3 my-4">
-          <div className="flex-1 h-px bg-gray-200"></div>
-          <span className="text-xs text-gray-500">or continue with</span>
-          <div className="flex-1 h-px bg-gray-200"></div>
-        </div>
-
-        {/* Social login buttons */}
-        <div className="flex justify-center gap-3">
-          <SignInWith provider="google" />
-          <SocialButton icon="apple" disabled />
-          <SocialButton icon="facebook" disabled />
-        </div>
-
-        {/* Register link */}
-        <p className="text-center mt-5 text-sm text-gray-600">
-          Not a member?{" "}
+        <div className="flex justify-end">
           <Link
-            href="/sign-up"
-            className="text-[#7fb069] font-medium hover:text-[#6a9957] transition-colors"
+            href="/forgot-password"
+            className={cn(
+              "rounded-sm font-sans text-[12.5px] leading-none text-fg-secondary underline-offset-4 hover:text-fg hover:underline",
+              focusRing,
+            )}
           >
-            Register now
+            Forgot your password?
           </Link>
-        </p>
+        </div>
+
+        <Button type="submit" variant="primary" className="w-full">
+          Sign in
+        </Button>
+      </form>
+
+      <div className="flex items-center gap-3">
+        <span className="h-px flex-1 bg-line" />
+        <span className="font-sans text-[12px] leading-none text-fg-tertiary">
+          or
+        </span>
+        <span className="h-px flex-1 bg-line" />
       </div>
-    );
-  }
-}
 
-function SocialButton({ icon, disabled }: { icon: "apple" | "facebook"; disabled?: boolean }) {
-  const icons = {
-    apple: (
-      <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white">
-        <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-      </svg>
-    ),
-    facebook: (
-      <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white">
-        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-      </svg>
-    ),
-  };
-
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      aria-label={`Sign in with ${icon}`}
-      className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2"
-    >
-      {icons[icon]}
-    </button>
+      <SignInWith provider="google" />
+    </AuthShell>
   );
 }

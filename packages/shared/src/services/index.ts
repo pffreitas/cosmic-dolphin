@@ -15,6 +15,7 @@ export * from "./embedding.service";
 export * from "./search.service";
 export * from "./reading.service";
 export * from "./social.service";
+export * from "./explore.service";
 export * from "./comment.service";
 export * from "./digest.config";
 export * from "./digest.prompt";
@@ -38,6 +39,7 @@ import { ProfileService, ProfileServiceImpl } from "./profile.service";
 import { SearchService, SearchServiceImpl } from "./search.service";
 import { ReadingService, ReadingServiceImpl } from "./reading.service";
 import { SocialService, SocialServiceImpl } from "./social.service";
+import { ExploreService, ExploreServiceImpl } from "./explore.service";
 import { CommentService, CommentServiceImpl } from "./comment.service";
 import {
   FeedRankingService,
@@ -64,6 +66,7 @@ import {
   CommentRepositoryImpl,
   DigestRepositoryImpl,
   FeedRepositoryImpl,
+  ExploreRepositoryImpl,
 } from "../repositories";
 import { AI } from "../ai";
 
@@ -82,6 +85,7 @@ export interface ServiceContainer {
   comment: CommentService;
   feed: FeedRankingService;
   digest: DigestService;
+  explore: ExploreService;
 }
 
 /**
@@ -105,6 +109,7 @@ export function createServiceContainer(
   const commentRepository = new CommentRepositoryImpl(db);
   const feedRepository = new FeedRepositoryImpl(db);
   const digestRepository = new DigestRepositoryImpl(db);
+  const exploreRepository = new ExploreRepositoryImpl(db);
 
   const ai = new AI();
   const embeddingService = new EmbeddingServiceImpl();
@@ -154,5 +159,8 @@ export function createServiceContainer(
     // ever reaches its read, like and share paths. Same object either way —
     // the AI call lives in `packages/shared`, never in an app.
     digest: new DigestServiceImpl(digestRepository, ai),
+    // No social service and no ranker: Explore ranks over public rows with a
+    // block filter of its own, and hands nothing to the personalised path.
+    explore: new ExploreServiceImpl(exploreRepository),
   };
 }

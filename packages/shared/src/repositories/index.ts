@@ -50,10 +50,23 @@ export {
 } from "./social.repository";
 export type {
   PublicProfileRow,
+  PublicCollectionRow,
   ProfileCountsRow,
   RelationshipState,
   SocialKeyset,
 } from "./social.repository";
+export {
+  ExploreRepositoryImpl,
+  EXPLORE_WINDOW_DAYS,
+} from "./explore.repository";
+export type {
+  ExploreRepository,
+  ExploreCandidateRow,
+  ExploreKeyset,
+  ExploreTopicRow,
+  TrendingCollectionRow,
+  TrendingPersonRow,
+} from "./explore.repository";
 export {
   CommentRepository,
   CommentRepositoryImpl,

@@ -25,41 +25,6 @@
 }
 
 
-/* cd-tokens-allow-start: legacy .shimmer, deleted outright in D18 */
-.shimmer {
-  font-size: 1rem;
-  font-weight: bold;
-  color: #302b57;
-  position: relative;
-  overflow: hidden;
-  /* Create a gradient background */
-  background: linear-gradient(
-    to right,
-    #9c9ab3 0%,
-    #161429 20%,
-    #9c9ab3 40%,
-    #161429 60%,
-    #9c9ab3 80%,
-    #161429 100%
-  );
-  background-size: 200% 100%;
-  /* Clip the background to the text */
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  /* Animation */
-  animation: shimmer 5s linear infinite;
-}
-
-/* Define the shimmer animation */
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-/* cd-tokens-allow-end */
 
 /* TipTap Editor Styles */
 .tiptap {
