@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { space } from '@/constants/theme';
 
 export default function NotFoundScreen() {
   return (
@@ -23,10 +24,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    padding: space.s5,
   },
   link: {
-    marginTop: 15,
-    paddingVertical: 15,
+    marginTop: space.s4,
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingVertical: space.s3,
   },
 });

@@ -6,8 +6,9 @@
     "dev": "next dev --port 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . && bun run lint:tokens",
+    "lint": "eslint . && bun run lint:tokens && bun run tokens:check",
     "lint:tokens": "node scripts/lint-tokens.mjs",
+    "tokens:check": "node ../../scripts/generate-tokens.mjs --check",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "sync:highlight-anchor": "node scripts/sync-highlight-anchor.mjs"

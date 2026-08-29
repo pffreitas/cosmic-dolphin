@@ -26,8 +26,9 @@ import {
   removeCachedBookmark,
 } from '@/lib/bookmark-cache';
 import { isAuthError } from '@/lib/api-errors';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { textStyle } from '@/constants/fonts';
+import { radius, space } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 
 function extractDomain(url: string): string {
   try {
@@ -55,8 +56,7 @@ export default function BookmarkDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
-  const colorScheme = useColorScheme() ?? 'light';
-  const colors = Colors[colorScheme];
+  const { colors } = useTheme();
 
   const [bookmark, setBookmark] = useState<Bookmark | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -79,104 +79,96 @@ export default function BookmarkDetailScreen() {
   // Markdown styles based on color scheme - must be called before any early returns
   const markdownStyles = useMemo(() => ({
     body: {
-      color: colors.textSecondary,
-      fontSize: 16,
-      lineHeight: 24,
+      ...textStyle('body'),
+      color: colors.fgSecondary,
     },
     heading1: {
-      color: colors.text,
-      fontSize: 22,
-      fontWeight: '700' as const,
-      marginTop: 16,
-      marginBottom: 8,
+      ...textStyle('title2'),
+      color: colors.fg,
+      marginTop: space.s4,
+      marginBottom: space.s2,
     },
     heading2: {
-      color: colors.text,
-      fontSize: 20,
-      fontWeight: '600' as const,
-      marginTop: 14,
-      marginBottom: 6,
+      ...textStyle('title3'),
+      color: colors.fg,
+      marginTop: space.s3,
+      marginBottom: space.s2,
     },
     heading3: {
-      color: colors.text,
-      fontSize: 18,
-      fontWeight: '600' as const,
-      marginTop: 12,
-      marginBottom: 4,
+      ...textStyle('title3'),
+      color: colors.fg,
+      marginTop: space.s3,
+      marginBottom: space.s1,
     },
     paragraph: {
       marginTop: 0,
-      marginBottom: 12,
+      marginBottom: space.s3,
     },
     bullet_list: {
-      marginBottom: 12,
+      marginBottom: space.s3,
     },
     ordered_list: {
-      marginBottom: 12,
+      marginBottom: space.s3,
     },
     list_item: {
-      marginBottom: 4,
+      marginBottom: space.s1,
     },
     bullet_list_icon: {
-      color: colors.textSecondary,
-      fontSize: 16,
-      lineHeight: 24,
+      ...textStyle('body'),
+      color: colors.fgSecondary,
     },
     ordered_list_icon: {
-      color: colors.textSecondary,
-      fontSize: 16,
-      lineHeight: 24,
+      ...textStyle('body'),
+      color: colors.fgSecondary,
     },
     strong: {
-      color: colors.text,
+      color: colors.fg,
       fontWeight: '600' as const,
     },
     em: {
       fontStyle: 'italic' as const,
     },
     link: {
-      color: colors.tint,
+      color: colors.accent,
       textDecorationLine: 'underline' as const,
     },
     blockquote: {
-      backgroundColor: colors.backgroundSecondary,
-      borderLeftColor: colors.tint,
-      borderLeftWidth: 4,
-      paddingLeft: 12,
-      paddingVertical: 8,
-      marginVertical: 12,
+      ...textStyle('quote'),
+      backgroundColor: colors.hlBg,
+      borderLeftColor: colors.hlLine,
+      borderLeftWidth: space.s1,
+      paddingLeft: space.s3,
+      paddingVertical: space.s2,
+      marginVertical: space.s3,
     },
     code_inline: {
-      backgroundColor: colors.backgroundSecondary,
-      color: colors.text,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 4,
-      fontSize: 14,
-      fontFamily: 'SpaceMono',
+      ...textStyle('bodySm'),
+      backgroundColor: colors.bgInset,
+      color: colors.fg,
+      paddingHorizontal: space.s2,
+      paddingVertical: space.s1 / 2,
+      borderRadius: radius.xs,
     },
     code_block: {
-      backgroundColor: colors.backgroundSecondary,
-      color: colors.text,
-      padding: 12,
-      borderRadius: 8,
-      fontSize: 14,
-      fontFamily: 'SpaceMono',
-      marginVertical: 12,
+      ...textStyle('bodySm'),
+      backgroundColor: colors.bgInset,
+      color: colors.fg,
+      padding: space.s3,
+      borderRadius: radius.md,
+      marginVertical: space.s3,
     },
     fence: {
-      backgroundColor: colors.backgroundSecondary,
-      color: colors.text,
-      padding: 12,
-      borderRadius: 8,
-      fontSize: 14,
-      fontFamily: 'SpaceMono',
-      marginVertical: 12,
+      ...textStyle('bodySm'),
+      backgroundColor: colors.bgInset,
+      color: colors.fg,
+      padding: space.s3,
+      borderRadius: radius.md,
+      marginVertical: space.s3,
     },
     hr: {
       backgroundColor: colors.border,
-      height: 1,
-      marginVertical: 16,
+      height: StyleSheet.hairlineWidth,
+      marginVertical: space.s4,
     },
   }), [colors]);
 
@@ -400,14 +392,22 @@ export default function BookmarkDetailScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['top']}>
         <View style={styles.header}>
-          <Pressable onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={28} color={colors.text} />
+          <Pressable
+            onPress={handleBack}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            style={({ pressed }) => [
+              styles.backButton,
+              { backgroundColor: pressed ? colors.bgInset : 'transparent' },
+            ]}
+          >
+            <Ionicons name="chevron-back" size={28} color={colors.fg} />
           </Pressable>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.tint} />
+          <ActivityIndicator size="large" color={colors.accent} />
         </View>
       </SafeAreaView>
     );
@@ -415,18 +415,26 @@ export default function BookmarkDetailScreen() {
 
   if (error || !bookmark) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['top']}>
         <View style={styles.header}>
-          <Pressable onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={28} color={colors.text} />
+          <Pressable
+            onPress={handleBack}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            style={({ pressed }) => [
+              styles.backButton,
+              { backgroundColor: pressed ? colors.bgInset : 'transparent' },
+            ]}
+          >
+            <Ionicons name="chevron-back" size={28} color={colors.fg} />
           </Pressable>
         </View>
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color={colors.textSecondary} />
-          <Text style={[styles.errorTitle, { color: colors.text }]}>
+          <Ionicons name="alert-circle-outline" size={space.s7} color={colors.danger} />
+          <Text style={[textStyle('title3'), { color: colors.fg }]}>
             Something went wrong
           </Text>
-          <Text style={[styles.errorSubtitle, { color: colors.textSecondary }]}>
+          <Text style={[textStyle('bodySm'), styles.errorSubtitle, { color: colors.fgSecondary }]}>
             {error || 'Bookmark not found'}
           </Text>
         </View>
@@ -443,54 +451,97 @@ export default function BookmarkDetailScreen() {
     bookmark.isPrivateLink && bookmark.processingStatus === 'processing';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['top']}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <Pressable onPress={handleBack} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={28} color={colors.text} />
+      <View
+        style={[
+          styles.header,
+          { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
+        ]}
+      >
+        <Pressable
+            onPress={handleBack}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            style={({ pressed }) => [
+              styles.backButton,
+              { backgroundColor: pressed ? colors.bgInset : 'transparent' },
+            ]}
+          >
+          <Ionicons name="chevron-back" size={28} color={colors.fg} />
         </Pressable>
         <View style={styles.headerActions}>
           <Pressable
             onPress={handleLikeToggle}
-            style={styles.likeButton}
+            accessibilityRole="button"
+            accessibilityLabel={isLiked ? 'Unlike' : 'Like'}
+            accessibilityState={{ selected: isLiked }}
+            style={({ pressed }) => [
+              styles.likeButton,
+              { backgroundColor: pressed ? colors.bgInset : 'transparent' },
+            ]}
             disabled={isLikeLoading}
             testID="like-button"
           >
             <Ionicons
               name={isLiked ? "heart" : "heart-outline"}
               size={22}
-              color={isLiked ? '#ef4444' : colors.textSecondary}
+              color={isLiked ? colors.like : colors.fgSecondary}
             />
             {likeCount > 0 && (
-              <Text style={[styles.likeCountText, { color: isLiked ? '#ef4444' : colors.textSecondary }]}>
+              <Text
+                style={[
+                  textStyle('meta'),
+                  styles.likeCountText,
+                  { color: isLiked ? colors.like : colors.fgSecondary },
+                ]}
+              >
                 {likeCount}
               </Text>
             )}
           </Pressable>
           <Pressable
             onPress={handleReadToggle}
-            style={styles.headerButton}
+            accessibilityRole="button"
+            accessibilityLabel={isRead ? 'Mark unread' : 'Mark read'}
+            style={({ pressed }) => [
+              styles.headerButton,
+              { backgroundColor: pressed ? colors.bgInset : 'transparent' },
+            ]}
             disabled={isReadLoading}
           >
             <Ionicons
               name={isRead ? "return-up-back-outline" : "checkmark-done-outline"}
               size={22}
-              color={isRead ? colors.tint : colors.textSecondary}
+              color={isRead ? colors.accent : colors.fgSecondary}
             />
           </Pressable>
           <Pressable
             onPress={handleShareToggle}
-            style={styles.headerButton}
+            accessibilityRole="button"
+            accessibilityLabel={isShared ? 'Stop sharing' : 'Share'}
+            style={({ pressed }) => [
+              styles.headerButton,
+              { backgroundColor: pressed ? colors.bgInset : 'transparent' },
+            ]}
             disabled={isShareLoading}
           >
             <Ionicons
               name={isShared ? "share" : "share-outline"}
               size={22}
-              color={isShared ? colors.tint : colors.textSecondary}
+              color={isShared ? colors.accent : colors.fgSecondary}
             />
           </Pressable>
-          <Pressable onPress={handleOpenUrl} style={styles.headerButton}>
-            <Ionicons name="open-outline" size={22} color={colors.tint} />
+          <Pressable
+            onPress={handleOpenUrl}
+            accessibilityRole="button"
+            accessibilityLabel="Open original"
+            style={({ pressed }) => [
+              styles.headerButton,
+              { backgroundColor: pressed ? colors.bgInset : 'transparent' },
+            ]}
+          >
+            <Ionicons name="open-outline" size={22} color={colors.accent} />
           </Pressable>
         </View>
       </View>
@@ -517,18 +568,18 @@ export default function BookmarkDetailScreen() {
         <View style={styles.content}>
           {/* Source */}
           <View style={styles.sourceContainer}>
-            <View style={[styles.sourceIcon, { backgroundColor: colors.textSecondary }]}>
-              <Text style={styles.sourceIconText}>
+            <View style={[styles.sourceIcon, { backgroundColor: colors.bgInset }]}>
+              <Text style={[textStyle('label'), styles.sourceIconText, { color: colors.fgSecondary }]}>
                 {siteName.charAt(0).toUpperCase()}
               </Text>
             </View>
-            <Text style={[styles.sourceName, { color: colors.textSecondary }]}>
+            <Text style={[textStyle('meta'), { color: colors.fgSecondary }]}>
               {siteName}
             </Text>
             {readingTime && (
               <>
-                <Text style={[styles.dot, { color: colors.textSecondary }]}>·</Text>
-                <Text style={[styles.readingTime, { color: colors.textSecondary }]}>
+                <Text style={[textStyle('meta'), { color: colors.fgTertiary }]}>·</Text>
+                <Text style={[textStyle('meta'), { color: colors.fgTertiary }]}>
                   {readingTime} min read
                 </Text>
               </>
@@ -536,18 +587,18 @@ export default function BookmarkDetailScreen() {
           </View>
 
           {/* Title */}
-          <Text style={[styles.title, { color: colors.text }]}>
+          <Text style={[textStyle('title1'), { color: colors.fg }]}>
             {bookmark.title || 'Untitled'}
           </Text>
 
           {/* Date */}
-          <Text style={[styles.date, { color: colors.textSecondary }]}>
+          <Text style={[textStyle('meta'), { color: colors.fgTertiary }]}>
             Saved on {formatDate(bookmark.createdAt)}
           </Text>
 
           {isRead && (
             <View style={[styles.readBadge, { borderColor: colors.border }]}>
-              <Text style={[styles.readBadgeText, { color: colors.textSecondary }]}>
+              <Text style={[textStyle('label'), { color: colors.fgTertiary }]}>
                 Read
               </Text>
             </View>
@@ -559,9 +610,12 @@ export default function BookmarkDetailScreen() {
               {bookmark.cosmicTags.map((tag) => (
                 <View
                   key={tag}
-                  style={[styles.tag, { backgroundColor: colors.backgroundSecondary }]}
+                  style={[
+                    styles.tag,
+                    { backgroundColor: colors.accentSoft, borderColor: colors.accentBorder },
+                  ]}
                 >
-                  <Text style={[styles.tagText, { color: colors.textSecondary }]}>
+                  <Text style={[textStyle('meta'), { color: colors.accent }]}>
                     {tag}
                   </Text>
                 </View>
@@ -570,9 +624,15 @@ export default function BookmarkDetailScreen() {
           )}
 
           {isPrivateProcessing && (
-            <View style={[styles.processingContainer, { backgroundColor: colors.backgroundSecondary }]}>
-              <ActivityIndicator size="small" color={colors.tint} />
-              <Text style={[styles.processingText, { color: colors.textSecondary }]}>
+            <View
+              accessibilityLiveRegion="polite"
+              style={[
+                styles.processingContainer,
+                { backgroundColor: colors.aiBg, borderColor: colors.aiBorder },
+              ]}
+            >
+              <ActivityIndicator size="small" color={colors.ai} />
+              <Text style={[textStyle('bodySm'), styles.processingText, { color: colors.ai }]}>
                 Organizing for quick access...
               </Text>
             </View>
@@ -593,10 +653,10 @@ export default function BookmarkDetailScreen() {
           {/* Fallback description (non-markdown) */}
           {!cosmicSummary && fallbackDescription && (
             <View style={styles.summaryContainer}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              <Text style={[textStyle('title3'), { color: colors.fg }]}>
                 Description
               </Text>
-              <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
+              <Text style={[textStyle('body'), { color: colors.fgSecondary }]}>
                 {fallbackDescription}
               </Text>
             </View>
@@ -613,23 +673,23 @@ export default function BookmarkDetailScreen() {
         onRequestClose={() => setIsShareModalVisible(false)}
       >
         <Pressable
-          style={styles.modalOverlay}
+          style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}
           onPress={() => setIsShareModalVisible(false)}
         >
           <Pressable
-            style={[styles.modalContent, { backgroundColor: colors.background }]}
+            style={[styles.modalContent, { backgroundColor: colors.bgPanel, borderColor: colors.border }]}
             onPress={(e) => e.stopPropagation()}
           >
-            <Text style={[styles.modalTitle, { color: colors.text }]}>
+            <Text style={[textStyle('title2'), { color: colors.fg }]}>
               Share bookmark
             </Text>
-            <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
+            <Text style={[textStyle('bodySm'), styles.modalSubtitle, { color: colors.fgSecondary }]}>
               Anyone with this link can view this bookmark.
             </Text>
 
-            <View style={[styles.linkContainer, { backgroundColor: colors.backgroundSecondary }]}>
+            <View style={[styles.linkContainer, { backgroundColor: colors.bgInset }]}>
               <Text
-                style={[styles.linkText, { color: colors.text }]}
+                style={[textStyle('meta'), styles.linkText, { color: colors.fg }]}
                 numberOfLines={1}
                 ellipsizeMode="middle"
               >
@@ -640,14 +700,14 @@ export default function BookmarkDetailScreen() {
             <View style={styles.modalActions}>
               <Pressable
                 onPress={handleCopyLink}
-                style={[styles.modalButton, { backgroundColor: colors.tint }]}
+                style={[styles.modalButton, { backgroundColor: colors.accent }]}
               >
                 <Ionicons
                   name={isCopied ? 'checkmark' : 'copy-outline'}
                   size={18}
-                  color="#fff"
+                  color={colors.accentFg}
                 />
-                <Text style={styles.modalButtonText}>
+                <Text style={[textStyle('bodySm'), styles.modalButtonText, { color: colors.accentFg }]}>
                   {isCopied ? 'Copied!' : 'Copy Link'}
                 </Text>
               </Pressable>
@@ -656,8 +716,8 @@ export default function BookmarkDetailScreen() {
                 onPress={handleNativeShare}
                 style={[styles.modalButtonOutline, { borderColor: colors.border }]}
               >
-                <Ionicons name="share-outline" size={18} color={colors.tint} />
-                <Text style={[styles.modalButtonOutlineText, { color: colors.tint }]}>
+                <Ionicons name="share-outline" size={18} color={colors.accent} />
+                <Text style={[textStyle('bodySm'), styles.modalButtonOutlineText, { color: colors.accent }]}>
                   Share via...
                 </Text>
               </Pressable>
@@ -668,7 +728,9 @@ export default function BookmarkDetailScreen() {
               disabled={isShareLoading}
               style={styles.unshareButton}
             >
-              <Text style={styles.unshareButtonText}>Stop sharing</Text>
+              <Text style={[textStyle('bodySm'), styles.unshareButtonText, { color: colors.danger }]}>
+                Stop sharing
+              </Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -685,29 +747,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    borderBottomWidth: 0,
+    paddingHorizontal: space.s2,
+    paddingVertical: space.s1,
   },
   backButton: {
-    padding: 8,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.sm,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   headerButton: {
-    padding: 8,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.sm,
   },
   likeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
-    gap: 4,
+    justifyContent: 'center',
+    minWidth: 44,
+    height: 44,
+    paddingHorizontal: space.s2,
+    borderRadius: radius.sm,
+    gap: space.s1,
   },
   likeCountText: {
-    fontSize: 14,
     fontWeight: '600',
   },
   loadingContainer: {
@@ -719,23 +790,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
-    gap: 8,
-  },
-  errorTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 8,
+    paddingHorizontal: space.s6,
+    gap: space.s2,
   },
   errorSubtitle: {
-    fontSize: 14,
     textAlign: 'center',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 32,
+    paddingBottom: space.s6,
   },
   imageContainer: {
     width: '100%',
@@ -746,164 +811,97 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   content: {
-    padding: 16,
-    gap: 16,
+    padding: space.s4,
+    gap: space.s4,
   },
   sourceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: space.s2,
   },
   sourceIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
+    width: space.s5,
+    height: space.s5,
+    borderRadius: radius.sm,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sourceIconText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  sourceName: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  dot: {
-    fontSize: 14,
-  },
-  readingTime: {
-    fontSize: 14,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    lineHeight: 36,
-  },
-  date: {
-    fontSize: 14,
+    letterSpacing: 0,
   },
   readBadge: {
     alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  readBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.xs,
+    paddingHorizontal: space.s2,
+    paddingVertical: space.s1 / 2,
   },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: space.s2,
   },
   tag: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  tagText: {
-    fontSize: 14,
-    fontWeight: '500',
+    paddingHorizontal: space.s3,
+    paddingVertical: space.s1,
+    borderRadius: radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   processingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    borderRadius: 14,
-    marginTop: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    gap: space.s3,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginTop: space.s1,
+    paddingHorizontal: space.s4,
+    paddingVertical: space.s3,
   },
   processingText: {
-    fontSize: 14,
     fontWeight: '600',
   },
   summaryContainer: {
-    marginTop: 8,
-    gap: 8,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  summaryText: {
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  openButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 12,
-    marginTop: 8,
-  },
-  openButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  urlContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: 12,
-    borderRadius: 8,
-  },
-  urlText: {
-    flex: 1,
-    fontSize: 13,
+    marginTop: space.s2,
+    gap: space.s2,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: space.s5,
   },
   modalContent: {
     width: '100%',
-    borderRadius: 16,
-    padding: 24,
-    gap: 16,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: space.s5,
+    gap: space.s4,
   },
   modalSubtitle: {
-    fontSize: 14,
-    marginTop: -8,
+    marginTop: -space.s2,
   },
   linkContainer: {
-    padding: 12,
-    borderRadius: 8,
+    padding: space.s3,
+    borderRadius: radius.sm,
   },
   linkText: {
-    fontSize: 14,
     fontFamily: 'SpaceMono',
   },
   modalActions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: space.s3,
   },
   modalButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    borderRadius: 10,
+    minHeight: 44,
+    gap: space.s2,
+    paddingVertical: space.s3,
+    borderRadius: radius.pill,
   },
   modalButtonText: {
-    color: '#fff',
-    fontSize: 15,
     fontWeight: '600',
   },
   modalButtonOutline: {
@@ -911,23 +909,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1,
+    minHeight: 44,
+    gap: space.s2,
+    paddingVertical: space.s3,
+    borderRadius: radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   modalButtonOutlineText: {
-    fontSize: 15,
     fontWeight: '600',
   },
   unshareButton: {
     alignSelf: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingVertical: space.s2,
+    paddingHorizontal: space.s4,
   },
   unshareButtonText: {
-    color: '#ef4444',
-    fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
   },
 });

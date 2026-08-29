@@ -1,15 +1,32 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, View, Pressable, ScrollView, ActivityIndicator, Image, TextInput } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Text,
+  Pressable,
+  ScrollView,
+  ActivityIndicator,
+  Image,
+  TextInput,
+} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useShareIntentContext } from 'expo-share-intent';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BlurView } from 'expo-blur';
-import Animated, { FadeIn, FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+} from 'react-native-reanimated';
 
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { useThemeColor } from '@/hooks/useThemeColor';
+import { TopBar, TopBarAction } from '@/components/TopBar';
+import { textStyle } from '@/constants/fonts';
+import { motion, radius, space, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 import { BookmarksAPI, PreviewUrlResponse } from '@/lib/api';
 import {
   buildPrivateLinkCreateParams,
@@ -30,14 +47,15 @@ function extractDomain(url: string): string {
   }
 }
 
-function ShimmerPlaceholder() {
+/** The skeleton state. Signal's shimmer, flattened to an opacity pulse. */
+function ShimmerPlaceholder({ colors }: { colors: ThemeColors }) {
   const opacity = useSharedValue(0.3);
-  
+
   useEffect(() => {
     opacity.value = withRepeat(
       withSequence(
-        withTiming(0.7, { duration: 800 }),
-        withTiming(0.3, { duration: 800 })
+        withTiming(0.7, { duration: motion.duration * 4 }),
+        withTiming(0.3, { duration: motion.duration * 4 })
       ),
       -1,
       true
@@ -49,12 +67,26 @@ function ShimmerPlaceholder() {
   }));
 
   return (
-    <View style={styles.shimmerContainer}>
-      <Animated.View style={[styles.shimmerImage, animatedStyle]} />
-      <View style={styles.shimmerContent}>
-        <Animated.View style={[styles.shimmerLine, { width: '80%' }, animatedStyle]} />
-        <Animated.View style={[styles.shimmerLine, { width: '60%' }, animatedStyle]} />
-        <Animated.View style={[styles.shimmerLine, { width: '40%' }, animatedStyle]} />
+    <View
+      style={[
+        styles.previewCard,
+        { backgroundColor: colors.bgPanel, borderColor: colors.border },
+      ]}
+      accessibilityLabel="Loading preview"
+    >
+      <Animated.View
+        style={[styles.shimmerImage, { backgroundColor: colors.bgInset }, animatedStyle]}
+      />
+      <View style={styles.previewContent}>
+        <Animated.View
+          style={[styles.shimmerLine, { width: '80%', backgroundColor: colors.bgInset }, animatedStyle]}
+        />
+        <Animated.View
+          style={[styles.shimmerLine, { width: '60%', backgroundColor: colors.bgInset }, animatedStyle]}
+        />
+        <Animated.View
+          style={[styles.shimmerLine, { width: '40%', backgroundColor: colors.bgInset }, animatedStyle]}
+        />
       </View>
     </View>
   );
@@ -65,6 +97,7 @@ export default function ShareScreen() {
   const params = useLocalSearchParams<{ url?: string }>();
   const insets = useSafeAreaInsets();
   const { resetShareIntent } = useShareIntentContext();
+  const { colors } = useTheme();
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -81,14 +114,6 @@ export default function ShareScreen() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [privateDescription, setPrivateDescription] = useState('');
 
-  const tintColor = useThemeColor({}, 'tint');
-  const iconColor = useThemeColor({}, 'icon');
-  const textColor = useThemeColor({}, 'text');
-  const textSecondaryColor = useThemeColor({}, 'textSecondary');
-  const backgroundColor = useThemeColor({}, 'background');
-  const secondaryBackgroundColor = useThemeColor({}, 'backgroundSecondary');
-  const borderColor = useThemeColor({}, 'border');
-
   // Fetch preview once when the screen mounts (sharedUrl is stable)
   useEffect(() => {
     if (sharedUrl) {
@@ -99,7 +124,7 @@ export default function ShareScreen() {
   const fetchPreview = async (url: string) => {
     setIsLoadingPreview(true);
     setPreviewError(null);
-    
+
     try {
       const preview = await BookmarksAPI.preview(url);
       setPreviewData(preview);
@@ -173,27 +198,21 @@ export default function ShareScreen() {
   const displaySiteName = previewMetadata?.siteName || (sharedUrl ? extractDomain(sharedUrl) : '');
   const showPreviewMedia = shouldRenderPreviewMedia(isPrivateLink, Boolean(displayImage));
 
+  const isSaveDisabled = isSaving || isSaved || (isPrivateLink && !privateDescription.trim());
+
   return (
-    <ThemedView style={styles.container}>
-      {/* Drag Handle for modal visual cue */}
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <View style={styles.dragHandleContainer}>
-        <View style={[styles.dragHandle, { backgroundColor: borderColor }]} />
+        <View style={[styles.dragHandle, { backgroundColor: colors.borderStrong }]} />
       </View>
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={handleClose} style={styles.closeButton} hitSlop={20}>
-          <Ionicons name="close-circle" size={32} color={iconColor} style={{ opacity: 0.5 }} />
-        </Pressable>
-        <ThemedText type="subtitle" style={styles.headerTitle}>
-          Save Bookmark
-        </ThemedText>
-        <View style={styles.placeholder} />
-      </View>
+      <TopBar
+        title="Save bookmark"
+        actions={<TopBarAction icon="close" label="Close" onPress={handleClose} />}
+      />
 
-      {/* Content */}
-      <ScrollView 
-        style={styles.scrollContent} 
+      <ScrollView
+        style={styles.scrollContent}
         contentContainerStyle={[
           styles.contentContainer,
           { paddingBottom: getShareScrollBottomInset(insets.bottom) },
@@ -201,116 +220,110 @@ export default function ShareScreen() {
         showsVerticalScrollIndicator={false}
       >
         {sharedUrl ? (
-          <Animated.View entering={FadeInDown.duration(400)}>
-            {/* Loading state */}
+          <Animated.View entering={FadeInDown.duration(motion.duration)}>
+            {/* A pasted link gets a real row immediately, with progress inside it. */}
             {isLoadingPreview ? (
-              <ShimmerPlaceholder />
+              <ShimmerPlaceholder colors={colors} />
             ) : (
-              <View style={[
-                styles.previewCard,
-                isPrivateLink && styles.privatePreviewCard,
-                { backgroundColor: secondaryBackgroundColor, borderColor },
-              ]}>
-                {/* OpenGraph Image with Blur Background for aspect ratio fitting */}
+              <View
+                style={[
+                  styles.previewCard,
+                  { backgroundColor: colors.bgPanel, borderColor: colors.border },
+                ]}
+              >
                 {showPreviewMedia && (
-                  <View style={styles.imageContainer}>
+                  <View style={[styles.imageContainer, { backgroundColor: colors.bgInset }]}>
                     {displayImage ? (
-                      <>
-                        <Image
-                          source={{ uri: displayImage }}
-                          style={StyleSheet.absoluteFill}
-                          blurRadius={20}
-                        />
-                        <BlurView intensity={20} style={StyleSheet.absoluteFill} />
-                        <Image
-                          source={{ uri: displayImage }}
-                          style={styles.previewImage}
-                          resizeMode="contain"
-                        />
-                      </>
+                      <Image
+                        source={{ uri: displayImage }}
+                        style={styles.previewImage}
+                        resizeMode="cover"
+                      />
                     ) : (
-                      <View style={[styles.imagePlaceholder, { backgroundColor: borderColor }]}>
-                        <Ionicons name="link" size={48} color={iconColor} style={{ opacity: 0.2 }} />
+                      <View style={styles.imagePlaceholder}>
+                        <Ionicons name="link" size={space.s7} color={colors.fgTertiary} />
                       </View>
                     )}
                   </View>
                 )}
 
-                {/* Card Content */}
-                <View style={[styles.previewContent, isPrivateLink && styles.privatePreviewContent]}>
-                  {/* Site info */}
+                <View style={styles.previewContent}>
+                  {/* Provenance: the source is named before anything else. */}
                   <View style={styles.siteInfo}>
                     {displayFavicon ? (
-                      <Image 
-                        source={{ uri: displayFavicon }} 
-                        style={styles.favicon}
-                      />
+                      <Image source={{ uri: displayFavicon }} style={styles.favicon} />
                     ) : (
-                      <View style={[styles.faviconPlaceholder, { backgroundColor: borderColor }]}>
-                        <Ionicons name="globe-outline" size={10} color={iconColor} />
+                      <View style={[styles.faviconPlaceholder, { backgroundColor: colors.bgInset }]}>
+                        <Ionicons name="globe-outline" size={10} color={colors.fgTertiary} />
                       </View>
                     )}
-                    <ThemedText style={styles.siteName} numberOfLines={1}>
+                    <Text style={[textStyle('label'), { color: colors.fgTertiary }]} numberOfLines={1}>
                       {displaySiteName}
-                    </ThemedText>
+                    </Text>
                   </View>
 
-                  {/* Title */}
-                  <ThemedText
-                    type="defaultSemiBold"
-                    style={[styles.previewTitle, isPrivateLink && styles.privatePreviewTitle]}
-                    numberOfLines={3}
-                  >
+                  {/* Title — serif: this is the content being evaluated. */}
+                  <Text style={[textStyle('title2'), { color: colors.fg }]} numberOfLines={3}>
                     {displayTitle}
-                  </ThemedText>
+                  </Text>
 
-                  {/* Description */}
                   {displayDescription && (
-                    <ThemedText style={styles.previewDescription} numberOfLines={4}>
+                    <Text
+                      style={[textStyle('bodySm'), { color: colors.fgSecondary }]}
+                      numberOfLines={4}
+                    >
                       {displayDescription}
-                    </ThemedText>
+                    </Text>
                   )}
                 </View>
               </View>
             )}
 
-            {/* URL Display if preview failed or minimal */}
             {(previewError || (!isLoadingPreview && !previewData)) && (
-              <View style={[styles.urlFallback, { backgroundColor: secondaryBackgroundColor }]}>
-                <Ionicons name="link" size={18} color={tintColor} />
-                <ThemedText style={styles.urlFallbackText} numberOfLines={1}>
+              <View style={[styles.urlFallback, { backgroundColor: colors.bgInset }]}>
+                <Ionicons name="link" size={18} color={colors.fgTertiary} />
+                <Text
+                  style={[textStyle('meta'), styles.urlFallbackText, { color: colors.fgSecondary }]}
+                  numberOfLines={1}
+                >
                   {sharedUrl}
-                </ThemedText>
+                </Text>
               </View>
             )}
 
             {isPrivateLink && (
-              <View style={[styles.privateLinkPanel, { backgroundColor: secondaryBackgroundColor, borderColor }]}>
+              <View
+                style={[
+                  styles.privateLinkPanel,
+                  { backgroundColor: colors.bgSubtle, borderColor: colors.border },
+                ]}
+              >
                 <View style={styles.privateLinkHeader}>
-                  <Ionicons name="lock-closed-outline" size={18} color={tintColor} />
-                  <ThemedText type="defaultSemiBold" style={styles.privateLinkTitle}>
+                  <Ionicons name="lock-closed-outline" size={18} color={colors.warning} />
+                  <Text style={[textStyle('body'), styles.privateLinkTitle, { color: colors.fg }]}>
                     Save for quick access
-                  </ThemedText>
+                  </Text>
                 </View>
-                <ThemedText style={[styles.privateLinkCopy, { color: textSecondaryColor }]}>
+                <Text style={[textStyle('bodySm'), { color: colors.fgSecondary }]}>
                   We cannot read or summarize this page, but we can organize it from your note.
-                </ThemedText>
+                </Text>
                 <View style={styles.inputGroup}>
-                  <ThemedText style={[styles.inputLabel, { color: textColor }]}>
+                  <Text style={[textStyle('label'), { color: colors.fgTertiary }]}>
                     Brief description
-                  </ThemedText>
+                  </Text>
                   <TextInput
                     value={privateDescription}
                     onChangeText={setPrivateDescription}
                     placeholder="What is this link, and why will you need it?"
-                    placeholderTextColor={textSecondaryColor}
+                    placeholderTextColor={colors.fgTertiary}
                     multiline
                     style={[
+                      textStyle('body'),
                       styles.textArea,
                       {
-                        color: textColor,
-                        borderColor,
-                        backgroundColor,
+                        color: colors.fg,
+                        borderColor: colors.borderStrong,
+                        backgroundColor: colors.bg,
                       },
                     ]}
                   />
@@ -318,155 +331,148 @@ export default function ShareScreen() {
               </View>
             )}
 
-            {/* Error message */}
             {saveError && (
-              <Animated.View entering={FadeIn} style={styles.errorContainer}>
-                <Ionicons name="alert-circle" size={20} color="#ef4444" />
-                <ThemedText style={styles.errorText}>{saveError}</ThemedText>
+              <Animated.View
+                entering={FadeIn}
+                accessibilityLiveRegion="polite"
+                style={[
+                  styles.errorContainer,
+                  { backgroundColor: colors.bgInset, borderColor: colors.danger },
+                ]}
+              >
+                <Ionicons name="alert-circle" size={20} color={colors.danger} />
+                <Text style={[textStyle('bodySm'), styles.errorText, { color: colors.danger }]}>
+                  {saveError}
+                </Text>
               </Animated.View>
             )}
           </Animated.View>
         ) : (
           <View style={styles.emptyState}>
-            <Ionicons name="share-outline" size={64} color={iconColor} style={{ opacity: 0.2, marginBottom: 16 }} />
-            <ThemedText style={styles.emptyText}>
+            <Ionicons name="share-outline" size={space.s8} color={colors.fgTertiary} />
+            <Text style={[textStyle('bodySm'), { color: colors.fgSecondary }]}>
               Waiting for a link...
-            </ThemedText>
+            </Text>
           </View>
         )}
       </ScrollView>
 
-      {/* Footer Buttons - Absolute positioned at bottom */}
-      <BlurView intensity={80} style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
+      {/* Footer: a hairline, not a shadow. */}
+      <View
+        style={[
+          styles.footer,
+          {
+            backgroundColor: colors.bg,
+            borderTopColor: colors.border,
+            paddingBottom: insets.bottom + space.s5,
+          },
+        ]}
+      >
         {sharedUrl ? (
           <View style={styles.buttonGroup}>
-            <Pressable 
+            <Pressable
               onPress={handleSaveAndClose}
-              disabled={isSaving || isSaved || (isPrivateLink && !privateDescription.trim())}
+              disabled={isSaveDisabled}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: isSaveDisabled }}
               style={({ pressed }) => [
                 styles.saveButton,
-                { 
-                  backgroundColor: isSaved ? '#22c55e' : (isSaving ? tintColor + '80' : tintColor), 
-                  transform: [{ scale: pressed ? 0.98 : 1 }]
-                }
+                {
+                  backgroundColor: isSaved ? colors.success : colors.accent,
+                  opacity: isSaveDisabled && !isSaved ? 0.6 : pressed ? 0.85 : 1,
+                },
               ]}
             >
               {isSaving ? (
-                <ActivityIndicator color="#fff" size="small" />
+                <ActivityIndicator color={colors.accentFg} size="small" />
               ) : isSaved ? (
                 <Animated.View entering={FadeIn} style={styles.buttonContent}>
-                  <Ionicons name="checkmark-circle" size={24} color="#fff" />
-                  <ThemedText style={styles.saveButtonText}>Saved to Library</ThemedText>
+                  <Ionicons name="checkmark-circle" size={20} color={colors.accentFg} />
+                  <Text style={[textStyle('body'), styles.saveButtonText, { color: colors.accentFg }]}>
+                    Saved to Library
+                  </Text>
                 </Animated.View>
               ) : (
                 <View style={styles.buttonContent}>
-                  <Ionicons name="bookmark" size={20} color="#fff" />
-                  <ThemedText style={styles.saveButtonText}>Save Bookmark</ThemedText>
+                  <Ionicons name="bookmark" size={20} color={colors.accentFg} />
+                  <Text style={[textStyle('body'), styles.saveButtonText, { color: colors.accentFg }]}>
+                    Save Bookmark
+                  </Text>
                 </View>
               )}
             </Pressable>
-            
+
             {!isSaved && (
-              <Pressable 
+              <Pressable
                 onPress={handleClose}
                 disabled={isSaving}
+                accessibilityRole="button"
                 style={({ pressed }) => [
                   styles.cancelButton,
-                  { opacity: pressed ? 0.6 : 1 }
+                  { backgroundColor: pressed ? colors.bgInset : 'transparent' },
                 ]}
               >
-                <ThemedText style={styles.cancelButtonText}>
+                <Text style={[textStyle('bodySm'), styles.cancelButtonText, { color: colors.fgSecondary }]}>
                   Maybe later
-                </ThemedText>
+                </Text>
               </Pressable>
             )}
           </View>
         ) : (
-          <Pressable 
+          <Pressable
             onPress={handleClose}
+            accessibilityRole="button"
             style={({ pressed }) => [
               styles.doneButton,
-              { borderColor: tintColor, opacity: pressed ? 0.8 : 1 }
+              {
+                borderColor: colors.borderStrong,
+                backgroundColor: pressed ? colors.bgInset : 'transparent',
+              },
             ]}
           >
-            <ThemedText style={[styles.doneButtonText, { color: tintColor }]}>
+            <Text style={[textStyle('body'), styles.doneButtonText, { color: colors.fg }]}>
               Close
-            </ThemedText>
+            </Text>
           </Pressable>
         )}
-      </BlurView>
-    </ThemedView>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
     overflow: 'hidden',
   },
   dragHandleContainer: {
     width: '100%',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: space.s3,
   },
   dragHandle: {
-    width: 36,
-    height: 5,
-    borderRadius: 2.5,
-    opacity: 0.3,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  closeButton: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: -10,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-  },
-  placeholder: {
-    width: 44,
+    width: space.s6,
+    height: space.s1,
+    borderRadius: radius.pill,
   },
   scrollContent: {
     flex: 1,
   },
   contentContainer: {
-    paddingHorizontal: 20,
-  },
-  modernCardContainer: {
-    width: '100%',
-    gap: 20,
+    paddingHorizontal: space.s4,
+    paddingTop: space.s4,
   },
   previewCard: {
     width: '100%',
-    borderRadius: 24,
+    borderRadius: radius.md,
     overflow: 'hidden',
-    borderWidth: 1,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-  },
-  privatePreviewCard: {
-    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   imageContainer: {
     width: '100%',
-    height: 220,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    aspectRatio: 16 / 9,
   },
   previewImage: {
     width: '100%',
@@ -478,206 +484,133 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   previewContent: {
-    padding: 20,
-    gap: 8,
-  },
-  privatePreviewContent: {
-    padding: 16,
+    padding: space.s4,
+    gap: space.s2,
   },
   siteInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
+    gap: space.s2,
   },
   favicon: {
     width: 16,
     height: 16,
-    borderRadius: 4,
+    borderRadius: radius.xs,
   },
   faviconPlaceholder: {
     width: 16,
     height: 16,
-    borderRadius: 4,
+    borderRadius: radius.xs,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  siteName: {
-    fontSize: 12,
-    fontWeight: '600',
-    opacity: 0.5,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  previewTitle: {
-    fontSize: 22,
-    lineHeight: 28,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-  },
-  privatePreviewTitle: {
-    fontSize: 20,
-    lineHeight: 26,
-  },
-  previewDescription: {
-    fontSize: 15,
-    lineHeight: 22,
-    opacity: 0.6,
-    marginTop: 4,
-  },
-  shimmerContainer: {
-    width: '100%',
-    borderRadius: 24,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(128, 128, 128, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(128, 128, 128, 0.1)',
-  },
   shimmerImage: {
     width: '100%',
-    height: 220,
-    backgroundColor: 'rgba(128, 128, 128, 0.1)',
-  },
-  shimmerContent: {
-    padding: 20,
-    gap: 12,
+    aspectRatio: 16 / 9,
   },
   shimmerLine: {
-    height: 16,
-    backgroundColor: 'rgba(128, 128, 128, 0.1)',
-    borderRadius: 8,
+    height: space.s4,
+    borderRadius: radius.xs,
   },
   urlFallback: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    padding: 12,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    marginTop: 16,
+    gap: space.s2,
+    padding: space.s3,
+    borderRadius: radius.sm,
+    marginTop: space.s4,
   },
   urlFallbackText: {
     flex: 1,
-    fontSize: 14,
-    opacity: 0.5,
-    fontWeight: '500',
   },
   privateLinkPanel: {
-    borderWidth: 1,
-    borderRadius: 20,
-    gap: 12,
-    marginTop: 12,
-    padding: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.md,
+    gap: space.s3,
+    marginTop: space.s3,
+    padding: space.s4,
   },
   privateLinkHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: space.s2,
   },
   privateLinkTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  privateLinkCopy: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontWeight: '600',
   },
   inputGroup: {
-    gap: 8,
-  },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: '700',
+    gap: space.s2,
   },
   textArea: {
     minHeight: 84,
-    borderWidth: 1,
-    borderRadius: 14,
-    fontSize: 15,
-    lineHeight: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.sm,
+    paddingHorizontal: space.s3,
+    paddingVertical: space.s3,
     textAlignVertical: 'top',
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 16,
-    padding: 16,
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
-    borderRadius: 16,
+    gap: space.s2,
+    marginTop: space.s4,
+    padding: space.s3,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.sm,
   },
   errorText: {
     flex: 1,
-    color: '#ef4444',
-    fontSize: 14,
-    fontWeight: '500',
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 100,
-  },
-  emptyText: {
-    fontSize: 16,
-    opacity: 0.4,
-    fontWeight: '500',
+    gap: space.s4,
+    paddingVertical: space.s8,
   },
   footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingHorizontal: space.s4,
+    paddingTop: space.s4,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(128,128,128,0.1)',
   },
   buttonGroup: {
-    gap: 12,
+    gap: space.s3,
   },
   buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: space.s2,
   },
   saveButton: {
-    borderRadius: 20,
-    height: 60,
+    borderRadius: radius.pill,
+    minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
   },
   saveButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 17,
+    fontWeight: '600',
   },
   cancelButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    height: 44,
+    minHeight: 44,
+    borderRadius: radius.sm,
   },
   cancelButtonText: {
-    fontSize: 15,
     fontWeight: '600',
-    opacity: 0.4,
   },
   doneButton: {
-    borderWidth: 2,
-    borderRadius: 20,
-    height: 60,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.sm,
+    minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
   },
   doneButtonText: {
-    fontWeight: '700',
-    fontSize: 17,
+    fontWeight: '600',
   },
 });

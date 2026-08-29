@@ -22,6 +22,7 @@ touches both; neither document alone is enough to build a screen.
 | --- | --- |
 | [tokens.json](./tokens.json) | Canonical Signal tokens. The source of truth for every value. |
 | [tokens.css](./tokens.css) | Generated from the JSON. Drop into `apps/web/app/`, import from `globals.css`. |
+| `scripts/generate-tokens.mjs` | Compiles the JSON into `apps/web/app/tokens.css` and `apps/mobile/constants/theme.ts`. `bun run tokens` writes both; `bun run tokens:check` fails when either is stale. |
 | [prototypes/index.html](./prototypes/index.html) | The visual reference. Open it beside the code. |
 
 ## Signal in one paragraph
@@ -41,8 +42,8 @@ Everything else in this directory elaborates on these.
    headings inside saved content, pull quotes. Sans for everything operable. Never a serif button,
    never a sans bookmark title.
 2. **Semantic tokens only.** No hex, no `rgb()`, no px radius, no font stack in a component. Need a
-   value that doesn't exist? Add it to `tokens.json`, regenerate `tokens.css`, document it in
-   `foundations.md` — in that order.
+   value that doesn't exist? Add it to `tokens.json`, run `bun run tokens` to regenerate both
+   clients, document it in `foundations.md` — in that order.
 3. **Borders, not elevation.** Shadows are for surfaces that genuinely float: the header capsule,
    dialogs, popovers, the command palette. Nothing in a feed or list may float.
 4. **Shape is meaning.** 6px controls, 8px content surfaces, 12px on the app frame and AI callout.

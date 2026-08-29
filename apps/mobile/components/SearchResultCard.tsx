@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
+
 import { HybridSearchResultItem } from '@/lib/api';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { textStyle } from '@/constants/fonts';
+import { radius, space } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 
 interface SearchResultCardProps {
   result: HybridSearchResultItem;
@@ -19,8 +21,7 @@ function extractDomain(url: string): string {
 
 export function SearchResultCard({ result }: SearchResultCardProps) {
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? 'light';
-  const colors = Colors[colorScheme];
+  const { colors } = useTheme();
   const { bookmark, matchedChunks } = result;
 
   const siteName =
@@ -36,12 +37,12 @@ export function SearchResultCard({ result }: SearchResultCardProps) {
 
   return (
     <Pressable
+      accessibilityRole="button"
       style={({ pressed }) => [
         styles.container,
         {
-          backgroundColor: colors.cardBackground,
+          backgroundColor: pressed ? colors.bgSubtle : colors.bgPanel,
           borderBottomColor: colors.border,
-          opacity: pressed ? 0.7 : 1,
         },
       ]}
       onPress={() => router.push(`/bookmark/${bookmark.id}`)}
@@ -49,17 +50,20 @@ export function SearchResultCard({ result }: SearchResultCardProps) {
       <View style={styles.content}>
         <View style={styles.textContainer}>
           {siteName ? (
-            <Text style={[styles.siteName, { color: colors.textSecondary }]} numberOfLines={1}>
+            <Text style={[textStyle('meta'), { color: colors.fgTertiary }]} numberOfLines={1}>
               {siteName}
             </Text>
           ) : null}
 
-          <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
+          <Text style={[textStyle('title3'), { color: colors.fg }]} numberOfLines={2}>
             {bookmark.title || 'Untitled'}
           </Text>
 
           {snippet ? (
-            <Text style={[styles.snippet, { color: colors.textSecondary }]} numberOfLines={3}>
+            <Text
+              style={[textStyle('bodySm'), { color: colors.fgSecondary }]}
+              numberOfLines={3}
+            >
               {snippet}
             </Text>
           ) : null}
@@ -69,9 +73,12 @@ export function SearchResultCard({ result }: SearchResultCardProps) {
               {bookmark.cosmicTags.slice(0, 3).map((tag) => (
                 <View
                   key={tag}
-                  style={[styles.tag, { backgroundColor: colors.backgroundSecondary }]}
+                  style={[
+                    styles.tag,
+                    { backgroundColor: colors.accentSoft, borderColor: colors.accentBorder },
+                  ]}
                 >
-                  <Text style={[styles.tagText, { color: colors.textSecondary }]}>
+                  <Text style={[textStyle('meta'), { color: colors.accent }]}>
                     {tag}
                   </Text>
                 </View>
@@ -81,7 +88,7 @@ export function SearchResultCard({ result }: SearchResultCardProps) {
         </View>
 
         {image && (
-          <View style={styles.imageContainer}>
+          <View style={[styles.imageContainer, { backgroundColor: colors.bgInset }]}>
             <Image
               source={{ uri: image }}
               style={styles.image}
@@ -96,49 +103,34 @@ export function SearchResultCard({ result }: SearchResultCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
+    paddingVertical: space.s3,
+    paddingHorizontal: space.s4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   content: {
     flexDirection: 'row',
-    gap: 14,
+    gap: space.s3,
   },
   textContainer: {
     flex: 1,
-    gap: 4,
-  },
-  siteName: {
-    fontSize: 12,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 21,
-  },
-  snippet: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 2,
+    gap: space.s1,
   },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 4,
+    gap: space.s1 + 2,
+    marginTop: space.s1,
   },
   tag: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  tagText: {
-    fontSize: 12,
+    paddingHorizontal: space.s2,
+    paddingVertical: space.s1 / 2,
+    borderRadius: radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   imageContainer: {
     width: 72,
     height: 72,
-    borderRadius: 8,
+    borderRadius: radius.md,
     overflow: 'hidden',
   },
   image: {

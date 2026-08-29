@@ -17,19 +17,20 @@ import { useRouter } from 'expo-router';
 
 import { useSearch } from '@/hooks/useSearch';
 import { useAISearch } from '@/hooks/useAISearch';
-import { Bookmark, HybridSearchResultItem } from '@/lib/api';
+import { Bookmark } from '@/lib/api';
 import { BookmarkCard } from '@/components/BookmarkCard';
 import { AIResponseCard } from '@/components/AIResponseCard';
 import { SearchResultCard } from '@/components/SearchResultCard';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { TopBarAction } from '@/components/TopBar';
+import { textStyle } from '@/constants/fonts';
+import { radius, space } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 
 type SearchView = 'quick' | 'ai';
 
 export default function SearchScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? 'light';
-  const colors = Colors[colorScheme];
+  const { colors } = useTheme();
   const inputRef = useRef<TextInput>(null);
 
   const [activeView, setActiveView] = React.useState<SearchView>('quick');
@@ -59,26 +60,30 @@ export default function SearchScreen() {
   }, [aiSearch]);
 
   const renderQuickItem = useCallback(
-    ({ item, index }: { item: Bookmark | 'ai-search'; index: number }) => {
+    ({ item }: { item: Bookmark | 'ai-search' }) => {
       if (item === 'ai-search') {
         return (
           <Pressable
+            accessibilityRole="button"
             style={({ pressed }) => [
               styles.aiSearchItem,
               {
-                backgroundColor: pressed ? colors.backgroundSecondary : colors.cardBackground,
-                borderBottomColor: colors.border,
+                backgroundColor: pressed ? colors.bgSubtle : colors.aiBg,
+                borderBottomColor: colors.aiBorder,
               },
             ]}
             onPress={handleAISearchPress}
           >
-            <View style={[styles.aiSearchIcon, { backgroundColor: colors.tint }]}>
-              <Ionicons name="sparkles" size={14} color="#fff" />
+            <View style={[styles.aiSearchIcon, { backgroundColor: colors.aiChip }]}>
+              <Ionicons name="sparkles" size={14} color={colors.ai} />
             </View>
-            <Text style={[styles.aiSearchText, { color: colors.text }]} numberOfLines={1}>
-              AI Search: <Text style={{ fontWeight: '400', color: colors.textSecondary }}>{query.trim()}</Text>
+            <Text
+              style={[textStyle('body'), styles.aiSearchText, { color: colors.fg }]}
+              numberOfLines={1}
+            >
+              AI Search: <Text style={{ fontWeight: '400', color: colors.fgSecondary }}>{query.trim()}</Text>
             </Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+            <Ionicons name="chevron-forward" size={16} color={colors.fgTertiary} />
           </Pressable>
         );
       }
@@ -97,7 +102,7 @@ export default function SearchScreen() {
   }, [query, quickResults]);
 
   const keyExtractor = useCallback(
-    (item: Bookmark | 'ai-search', index: number) => {
+    (item: Bookmark | 'ai-search') => {
       if (item === 'ai-search') return '__ai-search__';
       return item.id;
     },
@@ -109,13 +114,13 @@ export default function SearchScreen() {
     if (!query.trim()) {
       return (
         <View style={styles.emptyContainer}>
-          <View style={[styles.emptyIconWrap, { backgroundColor: colors.backgroundSecondary }]}>
-            <Ionicons name="search-outline" size={28} color={colors.textSecondary} />
+          <View style={[styles.emptyIconWrap, { backgroundColor: colors.bgInset }]}>
+            <Ionicons name="search-outline" size={space.s5} color={colors.fgTertiary} />
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+          <Text style={[textStyle('title3'), { color: colors.fg }]}>
             Search your bookmarks
           </Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+          <Text style={[textStyle('bodySm'), styles.emptySubtitle, { color: colors.fgSecondary }]}>
             Find saved articles, pages, and more.
           </Text>
         </View>
@@ -127,21 +132,22 @@ export default function SearchScreen() {
   // AI Search view
   if (activeView === 'ai') {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['top']}>
         <View style={[styles.searchBar, { borderBottomColor: colors.border }]}>
-          <Pressable onPress={handleBackToQuick} hitSlop={8}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </Pressable>
+          <TopBarAction icon="arrow-back" label="Back to quick search" onPress={handleBackToQuick} />
           <View style={styles.aiQueryContainer}>
-            <Ionicons name="sparkles" size={14} color={colors.tint} />
-            <Text style={[styles.aiQueryText, { color: colors.text }]} numberOfLines={1}>
+            <Ionicons name="sparkles" size={14} color={colors.ai} />
+            <Text
+              style={[textStyle('body'), styles.aiQueryText, { color: colors.fg }]}
+              numberOfLines={1}
+            >
               {query.trim()}
             </Text>
           </View>
         </View>
 
         <ScrollView
-          style={styles.aiScrollView}
+          style={styles.flex}
           contentContainerStyle={styles.aiScrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -154,7 +160,7 @@ export default function SearchScreen() {
 
           {aiSearch.results.length > 0 && (
             <View style={styles.aiResultsSection}>
-              <Text style={[styles.aiResultsHeading, { color: colors.textSecondary }]}>
+              <Text style={[textStyle('label'), styles.aiResultsHeading, { color: colors.fgTertiary }]}>
                 {aiSearch.results.length} result{aiSearch.results.length !== 1 ? 's' : ''} found
               </Text>
               {aiSearch.results.map((result) => (
@@ -165,13 +171,13 @@ export default function SearchScreen() {
 
           {aiSearch.hasSearched && !aiSearch.isSearching && !aiSearch.isStreaming && aiSearch.results.length === 0 && (
             <View style={styles.emptyContainer}>
-              <View style={[styles.emptyIconWrap, { backgroundColor: colors.backgroundSecondary }]}>
-                <Ionicons name="search-outline" size={28} color={colors.textSecondary} />
+              <View style={[styles.emptyIconWrap, { backgroundColor: colors.bgInset }]}>
+                <Ionicons name="search-outline" size={space.s5} color={colors.fgTertiary} />
               </View>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>
+              <Text style={[textStyle('title3'), { color: colors.fg }]}>
                 No results found
               </Text>
-              <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+              <Text style={[textStyle('bodySm'), styles.emptySubtitle, { color: colors.fgSecondary }]}>
                 Try different keywords or save more content to your library.
               </Text>
             </View>
@@ -179,11 +185,11 @@ export default function SearchScreen() {
 
           {aiSearch.error && (
             <View style={styles.emptyContainer}>
-              <Ionicons name="alert-circle-outline" size={32} color={colors.textSecondary} />
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>
+              <Ionicons name="alert-circle-outline" size={space.s6} color={colors.danger} />
+              <Text style={[textStyle('title3'), { color: colors.fg }]}>
                 Something went wrong
               </Text>
-              <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+              <Text style={[textStyle('bodySm'), styles.emptySubtitle, { color: colors.fgSecondary }]}>
                 {aiSearch.error}
               </Text>
             </View>
@@ -195,20 +201,18 @@ export default function SearchScreen() {
 
   // Quick Search view (default)
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['top']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={[styles.searchBar, { borderBottomColor: colors.border }]}>
-          <Pressable onPress={handleClose} hitSlop={8}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </Pressable>
+          <TopBarAction icon="arrow-back" label="Close search" onPress={handleClose} />
           <TextInput
             ref={inputRef}
-            style={[styles.searchInput, { color: colors.text }]}
+            style={[textStyle('body'), styles.searchInput, { color: colors.fg }]}
             placeholder="Search bookmarks..."
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={colors.fgTertiary}
             value={query}
             onChangeText={setQuery}
             autoFocus
@@ -218,15 +222,13 @@ export default function SearchScreen() {
             autoCorrect={false}
           />
           {query.length > 0 && (
-            <Pressable onPress={() => setQuery('')} hitSlop={8}>
-              <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
-            </Pressable>
+            <TopBarAction icon="close-circle" label="Clear search" onPress={() => setQuery('')} />
           )}
         </View>
 
         {isQuickLoading && query.trim() ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={colors.tint} />
+            <ActivityIndicator size="small" color={colors.accent} />
           </View>
         ) : null}
 
@@ -254,49 +256,45 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 12,
-    borderBottomWidth: 1,
+    paddingHorizontal: space.s2,
+    gap: space.s2,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   searchInput: {
     flex: 1,
-    fontSize: 17,
-    paddingVertical: 6,
+    paddingVertical: space.s2,
   },
   aiSearchItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 12,
-    borderBottomWidth: 1,
+    paddingHorizontal: space.s4,
+    paddingVertical: space.s3,
+    gap: space.s3,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   aiSearchIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: space.s6,
+    height: space.s6,
+    borderRadius: radius.pill,
     justifyContent: 'center',
     alignItems: 'center',
   },
   aiSearchText: {
     flex: 1,
-    fontSize: 15,
     fontWeight: '600',
   },
   aiQueryContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: space.s2,
   },
   aiQueryText: {
-    fontSize: 17,
     fontWeight: '600',
     flex: 1,
   },
   loadingContainer: {
-    paddingVertical: 12,
+    paddingVertical: space.s3,
     alignItems: 'center',
   },
   emptyList: {
@@ -306,40 +304,30 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingTop: 80,
-    gap: 8,
+    paddingHorizontal: space.s6,
+    paddingTop: space.s8,
+    gap: space.s2,
   },
   emptyIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: space.s7 + space.s2,
+    height: space.s7 + space.s2,
+    borderRadius: radius.pill,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  emptyTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    marginBottom: space.s2,
   },
   emptySubtitle: {
-    fontSize: 14,
     textAlign: 'center',
     maxWidth: 280,
   },
-  aiScrollView: {
-    flex: 1,
-  },
   aiScrollContent: {
-    paddingBottom: 40,
+    paddingBottom: space.s7,
   },
   aiResultsSection: {
-    marginTop: 8,
+    marginTop: space.s2,
   },
   aiResultsHeading: {
-    fontSize: 13,
-    fontWeight: '500',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: space.s4,
+    paddingVertical: space.s2,
   },
 });

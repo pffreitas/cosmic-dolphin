@@ -1,12 +1,27 @@
 # Foundations
 
 Adopted direction: **Signal**. Canonical values live in [`tokens.json`](./tokens.json) and are
-compiled to [`tokens.css`](./tokens.css). This document explains what each token *means*, which is
-the part a hex value can't carry.
+compiled by `scripts/generate-tokens.mjs` into both clients at once:
+
+| Output | Consumed by |
+| --- | --- |
+| `apps/web/app/tokens.css` | `apps/web`, as `--cd-*` custom properties plus the shadcn HSL bridge |
+| `apps/mobile/constants/theme.ts` | `apps/mobile`, as a typed theme object for React Native |
+
+Run `bun run tokens` from the repo root after any change to `tokens.json`; `bun run tokens:check`
+fails when either output is stale and is wired into both apps' `lint`. Neither output may be
+hand-edited — a transcribed palette drifts, a generated one cannot.
+
+React Native has no gradients or box-shadows, so `nav-glass`, `nav-shadow` and the whole `elevation`
+set are absent from the mobile theme rather than approximated. Signal frames with borders, so mobile
+loses nothing by it.
+
+This document explains what each token *means*, which is the part a hex value can't carry.
 
 > **Rule zero.** No component may reference a raw hex, px radius, font stack, or shadow. If a value
-> you need isn't a token, add it to `tokens.json`, regenerate `tokens.css`, and document it here —
-> in that order.
+> you need isn't a token, add it to `tokens.json`, run `bun run tokens`, and document it here —
+> in that order. `apps/web/scripts/lint-tokens.mjs` and `apps/mobile/scripts/lint-tokens.mjs` make
+> the first half build-breaking in each client.
 
 ## Colour
 
@@ -158,12 +173,15 @@ Borders do the work. Shadows are reserved for surfaces that genuinely float:
 | `--cd-shadow-popover` | Popovers, dropdowns, the command palette, toasts. |
 | `--cd-shadow-dialog` | Modal dialogs and sheets. |
 
-Nothing in a feed, list, or rail may cast a shadow, on hover or otherwise.
+Nothing in a feed, list, or rail may cast a shadow, on hover or otherwise. These live under
+`elevation` in `tokens.json`; `shadow-capsule` is written as the alias `{nav-shadow}`, which the
+generator emits as `var(--cd-nav-shadow)`.
 
 ## Motion
 
 `--cd-ease` `cubic-bezier(.2,.6,.3,1)`; `--cd-duration-fast` 150ms for colour and background,
-`--cd-duration` 220ms for size and position.
+`--cd-duration` 220ms for size and position. They live under `motion` in `tokens.json`; the mobile
+theme exports them as plain numbers plus `motion.easing`, the bezier's four control points.
 
 Motion is for continuity, not delight. Permitted: hover/active colour transitions, disclosure
 expansion, skeleton shimmer, the AI progress spinner, toast entry. Not permitted: entrance

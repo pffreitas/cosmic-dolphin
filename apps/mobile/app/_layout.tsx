@@ -1,4 +1,4 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider, type Theme } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -8,7 +8,8 @@ import 'react-native-reanimated';
 import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
 import { View, ActivityIndicator } from 'react-native';
 
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { radius } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { buildShareRoute } from '@/lib/shareIntent';
 
@@ -46,12 +47,27 @@ function useProtectedRoute() {
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const { scheme, colors } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   const { session, isLoading } = useAuth();
-  const statusBarStyle = colorScheme === 'dark' ? 'light' : 'dark';
-  const statusBarBackground = colorScheme === 'dark' ? '#00021f' : '#ffffff';
+  const statusBarStyle = scheme === 'dark' ? 'light' : 'dark';
+
+  // React Navigation's own theme, fed from Signal so screen transitions and
+  // native chrome do not flash a colour the palette does not contain.
+  const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
+  const navigationTheme: Theme = {
+    ...base,
+    colors: {
+      ...base.colors,
+      primary: colors.accent,
+      background: colors.bg,
+      card: colors.bg,
+      text: colors.fg,
+      border: colors.border,
+      notification: colors.danger,
+    },
+  };
   
   // Track if we've already initiated navigation to share screen for the current intent
   const hasNavigatedToShare = useRef(false);
@@ -126,18 +142,18 @@ function RootLayoutNav() {
   if (isLoading) {
     return (
       <>
-        <StatusBar style={statusBarStyle} backgroundColor={statusBarBackground} translucent={false} />
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: statusBarBackground }}>
-          <ActivityIndicator size="large" color={colorScheme === 'dark' ? '#ffffff' : '#111827'} />
+        <StatusBar style={statusBarStyle} backgroundColor={colors.bg} translucent={false} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg }}>
+          <ActivityIndicator size="large" color={colors.accent} />
         </View>
       </>
     );
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={navigationTheme}>
       <>
-        <StatusBar style={statusBarStyle} backgroundColor={statusBarBackground} translucent={false} />
+        <StatusBar style={statusBarStyle} backgroundColor={colors.bg} translucent={false} />
         <Stack>
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -162,6 +178,7 @@ function RootLayoutNav() {
               headerShown: false,
               presentation: 'modal',
               animation: 'slide_from_bottom',
+              sheetCornerRadius: radius.lg,
             }}
           />
           <Stack.Screen name="+not-found" />

@@ -86,10 +86,12 @@ versions in the tree stops being a migration.
 
 ## Phase 5 · Mobile
 
-`apps/mobile` consumes the same `tokens.json`. Generate a TypeScript theme object from it at build
-time rather than transcribing values, so the two clients cannot drift. Patterns translate directly;
-the header capsule becomes a bottom tab bar plus a compact top bar, and hover states become pressed
-states.
+`apps/mobile` consumes the same `tokens.json`. `scripts/generate-tokens.mjs` compiles it into
+`apps/mobile/constants/theme.ts` alongside the web stylesheet, so the two clients cannot drift —
+`bun run tokens` writes both, `bun run tokens:check` fails when either is stale, and both apps' lint
+runs that check. Patterns translate directly; the header capsule becomes a bottom tab bar plus the
+compact `components/TopBar.tsx`, and hover states become pressed states (a row's `--cd-bg-subtle`
+hover becomes its pressed ground). Parity beyond token adoption is out of scope.
 
 ## Definition of done
 
