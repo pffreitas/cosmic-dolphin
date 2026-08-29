@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import {
   FeedCursor,
+  FeedFeedbackInput,
   FeedItem,
   FeedResponse,
   FeedScope,
@@ -156,6 +157,51 @@ export function stripDebugSignals(
   });
 }
 
+/**
+ * Feedback — docs/functional-spec/05-feed.md § Feedback.
+ *
+ * The discriminated union is the whole schema, and it is worth the extra
+ * lines: each kind requires exactly the target it is about and refuses the
+ * other two. A `fewer_domain` carrying only a `bookmarkId` is a 400, because
+ * the alternative — inferring the domain from the bookmark — silences a source
+ * the reader never named, and a feed that mutes the wrong thing is worse than
+ * one that does nothing.
+ *
+ * `domain` and `topic` are lower-cased and trimmed here, at the edge, so the
+ * uniqueness the table promises is uniqueness of *opinions* rather than of
+ * spellings.
+ */
+const normalisedText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .min(1)
+    .max(max)
+    .transform((value) => value.toLowerCase());
+
+export const feedFeedbackSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("not_interested"),
+    bookmarkId: z.string().uuid("bookmarkId must be a bookmark id"),
+  }),
+  z.object({
+    kind: z.literal("fewer_domain"),
+    // A host, not a URL. The client already renders the bare domain in the
+    // provenance row, so asking it for anything else would be asking it to
+    // un-parse something it has already parsed.
+    domain: normalisedText(253),
+  }),
+  z.object({
+    kind: z.literal("mute_topic"),
+    topic: normalisedText(120),
+  }),
+]);
+
+export const feedRailQuerySchema = z.object({
+  topicLimit: z.coerce.number().int().min(1).max(20).optional().default(6),
+  peopleLimit: z.coerce.number().int().min(1).max(20).optional().default(5),
+});
+
 export default async function feedRoutes(fastify: FastifyInstance) {
   const supabase = createClient(
     config.SUPABASE_URL,
@@ -227,6 +273,96 @@ export default async function feedRoutes(fastify: FastifyInstance) {
         error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
       fastify.log.error({ errorMessage, errorStack }, "Get feed error");
+      return reply.status(500).send({ error: "Internal server error" });
+    }
+  });
+
+  /**
+   * "Not interested", "Fewer from this domain", "Mute topic".
+   *
+   * The one behaviour worth naming here rather than only in the service: the
+   * write drops the caller's cached ranking, which is what makes the promise
+   * in the spec — "takes effect on the next request, visibly" — a fact about
+   * the product rather than about the next cache expiry.
+   */
+  fastify.post<{
+    Body: unknown;
+    Reply:
+      | {
+          kind: FeedFeedbackInput["kind"];
+          bookmarkId?: string;
+          domain?: string;
+          topic?: string;
+          rankingInvalidated: boolean;
+        }
+      | { error: string };
+  }>("/feed/feedback", { preHandler: authMiddleware }, async (request, reply) => {
+    try {
+      const parsed = feedFeedbackSchema.safeParse(request.body ?? {});
+      if (!parsed.success) {
+        return reply.status(400).send({ error: firstZodMessage(parsed.error) });
+      }
+
+      const input = parsed.data;
+
+      await services.feed.recordFeedback(request.userId!, {
+        kind: input.kind,
+        bookmarkId: input.kind === "not_interested" ? input.bookmarkId : null,
+        domain: input.kind === "fewer_domain" ? input.domain : null,
+        topic: input.kind === "mute_topic" ? input.topic : null,
+      });
+
+      return reply.send({
+        kind: input.kind,
+        bookmarkId: input.kind === "not_interested" ? input.bookmarkId : undefined,
+        domain: input.kind === "fewer_domain" ? input.domain : undefined,
+        topic: input.kind === "mute_topic" ? input.topic : undefined,
+        // `recordFeedback` invalidates as part of the write, so by the time a
+        // response exists the ranking is already gone.
+        rankingInvalidated: true,
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      fastify.log.error({ errorMessage }, "Feed feedback error");
+      return reply.status(500).send({ error: "Internal server error" });
+    }
+  });
+
+  /**
+   * Home's rail, minus Continue reading — which has had its own route since
+   * D8 and does not need a second definition of "part-way through".
+   */
+  fastify.get<{
+    Querystring: { topicLimit?: string; peopleLimit?: string };
+  }>("/feed/rail", { preHandler: authMiddleware }, async (request, reply) => {
+    try {
+      const parsed = feedRailQuerySchema.safeParse(request.query ?? {});
+      if (!parsed.success) {
+        return reply.status(400).send({ error: firstZodMessage(parsed.error) });
+      }
+
+      const rail = await services.feed.getRail(request.userId!, parsed.data);
+
+      return reply.send({
+        topics: rail.topics.map((row) => ({
+          topic: row.topic,
+          count: row.count,
+        })),
+        people: rail.people.map((row) => ({
+          person: {
+            id: row.profile.id,
+            handle: row.profile.handle ?? "",
+            name: row.profile.name ?? undefined,
+            pictureUrl: row.profile.picture_url ?? undefined,
+          },
+          savesThisWeek: row.savesInWindow,
+        })),
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      fastify.log.error({ errorMessage }, "Get feed rail error");
       return reply.status(500).send({ error: "Internal server error" });
     }
   });

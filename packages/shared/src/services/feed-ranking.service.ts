@@ -6,13 +6,20 @@ import {
   FeedScope,
   RankingSignal,
 } from "../types";
-import { Bookmark as BookmarkRow, FeedImpressionItemType } from "../database/schema";
+import {
+  Bookmark as BookmarkRow,
+  FeedFeedbackRow,
+  FeedImpressionItemType,
+} from "../database/schema";
 import {
   EligibleDigestRow,
+  FeedFeedbackInput,
   FeedRepository,
   FinishedReadRow,
+  FollowedPersonRow,
   RecentlyServedRow,
   SaveOutcomeRow,
+  TopicCountRow,
   impressionKey,
 } from "../repositories/feed.repository";
 import { toDigestWithSources } from "./digest.service";
@@ -103,8 +110,43 @@ export interface GetFeedOptions {
   now?: Date;
 }
 
+/** Home's rail, minus Continue reading — which has its own route. */
+export interface FeedRail {
+  topics: TopicCountRow[];
+  people: FollowedPersonRow[];
+}
+
+export interface GetRailOptions {
+  topicLimit?: number;
+  peopleLimit?: number;
+  now?: Date;
+}
+
 export interface FeedRankingService {
   getFeed(userId: string, options?: GetFeedOptions): Promise<FeedPage>;
+
+  /**
+   * Home's rail: the topics the reader has been saving this week and the
+   * people they follow, with a week of public output each.
+   *
+   * Nothing here is unique to the rail — below 900px it is not rendered at all
+   * and the reader loses nothing — so this method never throws its caller's
+   * page away. A failure below it is a dimmed column.
+   */
+  getRail(userId: string, options?: GetRailOptions): Promise<FeedRail>;
+
+  /**
+   * Record one piece of feedback and drop this user's cached ranking, in that
+   * order — docs/functional-spec/05-feed.md § Feedback.
+   *
+   * The invalidation is not an optimisation. The ranked head is cached for
+   * five minutes; without dropping it, a dismissal made at second one would
+   * keep showing the dismissed item until minute five, and the person who
+   * pressed the button would be right to conclude the button does nothing.
+   * "Takes effect on the next request" is a promise about wall-clock
+   * behaviour, and this is where it is kept.
+   */
+  recordFeedback(userId: string, input: FeedFeedbackInput): Promise<void>;
 
   /**
    * "They went in." Called when a bookmark is marked read, which is the only
@@ -194,6 +236,15 @@ interface RankedSession {
   token: string;
   computedAt: Date;
   entries: SessionEntry[];
+  /**
+   * The feedback the session was built under, carried so the warm-cache
+   * prepend path can honour it without a second query.
+   *
+   * Recording feedback drops every session for the user, so a session that is
+   * still alive was necessarily built with feedback at least as fresh as the
+   * last thing the reader said.
+   */
+  feedback: FeedbackFilter;
   /** After this, page one recomputes. Five minutes, per the spec. */
   headExpiresAt: number;
   /** After this, a cursor into this session can no longer be honoured. */
@@ -439,6 +490,116 @@ export function applySeenDrop<T extends { unopenedServes: number }>(
 ): T[] {
   if (scope === "unread") return items;
   return items.filter((item) => item.unopenedServes < dropAfter);
+}
+
+// ---------------------------------------------------------------------------
+// Feedback — docs/functional-spec/05-feed.md § Feedback
+// ---------------------------------------------------------------------------
+
+/**
+ * What the reader has told the feed, reduced to the three things the ranker
+ * does about it.
+ *
+ * The asymmetry between the three is the point, and it is the menu's own
+ * wording:
+ *
+ *  - **Not interested** names an item. `dismissedBookmarkIds` is a hard
+ *    exclusion in *every* scope, Unread included. Seen decay leaves an item
+ *    reachable in Unread because "stop pushing this at me" is not "hide this";
+ *    an explicit dismissal *is* the second one, and the promise the spec makes
+ *    about it — "an item the user dismissed does not come back" — has no
+ *    scope qualifier in it.
+ *  - **Mute topic** names a subject. Anything carrying the tag leaves the
+ *    feed. Mute means mute.
+ *  - **Fewer from this domain** names a source, and says *fewer*. It is a
+ *    weight: `dismissalWeight` unfinished pseudo-saves per press, fed to the
+ *    same source-affinity function a real save goes through. Three presses on
+ *    a domain the reader nonetheless keeps finishing will not silence it, and
+ *    should not.
+ */
+export interface FeedbackFilter {
+  dismissedBookmarkIds: ReadonlySet<string>;
+  /** Lower-cased tags. */
+  mutedTopics: ReadonlySet<string>;
+  /** Domain → how many `fewer_domain` presses, lower-cased keys. */
+  domainDismissals: ReadonlyMap<string, number>;
+}
+
+export const EMPTY_FEEDBACK_FILTER: FeedbackFilter = {
+  dismissedBookmarkIds: new Set(),
+  mutedTopics: new Set(),
+  domainDismissals: new Map(),
+};
+
+/** The rows as stored, folded into the three sets the ranker consults. */
+export function buildFeedbackFilter(rows: FeedFeedbackRow[]): FeedbackFilter {
+  const dismissedBookmarkIds = new Set<string>();
+  const mutedTopics = new Set<string>();
+  const domainDismissals = new Map<string, number>();
+
+  for (const row of rows) {
+    switch (row.kind) {
+      case "not_interested":
+        if (row.bookmark_id) dismissedBookmarkIds.add(row.bookmark_id);
+        break;
+      case "mute_topic":
+        if (row.topic) mutedTopics.add(row.topic.toLowerCase());
+        break;
+      case "fewer_domain": {
+        if (!row.domain) break;
+        const key = row.domain.toLowerCase();
+        domainDismissals.set(key, (domainDismissals.get(key) ?? 0) + 1);
+        break;
+      }
+    }
+  }
+
+  return { dismissedBookmarkIds, mutedTopics, domainDismissals };
+}
+
+/**
+ * True when the reader has asked not to see this.
+ *
+ * Deliberately keyed on the *item*, not on the score: a dismissal is not a
+ * ranking nuance and must not be expressible as one. There is no weight here
+ * that a tuning row could turn down to zero.
+ */
+export function isFeedbackExcluded(
+  filter: FeedbackFilter,
+  item: { bookmarkId: string; tags: string[] }
+): boolean {
+  if (filter.dismissedBookmarkIds.has(item.bookmarkId)) return true;
+  if (filter.mutedTopics.size === 0) return false;
+  return item.tags.some((tag) => filter.mutedTopics.has(tag.toLowerCase()));
+}
+
+/**
+ * `fewer_domain`, expressed in the units source affinity already speaks.
+ *
+ * One press is `dismissalWeight` saves from that domain that were never
+ * finished — the mirror of the one finished read that is one unit of positive
+ * evidence, at three times the size. Nothing else in the ranker changes: the
+ * existing Laplace prior does the arithmetic, which is why "3× the equivalent
+ * positive" is a number here rather than a second scoring path.
+ */
+export function applyDomainDismissals(
+  outcomes: Map<string, { saved: number; finished: number }>,
+  filter: FeedbackFilter,
+  dismissalWeight: number
+): Map<string, { saved: number; finished: number }> {
+  if (filter.domainDismissals.size === 0 || dismissalWeight <= 0) {
+    return outcomes;
+  }
+
+  const merged = new Map(outcomes);
+  for (const [domain, presses] of filter.domainDismissals) {
+    const entry = merged.get(domain) ?? { saved: 0, finished: 0 };
+    merged.set(domain, {
+      saved: entry.saved + presses * dismissalWeight,
+      finished: entry.finished,
+    });
+  }
+  return merged;
 }
 
 // ---------------------------------------------------------------------------
@@ -724,6 +885,42 @@ export class FeedRankingServiceImpl implements FeedRankingService {
     return this.pageFrom(userId, built.session, 0, limit, scope, built.metrics);
   }
 
+  async getRail(
+    userId: string,
+    options: GetRailOptions = {}
+  ): Promise<FeedRail> {
+    const now = options.now ?? new Date();
+    // Seven days, matching the rail's own words: "Your topics this week", and
+    // a follow's output "this week".
+    const since = new Date(now.getTime() - 7 * DAY_MS);
+
+    const [topics, people] = await Promise.all([
+      this.feedRepository.findTopicsSince(
+        userId,
+        since,
+        options.topicLimit ?? 6
+      ),
+      this.feedRepository.findFollowedPeople(
+        userId,
+        since,
+        options.peopleLimit ?? 5
+      ),
+    ]);
+
+    return { topics, people };
+  }
+
+  async recordFeedback(
+    userId: string,
+    input: FeedFeedbackInput
+  ): Promise<void> {
+    await this.feedRepository.recordFeedback(userId, input);
+    // Then, and only then. Invalidating before the write would leave a window
+    // in which a request rebuilt the ranking from the state the reader was
+    // complaining about and cached it for another five minutes.
+    this.invalidate(userId);
+  }
+
   async recordOpen(userId: string, bookmarkId: string): Promise<void> {
     try {
       await this.feedRepository.markOpened(userId, "bookmark", bookmarkId);
@@ -860,6 +1057,18 @@ export class FeedRankingServiceImpl implements FeedRankingService {
 
     for (const row of [...pending, ...fresh]) {
       if (known.has(row.id)) continue;
+      // The prepend path is the one place a dismissed item could sneak back:
+      // `findPending` is not windowed, so a save the reader dismissed while it
+      // was still processing would be re-pinned on every warm hit. The session
+      // carries the filter precisely so this check costs nothing.
+      if (
+        isFeedbackExcluded(session.feedback, {
+          bookmarkId: row.id,
+          tags: row.cosmic_tags ?? [],
+        })
+      ) {
+        continue;
+      }
       known.add(row.id);
       additions.push(
         this.toSessionEntry(
@@ -909,7 +1118,18 @@ export class FeedRankingServiceImpl implements FeedRankingService {
     // unread links, and an AI item in it would be neither unread nor a link.
     const wantsDigests = scope === "for_you";
 
-    const [pendingRows, ownRows, followedRows, digestRows] = await Promise.all([
+    const [
+      feedbackRows,
+      pendingRows,
+      ownRows,
+      followedRows,
+      digestRows,
+    ] = await Promise.all([
+      // Read once, at the top, for every scope including Unread. An explicit
+      // dismissal is not seen decay: there is no scope it does not apply to.
+      this.feedRepository
+        .findFeedback(userId, parameters.feedbackCap)
+        .catch(() => [] as FeedFeedbackRow[]),
       wantsOwn
         ? this.feedRepository.findPending(userId, parameters.pageSize)
         : Promise.resolve([]),
@@ -958,22 +1178,36 @@ export class FeedRankingServiceImpl implements FeedRankingService {
       })
     );
 
+    // What the reader has said. Applied to the *candidate set*, before any
+    // scoring, and to `pending` as well as to the ranked arms — a dismissal
+    // that only reordered things would be a preference, and this is not one.
+    const feedback = buildFeedbackFilter(feedbackRows);
+    const dismissed = (row: BookmarkRow): boolean =>
+      isFeedbackExcluded(feedback, {
+        bookmarkId: row.id,
+        tags: row.cosmic_tags ?? [],
+      });
+
     const pending: Candidate[] = pendingRows
-      .filter((row) => !exclude.has(row.id))
+      .filter((row) => !exclude.has(row.id) && !dismissed(row))
       .map((row) => toCandidate("pending", row, null));
 
     const pendingIds = new Set(pending.map((item) => item.bookmark.id));
 
     const ranked: Candidate[] = [
       ...ownRows
-        .filter((row) => !exclude.has(row.id) && !pendingIds.has(row.id))
+        .filter(
+          (row) =>
+            !exclude.has(row.id) && !pendingIds.has(row.id) && !dismissed(row)
+        )
         .map((row) => toCandidate("own_save", row, null)),
       ...followedRows
         .filter(
           (row) =>
             interactable.has(row.author.id) &&
             !exclude.has(row.bookmark.id) &&
-            !pendingIds.has(row.bookmark.id)
+            !pendingIds.has(row.bookmark.id) &&
+            !dismissed(row.bookmark)
         )
         .map((row) =>
           toCandidate(
@@ -1003,7 +1237,8 @@ export class FeedRankingServiceImpl implements FeedRankingService {
         now,
         chronological.map((candidate) =>
           this.toSessionEntry(candidate.type, candidate.bookmark, candidate.actor)
-        )
+        ),
+        feedback
       );
 
       return {
@@ -1062,6 +1297,19 @@ export class FeedRankingServiceImpl implements FeedRankingService {
         ),
       ]);
 
+    // A muted topic silences a digest built on it as well. The digest has no
+    // tags of its own; the tags of the saves it was built from are what it is
+    // about, which is exactly what the reader muted.
+    const eligibleDigests =
+      feedback.mutedTopics.size === 0
+        ? digestRows
+        : digestRows.filter(
+            (row) =>
+              !row.sourceTags.some((tag) =>
+                feedback.mutedTopics.has(tag.toLowerCase())
+              )
+          );
+
     const scored = this.score({
       candidates: ranked,
       config,
@@ -1072,10 +1320,11 @@ export class FeedRankingServiceImpl implements FeedRankingService {
       socialProof,
       impressions,
       recentlyServed,
+      feedback,
     });
 
     const scoredDigests = this.scoreDigests({
-      digests: digestRows,
+      digests: eligibleDigests,
       config,
       now,
       similarity,
@@ -1083,6 +1332,7 @@ export class FeedRankingServiceImpl implements FeedRankingService {
       saveOutcomes,
       impressions,
       recentlyServed,
+      feedback,
     });
 
     // One ordering over both kinds. A digest that scores below the tenth
@@ -1169,7 +1419,7 @@ export class FeedRankingServiceImpl implements FeedRankingService {
     ];
 
     return {
-      session: this.materialise(userId, scope, config, now, entries),
+      session: this.materialise(userId, scope, config, now, entries, feedback),
       metrics: {
         cacheHit: false,
         candidateCount: ranked.length + pending.length + digestRows.length,
@@ -1206,13 +1456,21 @@ export class FeedRankingServiceImpl implements FeedRankingService {
     saveOutcomes: SaveOutcomeRow[];
     impressions: Map<string, { served_count: number; opened_at: Date | null }>;
     recentlyServed: RecentlyServedRow[];
+    feedback: FeedbackFilter;
   }): ScoredDigest[] {
     const { digests, config, now, similarity } = input;
     if (digests.length === 0) return [];
 
     const { weights, parameters } = config;
 
-    const outcomes = domainOutcomes(input.saveOutcomes);
+    // `fewer_domain` reaches a digest through the domains it drew on. A reader
+    // who asked for fewer links from a blog did not ask for an AI summary of
+    // the same blog instead.
+    const outcomes = applyDomainDismissals(
+      domainOutcomes(input.saveOutcomes),
+      input.feedback,
+      parameters.dismissalWeight
+    );
     const recent = input.recentlyServed.map((row) => ({
       domain: domainOf(row.sourceUrl),
       tags: row.tags ?? [],
@@ -1325,11 +1583,21 @@ export class FeedRankingServiceImpl implements FeedRankingService {
     socialProof: { bookmarkId: string; reshares: number; likes: number }[];
     impressions: Map<string, { served_count: number; opened_at: Date | null }>;
     recentlyServed: RecentlyServedRow[];
+    feedback: FeedbackFilter;
   }): ScoredCandidate[] {
     const { candidates, config, now, similarity } = input;
     const { weights, parameters } = config;
 
-    const outcomes = domainOutcomes(input.saveOutcomes);
+    // "Fewer from this domain" lands here and nowhere else: it is the one kind
+    // of feedback that is a weight rather than a removal, and source affinity
+    // is the signal it is about. `dismissalWeight` unfinished pseudo-saves per
+    // press — three times the size of the one finished read that is a domain's
+    // unit of positive evidence.
+    const outcomes = applyDomainDismissals(
+      domainOutcomes(input.saveOutcomes),
+      input.feedback,
+      parameters.dismissalWeight
+    );
     const typical = typicalLength(input.finishedReads, timeOfDayBucket(now));
     const proof = new Map(
       input.socialProof.map((row) => [row.bookmarkId, row])
@@ -1440,12 +1708,14 @@ export class FeedRankingServiceImpl implements FeedRankingService {
     scope: FeedScope,
     config: FeedRankingConfig,
     now: Date,
-    entries: SessionEntry[]
+    entries: SessionEntry[],
+    feedback: FeedbackFilter
   ): RankedSession {
     const session: RankedSession = {
       token: `${now.getTime()}`,
       computedAt: now,
       entries,
+      feedback,
       headExpiresAt: now.getTime() + config.parameters.cacheTtlSeconds * 1000,
       expiresAt: now.getTime() + config.parameters.sessionTtlSeconds * 1000,
     };

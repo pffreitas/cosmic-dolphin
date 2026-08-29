@@ -79,9 +79,12 @@ export { FeedRepositoryImpl, impressionKey } from "./feed.repository";
 export type {
   FeedRepository,
   EligibleDigestRow,
+  FeedFeedbackInput,
+  FollowedPersonRow,
   FollowedSaveRow,
   FinishedReadRow,
   SaveOutcomeRow,
   RecentlyServedRow,
   SocialProofRow,
+  TopicCountRow,
 } from "./feed.repository";

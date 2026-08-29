@@ -275,6 +275,32 @@ export interface FeedImpressionsTable {
 export type FeedImpressionItemType = "bookmark" | "digest";
 
 /**
+ * What a reader told the feed to stop showing them —
+ * docs/functional-spec/05-feed.md § Feedback.
+ *
+ * One target per row, and which one is decided by `kind`; the SQL check
+ * constraint enforces the pairing so the ranker never has to guess which
+ * domain a `fewer_domain` row meant.
+ */
+export interface FeedFeedbackTable {
+  id: Generated<string>;
+  user_id: string;
+  kind: FeedFeedbackKind;
+  /** `not_interested` only. */
+  bookmark_id: string | null;
+  /** `fewer_domain` only. Bare host, lowercased. */
+  domain: string | null;
+  /** `mute_topic` only. One `cosmic_tags` entry, lowercased. */
+  topic: string | null;
+  created_at: Generated<Date>;
+}
+
+export type FeedFeedbackKind =
+  | "not_interested"
+  | "fewer_domain"
+  | "mute_topic";
+
+/**
  * An AI-authored grouping of the user's own recent saves —
  * docs/functional-spec/05-feed.md § Digests.
  *
@@ -386,6 +412,7 @@ export interface Database {
   bookmark_comments: BookmarkCommentsTable;
   content_reports: ContentReportsTable;
   feed_impressions: FeedImpressionsTable;
+  feed_feedback: FeedFeedbackTable;
   feed_ranking_config: FeedRankingConfigTable;
   feed_digests: FeedDigestsTable;
   feed_digest_likes: FeedDigestLikesTable;
@@ -444,6 +471,9 @@ export type NewContentReport = Insertable<ContentReportsTable>;
 export type FeedImpressionRow = Selectable<FeedImpressionsTable>;
 export type NewFeedImpression = Insertable<FeedImpressionsTable>;
 export type FeedImpressionUpdate = Updateable<FeedImpressionsTable>;
+
+export type FeedFeedbackRow = Selectable<FeedFeedbackTable>;
+export type NewFeedFeedback = Insertable<FeedFeedbackTable>;
 
 export type FeedRankingConfigRow = Selectable<FeedRankingConfigTable>;
 

@@ -4,6 +4,8 @@ import {
   Bookmark as BookmarkRow,
   Database,
   FeedDigestRow,
+  FeedFeedbackKind,
+  FeedFeedbackRow,
   FeedImpressionItemType,
   FeedImpressionRow,
 } from "../database/schema";
@@ -85,6 +87,31 @@ export interface RecentlyServedRow {
   sourceUrl: string;
   tags: string[] | null;
   lastServedAt: Date;
+}
+
+/**
+ * One piece of feedback, written from an item's overflow menu.
+ *
+ * Exactly one of the three targets is set, decided by `kind` — the SQL check
+ * constraint holds that, so nothing downstream has to.
+ */
+export interface FeedFeedbackInput {
+  kind: FeedFeedbackKind;
+  bookmarkId?: string | null;
+  domain?: string | null;
+  topic?: string | null;
+}
+
+/** A tag the reader has been saving, and how many times, inside a window. */
+export interface TopicCountRow {
+  topic: string;
+  count: number;
+}
+
+/** Someone the viewer follows, with their public output for a window. */
+export interface FollowedPersonRow {
+  profile: PublicProfileRow;
+  savesInWindow: number;
 }
 
 /** How many people the viewer follows have engaged with a candidate. */
@@ -203,6 +230,47 @@ export interface FeedRepository {
     itemType: FeedImpressionItemType,
     itemId: string
   ): Promise<void>;
+
+  /**
+   * Everything this reader has told the feed — one query at the top of every
+   * ranking.
+   *
+   * Read whole rather than filtered per candidate. The set is small (it grows
+   * only when a person deliberately presses a menu item), and holding it in
+   * memory is what lets the exclusion be applied to the candidate list *and*
+   * to the fresh-save prepend path without a second round trip.
+   */
+  findFeedback(userId: string, limit: number): Promise<FeedFeedbackRow[]>;
+
+  /**
+   * Record one piece of feedback. Idempotent: the unique indexes make a
+   * double-press one row, so `fewer_domain` counts opinions rather than
+   * clicks.
+   */
+  recordFeedback(userId: string, input: FeedFeedbackInput): Promise<void>;
+
+  /**
+   * The tags on the reader's own saves inside a window, most-saved first —
+   * Home's "Your topics this week".
+   */
+  findTopicsSince(
+    userId: string,
+    since: Date,
+    limit: number
+  ): Promise<TopicCountRow[]>;
+
+  /**
+   * People the viewer follows, with their **public** saves inside a window.
+   *
+   * Public only. The number is one anybody could reach by opening the
+   * person's profile; counting their private library here would leak it an
+   * integer at a time.
+   */
+  findFollowedPeople(
+    userId: string,
+    since: Date,
+    limit: number
+  ): Promise<FollowedPersonRow[]>;
 
   /**
    * The ranking overrides for this environment, or `null` when there is no row.
@@ -676,6 +744,119 @@ export class FeedRepositoryImpl
         )
         .execute();
     }, "markOpened");
+  }
+
+  async findFeedback(
+    userId: string,
+    limit: number
+  ): Promise<FeedFeedbackRow[]> {
+    return this.executeQuery(async () => {
+      return await this.db
+        .selectFrom("feed_feedback")
+        .selectAll()
+        .where("user_id", "=", userId)
+        // Newest first, so the cap — which exists only so one pathological
+        // account cannot make every ranking unbounded — keeps the opinions a
+        // reader most recently expressed rather than their oldest ones.
+        .orderBy("created_at", "desc")
+        .limit(limit)
+        .execute();
+    }, "findFeedback");
+  }
+
+  async recordFeedback(
+    userId: string,
+    input: FeedFeedbackInput
+  ): Promise<void> {
+    await this.executeQuery(async () => {
+      await this.db
+        .insertInto("feed_feedback")
+        .values({
+          user_id: userId,
+          kind: input.kind,
+          bookmark_id: input.bookmarkId ?? null,
+          domain: input.domain ?? null,
+          topic: input.topic ?? null,
+        })
+        // The three partial unique indexes make this idempotent. Saying "not
+        // interested" twice is one opinion; `fewer_domain` counts opinions,
+        // and a double-click must not be able to manufacture a second one.
+        .onConflict((oc) => oc.doNothing())
+        .execute();
+    }, "recordFeedback");
+  }
+
+  async findTopicsSince(
+    userId: string,
+    since: Date,
+    limit: number
+  ): Promise<TopicCountRow[]> {
+    return this.executeQuery(async () => {
+      const result = await sql<{ topic: string; count: string }>`
+        SELECT lower(tag) AS topic, count(*) AS count
+        FROM bookmarks b, unnest(b.cosmic_tags) AS tag
+        WHERE b.user_id = ${userId}
+          AND b.is_archived = false
+          AND b.created_at >= ${since}
+        GROUP BY lower(tag)
+        ORDER BY count(*) DESC, lower(tag) ASC
+        LIMIT ${limit}
+      `.execute(this.db);
+
+      return result.rows.map((row) => ({
+        topic: row.topic,
+        count: Number(row.count ?? 0),
+      }));
+    }, "findTopicsSince");
+  }
+
+  async findFollowedPeople(
+    userId: string,
+    since: Date,
+    limit: number
+  ): Promise<FollowedPersonRow[]> {
+    return this.executeQuery(async () => {
+      // A LEFT JOIN LATERAL rather than a correlated subquery per row, and
+      // ordered by output rather than by follow date: the rail's question is
+      // "who has been publishing", and someone the reader followed two years
+      // ago who posted twice this week is a better answer than someone they
+      // followed yesterday who posted nothing.
+      const rows = await this.db
+        .selectFrom("follows")
+        .innerJoin("profiles", "profiles.id", "follows.following_id")
+        .select([
+          "profiles.id as id",
+          "profiles.handle as handle",
+          "profiles.name as name",
+          "profiles.picture_url as picture_url",
+          "profiles.created_at as created_at",
+        ])
+        .select(
+          sql<string>`(
+            SELECT count(*) FROM bookmarks pb
+             WHERE pb.user_id = profiles.id
+               AND pb.is_public = true
+               AND pb.is_archived = false
+               AND pb.created_at >= ${since}
+          )`.as("saves_in_window")
+        )
+        .where("follows.follower_id", "=", userId)
+        .orderBy("saves_in_window", "desc")
+        .orderBy("follows.created_at", "desc")
+        .limit(limit)
+        .execute();
+
+      return rows.map((row) => ({
+        profile: {
+          id: row.id,
+          handle: row.handle,
+          name: row.name,
+          picture_url: row.picture_url,
+          created_at: row.created_at,
+        },
+        savesInWindow: Number(row.saves_in_window ?? 0),
+      }));
+    }, "findFollowedPeople");
   }
 
   async findRankingConfig(

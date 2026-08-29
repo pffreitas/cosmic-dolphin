@@ -19,13 +19,23 @@ import {
   type RecentlyServedRow,
   type SaveOutcomeRow,
   type EligibleDigestRow,
+  type FeedFeedbackInput,
+  type FeedFeedbackRow,
+  type FollowedPersonRow,
   type SocialProofRow,
   type SocialService,
+  type TopicCountRow,
+  buildFeedbackFilter,
+  isFeedbackExcluded,
+  applyDomainDismissals,
+  sourceAffinityScore,
 } from "@cosmic-dolphin/shared";
 import {
   decodeFeedCursor,
   encodeFeedCursor,
   feedQuerySchema,
+  feedFeedbackSchema,
+  feedRailQuerySchema,
   stripDebugSignals,
   FEED_PAGE_DEFAULT_LIMIT,
   FEED_PAGE_MAX_LIMIT,
@@ -112,6 +122,9 @@ class FakeFeedRepository implements FeedRepository {
   recentlyServed: RecentlyServedRow[] = [];
   servedSince: string[] = [];
   rankingConfig: FeedRankingConfigOverrides | null = null;
+  feedback: FeedFeedbackRow[] = [];
+  topics: TopicCountRow[] = [];
+  people: FollowedPersonRow[] = [];
 
   /** What `findOwnUnread` was asked for, so the candidate cap can be asserted. */
   ownUnreadLimits: number[] = [];
@@ -198,6 +211,56 @@ class FakeFeedRepository implements FeedRepository {
 
   async findRankingConfig(): Promise<FeedRankingConfigOverrides | null> {
     return this.rankingConfig;
+  }
+
+  async findFeedback(
+    _userId: string,
+    limit: number
+  ): Promise<FeedFeedbackRow[]> {
+    return this.feedback.slice(0, limit);
+  }
+
+  async recordFeedback(
+    userId: string,
+    input: FeedFeedbackInput
+  ): Promise<void> {
+    // The three partial unique indexes, in memory. Without them the fake would
+    // let a double-press count as two opinions and the `fewer_domain` test
+    // would be measuring the test.
+    const target =
+      input.bookmarkId ?? input.domain ?? input.topic ?? "";
+    const exists = this.feedback.some(
+      (row) =>
+        row.kind === input.kind &&
+        (row.bookmark_id ?? row.domain ?? row.topic ?? "") === target
+    );
+    if (exists) return;
+
+    this.feedback.push({
+      id: `fb-${this.feedback.length}`,
+      user_id: userId,
+      kind: input.kind,
+      bookmark_id: input.bookmarkId ?? null,
+      domain: input.domain ?? null,
+      topic: input.topic ?? null,
+      created_at: NOW,
+    });
+  }
+
+  async findTopicsSince(
+    _userId: string,
+    _since: Date,
+    limit: number
+  ): Promise<TopicCountRow[]> {
+    return this.topics.slice(0, limit);
+  }
+
+  async findFollowedPeople(
+    _userId: string,
+    _since: Date,
+    limit: number
+  ): Promise<FollowedPersonRow[]> {
+    return this.people.slice(0, limit);
   }
 
   /** Convenience: n unopened serves of one digest. */
@@ -1108,5 +1171,418 @@ describe("marking a bookmark read", () => {
     await expect(
       makeService(repository).recordOpen(VIEWER, "x")
     ).resolves.toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D16 — feed feedback
+//
+// The deliverable's own sentence is the test plan: "a dismissed item does not
+// come back". That is asserted against the service, through the same path the
+// route uses, at every place an item could plausibly reappear — the next
+// ranking, the warm cache, the pinned `pending` slot, and the Unread scope
+// that seen decay deliberately leaves open.
+// ---------------------------------------------------------------------------
+
+describe("a dismissed item does not come back", () => {
+  it("is gone from the very next request", async () => {
+    const repository = new FakeFeedRepository();
+    repository.ownUnread = [
+      bookmarkRow({ id: "keep" }),
+      bookmarkRow({ id: "dismiss-me" }),
+    ];
+    const service = makeService(repository);
+
+    const before = await service.getFeed(VIEWER, { now: NOW });
+    expect(before.items.map((item) => item.bookmark!.id).sort()).toEqual([
+      "dismiss-me",
+      "keep",
+    ]);
+
+    await service.recordFeedback(VIEWER, {
+      kind: "not_interested",
+      bookmarkId: "dismiss-me",
+    });
+
+    // Same clock. Without the cache invalidation inside `recordFeedback` this
+    // would be served from the warm head and the item would still be there —
+    // which is exactly the bug the spec calls out by name.
+    const after = await service.getFeed(VIEWER, { now: NOW });
+    expect(after.items.map((item) => item.bookmark!.id)).toEqual(["keep"]);
+  });
+
+  it("stays gone in Unread, where seen decay leaves things reachable", async () => {
+    // Seen decay drops an item from For you and keeps it in Unread on purpose:
+    // "stop pushing this at me" is not "hide this". An explicit dismissal *is*
+    // the second one, so it applies to the scope that does not rank as well.
+    const repository = new FakeFeedRepository();
+    repository.ownUnread = [
+      bookmarkRow({ id: "keep" }),
+      bookmarkRow({ id: "dismiss-me" }),
+    ];
+    const service = makeService(repository);
+
+    await service.recordFeedback(VIEWER, {
+      kind: "not_interested",
+      bookmarkId: "dismiss-me",
+    });
+
+    for (const scope of ["for_you", "following", "unread"] as const) {
+      const page = await service.getFeed(VIEWER, { scope, now: NOW });
+      expect(page.items.map((item) => item.bookmark!.id)).not.toContain(
+        "dismiss-me"
+      );
+    }
+  });
+
+  it("cannot be re-pinned by the fresh-save prepend on a warm cache", async () => {
+    // `findPending` is not windowed, so a save dismissed while it was still
+    // processing is the one item that could walk back in through the cache's
+    // prepend path rather than through a ranking.
+    const repository = new FakeFeedRepository();
+    repository.pending = [
+      bookmarkRow({ id: "still-processing", processing_status: "processing" }),
+    ];
+    repository.ownUnread = [bookmarkRow({ id: "keep" })];
+    const service = makeService(repository);
+
+    const before = await service.getFeed(VIEWER, { now: NOW });
+    expect(before.items[0].bookmark!.id).toBe("still-processing");
+
+    await service.recordFeedback(VIEWER, {
+      kind: "not_interested",
+      bookmarkId: "still-processing",
+    });
+
+    // A second later: inside the five-minute head TTL, so the next call takes
+    // the warm path and runs `prependFreshSaves`.
+    const warm = new Date(NOW.getTime() + 1_000);
+    await service.getFeed(VIEWER, { now: warm });
+    const again = await service.getFeed(VIEWER, { now: warm });
+
+    expect(again.items.map((item) => item.bookmark!.id)).not.toContain(
+      "still-processing"
+    );
+  });
+
+  it("is not reachable by paging deeper into the feed", async () => {
+    const repository = new FakeFeedRepository();
+    repository.ownUnread = Array.from({ length: 25 }, (_, index) =>
+      bookmarkRow({
+        id: `b${String(index).padStart(2, "0")}`,
+        created_at: daysAgo(index + 1),
+        updated_at: daysAgo(index + 1),
+      })
+    );
+    const service = makeService(repository);
+
+    await service.recordFeedback(VIEWER, {
+      kind: "not_interested",
+      bookmarkId: "b20",
+    });
+
+    const first = await service.getFeed(VIEWER, { now: NOW });
+    const second = await service.getFeed(VIEWER, {
+      now: NOW,
+      cursor: first.nextCursor,
+    });
+
+    const served = [...first.items, ...second.items].map(
+      (item) => item.bookmark!.id
+    );
+    expect(served).not.toContain("b20");
+    expect(served.length).toBe(24);
+  });
+
+  it("mutes a topic across every item carrying the tag", async () => {
+    const repository = new FakeFeedRepository();
+    repository.ownUnread = [
+      bookmarkRow({ id: "crypto-a", cosmic_tags: ["Crypto", "finance"] }),
+      bookmarkRow({ id: "crypto-b", cosmic_tags: ["crypto"] }),
+      bookmarkRow({ id: "typography", cosmic_tags: ["typography"] }),
+    ];
+    const service = makeService(repository);
+
+    // Cased differently from both saves, on purpose: a topic is a subject, not
+    // a string, and the reader typed neither of these spellings.
+    await service.recordFeedback(VIEWER, {
+      kind: "mute_topic",
+      topic: "crypto",
+    });
+
+    const page = await service.getFeed(VIEWER, { now: NOW });
+    expect(page.items.map((item) => item.bookmark!.id)).toEqual(["typography"]);
+  });
+
+  it("silences a digest built on a muted topic", async () => {
+    const repository = new FakeFeedRepository();
+    repository.digests = [
+      {
+        digest: {
+          id: "dg1",
+          user_id: VIEWER,
+          title: "Four saves circling one argument",
+          summary: "…",
+          key_points: [],
+          source_bookmark_ids: ["s1", "s2", "s3"],
+          coherence: 0.8,
+          model_id: null,
+          window_start: daysAgo(14),
+          window_end: NOW,
+          is_public: false,
+          share_slug: null,
+          like_count: 0,
+          created_at: daysAgo(1),
+          updated_at: daysAgo(1),
+        },
+        sources: [],
+        sourceDomains: ["every.to"],
+        sourceTags: ["Crypto"],
+        likedByViewer: false,
+      } as unknown as EligibleDigestRow,
+    ];
+    const service = makeService(repository);
+
+    const before = await service.getFeed(VIEWER, { now: NOW });
+    expect(before.items.some((item) => item.type === "digest")).toBe(true);
+
+    await service.recordFeedback(VIEWER, {
+      kind: "mute_topic",
+      topic: "crypto",
+    });
+
+    const after = await service.getFeed(VIEWER, { now: NOW });
+    expect(after.items.some((item) => item.type === "digest")).toBe(false);
+  });
+});
+
+describe("dismissal outweighs the equivalent positive three to one", () => {
+  it("counts one `fewer_domain` as three unfinished saves", () => {
+    // The claim in one line of arithmetic. Source affinity is
+    // (finished + 1) / (saved + 2); a reader who saved four from a domain and
+    // finished all four scores 5/6. One dismissal has to move that by three
+    // times as much as one more finished read would.
+    const outcomes = new Map([["every.to", { saved: 4, finished: 4 }]]);
+    const filter = buildFeedbackFilter([
+      {
+        id: "f1",
+        user_id: VIEWER,
+        kind: "fewer_domain",
+        bookmark_id: null,
+        domain: "every.to",
+        topic: null,
+        created_at: NOW,
+      },
+    ]);
+
+    const before = sourceAffinityScore(4, 4);
+    const dismissed = applyDomainDismissals(outcomes, filter, 3).get("every.to")!;
+    const after = sourceAffinityScore(dismissed.finished, dismissed.saved);
+
+    expect(dismissed).toEqual({ saved: 7, finished: 4 });
+    expect(after).toBeLessThan(before);
+    // Three pseudo-saves, none finished — the mirror of three finished reads.
+    expect(after).toBe(sourceAffinityScore(4, 7));
+  });
+
+  it("weights a domain down without banning it", async () => {
+    // "Fewer", not "none". The item still appears; it just stops winning.
+    const repository = new FakeFeedRepository();
+    repository.ownUnread = [
+      bookmarkRow({ id: "noisy", source_url: "https://noisy.com/a" }),
+      bookmarkRow({ id: "quiet", source_url: "https://quiet.com/a" }),
+    ];
+    const service = makeService(repository);
+
+    await service.recordFeedback(VIEWER, {
+      kind: "fewer_domain",
+      domain: "noisy.com",
+    });
+
+    const page = await service.getFeed(VIEWER, { now: NOW });
+    const ids = page.items.map((item) => item.bookmark!.id);
+
+    expect(ids).toContain("noisy");
+    expect(ids.indexOf("quiet")).toBeLessThan(ids.indexOf("noisy"));
+  });
+
+  it("counts opinions rather than clicks", async () => {
+    const repository = new FakeFeedRepository();
+    const service = makeService(repository);
+
+    await service.recordFeedback(VIEWER, {
+      kind: "fewer_domain",
+      domain: "noisy.com",
+    });
+    await service.recordFeedback(VIEWER, {
+      kind: "fewer_domain",
+      domain: "noisy.com",
+    });
+
+    // Idempotent at the storage layer, so a double-press cannot manufacture a
+    // second opinion — which is what makes counting them meaningful at all.
+    expect(repository.feedback).toHaveLength(1);
+  });
+
+  it("is not a weight a tuning row could turn off", async () => {
+    // `not_interested` and `mute_topic` are exclusions, not signals. A config
+    // row that zeroed every weight still cannot bring a dismissed item back.
+    const repository = new FakeFeedRepository();
+    repository.rankingConfig = {
+      weights: {
+        topic_affinity: 0,
+        source_affinity: 0,
+        recency: 0,
+        social_proof: 0,
+        effort_fit: 0,
+        novelty: 0,
+      },
+      parameters: { dismissalWeight: 0 },
+    };
+    repository.ownUnread = [
+      bookmarkRow({ id: "keep" }),
+      bookmarkRow({ id: "gone" }),
+    ];
+    const service = makeService(repository);
+
+    await service.recordFeedback(VIEWER, {
+      kind: "not_interested",
+      bookmarkId: "gone",
+    });
+
+    const page = await service.getFeed(VIEWER, { now: NOW });
+    expect(page.items.map((item) => item.bookmark!.id)).toEqual(["keep"]);
+  });
+});
+
+describe("the feedback filter", () => {
+  it("folds rows into the three things the ranker does about them", () => {
+    const filter = buildFeedbackFilter([
+      {
+        id: "1",
+        user_id: VIEWER,
+        kind: "not_interested",
+        bookmark_id: "b1",
+        domain: null,
+        topic: null,
+        created_at: NOW,
+      },
+      {
+        id: "2",
+        user_id: VIEWER,
+        kind: "mute_topic",
+        bookmark_id: null,
+        domain: null,
+        topic: "Crypto",
+        created_at: NOW,
+      },
+      {
+        id: "3",
+        user_id: VIEWER,
+        kind: "fewer_domain",
+        bookmark_id: null,
+        domain: "Noisy.com",
+        topic: null,
+        created_at: NOW,
+      },
+    ]);
+
+    expect(filter.dismissedBookmarkIds.has("b1")).toBe(true);
+    expect(filter.mutedTopics.has("crypto")).toBe(true);
+    expect(filter.domainDismissals.get("noisy.com")).toBe(1);
+
+    expect(isFeedbackExcluded(filter, { bookmarkId: "b1", tags: [] })).toBe(true);
+    expect(
+      isFeedbackExcluded(filter, { bookmarkId: "b2", tags: ["CRYPTO"] })
+    ).toBe(true);
+    expect(
+      isFeedbackExcluded(filter, { bookmarkId: "b3", tags: ["typography"] })
+    ).toBe(false);
+  });
+});
+
+describe("POST /feed/feedback validation", () => {
+  it("requires the target the kind is about, and refuses the others", () => {
+    expect(
+      feedFeedbackSchema.safeParse({
+        kind: "not_interested",
+        bookmarkId: "9d1e6b3c-1f2a-4c8e-9b77-2a1c4d5e6f70",
+      }).success
+    ).toBe(true);
+
+    // An id-shaped string that is not an id is a 400, not a row.
+    expect(
+      feedFeedbackSchema.safeParse({
+        kind: "not_interested",
+        bookmarkId: "bk_8f2a",
+      }).success
+    ).toBe(false);
+
+    // A `fewer_domain` carrying only a bookmark id would have to be guessed
+    // into a domain, and a feed that mutes a source the reader never named is
+    // worse than one that does nothing.
+    expect(
+      feedFeedbackSchema.safeParse({
+        kind: "fewer_domain",
+        bookmarkId: "9d1e6b3c-1f2a-4c8e-9b77-2a1c4d5e6f70",
+      }).success
+    ).toBe(false);
+
+    expect(feedFeedbackSchema.safeParse({ kind: "mute_topic" }).success).toBe(
+      false
+    );
+    expect(
+      feedFeedbackSchema.safeParse({ kind: "somewhat_interested" }).success
+    ).toBe(false);
+  });
+
+  it("normalises a domain and a topic so one opinion is one row", () => {
+    const domain = feedFeedbackSchema.parse({
+      kind: "fewer_domain",
+      domain: "  Every.TO  ",
+    });
+    expect(domain).toMatchObject({ domain: "every.to" });
+
+    const topic = feedFeedbackSchema.parse({
+      kind: "mute_topic",
+      topic: "Agent Memory",
+    });
+    expect(topic).toMatchObject({ topic: "agent memory" });
+  });
+});
+
+describe("GET /feed/rail", () => {
+  it("defaults to what the rail renders and refuses nonsense", () => {
+    const defaults = feedRailQuerySchema.parse({});
+    expect(defaults).toEqual({ topicLimit: 6, peopleLimit: 5 });
+    expect(feedRailQuerySchema.safeParse({ topicLimit: 0 }).success).toBe(false);
+    expect(feedRailQuerySchema.safeParse({ peopleLimit: 500 }).success).toBe(
+      false
+    );
+  });
+
+  it("returns the week's topics and the people the reader follows", async () => {
+    const repository = new FakeFeedRepository();
+    repository.topics = [
+      { topic: "agent memory", count: 4 },
+      { topic: "typography", count: 2 },
+    ];
+    repository.people = [
+      {
+        profile: {
+          id: "44444444-4444-4444-4444-444444444444",
+          handle: "maya",
+          name: "Maya",
+          picture_url: null,
+          created_at: daysAgo(200),
+        },
+        savesInWindow: 3,
+      },
+    ];
+
+    const rail = await makeService(repository).getRail(VIEWER, { now: NOW });
+
+    expect(rail.topics).toHaveLength(2);
+    expect(rail.people[0].savesInWindow).toBe(3);
   });
 });

@@ -100,6 +100,29 @@ export interface FeedRankingParameters {
   sessionTtlSeconds: number;
   /** How many recently-served items the novelty penalty looks back over. */
   noveltyWindowItems: number;
+  /**
+   * How much a dismissal outweighs the equivalent positive —
+   * docs/functional-spec/05-feed.md § Feedback: "weight it at 3× the
+   * equivalent positive".
+   *
+   * Where it actually bites is `fewer_domain`, the one kind of feedback that
+   * is a weight rather than a ban. Source affinity is
+   * `(finished + 1) / (saved + 2)`, so one finished read is one unit of
+   * positive evidence about a domain; one `fewer_domain` adds this many
+   * *unfinished* saves to the denominator, which is the same statement in the
+   * opposite direction, three times over.
+   *
+   * `not_interested` and `mute_topic` do not use it. They are not weights: an
+   * item the reader dismissed does not come back, and a muted topic is muted.
+   */
+  dismissalWeight: number;
+  /**
+   * Hard cap on how many feedback rows one ranking reads.
+   *
+   * Not a product number — a bound, so one account that has pressed a menu
+   * item ten thousand times cannot make everybody else's query planner sad.
+   */
+  feedbackCap: number;
 }
 
 export const DEFAULT_FEED_RANKING_PARAMETERS: FeedRankingParameters = {
@@ -120,6 +143,8 @@ export const DEFAULT_FEED_RANKING_PARAMETERS: FeedRankingParameters = {
   cacheTtlSeconds: 300,
   sessionTtlSeconds: 900,
   noveltyWindowItems: 20,
+  dismissalWeight: 3,
+  feedbackCap: 1000,
 };
 
 export interface FeedRankingConfig {
@@ -176,6 +201,7 @@ const INTEGER_PARAMETERS: ReadonlySet<keyof FeedRankingParameters> = new Set([
   "cacheTtlSeconds",
   "sessionTtlSeconds",
   "noveltyWindowItems",
+  "feedbackCap",
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
