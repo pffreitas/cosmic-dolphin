@@ -2,8 +2,10 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Linking } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+
+import { textStyle } from '@/constants/fonts';
+import { radius, space } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 
 interface AIResponseCardProps {
   response: string;
@@ -11,70 +13,69 @@ interface AIResponseCardProps {
   isLoading: boolean;
 }
 
+/**
+ * The AI callout: its own quiet material — the `ai-*` ground, one hairline, a
+ * 12px frame — not a second brand. Body copy is sans; the machine is talking
+ * about the content, it is not the content.
+ */
 export function AIResponseCard({ response, isStreaming, isLoading }: AIResponseCardProps) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const colors = Colors[colorScheme];
+  const { colors } = useTheme();
 
   const markdownStyles = useMemo(() => ({
     body: {
-      color: colors.text,
-      fontSize: 15,
-      lineHeight: 22,
+      ...textStyle('body'),
+      color: colors.fg,
     },
     heading1: {
-      color: colors.text,
-      fontSize: 20,
-      fontWeight: '700' as const,
-      marginTop: 12,
-      marginBottom: 6,
+      ...textStyle('title2'),
+      color: colors.fg,
+      marginTop: space.s3,
+      marginBottom: space.s2,
     },
     heading2: {
-      color: colors.text,
-      fontSize: 18,
-      fontWeight: '600' as const,
-      marginTop: 10,
-      marginBottom: 4,
+      ...textStyle('title3'),
+      color: colors.fg,
+      marginTop: space.s3,
+      marginBottom: space.s1,
     },
     heading3: {
-      color: colors.text,
-      fontSize: 16,
-      fontWeight: '600' as const,
-      marginTop: 8,
-      marginBottom: 4,
+      ...textStyle('title3'),
+      color: colors.fg,
+      marginTop: space.s2,
+      marginBottom: space.s1,
     },
     paragraph: {
       marginTop: 0,
-      marginBottom: 8,
+      marginBottom: space.s2,
     },
     link: {
-      color: colors.tint,
+      color: colors.accent,
     },
     code_inline: {
-      backgroundColor: colors.backgroundSecondary,
-      color: colors.text,
-      fontSize: 13,
-      paddingHorizontal: 4,
-      paddingVertical: 2,
-      borderRadius: 4,
+      backgroundColor: colors.bgInset,
+      color: colors.fg,
+      ...textStyle('bodySm'),
+      paddingHorizontal: space.s1,
+      paddingVertical: space.s1 / 2,
+      borderRadius: radius.xs,
     },
     fence: {
-      backgroundColor: colors.backgroundSecondary,
-      color: colors.text,
-      fontSize: 13,
-      padding: 12,
-      borderRadius: 8,
-      marginVertical: 8,
+      backgroundColor: colors.bgInset,
+      color: colors.fg,
+      ...textStyle('bodySm'),
+      padding: space.s3,
+      borderRadius: radius.md,
+      marginVertical: space.s2,
     },
     list_item: {
-      color: colors.text,
-      fontSize: 15,
-      lineHeight: 22,
+      ...textStyle('body'),
+      color: colors.fg,
     },
     bullet_list: {
-      marginBottom: 8,
+      marginBottom: space.s2,
     },
     ordered_list: {
-      marginBottom: 8,
+      marginBottom: space.s2,
     },
     strong: {
       fontWeight: '600' as const,
@@ -86,20 +87,20 @@ export function AIResponseCard({ response, isStreaming, isLoading }: AIResponseC
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}>
+    <View style={[styles.container, { backgroundColor: colors.aiBg, borderColor: colors.aiBorder }]}>
       <View style={styles.header}>
-        <Ionicons name="sparkles" size={16} color={colors.tint} />
-        <Text style={[styles.headerTitle, { color: colors.text }]}>AI Response</Text>
+        <Ionicons name="sparkles" size={16} color={colors.ai} />
+        <Text style={[textStyle('label'), { color: colors.ai }]}>AI Response</Text>
         {isStreaming && (
-          <ActivityIndicator size="small" color={colors.textSecondary} style={styles.spinner} />
+          <ActivityIndicator size="small" color={colors.ai} style={styles.spinner} />
         )}
       </View>
       <View style={styles.content}>
         {isLoading && !response ? (
-          <View style={styles.skeletonContainer}>
-            <View style={[styles.skeletonLine, { backgroundColor: colors.border, width: '100%' }]} />
-            <View style={[styles.skeletonLine, { backgroundColor: colors.border, width: '90%' }]} />
-            <View style={[styles.skeletonLine, { backgroundColor: colors.border, width: '75%' }]} />
+          <View style={styles.skeletonContainer} accessibilityLabel="Generating an answer">
+            <View style={[styles.skeletonLine, { backgroundColor: colors.bgInset, width: '100%' }]} />
+            <View style={[styles.skeletonLine, { backgroundColor: colors.bgInset, width: '90%' }]} />
+            <View style={[styles.skeletonLine, { backgroundColor: colors.bgInset, width: '75%' }]} />
           </View>
         ) : (
           <Markdown
@@ -119,37 +120,33 @@ export function AIResponseCard({ response, isStreaming, isLoading }: AIResponseC
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 12,
-    borderWidth: 1,
-    marginHorizontal: 16,
-    marginVertical: 8,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginHorizontal: space.s4,
+    marginVertical: space.s2,
     overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 4,
-  },
-  headerTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    gap: space.s2,
+    paddingHorizontal: space.s4,
+    paddingTop: space.s3,
+    paddingBottom: space.s1,
   },
   spinner: {
-    marginLeft: 4,
+    marginLeft: space.s1,
   },
   content: {
-    paddingHorizontal: 16,
-    paddingBottom: 14,
+    paddingHorizontal: space.s4,
+    paddingBottom: space.s3,
   },
   skeletonContainer: {
-    gap: 10,
-    paddingTop: 8,
+    gap: space.s2,
+    paddingTop: space.s2,
   },
   skeletonLine: {
-    height: 12,
-    borderRadius: 6,
+    height: space.s3,
+    borderRadius: radius.xs,
   },
 });

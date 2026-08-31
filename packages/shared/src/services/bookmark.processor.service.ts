@@ -3,7 +3,8 @@ import { BookmarkService } from "./bookmark.service";
 import { AI } from "../ai";
 import { z } from "zod";
 import {
-  GENERATE_TAGS_PROMPT,
+  buildTagsPrompt,
+  TAG_CANDIDATE_LIMIT,
   FILTER_IMAGES_PROMPT,
   SUMMARIZE_PROMPT,
   BRIEF_SUMMARY_PROMPT,
@@ -17,21 +18,97 @@ import { Identifier } from "../ai/id";
 import { ContentChunkRepository } from "../repositories/content-chunk.repository";
 import { HttpClient, CosmicHttpClient } from "./http-client";
 import {
-  BookmarkCategorizerService,
-  BookmarkCategorizerServiceImpl,
-} from "./bookmark.categorizer.service";
+  BookmarkFilingService,
+  BookmarkFilingServiceImpl,
+  FilingResult,
+} from "./bookmark.filing.service";
 import { CollectionRepository } from "../repositories/collection.repository";
 import { ChunkingService, ChunkingServiceImpl } from "./chunking.service";
 import { EmbeddingService, EmbeddingServiceImpl } from "./embedding.service";
 import { BOOKMARK_MODEL_IDS } from "./bookmark.model-ids";
 import { BookmarkProcessingRepository } from "../repositories/bookmark-processing.repository";
 import {
+  BookmarkProcessingPhaseName,
   BookmarkProcessingPhaseReporter,
   BookmarkProcessingReporter,
 } from "./bookmark-processing-reporter.service";
 
+export interface BookmarkProcessOptions {
+  /**
+   * Run only this phase. Absent runs the whole pipeline. Set by
+   * `POST /bookmarks/{id}/reprocess` when the user retries one failed line of
+   * the checklist rather than the whole thing.
+   */
+  phase?: BookmarkProcessingPhaseName;
+  /**
+   * Append to the bookmark's existing timeline instead of opening a new run.
+   * True for every reprocess — see `BookmarkProcessingReporter.resumeRun`.
+   */
+  resume?: boolean;
+}
+
 export interface BookmarkProcessorService {
-  process(id: string, userId: string): Promise<void>;
+  process(
+    id: string,
+    userId: string,
+    options?: BookmarkProcessOptions
+  ): Promise<void>;
+}
+
+/**
+ * Pulls the key points out of the full brief.
+ *
+ * The summariser writes markdown with a `## Key Points` section; the reader
+ * needs an array. Doing the parse once, here, is the whole point of
+ * `bookmarks.cosmic_key_points` — parsing markdown in a render pass means
+ * every list row re-parses a document to draw three bullets, and any
+ * formatting drift becomes a rendering bug rather than a pipeline one.
+ *
+ * Findings, not a sequence: 2–5 of them, each ≤ 140 characters
+ * (docs/functional-spec/03-ai-pipeline.md § Outputs). The UI renders them with
+ * a dot marker and never numbers them.
+ */
+const MAX_KEY_POINTS = 5;
+const MAX_KEY_POINT_LENGTH = 140;
+
+export function extractKeyPoints(summary: string | undefined | null): string[] {
+  if (!summary) return [];
+
+  const lines = summary.split(/\r?\n/);
+  const headingIndex = lines.findIndex((line) =>
+    /^\s{0,3}#{1,6}\s*key\s+points\s*:?\s*$/i.test(line)
+  );
+  if (headingIndex === -1) return [];
+
+  const points: string[] = [];
+  for (const line of lines.slice(headingIndex + 1)) {
+    if (/^\s{0,3}#{1,6}\s/.test(line)) break;
+
+    const bullet = line.match(/^\s{0,3}(?:[-*+]|\d+[.)])\s+(.*)$/);
+    if (!bullet) continue;
+
+    const point = cleanKeyPoint(bullet[1]);
+    if (point) points.push(point);
+    if (points.length === MAX_KEY_POINTS) break;
+  }
+
+  return points;
+}
+
+function cleanKeyPoint(raw: string): string {
+  const text = raw
+    // `[label](href)` → `label`. A key point is read, never followed.
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[*_`]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (text.length <= MAX_KEY_POINT_LENGTH) return text;
+
+  // Cut on a word boundary rather than mid-word, and say it was cut.
+  const clipped = text.slice(0, MAX_KEY_POINT_LENGTH - 1);
+  const lastSpace = clipped.lastIndexOf(" ");
+  return `${(lastSpace > 60 ? clipped.slice(0, lastSpace) : clipped).replace(/[,;:.\s]+$/, "")}…`;
 }
 
 const PRIVATE_LINK_ENRICHMENT_PROMPT = `You are creating a private link quick-access record.
@@ -53,8 +130,19 @@ interface ChunkingResult {
   chunkTexts: string[];
 }
 
+interface PhaseFailure {
+  phase: BookmarkProcessingPhaseName;
+  error: string;
+}
+
+interface SummariseResult {
+  summary: string;
+  briefSummary: string;
+  keyPoints: string[];
+}
+
 export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
-  private categorizerService: BookmarkCategorizerService;
+  private filingService: BookmarkFilingService;
   private chunkingService: ChunkingService;
   private embeddingService: EmbeddingService;
 
@@ -68,15 +156,37 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     chunkingService?: ChunkingService,
     embeddingService?: EmbeddingService
   ) {
-    this.categorizerService = new BookmarkCategorizerServiceImpl(
+    this.filingService = new BookmarkFilingServiceImpl(
       collectionRepository,
+      bookmarkService,
       ai
     );
     this.chunkingService = chunkingService ?? new ChunkingServiceImpl();
     this.embeddingService = embeddingService ?? new EmbeddingServiceImpl();
   }
 
-  async process(id: string, userId: string): Promise<void> {
+  /**
+   * The pipeline, as the UI names it.
+   *
+   * Six phases in order — `fetch`, `extract`, `summarise`, `tag`, `file`,
+   * `embed` — sequential and independently retryable
+   * (docs/functional-spec/03-ai-pipeline.md § Phases). They used to run in
+   * parallel under nine internal names; a checklist cannot show four things
+   * finishing at once, and the two summary calls were two lines for one
+   * *Summarising…* step.
+   *
+   * **Partial failure is normal and must survive.** Only `fetch` is fatal:
+   * without the page there is nothing for any later phase to work on. Every
+   * other phase is run softly — it records a failed event, and the pipeline
+   * carries on with what it has. A bookmark whose `summarise` failed still
+   * gets its tags, its filing and its content; the run ends `failed`, and the
+   * UI shows the failed line in place of the brief, not in place of the page.
+   */
+  async process(
+    id: string,
+    userId: string,
+    options: BookmarkProcessOptions = {}
+  ): Promise<void> {
     const existingBookmark = await this.bookmarkService.findByIdAndUser(
       id,
       userId
@@ -87,12 +197,6 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
 
     let bookmark = existingBookmark;
     const isPrivateLink = bookmark.isPrivateLink;
-    const content = isPrivateLink
-      ? null
-      : await this.bookmarkService.getScrapedUrlContent(bookmark.id);
-    if (!isPrivateLink && !content) {
-      throw new Error(`Scraped url content not found: ${bookmark.id}`);
-    }
 
     // Update processing status to 'processing'
     bookmark = await this.bookmarkService.updateProcessingStatus(
@@ -103,149 +207,165 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     const reporter = new BookmarkProcessingReporter(
       this.bookmarkProcessingRepository
     );
-
-    const startedTasks: Promise<unknown>[] = [];
+    const failures: PhaseFailure[] = [];
 
     try {
-      await reporter.startRun(bookmark.id, userId);
+      if (options.resume) {
+        await reporter.resumeRun(bookmark.id, userId);
+      } else {
+        await reporter.startRun(bookmark.id, userId);
+      }
       const session = await this.ai.newSession(bookmark.id);
+      const inScope = (phase: BookmarkProcessingPhaseName) =>
+        !options.phase || options.phase === phase;
 
       if (isPrivateLink) {
-        bookmark = await this.processPrivateLink(session, bookmark, reporter);
-        bookmark = await reporter.trackPhase(
-          "finalization",
-          "Finalize private link",
-          async () =>
-            this.bookmarkService.updateProcessingStatus(
-              bookmark.id,
-              "completed"
-            )
+        bookmark = await this.processPrivateLink(
+          session,
+          bookmark,
+          reporter,
+          inScope,
+          failures
         );
-        await reporter.completeRun();
+      } else {
+        // Fetching the page is the pipeline's first phase, not the API's.
+        // `POST /bookmarks` used to await this before replying, which put a
+        // third-party server on the critical path of every save. Doing it here
+        // means an unreachable host is a failed phase on a row the user already
+        // has — the bookmark and the URL survive, which is the whole point.
+        //
+        // Outside its own scope the fetch still has to happen — a retry of
+        // `summarise` needs the page — but it is idempotent and silent, so
+        // retrying one phase does not redraw a *Fetched page* line the user
+        // watched succeed an hour ago.
+        const scrapedContent = inScope("fetch")
+          ? await reporter.trackPhase("fetch", "Fetch page", () =>
+              this.requireScrapedContent(bookmark)
+            )
+          : await this.requireScrapedContent(bookmark);
+
+        if (inScope("extract")) {
+          // `wordCount`, `readingTime` and the readable body were written by
+          // the fetch; what is left to extract is which of the page's images
+          // are actually about the article.
+          const images = await this.runPhase(
+            reporter,
+            "extract",
+            "Extract content",
+            failures,
+            (phaseReporter) =>
+              this.isTwitterBookmark(bookmark)
+                ? Promise.resolve(this.promoteTweetImages(scrapedContent))
+                : this.processImages(
+                    session,
+                    bookmark,
+                    scrapedContent,
+                    phaseReporter
+                  )
+          );
+          if (images) bookmark.cosmicImages = images;
+        }
+
+        if (inScope("summarise")) {
+          const summarised = await this.runPhase(
+            reporter,
+            "summarise",
+            "Summarise content",
+            failures,
+            (phaseReporter) =>
+              this.summarise(session, bookmark, scrapedContent, phaseReporter)
+          );
+          if (summarised) {
+            bookmark.cosmicSummary = summarised.summary;
+            bookmark.cosmicBriefSummary = summarised.briefSummary;
+            bookmark.cosmicKeyPoints = summarised.keyPoints;
+          }
+        }
+
+        if (inScope("tag")) {
+          const tags = await this.runPhase(
+            reporter,
+            "tag",
+            "Generate tags",
+            failures,
+            (phaseReporter) =>
+              this.generateMetadata(
+                session,
+                bookmark,
+                scrapedContent,
+                phaseReporter
+              )
+          );
+          if (tags) bookmark.cosmicTags = tags;
+        }
+
+        if (inScope("file")) {
+          // Filing runs on whatever summarise and tag actually produced, and it
+          // owns its own write: the phase either files the bookmark through the
+          // guarded path, records a proposal, or leaves it in the Inbox. The
+          // processor's own `update` below cannot move a bookmark at all.
+          const filing = await this.runPhase(
+            reporter,
+            "file",
+            "File into a collection",
+            failures,
+            (phaseReporter) =>
+              this.filingService.file(session, bookmark, phaseReporter)
+          );
+          this.applyFilingResult(bookmark, filing);
+        }
+
+        if (inScope("embed")) {
+          // Silent by design: no user-legible output, so no line in the
+          // checklist and no bearing on whether the run counts as failed.
+          await this.runPhase(
+            reporter,
+            "embed",
+            "Embed content chunks",
+            null,
+            async (phaseReporter) => {
+              const chunks = await this.chunkContent(scrapedContent);
+              await this.embedChunks(chunks, phaseReporter);
+            }
+          );
+        }
+
+        bookmark.searchDocument = this.buildSearchDocument(
+          bookmark,
+          scrapedContent
+        );
+      }
+
+      // One write for everything the run produced. Fields a failed phase never
+      // filled in keep whatever the bookmark already had — a failure subtracts
+      // nothing from the row.
+      //
+      // Filing is not in it. `collectionId` and `filingSource` are destructured
+      // away rather than merely ignored downstream, so that the object handed
+      // to `update` cannot express a move at all. The `file` phase has already
+      // written its decision through the guarded path; this write must not be
+      // able to undo a manual refile as a side effect of saving a summary.
+      const { collectionId, filingSource, ...writableFields } = bookmark;
+      await this.bookmarkService.update(id, writableFields);
+
+      if (failures.length > 0) {
+        const message = failures
+          .map((failure) => `${failure.phase}: ${failure.error}`)
+          .join("; ");
+        await this.bookmarkService.updateProcessingStatus(id, "failed", message);
+        await reporter.failRun(message);
         return;
       }
 
-      const scrapedContent = content!;
-
-      // Start independent AI tasks in parallel to minimize total processing time
-      const summaryPromise = reporter.trackPhase(
-        "summarization",
-        "Summarize content",
-        (phaseReporter) =>
-          this.generateSummary(session, bookmark, scrapedContent, phaseReporter)
-      );
-      const briefSummaryPromise = reporter.trackPhase(
-        "brief_summary",
-        "Generate brief summary",
-        (phaseReporter) =>
-          this.generateBriefSummary(
-            session,
-            bookmark,
-            scrapedContent,
-            phaseReporter
-          )
-      );
-      const metadataPromise = reporter.trackPhase(
-        "tags",
-        "Generate tags",
-        (phaseReporter) =>
-          this.generateMetadata(session, bookmark, scrapedContent, phaseReporter)
-      );
-      const imagesPromise = reporter.trackPhase(
-        "images",
-        "Process images",
-        (phaseReporter) =>
-          this.isTwitterBookmark(bookmark)
-            ? Promise.resolve(this.promoteTweetImages(scrapedContent))
-            : this.processImages(session, bookmark, scrapedContent, phaseReporter)
-      );
-      const chunkingPromise = reporter.trackPhase(
-        "chunking",
-        "Chunk content",
-        () => this.chunkContent(bookmark, scrapedContent)
-      );
-      const embeddingPromise = chunkingPromise.then((chunkingResult) =>
-        reporter
-          .trackPhase("embedding", "Embed content chunks", (phaseReporter) =>
-            this.embedChunks(chunkingResult, phaseReporter)
-          )
-          .catch((error) => {
-            console.error("Failed to embed content chunks:", error);
-          })
-      );
-      startedTasks.push(
-        summaryPromise,
-        briefSummaryPromise,
-        metadataPromise,
-        imagesPromise,
-        chunkingPromise,
-        embeddingPromise
-      );
-
-      // Categorization requires summary and tags, so we wait for those first
-      const [summary, briefSummary, tags] = await Promise.all([
-        summaryPromise,
-        briefSummaryPromise,
-        metadataPromise,
-      ]);
-
-      bookmark.cosmicSummary = summary;
-      bookmark.cosmicBriefSummary = briefSummary;
-      bookmark.cosmicTags = tags;
-
-      // Categorize based on the generated summary and tags
-      const categorization = await reporter.trackPhase(
-        "categorization",
-        "Categorize bookmark",
-        (phaseReporter) =>
-          this.categorizerService.categorize(
-            session,
-            bookmark,
-            scrapedContent,
-            phaseReporter
-          )
-      );
-      bookmark.collectionId = categorization.categoryId;
-
-      // Wait for images and embeddings to finish
-      const images = await imagesPromise;
-      bookmark.cosmicImages = images;
-      await embeddingPromise;
-
-      bookmark = await reporter.trackPhase(
-        "finalization",
-        "Finalize bookmark",
-        async () => {
-          // Final construction of search document
-          const searchDocument = this.buildSearchDocument(
-            bookmark,
-            scrapedContent
-          );
-          bookmark.searchDocument = searchDocument;
-
-          // Batch update the bookmark with all AI-generated content in one DB call
-          bookmark = await this.bookmarkService.update(bookmark.id, bookmark);
-
-          // Update processing status to 'completed'
-          return this.bookmarkService.updateProcessingStatus(
-            bookmark.id,
-            "completed"
-          );
-        }
-      );
+      await this.bookmarkService.updateProcessingStatus(id, "completed");
       await reporter.completeRun();
     } catch (error) {
-      // If one parallel task fails, make sure every task that was already
-      // started has settled before rethrowing. Otherwise later rejections from
-      // the still-running tasks can surface as unhandled promise rejections in
-      // Node/Jest and fail CI after the expected error has already been caught.
-      await Promise.allSettled(startedTasks);
-
-      // Update processing status to 'failed'
+      // Only a fatal phase reaches here — the fetch, or the timeline itself
+      // being unavailable. Everything else was already absorbed by `runPhase`.
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
-      bookmark = await this.bookmarkService.updateProcessingStatus(
-        bookmark.id,
+      await this.bookmarkService.updateProcessingStatus(
+        id,
         "failed",
         errorMessage
       );
@@ -253,6 +373,41 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         await reporter.failRun(errorMessage);
       }
       throw error;
+    }
+  }
+
+  private async requireScrapedContent(
+    bookmark: Bookmark
+  ): Promise<ScrapedUrlContents> {
+    const fetched = await this.bookmarkService.ensureScrapedContent(bookmark);
+    if (!fetched) {
+      throw new Error(`Scraped url content not found: ${bookmark.id}`);
+    }
+    return fetched;
+  }
+
+  /**
+   * Track a phase and absorb its failure.
+   *
+   * The event is still written as failed — the user sees exactly which line
+   * broke and can retry that one — but the pipeline keeps going. Pass `null`
+   * for `failures` to make the phase advisory: recorded, but not counted
+   * against the run (that is `embed`, which the reader never sees).
+   */
+  private async runPhase<T>(
+    reporter: BookmarkProcessingReporter,
+    phase: BookmarkProcessingPhaseName,
+    name: string,
+    failures: PhaseFailure[] | null,
+    work: (phaseReporter: BookmarkProcessingPhaseReporter) => Promise<T>
+  ): Promise<T | undefined> {
+    try {
+      return await reporter.trackPhase(phase, name, work);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`Bookmark processing phase "${phase}" failed:`, error);
+      failures?.push({ phase, error: message });
+      return undefined;
     }
   }
 
@@ -264,10 +419,18 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     return bookmark.metadata?.openGraph?.site_name === "X (formerly Twitter)";
   }
 
+  /**
+   * A private link has no page to fetch, so the pipeline runs two phases on it:
+   * `extract`, which turns the user's own note into a legible record, and
+   * `file`. Both are soft — a private link that the model could not polish is
+   * still the link the user saved, with the description they wrote.
+   */
   private async processPrivateLink(
     session: Session,
     bookmark: Bookmark,
-    reporter: BookmarkProcessingReporter
+    reporter: BookmarkProcessingReporter,
+    inScope: (phase: BookmarkProcessingPhaseName) => boolean,
+    failures: PhaseFailure[]
   ): Promise<Bookmark> {
     const context = bookmark.metadata?.privateLink;
     const userDescription =
@@ -276,10 +439,14 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       bookmark.metadata?.openGraph?.description ||
       "";
 
-    try {
-      const enrichment = await reporter.trackPhase(
-        "private_link_enrichment",
-        "Enrich private link",
+    let enriched = bookmark;
+
+    if (inScope("extract")) {
+      const enrichment = await this.runPhase(
+        reporter,
+        "extract",
+        "Extract private link details",
+        failures,
         (phaseReporter) =>
           phaseReporter.trackTurn(
             "Generate private link metadata",
@@ -311,47 +478,70 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
           )
       );
 
-      const tags = this.normalizeTags(enrichment.tags);
-      const enrichedBookmark: Bookmark = {
-        ...bookmark,
-        title: enrichment.title || bookmark.title,
-        cosmicBriefSummary: enrichment.description || userDescription,
-        cosmicTags: tags,
-        quickAccess: this.buildPrivateLinkQuickAccess(
-          bookmark,
-          enrichment.title,
-          enrichment.description,
-          tags,
-          enrichment.quickAccessKeywords
-        ),
-        metadata: {
-          ...bookmark.metadata,
-          privateLink: {
-            userDescription,
-            userProvidedTitle: context?.userProvidedTitle,
-            enrichedAt: new Date().toISOString(),
+      if (enrichment) {
+        const tags = this.normalizeTags(enrichment.tags);
+        enriched = {
+          ...bookmark,
+          title: enrichment.title || bookmark.title,
+          cosmicBriefSummary: enrichment.description || userDescription,
+          cosmicTags: tags,
+          quickAccess: this.buildPrivateLinkQuickAccess(
+            bookmark,
+            enrichment.title,
+            enrichment.description,
+            tags,
+            enrichment.quickAccessKeywords
+          ),
+          metadata: {
+            ...bookmark.metadata,
+            privateLink: {
+              userDescription,
+              userProvidedTitle: context?.userProvidedTitle,
+              enrichedAt: new Date().toISOString(),
+            },
           },
-        },
-      };
+        };
+      }
+    }
 
-      const syntheticContent =
-        this.buildPrivateLinkSyntheticContent(enrichedBookmark);
-      const categorization = await reporter.trackPhase(
-        "categorization",
-        "Categorize private link",
+    if (inScope("file")) {
+      const filing = await this.runPhase(
+        reporter,
+        "file",
+        "File private link into a collection",
+        failures,
         (phaseReporter) =>
-          this.categorizerService.categorize(
-            session,
-            enrichedBookmark,
-            syntheticContent,
-            phaseReporter
-          )
+          this.filingService.file(session, enriched, phaseReporter)
       );
-      enrichedBookmark.collectionId = categorization.categoryId;
+      this.applyFilingResult(enriched, filing);
+    }
 
-      return this.bookmarkService.update(bookmark.id, enrichedBookmark);
-    } catch (error) {
-      throw error;
+    return enriched;
+  }
+
+  /**
+   * Reflect the filing phase's decision in the in-memory bookmark.
+   *
+   * Only `filed` changes anything, and only to keep the object consistent with
+   * the row the phase already wrote — the write itself happened inside the
+   * phase, through `fileByPipeline`. Every other outcome leaves the bookmark
+   * where it is:
+   *
+   * - `proposed` — the collection does not exist yet, so there is nothing to
+   *   file into. The bookmark waits in the Inbox until the user accepts.
+   * - `inbox` — the model had no good answer. That is a resting place, not a
+   *   failure, and the phase is recorded as completed.
+   * - `override` — a person filed this bookmark. Nothing about it is the
+   *   pipeline's to change, now or on any later run.
+   *
+   * `undefined` means the phase threw and `runPhase` already recorded it.
+   */
+  private applyFilingResult(
+    bookmark: Bookmark,
+    filing: FilingResult | undefined
+  ): void {
+    if (filing?.outcome === "filed") {
+      bookmark.collectionId = filing.collectionId;
     }
   }
 
@@ -383,35 +573,45 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       .join(" ");
   }
 
-  private buildPrivateLinkSyntheticContent(
-    bookmark: Bookmark
-  ): ScrapedUrlContents {
-    return {
-      id: `private-link-${bookmark.id}`,
-      bookmarkId: bookmark.id,
-      title: bookmark.title || "",
-      content: [
-        bookmark.title || "",
-        bookmark.sourceUrl,
-        bookmark.cosmicBriefSummary || "",
-        bookmark.cosmicTags?.join(" ") || "",
-      ]
-        .filter(Boolean)
-        .join("\n"),
-      metadata: bookmark.metadata || {},
-      images: [],
-      links: [],
-      createdAt: bookmark.createdAt,
-      updatedAt: bookmark.updatedAt,
-    };
-  }
-
   private promoteTweetImages(content: ScrapedUrlContents): BookmarkImage[] {
     return (content.images ?? []).map((img) => ({
       url: img.url,
       title: img.alt ?? "Tweet media",
       description: img.alt ?? "Media attached to the tweet",
     }));
+  }
+
+  /**
+   * One phase, three outputs: the full brief, the 1–2 sentence brief summary,
+   * and the key points the brief is read through.
+   *
+   * The two model calls are independent, so they run together — but they are
+   * two `turn` events under a single `summarise` phase. The user is watching
+   * one line called *Summarising…*; how many calls it takes is accounting, not
+   * progress.
+   */
+  private async summarise(
+    session: Session,
+    bookmark: Bookmark,
+    content: ScrapedUrlContents,
+    phaseReporter: BookmarkProcessingPhaseReporter
+  ): Promise<SummariseResult> {
+    // `allSettled`, not `all`: with `all` a rejection from the slower call
+    // lands after the phase has already been failed by the faster one, and
+    // Node reports it as an unhandled rejection that kills the worker.
+    const [summary, briefSummary] = await Promise.allSettled([
+      this.generateSummary(session, bookmark, content, phaseReporter),
+      this.generateBriefSummary(session, bookmark, content, phaseReporter),
+    ]);
+
+    if (summary.status === "rejected") throw summary.reason;
+    if (briefSummary.status === "rejected") throw briefSummary.reason;
+
+    return {
+      summary: summary.value,
+      briefSummary: briefSummary.value,
+      keyPoints: extractKeyPoints(summary.value),
+    };
   }
 
   private async generateSummary(
@@ -466,12 +666,27 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     );
   }
 
+  /**
+   * The `tag` phase.
+   *
+   * The model is shown the user's own vocabulary — their 50 most-used tags —
+   * before it is asked for new ones. Without that, each bookmark is tagged in
+   * isolation and the library fragments: "ml", "machine-learning" and
+   * "machineLearning" all describing the same shelf, none of them collecting
+   * anything. docs/functional-spec/03-ai-pipeline.md § Outputs.
+   *
+   * A failure to read the vocabulary is not a failure to tag — an empty
+   * candidate list simply means the model invents freely, which is what it did
+   * before this existed.
+   */
   private async generateMetadata(
     session: Session,
     bookmark: Bookmark,
     content: ScrapedUrlContents,
     phaseReporter: BookmarkProcessingPhaseReporter
   ): Promise<string[]> {
+    const candidateTags = await this.getCandidateTags(bookmark.userId);
+
     const response = await phaseReporter.trackTurn(
       "Generate tags",
       BOOKMARK_MODEL_IDS.small,
@@ -479,17 +694,26 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         this.ai.generateObjectWithUsage({
           sessionID: session.sessionID,
           modelId: BOOKMARK_MODEL_IDS.small,
-          prompt: GENERATE_TAGS_PROMPT.replace(
-            "{{CONTENT}}",
-            this.getProcessableText(bookmark, content)
-          ),
+          prompt: buildTagsPrompt({
+            content: this.getProcessableText(bookmark, content),
+            candidateTags,
+          }),
           schema: z.object({
             tags: z.array(z.string()).describe("The array of tag strings"),
           }),
         })
     );
 
-    return response.tags;
+    return this.normalizeTags(response.tags);
+  }
+
+  private async getCandidateTags(userId: string): Promise<string[]> {
+    try {
+      return await this.bookmarkService.getTopTags(userId, TAG_CANDIDATE_LIMIT);
+    } catch (error) {
+      console.error("Failed to read the user's tag vocabulary:", error);
+      return [];
+    }
   }
 
   private getSummarizationContext(
@@ -547,17 +771,20 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     return parts.filter(Boolean).join("\n");
   }
 
+  /**
+   * `content` is the row the fetch phase persisted and handed down — it
+   * carries the id the chunks hang off. This used to re-read it from the
+   * database first, which was a query for something already in hand.
+   */
   private async chunkContent(
-    bookmark: Bookmark,
     content: ScrapedUrlContents
   ): Promise<ChunkingResult> {
-    const scrapedContent =
-      await this.bookmarkService.getScrapedUrlContent(bookmark.id);
-    if (!scrapedContent) {
-      throw new Error(`Scraped content not found for bookmark ${bookmark.id}`);
-    }
-
     const chunks = this.chunkingService.chunkHtml(content.content ?? "");
+
+    // Idempotent, because a phase has to be retryable: a reprocess or a
+    // redelivered queue message would otherwise append a second full set of
+    // chunks and double every semantic-search hit for this bookmark.
+    await this.contentChunkRepository.deleteByScrapedContentId(content.id);
 
     if (chunks.length === 0) {
       return { textChunkIds: [], chunkTexts: [] };
@@ -566,7 +793,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     const textChunkIds: string[] = [];
     for (const chunk of chunks) {
       const textChunk = await this.contentChunkRepository.createTextChunk({
-        scrapedContentId: scrapedContent.id,
+        scrapedContentId: content.id,
         content: chunk.content,
         index: chunk.index,
         size: chunk.size,

@@ -1,8 +1,10 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, Pressable } from 'react-native';
+
 import { Bookmark } from '@/lib/api';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { textStyle } from '@/constants/fonts';
+import { radius, space } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 
 interface BookmarkCardProps {
   bookmark: Bookmark;
@@ -20,14 +22,17 @@ function extractDomain(url: string): string {
   }
 }
 
+/**
+ * A library row: separator, not a panel, and never a shadow. The title is the
+ * one thing here the user is evaluating, so it is the one thing set in serif.
+ */
 export function BookmarkCard({
   bookmark,
   onPress,
   onToggleRead,
   showReadStatus = false,
 }: BookmarkCardProps) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const colors = Colors[colorScheme];
+  const { colors } = useTheme();
 
   // Get the immediate (last) collection from the path
   const immediateCollection = bookmark.collectionPath?.length
@@ -55,13 +60,14 @@ export function BookmarkCard({
   };
 
   return (
-    <Pressable 
+    <Pressable
+      accessibilityRole="button"
       style={({ pressed }) => [
         styles.container,
-        { 
-          backgroundColor: colors.cardBackground,
+        {
+          // Row hover on the web becomes the pressed ground here.
+          backgroundColor: pressed ? colors.bgSubtle : colors.bgPanel,
           borderBottomColor: colors.border,
-          opacity: pressed ? 0.7 : 1,
         },
       ]}
       onPress={handlePress}
@@ -72,33 +78,39 @@ export function BookmarkCard({
           {/* Source/Collection indicator */}
           {displayName && (
             <View style={styles.sourceContainer}>
-              <View style={[styles.sourceIcon, { backgroundColor: colors.textSecondary }]}>
-                <Text style={styles.sourceIconText}>
+              <View style={[styles.sourceIcon, { backgroundColor: colors.bgInset }]}>
+                <Text style={[textStyle('label'), styles.sourceIconText, { color: colors.fgSecondary }]}>
                   {displayName.charAt(0).toUpperCase()}
                 </Text>
               </View>
-              <Text style={[styles.sourceName, { color: colors.textSecondary }]} numberOfLines={1}>
-                In <Text style={[styles.sourceNameBold, { color: colors.text }]}>{displayName}</Text>
+              <Text
+                style={[textStyle('meta'), styles.sourceName, { color: colors.fgTertiary }]}
+                numberOfLines={1}
+              >
+                In <Text style={[styles.sourceNameBold, { color: colors.fgSecondary }]}>{displayName}</Text>
               </Text>
             </View>
           )}
 
           {showReadStatus && isRead && (
             <View style={[styles.readBadge, { borderColor: colors.border }]}>
-              <Text style={[styles.readBadgeText, { color: colors.textSecondary }]}>
+              <Text style={[textStyle('label'), { color: colors.fgTertiary }]}>
                 Read
               </Text>
             </View>
           )}
 
-          {/* Title */}
-          <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
+          {/* Title — serif, because this is content being evaluated */}
+          <Text style={[textStyle('title3'), { color: colors.fg }]} numberOfLines={2}>
             {bookmark.title || 'Untitled'}
           </Text>
 
           {/* Description/Summary */}
           {description && (
-            <Text style={[styles.description, { color: colors.textSecondary }]} numberOfLines={2}>
+            <Text
+              style={[textStyle('bodySm'), { color: colors.fgSecondary }]}
+              numberOfLines={2}
+            >
               {description}
             </Text>
           )}
@@ -107,11 +119,14 @@ export function BookmarkCard({
           {bookmark.cosmicTags && bookmark.cosmicTags.length > 0 && (
             <View style={styles.tagsContainer}>
               {bookmark.cosmicTags.slice(0, 3).map((tag) => (
-                <View 
-                  key={tag} 
-                  style={[styles.tag, { backgroundColor: colors.backgroundSecondary }]}
+                <View
+                  key={tag}
+                  style={[
+                    styles.tag,
+                    { backgroundColor: colors.accentSoft, borderColor: colors.accentBorder },
+                  ]}
                 >
-                  <Text style={[styles.tagText, { color: colors.textSecondary }]}>
+                  <Text style={[textStyle('meta'), { color: colors.accent }]}>
                     {tag}
                   </Text>
                 </View>
@@ -122,16 +137,17 @@ export function BookmarkCard({
           {onToggleRead && (
             <Pressable
               onPress={handleToggleRead}
+              accessibilityRole="button"
               style={({ pressed }) => [
                 styles.readButton,
                 {
-                  borderColor: colors.border,
-                  opacity: pressed ? 0.7 : 1,
+                  borderColor: colors.borderStrong,
+                  backgroundColor: pressed ? colors.bgInset : 'transparent',
                 },
               ]}
-              hitSlop={8}
+              hitSlop={space.s2}
             >
-              <Text style={[styles.readButtonText, { color: colors.textSecondary }]}>
+              <Text style={[textStyle('meta'), styles.readButtonText, { color: colors.fgSecondary }]}>
                 {isRead ? 'Mark unread' : 'Mark read'}
               </Text>
             </Pressable>
@@ -140,7 +156,7 @@ export function BookmarkCard({
 
         {/* Right side: Image */}
         {image && (
-          <View style={styles.imageContainer}>
+          <View style={[styles.imageContainer, { backgroundColor: colors.bgInset }]}>
             <Image
               source={{ uri: image }}
               style={styles.image}
@@ -155,92 +171,73 @@ export function BookmarkCard({
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
+    paddingVertical: space.s4,
+    paddingHorizontal: space.s4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   readBadge: {
     alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  readBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.xs,
+    paddingHorizontal: space.s2,
+    paddingVertical: space.s1 / 2,
   },
   content: {
     flexDirection: 'row',
-    gap: 16,
+    gap: space.s4,
   },
   textContainer: {
     flex: 1,
-    gap: 6,
+    gap: space.s2,
   },
   sourceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: space.s2,
   },
   sourceIcon: {
     width: 20,
     height: 20,
-    borderRadius: 4,
+    borderRadius: radius.xs,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sourceIconText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#fff',
+    letterSpacing: 0,
   },
   sourceName: {
-    fontSize: 13,
     flex: 1,
   },
   sourceNameBold: {
     fontWeight: '600',
   },
-  title: {
-    fontSize: 17,
-    fontWeight: '700',
-    lineHeight: 22,
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 4,
+    gap: space.s1 + 2,
+    marginTop: space.s1,
   },
   tag: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  tagText: {
-    fontSize: 12,
+    paddingHorizontal: space.s2,
+    paddingVertical: space.s1 / 2,
+    borderRadius: radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   readButton: {
     alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginTop: 2,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.sm,
+    paddingHorizontal: space.s3,
+    paddingVertical: space.s1 + 2,
+    marginTop: space.s1 / 2,
   },
   readButtonText: {
-    fontSize: 12,
     fontWeight: '600',
   },
   imageContainer: {
     width: 80,
     height: 80,
-    borderRadius: 8,
+    borderRadius: radius.md,
     overflow: 'hidden',
   },
   image: {

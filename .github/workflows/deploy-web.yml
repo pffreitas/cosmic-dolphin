@@ -45,6 +45,16 @@ jobs:
       - name: Run type check
         run: bun run --cwd apps/web typecheck
 
+      # Rule zero and rule ten. The pull-request gate is
+      # .github/workflows/accessibility.yml; this is the same gate on the way
+      # to production, so a merge that bypassed review cannot ship a contrast
+      # regression or a control with no focus ring.
+      - name: Lint (rule zero, rule ten, token drift)
+        run: bun run --cwd apps/web lint
+
+      - name: Run tests
+        run: bun run --cwd apps/web test
+
       - name: Build application
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}

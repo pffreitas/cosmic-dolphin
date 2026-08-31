@@ -33,8 +33,14 @@ export class BookmarkProcessorHandler implements MessageHandler {
         throw new Error("Invalid bookmark payload");
       }
 
-      const { bookmarkId, userId } = payload.data;
-      await this.bookmarkProcessorService.process(bookmarkId, userId);
+      // `phase` and `resume` arrive only from `POST /bookmarks/{id}/reprocess`
+      // — a retry of one line of the checklist, appended to the timeline the
+      // user is already looking at.
+      const { bookmarkId, userId, phase, resume } = payload.data;
+      await this.bookmarkProcessorService.process(bookmarkId, userId, {
+        phase,
+        resume,
+      });
 
       this.logger.log(`Successfully processed bookmark ${message.msg_id}`, {
         bookmarkId: payload.data.bookmarkId,

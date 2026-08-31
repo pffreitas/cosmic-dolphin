@@ -1,104 +1,147 @@
 "use client";
 
-import { signUpAction } from "@/app/actions";
-import { FormMessage, Message } from "@/components/form-message";
-import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
+import { signUpAction } from "@/app/actions";
+import { FormMessage, fieldForAuthError } from "@/components/form-message";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { focusRing } from "@/components/ui/focus-ring";
+import { cn } from "@/lib/utils";
+import { AuthField, AuthShell } from "../auth-shell";
+
+/**
+ * Sign up — docs/design-system/pages.md § Auth.
+ *
+ * The old page replaced the entire form with a floating message whenever
+ * `?message=` was present, which is how "check your email" arrived: the user
+ * confirmed nothing and had no way back to the form except the browser's back
+ * button. The confirmation now renders **with** the form still on the page.
+ */
 export default function Signup() {
+  return (
+    <Suspense fallback={null}>
+      <SignUpForm />
+    </Suspense>
+  );
+}
+
+function SignUpForm() {
   const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
-  
-  // Build message object from search params
+
   const error = searchParams.get("error");
   const success = searchParams.get("success");
-  const messageParam = searchParams.get("message");
+  const notice = searchParams.get("message");
 
-  let message: Message = { message: "" };
-  if (error) message = { error };
-  if (success) message = { success };
-  if (messageParam) message = { message: messageParam };
-
-  // Show only the message if there's a message parameter
-  if (searchParams.get("message")) {
-    return (
-      <div className="w-full flex-1 flex items-center justify-center">
-        <FormMessage message={message} />
-      </div>
-    );
-  }
+  // Sign-up failures are usually about the address — "already registered" is
+  // the common one — so email is the fallback here, not password.
+  const errorField = error ? fieldForAuthError(error, "email") : null;
 
   return (
-    <div className="w-full">
-      {/* Logo */}
-      <div className="flex items-center gap-2 mb-6">
-        <div className="text-2xl">🐬</div>
-        <h2 className="font-noto text-lg font-normal text-gray-800">Cosmic Dolphin</h2>
-      </div>
-
-      {/* Header */}
-      <h1 className="text-3xl font-bold text-gray-900 mb-1" style={{ fontFamily: 'Georgia, serif' }}>
-        Create account
-      </h1>
-      <p className="text-sm text-gray-600 mb-5">
-        Start your journey with <span className="font-semibold">Cosmic Dolphin</span>. It's free to get started.
-      </p>
-
-      {/* Form */}
-      <form action={signUpAction} className="space-y-2.5">
-        {/* Email field */}
-        <Input
-          name="email"
-          type="email"
-          placeholder="Email"
-          required
-          className="h-11 rounded-full border-gray-300 px-5 text-sm placeholder:text-gray-400 focus:border-gray-400 focus:ring-0"
-        />
-
-        {/* Password field */}
-        <div className="relative">
-          <Input
-            type={showPassword ? "text" : "password"}
-            name="password"
-            placeholder="Password"
-            minLength={6}
-            required
-            className="h-11 rounded-full border-gray-300 px-5 pr-11 text-sm placeholder:text-gray-400 focus:border-gray-400 focus:ring-0"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            aria-label="Toggle password visibility"
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 rounded-sm"
+    <AuthShell
+      title="Create your account"
+      subtitle="Save a link and Cosmic Dolphin reads it, summarises it and files it. Free to start."
+      footer={
+        <>
+          Already have an account?{" "}
+          <Link
+            href="/sign-in"
+            className={cn(
+              "rounded-sm font-medium text-accent underline-offset-4 hover:underline",
+              focusRing,
+            )}
           >
-            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-          </button>
-        </div>
-
-        {/* Sign up button */}
-        <button
-          type="submit"
-          className="w-full h-11 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-full text-sm transition-colors"
+            Sign in
+          </Link>
+        </>
+      }
+    >
+      <form action={signUpAction} className="flex flex-col gap-4">
+        <AuthField
+          label="Email"
+          htmlFor="sign-up-email"
+          message={
+            errorField === "email" ? (
+              <FormMessage id="sign-up-email-message" message={{ error: error! }} />
+            ) : null
+          }
         >
-          Sign up
-        </button>
+          <Input
+            id="sign-up-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            required
+            aria-invalid={errorField === "email"}
+            aria-describedby={
+              errorField === "email" ? "sign-up-email-message" : undefined
+            }
+          />
+        </AuthField>
 
-        <FormMessage message={message} />
+        <AuthField
+          label="Password"
+          htmlFor="sign-up-password"
+          message={
+            errorField === "password" ? (
+              <FormMessage
+                id="sign-up-password-message"
+                message={{ error: error! }}
+              />
+            ) : (
+              <p className="font-sans text-[12.5px] leading-[1.45] text-fg-tertiary">
+                At least 6 characters.
+              </p>
+            )
+          }
+        >
+          <div className="relative">
+            <Input
+              id="sign-up-password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              placeholder="Choose a password"
+              minLength={6}
+              required
+              className="pr-10"
+              aria-invalid={errorField === "password"}
+              aria-describedby={
+                errorField === "password" ? "sign-up-password-message" : undefined
+              }
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((shown) => !shown)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              className={cn(
+                "absolute right-1 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-sm",
+                "text-fg-tertiary transition-colors duration-cd-fast ease-cd hover:text-fg-secondary",
+                focusRing,
+              )}
+            >
+              {showPassword ? (
+                <EyeOff aria-hidden="true" className="size-4" />
+              ) : (
+                <Eye aria-hidden="true" className="size-4" />
+              )}
+            </button>
+          </div>
+        </AuthField>
+
+        {success ? <FormMessage message={{ success }} /> : null}
+        {notice ? <FormMessage message={{ message: notice }} /> : null}
+
+        <Button type="submit" variant="primary" className="w-full">
+          Create account
+        </Button>
       </form>
-
-      {/* Sign in link */}
-      <p className="text-center mt-5 text-sm text-gray-600">
-        Already have an account?{" "}
-        <Link
-          href="/sign-in"
-          className="text-[#7fb069] font-medium hover:text-[#6a9957] transition-colors"
-        >
-          Sign in
-        </Link>
-      </p>
-    </div>
+    </AuthShell>
   );
 }

@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import defaultTheme from "tailwindcss/defaultTheme";
 
 const config = {
   darkMode: ["class"],
@@ -25,10 +26,47 @@ const config = {
     },
     extend: {
       fontFamily: {
-        karla: ["Karla", "sans-serif"],
-        noto: ["Noto sans", "sans-serif"],
+        sans: ["var(--cd-font-sans)", ...defaultTheme.fontFamily.sans],
+        serif: ["var(--cd-font-serif)", ...defaultTheme.fontFamily.serif],
+        mono: ["var(--cd-font-mono)", ...defaultTheme.fontFamily.mono],
       },
       colors: {
+        // ---- Signal tokens ----------------------------------------------
+        // `accent` deliberately shadows shadcn's, which meant "muted hover
+        // surface"; that meaning now lives on `bg-inset`.
+        bg: {
+          DEFAULT: "var(--cd-bg)",
+          subtle: "var(--cd-bg-subtle)",
+          panel: "var(--cd-bg-panel)",
+          inset: "var(--cd-bg-inset)",
+        },
+        fg: {
+          DEFAULT: "var(--cd-fg)",
+          secondary: "var(--cd-fg-secondary)",
+          tertiary: "var(--cd-fg-tertiary)",
+        },
+        line: {
+          DEFAULT: "var(--cd-border)",
+          strong: "var(--cd-border-strong)",
+        },
+        accent: {
+          DEFAULT: "var(--cd-accent)",
+          hover: "var(--cd-accent-hover)",
+          fg: "var(--cd-accent-fg)",
+          soft: "var(--cd-accent-soft)",
+          border: "var(--cd-accent-border)",
+        },
+        ai: {
+          DEFAULT: "var(--cd-ai)",
+          bg: "var(--cd-ai-bg)",
+          border: "var(--cd-ai-border)",
+          chip: "var(--cd-ai-chip)",
+        },
+        like: "var(--cd-like)",
+
+        // ---- shadcn bridge ----------------------------------------------
+        // Stays until every primitive has been migrated off it; then delete
+        // these keys and the compatibility layer at the foot of tokens.css.
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -50,10 +88,6 @@ const config = {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
         },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
@@ -62,30 +96,36 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        chart: {
-          "1": "hsl(var(--chart-1))",
-          "2": "hsl(var(--chart-2))",
-          "3": "hsl(var(--chart-3))",
-          "4": "hsl(var(--chart-4))",
-          "5": "hsl(var(--chart-5))",
-        },
-        sidebar: {
-          DEFAULT: "hsl(var(--sidebar-background))",
-          foreground: "hsl(var(--sidebar-foreground))",
-          primary: "hsl(var(--sidebar-primary))",
-          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
-          accent: "hsl(var(--sidebar-accent))",
-          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
-          border: "hsl(var(--sidebar-border))",
-          ring: "hsl(var(--sidebar-ring))",
-        },
+      },
+      // Signal motion. `duration-cd-fast` (150ms) for colour and background,
+      // `duration-cd` (220ms) for size and position, `ease-cd` everywhere.
+      // Named rather than arbitrary because `duration-[var(--x)]` and
+      // `ease-[var(--x)]` are ambiguous to Tailwind and get dropped silently.
+      transitionDuration: {
+        cd: "var(--cd-duration)",
+        "cd-fast": "var(--cd-duration-fast)",
+      },
+      transitionTimingFunction: {
+        cd: "var(--cd-ease)",
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        xs: "var(--cd-radius-xs)",
+        sm: "var(--cd-radius-sm)",
+        md: "var(--cd-radius-md)",
+        lg: "var(--cd-radius-lg)",
+        pill: "var(--cd-radius-pill)",
       },
       keyframes: {
+        // Skeleton shimmer. Named for the component so it cannot collide with
+        // the legacy `.shimmer` keyframes still in globals.css.
+        "skeleton-sweep": {
+          "0%": {
+            transform: "translateX(-100%)",
+          },
+          "100%": {
+            transform: "translateX(100%)",
+          },
+        },
         "accordion-down": {
           from: {
             height: "0",
@@ -136,6 +176,7 @@ const config = {
         },
       },
       animation: {
+        "skeleton-sweep": "skeleton-sweep 1.6s linear infinite",
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         spin_right: "spin_right 3s linear infinite",

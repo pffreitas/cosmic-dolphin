@@ -13,10 +13,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 import { BookmarkCard } from '@/components/BookmarkCard';
+import { TopBar } from '@/components/TopBar';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import { Bookmark } from '@/lib/api';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { textStyle } from '@/constants/fonts';
+import { radius, space } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
+import type { ThemeColors } from '@/constants/theme';
 
 type ReadStatus = 'all' | 'unread' | 'read';
 
@@ -28,8 +31,7 @@ const filters: { label: string; value: ReadStatus }[] = [
 
 export default function LibraryScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? 'light';
-  const colors = Colors[colorScheme];
+  const { colors } = useTheme();
   const [readStatus, setReadStatus] = useState<ReadStatus>('all');
   const {
     bookmarks,
@@ -68,34 +70,41 @@ export default function LibraryScreen() {
     if (!isLoadingMore) return null;
     return (
       <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color={colors.tint} />
+        <ActivityIndicator size="small" color={colors.accent} />
       </View>
     );
-  }, [isLoadingMore, colors.tint]);
+  }, [isLoadingMore, colors.accent]);
 
   const renderEmpty = useCallback(() => {
     if (isLoading) return null;
     return (
       <View style={styles.emptyContainer}>
-        <View style={[styles.emptyIconContainer, { backgroundColor: colors.backgroundSecondary }]}>
-          <Ionicons name="library-outline" size={32} color={colors.textSecondary} />
+        <View style={[styles.emptyIconContainer, { backgroundColor: colors.bgInset }]}>
+          <Ionicons name="library-outline" size={space.s6} color={colors.fgTertiary} />
         </View>
-        <Text style={[styles.emptyTitle, { color: colors.text }]}>
+        <Text style={[textStyle('title3'), { color: colors.fg }]}>
           No bookmarks found
         </Text>
-        <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+        <Text style={[textStyle('bodySm'), styles.centered, { color: colors.fgSecondary }]}>
           Your complete saved library will appear here.
         </Text>
       </View>
     );
   }, [isLoading, colors]);
 
+  const header = (
+    <>
+      <TopBar title="Library" subtitle="All saved bookmarks" bordered={false} />
+      <Filters colors={colors} readStatus={readStatus} onFilterChange={setReadStatus} />
+    </>
+  );
+
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-        <Header colors={colors} readStatus={readStatus} onFilterChange={setReadStatus} />
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['top']}>
+        {header}
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.tint} />
+          <ActivityIndicator size="large" color={colors.accent} />
         </View>
       </SafeAreaView>
     );
@@ -103,14 +112,14 @@ export default function LibraryScreen() {
 
   if (error) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-        <Header colors={colors} readStatus={readStatus} onFilterChange={setReadStatus} />
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['top']}>
+        {header}
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color={colors.textSecondary} />
-          <Text style={[styles.errorTitle, { color: colors.text }]}>
+          <Ionicons name="alert-circle-outline" size={space.s7} color={colors.danger} />
+          <Text style={[textStyle('title3'), { color: colors.fg }]}>
             Something went wrong
           </Text>
-          <Text style={[styles.errorSubtitle, { color: colors.textSecondary }]}>
+          <Text style={[textStyle('bodySm'), styles.centered, { color: colors.fgSecondary }]}>
             {error}
           </Text>
         </View>
@@ -119,8 +128,8 @@ export default function LibraryScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <Header colors={colors} readStatus={readStatus} onFilterChange={setReadStatus} />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['top']}>
+      {header}
       <FlatList
         data={bookmarks}
         renderItem={renderBookmark}
@@ -134,7 +143,7 @@ export default function LibraryScreen() {
           <RefreshControl
             refreshing={false}
             onRefresh={refresh}
-            tintColor={colors.tint}
+            tintColor={colors.accent}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -143,39 +152,38 @@ export default function LibraryScreen() {
   );
 }
 
-function Header({
+/** Segmented filter: an inset trough, pill segments, accent on the active one. */
+function Filters({
   colors,
   readStatus,
   onFilterChange,
 }: {
-  colors: typeof Colors.light;
+  colors: ThemeColors;
   readStatus: ReadStatus;
   onFilterChange: (status: ReadStatus) => void;
 }) {
   return (
-    <View style={[styles.header, { borderBottomColor: colors.border }]}>
-      <View>
-        <Text style={[styles.title, { color: colors.text }]}>Library</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          All saved bookmarks
-        </Text>
-      </View>
-      <View style={[styles.segmented, { backgroundColor: colors.backgroundSecondary }]}>
+    <View style={[styles.filterRow, { borderBottomColor: colors.border }]}>
+      <View style={[styles.segmented, { backgroundColor: colors.bgInset }]}>
         {filters.map((filter) => {
           const isActive = readStatus === filter.value;
           return (
             <Pressable
               key={filter.value}
               onPress={() => onFilterChange(filter.value)}
-              style={[
+              accessibilityRole="button"
+              accessibilityState={{ selected: isActive }}
+              style={({ pressed }) => [
                 styles.segment,
-                isActive && { backgroundColor: colors.tint },
+                isActive && { backgroundColor: colors.accent },
+                !isActive && pressed && { backgroundColor: colors.bgSubtle },
               ]}
             >
               <Text
                 style={[
+                  textStyle('meta'),
                   styles.segmentText,
-                  { color: isActive ? '#fff' : colors.textSecondary },
+                  { color: isActive ? colors.accentFg : colors.fgSecondary },
                 ]}
               >
                 {filter.label}
@@ -192,33 +200,26 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    gap: 12,
+  centered: {
+    textAlign: 'center',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  subtitle: {
-    fontSize: 14,
-    marginTop: 2,
+  filterRow: {
+    paddingHorizontal: space.s4,
+    paddingBottom: space.s3,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   segmented: {
     flexDirection: 'row',
-    borderRadius: 8,
-    padding: 3,
+    borderRadius: radius.pill,
+    padding: space.s1 / 2,
     alignSelf: 'flex-start',
   },
   segment: {
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.s3,
+    paddingVertical: space.s1 + 2,
   },
   segmentText: {
-    fontSize: 13,
     fontWeight: '600',
   },
   loadingContainer: {
@@ -230,17 +231,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
-    gap: 8,
-  },
-  errorTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 8,
-  },
-  errorSubtitle: {
-    fontSize: 14,
-    textAlign: 'center',
+    paddingHorizontal: space.s6,
+    gap: space.s2,
   },
   emptyList: {
     flexGrow: 1,
@@ -249,27 +241,19 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
-    gap: 8,
+    paddingHorizontal: space.s6,
+    gap: space.s2,
   },
   emptyIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: space.s8,
+    height: space.s8,
+    borderRadius: radius.pill,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    textAlign: 'center',
+    marginBottom: space.s2,
   },
   footerLoader: {
-    paddingVertical: 20,
+    paddingVertical: space.s5,
     alignItems: 'center',
   },
 });

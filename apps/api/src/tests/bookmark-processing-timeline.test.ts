@@ -74,7 +74,7 @@ describe("GET /bookmarks/:id/processing-timeline", () => {
         runId: "run-1",
         sequence: 1,
         kind: "phase" as const,
-        phase: "summarization",
+        phase: "summarise",
         name: "Summarize content",
         status: "completed" as const,
         startedAt: new Date("2026-01-01T00:00:00Z"),
@@ -92,7 +92,7 @@ describe("GET /bookmarks/:id/processing-timeline", () => {
         parentEventId: "event-1",
         sequence: 2,
         kind: "turn" as const,
-        phase: "summarization",
+        phase: "summarise",
         name: "Generate summary",
         status: "running" as const,
         startedAt: new Date("2026-01-01T00:00:01Z"),
@@ -197,6 +197,19 @@ describe("GET /bookmarks/:id/processing-timeline", () => {
 });
 
 describe("queueBookmarkForProcessing", () => {
+  const withinBudget = {
+    withinBudget: true,
+    used: 1,
+    limit: 200,
+    resetsAt: new Date("2026-01-02T00:00:00Z"),
+  };
+  const overBudget = {
+    withinBudget: false,
+    used: 200,
+    limit: 200,
+    resetsAt: new Date("2026-01-02T00:00:00Z"),
+  };
+
   const bookmark: Bookmark = {
     id: "bookmark-1",
     sourceUrl: "https://example.com",
@@ -220,6 +233,9 @@ describe("queueBookmarkForProcessing", () => {
       bookmark: {
         updateProcessingStatus: mock(async () => queuedBookmark),
       },
+      processingBudget: {
+        check: mock(async () => withinBudget),
+      },
     } as any;
 
     const result = await queueBookmarkForProcessing(
@@ -228,7 +244,7 @@ describe("queueBookmarkForProcessing", () => {
       "user-1"
     );
 
-    expect(result).toEqual(queuedBookmark);
+    expect(result).toEqual({ bookmark: queuedBookmark, queued: true });
     expect(services.queue.sendBookmarkProcessingMessage).toHaveBeenCalledWith(
       "bookmark-1",
       "user-1"
@@ -257,6 +273,9 @@ describe("queueBookmarkForProcessing", () => {
           return queuedBookmark;
         }),
       },
+      processingBudget: {
+        check: mock(async () => withinBudget),
+      },
     } as any;
 
     await queueBookmarkForProcessing(services, bookmark, "user-1");
@@ -283,6 +302,9 @@ describe("queueBookmarkForProcessing", () => {
             : { ...bookmark, processingStatus: status }
         ),
       },
+      processingBudget: {
+        check: mock(async () => withinBudget),
+      },
     } as any;
     const onQueueError = mock(() => {});
 
@@ -293,12 +315,45 @@ describe("queueBookmarkForProcessing", () => {
       onQueueError
     );
 
-    expect(result).toEqual(failedBookmark);
+    expect(result).toEqual({ bookmark: failedBookmark, queued: false });
     expect(onQueueError).toHaveBeenCalled();
     expect(services.bookmark.updateProcessingStatus).toHaveBeenLastCalledWith(
       "bookmark-1",
       "failed",
       "Failed to enqueue bookmark processing"
+    );
+  });
+
+  it("saves the bookmark idle and enqueues nothing when the daily budget is spent", async () => {
+    // Over budget the save still stands — the row is idle, not failed, and the
+    // client puts Summarise now on it. docs/functional-spec/03-ai-pipeline.md
+    // § Cost.
+    const idleBookmark = { ...bookmark, processingStatus: "idle" as const };
+    const services = {
+      queue: {
+        sendBookmarkProcessingMessage: mock(async () => 123),
+      },
+      bookmark: {
+        updateProcessingStatus: mock(async () => idleBookmark),
+      },
+      processingBudget: {
+        check: mock(async () => overBudget),
+      },
+    } as any;
+
+    const result = await queueBookmarkForProcessing(
+      services,
+      bookmark,
+      "user-1"
+    );
+
+    expect(result.queued).toBe(false);
+    expect(result.bookmark.processingStatus).toBe("idle");
+    expect(result.message).toContain("Summarise now");
+    expect(services.queue.sendBookmarkProcessingMessage).not.toHaveBeenCalled();
+    expect(services.bookmark.updateProcessingStatus).toHaveBeenCalledWith(
+      "bookmark-1",
+      "idle"
     );
   });
 });

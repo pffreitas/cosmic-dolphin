@@ -1,59 +1,118 @@
-import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import { ProfileForm } from "./ProfileForm";
+import { UserRound } from "lucide-react";
 
-function getApiBasePath(): string {
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-}
+import { createClient } from "@/utils/supabase/server";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ProfilePage } from "@/components/profile/profile-page";
+import { OwnerActions } from "@/components/profile/owner-actions";
+import { EditProfileDialog } from "@/components/profile/edit-profile-dialog";
+import {
+  formatHandleAvailableOn,
+  parseProfileTab,
+} from "@/components/profile/profile-data";
+import { ProfileAPI } from "@/lib/api/profile";
 
-async function getProfile(accessToken: string) {
-  try {
-    const res = await fetch(`${getApiBasePath()}/profile`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
+/**
+ * `/my/profile` — docs/design-system/pages.md § Profile.
+ *
+ * What stood here until D18: a hand-rolled `fetch` of `/profile`, a
+ * `ProfileForm` of three rounded cards, and a `PUT /profile` that could only
+ * ever send a display name. It is gone. The page is now the *same* page as
+ * `/u/{handle}` — one `ProfilePage`, one `ProfileView`, one definition of what
+ * a profile is — and the only difference is what goes in the action slot.
+ *
+ * That is deliberate, and it is the guarantee: the owner sees exactly what
+ * everybody else sees, so "is this save public?" is answered by looking rather
+ * than by remembering. A separate owner-only view is the arrangement in which
+ * a private save quietly starts appearing on a public tab and nobody notices,
+ * because the person who could notice is looking at a different page.
+ *
+ * The page is built from `PublicProfile` even for its owner. `Profile` — the
+ * shape that carries an email — is read only to fill the edit dialog and to
+ * know which handle to ask for.
+ */
+export const dynamic = "force-dynamic";
 
-export default async function ProfilePage() {
+type SearchParams = { tab?: string };
+
+export default async function MyProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
 
-  if (!user || !session) {
-    return redirect("/sign-in");
+  if (!user) redirect("/sign-in");
+
+  const tab = parseProfileTab((await searchParams).tab);
+  const me = await ProfileAPI.me();
+
+  if (!me) {
+    return (
+      <main className="mx-auto w-full max-w-[720px] py-8">
+        <EmptyState
+          ground
+          icon={UserRound}
+          title="We couldn't load your profile."
+          description="The request didn't reach us. Reload the page — nothing has been changed."
+        />
+      </main>
+    );
   }
 
-  const profile = await getProfile(session.access_token);
+  const name = me.name?.trim() ?? "";
+  const pictureUrl = me.pictureUrl?.trim() ?? "";
+  const handleAvailableOn = formatHandleAvailableOn(me.handleChangeAvailableAt);
 
-  const profileData = profile ?? {
-    id: user.id,
-    name:
-      user.user_metadata?.full_name ??
-      user.user_metadata?.name ??
-      user.email?.split("@")[0],
-    email: user.email,
-    pictureUrl:
-      user.user_metadata?.avatar_url ?? user.user_metadata?.picture,
-  };
+  /*
+   * The degraded case the contract warns about: `handle` is "absent only in
+   * the degraded case where a handle could not be minted at signup"
+   * (packages/apispec/social.tsp). Without one there is no `/u/{handle}` to
+   * render, so the page asks for a handle instead of rendering an empty
+   * profile — and it asks with the same dialog that edits one, rather than a
+   * second form that would drift from it.
+   */
+  if (!me.handle) {
+    return (
+      <main className="mx-auto w-full max-w-[720px] py-8">
+        <EmptyState
+          ground
+          icon={UserRound}
+          title="Pick a handle to finish your profile."
+          description="Your profile lives at /u/your-handle. Until you choose one there is no address to publish, so nothing you make public has anywhere to appear."
+          action={
+            <EditProfileDialog
+              name={name}
+              pictureUrl={pictureUrl}
+              handle=""
+              handleAvailableOn={handleAvailableOn}
+            />
+          }
+        />
+      </main>
+    );
+  }
+
+  const handle = me.handle;
 
   return (
-    <div className="flex-1 w-full flex flex-col gap-6 max-w-2xl mx-auto py-6 sm:py-8 px-4 sm:px-0">
-      <div>
-        <h1 className="font-bold text-2xl text-foreground">Profile</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Manage your profile information
-        </p>
-      </div>
-      <ProfileForm profile={profileData} />
-    </div>
+    <main>
+      <ProfilePage
+        handle={handle}
+        basePath="/my/profile"
+        tab={tab}
+        renderAction={() => (
+          <OwnerActions
+            name={name}
+            pictureUrl={pictureUrl}
+            handle={handle}
+            handleAvailableOn={handleAvailableOn}
+          />
+        )}
+      />
+    </main>
   );
 }

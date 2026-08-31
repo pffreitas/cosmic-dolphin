@@ -1,5 +1,4 @@
-import HeaderAuth from "@/components/header-auth";
-import { GeistSans } from "geist/font/sans";
+import { Inter, Source_Serif_4 } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import Body from "./body";
@@ -7,13 +6,47 @@ import ReduxProvider from "@/components/providers/redux-provider";
 import { CommandDialogProvider } from "@/components/providers/command-dialog-provider";
 import { GlobalCommandDialog } from "@/components/global-command-dialog";
 import { GlobalKeyboardShortcuts } from "@/components/global-keyboard-shortcuts";
-import { CommandDialogTrigger } from "@/components/command-dialog-trigger";
-import Link from "next/link";
-import { CosmicMenu } from "@/components/cosmic-menu";
+import { AppChrome } from "@/components/app-chrome";
 import NewBookmarkButton from "@/components/bookmark/new-bookmark";
-import { MobileHeader } from "@/components/mobile/mobile-header";
+import { PendingCaptures } from "@/components/bookmark/pending-captures";
+import { ToastProvider } from "@/components/ui/toast";
 import { BottomNavigation } from "@/components/mobile/bottom-nav";
 import { createClient } from "@/utils/supabase/server";
+import { HandleClaimPrompt } from "@/components/social/handle-claim-prompt";
+
+/**
+ * The app frame — D18, where the pre-revamp chrome was deleted.
+ *
+ * What used to be here: a `MobileHeader`, a `DesktopSiteHeader` wrapping a
+ * `CosmicMenu` and a `HeaderAuth` dropdown, and **two `<main>` elements that
+ * each rendered `{children}`** — one `hidden md:flex`, one `md:hidden`. Every
+ * element in the app existed twice in the DOM, ids included, and every page
+ * was mounted twice, which meant every page's effects ran twice and every
+ * `getElementById` was a coin toss.
+ *
+ * There is now one `<main>`, one header, and one copy of the page. The header
+ * capsule is responsive by itself (docs/design-system/patterns.md § Header
+ * capsule): below 900px it collapses to a single column and squares off, and
+ * the bottom tab bar takes over navigation on touch. Nothing is duplicated to
+ * achieve that.
+ */
+
+// The two voices. Signal's token file stays authoritative: next/font only fills
+// in --cd-font-sans / --cd-font-serif with the locally hosted faces.
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  variable: "--cd-font-sans",
+});
+
+const sourceSerif = Source_Serif_4({
+  subsets: ["latin"],
+  weight: ["400", "600"],
+  style: ["normal", "italic"],
+  display: "swap",
+  variable: "--cd-font-serif",
+});
 
 export default async function RootLayout({
   children,
@@ -27,8 +60,29 @@ export default async function RootLayout({
 
   const isLoggedIn = !!user;
 
+  // Read on the server, from the session that is already in hand. Deriving it
+  // in the client from `onAuthStateChange` — which is what the old mobile
+  // header did — means the header renders nameless, then re-renders with a
+  // name, on every single navigation.
+  const headerUser = user
+    ? {
+        name:
+          user.user_metadata?.full_name ??
+          user.user_metadata?.name ??
+          user.email?.split("@")[0] ??
+          "You",
+        avatarUrl:
+          user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null,
+        href: "/my/profile",
+      }
+    : undefined;
+
   return (
-    <html lang="en" className={GeistSans.className} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${inter.variable} ${sourceSerif.variable} font-sans`}
+      suppressHydrationWarning
+    >
       <head>
         <meta
           name="viewport"
@@ -37,6 +91,7 @@ export default async function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        {/* cd-tokens-allow: a meta tag cannot read a CSS custom property */}
         <meta name="theme-color" content="#ffffff" />
         <script
           async
@@ -52,87 +107,64 @@ export default async function RootLayout({
         `,
           }}
         />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Karla:ital,wght@0,200..800;1,200..800&family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap"
-          rel="stylesheet"
-        />
       </head>
-      <body className="bg-background bg-gray-50 text-foreground">
+      <body className="bg-bg text-fg">
         <ReduxProvider>
-          <CommandDialogProvider>
-            <Body>
-              <ThemeProvider
-                attribute="class"
-                defaultTheme="light"
-                enableSystem
-                disableTransitionOnChange
-              >
-                {/* Mobile Header */}
-                <MobileHeader isLoggedIn={isLoggedIn} />
+          {/*
+            One <ToastProvider> for the whole app, inside the store so anything
+            that can dispatch can also confirm what it did. It sits at the root
+            rather than on a route group because the thing that toasts most —
+            Save a link — lives in the header, above every route.
+          */}
+          <ToastProvider>
+            <CommandDialogProvider>
+              <Body>
+                <ThemeProvider
+                  attribute="class"
+                  defaultTheme="light"
+                  enableSystem
+                  disableTransitionOnChange
+                >
+                  <div className="flex min-h-screen flex-col">
+                    <AppChrome
+                      isLoggedIn={isLoggedIn}
+                      user={headerUser}
+                      saveAction={isLoggedIn ? <NewBookmarkButton /> : undefined}
+                    />
 
-                {/* Desktop Layout */}
-                <main className="hidden md:flex w-full h-full p-2">
-                  <div className="w-full mx-auto flex flex-col gap-6">
-                    <div className="flex gap-6">
-                      <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-3">
-                        <div className="flex items-center justify-between gap-4 h-10">
-                          <div className="flex-1 flex">
-                            <Link href="/" className="flex gap-2 items-center">
-                              <div className="text-2xl">🐬</div>
-                              <div
-                                className={`transition-all duration-300 ease-in-out overflow-hidden ${"w-auto opacity-100"}`}
-                              >
-                                <h2 className="font-noto text-lg font-normal text-gray-800 whitespace-nowrap">
-                                  Cosmic Dolphin
-                                </h2>
-                              </div>
-                            </Link>
-                            {isLoggedIn && <CosmicMenu />}
-                          </div>
-                          {isLoggedIn && (
-                            <div className="flex-1 flex justify-end">
-                              <div className="flex items-center gap-3">
-                                <CommandDialogTrigger />
-                                <NewBookmarkButton />
-                              </div>
-                            </div>
-                          )}
-                          <div className="flex items-center space-x-2">
-                            <HeaderAuth />
-                          </div>
-                        </div>
+                    {/*
+                      `pb-28` on touch clears the bottom tab bar, which floats
+                      over the page rather than displacing it.
+                    */}
+                    <main
+                      className={`flex-1 px-4 pb-8 md:px-6 ${
+                        isLoggedIn ? "max-md:pb-28" : ""
+                      }`}
+                    >
+                      <div className="mx-auto w-full max-w-screen-xl">
+                        {/*
+                          The optimistic capture row. It sits above the page
+                          because Save a link is in the header and works from
+                          every route — the row has to appear wherever the paste
+                          happened. It renders nothing when nothing is in flight.
+                        */}
+                        {isLoggedIn && <PendingCaptures />}
+                        {children}
                       </div>
-                    </div>
-                    <div className="flex-1 max-w-screen-lg mx-auto">
-                      {children}
-                    </div>
-                    <div className="h-2"></div>
+                    </main>
                   </div>
-                </main>
 
-                {/* Mobile Layout!! */}
-                <main className="md:hidden flex flex-col min-h-screen">
-                  {/* Content area with padding for fixed header and bottom nav */}
-                  <div className={`flex-1 pt-20 ${isLoggedIn ? 'pb-28' : 'pb-8'} px-4`}>
-                    <div className="max-w-screen-sm mx-auto">{children}</div>
-                  </div>
-                </main>
+                  {/* Home, Library, Save, Search, You — touch only. */}
+                  {isLoggedIn && <BottomNavigation />}
 
-                {/* Mobile Bottom Navigation - Only show when logged in */}
-                {isLoggedIn && <BottomNavigation />}
+                  <HandleClaimPrompt isLoggedIn={isLoggedIn} />
 
-                {/* Global Command Dialog - Desktop Only */}
-                <GlobalCommandDialog />
-                <GlobalKeyboardShortcuts />
-              </ThemeProvider>
-            </Body>
-          </CommandDialogProvider>
+                  <GlobalCommandDialog />
+                  <GlobalKeyboardShortcuts />
+                </ThemeProvider>
+              </Body>
+            </CommandDialogProvider>
+          </ToastProvider>
         </ReduxProvider>
       </body>
     </html>

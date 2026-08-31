@@ -1,76 +1,88 @@
 "use client";
 
-import { forgotPasswordAction } from "@/app/actions";
-import { FormMessage, Message } from "@/components/form-message";
-import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
+import { forgotPasswordAction } from "@/app/actions";
+import { FormMessage } from "@/components/form-message";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { focusRing } from "@/components/ui/focus-ring";
+import { cn } from "@/lib/utils";
+import { AuthField, AuthShell } from "../auth-shell";
+
+/**
+ * Forgot password — docs/design-system/pages.md § Auth.
+ *
+ * One field, so every error is about it. There is no field-routing to do here
+ * and no fallback to pick: the message goes under the email input because that
+ * is the only place it could belong.
+ */
 export default function ForgotPassword() {
+  return (
+    <Suspense fallback={null}>
+      <ForgotPasswordForm />
+    </Suspense>
+  );
+}
+
+function ForgotPasswordForm() {
   const searchParams = useSearchParams();
 
-  // Build message object from search params
-  const message: Message | undefined = searchParams.get("error")
-    ? { error: searchParams.get("error")! }
-    : searchParams.get("success")
-      ? { success: searchParams.get("success")! }
-      : searchParams.get("message")
-        ? { message: searchParams.get("message")! }
-        : undefined;
+  const error = searchParams.get("error");
+  const success = searchParams.get("success");
+  const notice = searchParams.get("message");
 
   return (
-    <div className="w-full">
-      {/* Logo */}
-      <div className="flex items-center gap-2 mb-6">
-        <div className="text-2xl">🐬</div>
-        <h2 className="font-noto text-lg font-normal text-gray-800">
-          Cosmic Dolphin
-        </h2>
-      </div>
-
-      {/* Header */}
-      <h1
-        className="text-3xl font-bold text-gray-900 mb-1"
-        style={{ fontFamily: "Georgia, serif" }}
-      >
-        Reset password
-      </h1>
-      <p className="text-sm text-gray-600 mb-5">
-        Enter your email and we'll send you a link to reset your password.
-      </p>
-
-      {/* Form */}
-      <form action={forgotPasswordAction} className="space-y-2.5">
-        {/* Email field */}
-        <Input
-          name="email"
-          type="email"
-          placeholder="Email"
-          required
-          className="h-11 rounded-full border-gray-300 px-5 text-sm placeholder:text-gray-400 focus:border-gray-400 focus:ring-0"
-        />
-
-        {/* Reset button */}
-        <button
-          type="submit"
-          className="w-full h-11 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-full text-sm transition-colors"
+    <AuthShell
+      title="Reset your password"
+      subtitle="Enter your email and we will send you a link to set a new one."
+      footer={
+        <>
+          Remembered it?{" "}
+          <Link
+            href="/sign-in"
+            className={cn(
+              "rounded-sm font-medium text-accent underline-offset-4 hover:underline",
+              focusRing,
+            )}
+          >
+            Sign in
+          </Link>
+        </>
+      }
+    >
+      <form action={forgotPasswordAction} className="flex flex-col gap-4">
+        <AuthField
+          label="Email"
+          htmlFor="forgot-email"
+          message={
+            error ? (
+              <FormMessage id="forgot-email-message" message={{ error }} />
+            ) : success ? (
+              <FormMessage message={{ success }} />
+            ) : notice ? (
+              <FormMessage message={{ message: notice }} />
+            ) : null
+          }
         >
-          Reset Password
-        </button>
+          <Input
+            id="forgot-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            required
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? "forgot-email-message" : undefined}
+          />
+        </AuthField>
 
-        {message && <FormMessage message={message} />}
+        <Button type="submit" variant="primary" className="w-full">
+          Send reset link
+        </Button>
       </form>
-
-      {/* Back to sign in link */}
-      <p className="text-center mt-5 text-sm text-gray-600">
-        Remember your password?{" "}
-        <Link
-          href="/sign-in"
-          className="text-[#7fb069] font-medium hover:text-[#6a9957] transition-colors"
-        >
-          Sign in
-        </Link>
-      </p>
-    </div>
+    </AuthShell>
   );
 }

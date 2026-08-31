@@ -102,6 +102,7 @@ export interface BookmarkProcessingRepository {
     bookmarkId: string,
     userId: string
   ): Promise<BookmarkProcessingTimelineRecord | null>;
+  countRunsSince(userId: string, since: Date): Promise<number>;
 }
 
 export class BookmarkProcessingRepositoryImpl
@@ -273,6 +274,26 @@ export class BookmarkProcessingRepositoryImpl
         events: events.map((event) => this.mapEvent(event)),
       };
     }, "findLatestBookmarkProcessingTimeline");
+  }
+
+  /**
+   * How many runs this user has started since `since`.
+   *
+   * The unit the daily processing budget is spent in: one run is one trip
+   * through the model calls, whether it came from a save or a reprocess. Served
+   * by `idx_bookmark_processing_runs_user_started`.
+   */
+  async countRunsSince(userId: string, since: Date): Promise<number> {
+    return this.executeQuery(async () => {
+      const row = await this.db
+        .selectFrom("bookmark_processing_runs")
+        .select(({ fn }) => fn.countAll<string>().as("count"))
+        .where("user_id", "=", userId)
+        .where("started_at", ">=", since)
+        .executeTakeFirst();
+
+      return Number(row?.count ?? 0);
+    }, "countBookmarkProcessingRunsSince");
   }
 
   private mapRun(row: DatabaseBookmarkProcessingRun): BookmarkProcessingRun {

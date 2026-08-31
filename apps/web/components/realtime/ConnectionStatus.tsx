@@ -25,7 +25,7 @@ export const ConnectionStatus = () => {
       case "reconnecting":
         return {
           color: "bg-yellow-50 border-yellow-200",
-          dot: "bg-yellow-500 animate-pulse",
+          dot: "bg-yellow-500 animate-pulse motion-reduce:animate-none",
           text: "text-yellow-700",
           message: `Reconnecting... (attempt ${connection.attempts})`,
         };

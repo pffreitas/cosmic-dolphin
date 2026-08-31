@@ -86,10 +86,12 @@ versions in the tree stops being a migration.
 
 ## Phase 5 · Mobile
 
-`apps/mobile` consumes the same `tokens.json`. Generate a TypeScript theme object from it at build
-time rather than transcribing values, so the two clients cannot drift. Patterns translate directly;
-the header capsule becomes a bottom tab bar plus a compact top bar, and hover states become pressed
-states.
+`apps/mobile` consumes the same `tokens.json`. `scripts/generate-tokens.mjs` compiles it into
+`apps/mobile/constants/theme.ts` alongside the web stylesheet, so the two clients cannot drift —
+`bun run tokens` writes both, `bun run tokens:check` fails when either is stale, and both apps' lint
+runs that check. Patterns translate directly; the header capsule becomes a bottom tab bar plus the
+compact `components/TopBar.tsx`, and hover states become pressed states (a row's `--cd-bg-subtle`
+hover becomes its pressed ground). Parity beyond token adoption is out of scope.
 
 ## Definition of done
 
@@ -102,6 +104,15 @@ A surface is migrated when all of the following hold:
 - [ ] Keyboard-reachable, with a visible focus ring on every control.
 - [ ] `prefers-reduced-motion` honoured.
 - [ ] The component it replaces has been deleted.
+
+Four of the seven are machine-checked and break the build: raw values
+(`apps/web/scripts/lint-tokens.mjs`), contrast
+(`apps/web/__tests__/accessibility/contrast.test.ts`), the focus ring and the 32px target
+(`apps/web/scripts/lint-a11y.mjs`), and reduced motion (both of those plus the global block in
+`app/globals.css`). `.github/workflows/accessibility.yml` runs them on every pull request. The other
+three — the two voices, the four states, and deleting the predecessor — are still read rather than
+run. [audit.md](./audit.md) records this checklist walked route by route, every violation the D20
+audit found, and what remains open.
 
 ## Reference
 

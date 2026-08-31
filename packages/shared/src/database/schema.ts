@@ -18,10 +18,29 @@ export interface CollectionsTable extends BaseTable {
   is_public: Generated<boolean>;
 }
 
+// Collection suggestions table — a proposed collection, not a created one.
+// The file phase never creates a collection; it accumulates support here until
+// the user accepts. See docs/functional-spec/03-ai-pipeline.md § Filing.
+export interface CollectionSuggestionsTable {
+  id: Generated<string>;
+  user_id: string;
+  name: string;
+  parent_id: string | null;
+  bookmark_ids: string[];
+  status: Generated<CollectionSuggestionStatus>;
+  dismissed_until: Date | null;
+  created_at: Generated<Date>;
+}
+
 // Processing status type
 export type ProcessingStatus = "idle" | "processing" | "completed" | "failed";
 export type BookmarkProcessingTimelineStatus = "running" | "completed" | "failed";
 export type BookmarkProcessingEventKind = "run" | "phase" | "turn";
+
+/** Who chose a bookmark's collection. `user` is the override flag. */
+export type FilingSource = "ai" | "user";
+
+export type CollectionSuggestionStatus = "pending" | "accepted" | "dismissed";
 
 // Bookmarks table
 export interface BookmarksTable extends BaseTable {
@@ -29,11 +48,19 @@ export interface BookmarksTable extends BaseTable {
   title: string | null;
   metadata: any | null; // JSONB
   collection_id: string | null;
+  /**
+   * `ai` — the file phase chose `collection_id` and a later run may revise it.
+   * `user` — a human chose it, and the pipeline never moves the row again.
+   */
+  filing_source: Generated<FilingSource>;
+  /** Reshare provenance: the bookmark this one was saved from (D13). */
+  saved_from_bookmark_id: string | null;
   user_id: string;
   is_archived: Generated<boolean>;
   is_favorite: Generated<boolean>;
   cosmic_summary: string | null;
   cosmic_brief_summary: string | null;
+  cosmic_key_points: any | null; // JSONB — string[]
   cosmic_tags: string[] | null;
   cosmic_images: any | null; // JSONB
   cosmic_links: any | null; // JSONB
@@ -45,6 +72,13 @@ export interface BookmarksTable extends BaseTable {
   processing_error: string | null;
   is_private_link: Generated<boolean>;
   like_count: Generated<number>;
+  /**
+   * Live comments, tombstones excluded. `Generated` because it is maintained
+   * by the `bookmark_comments_count_sync` trigger and never written by
+   * application code — an INSERT that tried to set it would be overwritten by
+   * the first comment anyway.
+   */
+  comment_count: Generated<number>;
   is_public: Generated<boolean>;
   share_slug: string | null;
   read_at: Date | null;
@@ -100,7 +134,222 @@ export interface ProfilesTable {
   name: string | null;
   email: string | null;
   picture_url: string | null;
+
+  /**
+   * Public identity, unique, `^[a-z0-9_]{3,30}$`. Nullable only because a
+   * profile row is created by a trigger on `auth.users` and sign-in must never
+   * fail over a handle that could not be minted.
+   */
+  handle: string | null;
+
+  /**
+   * When a human last *changed* the handle. `null` means never — the reserved
+   * handle came from the email local part, which is not a change the user made
+   * and does not consume their 30-day allowance.
+   */
+  handle_changed_at: Date | null;
+
+  /**
+   * When a human confirmed the handle. `null` means reserved-and-unclaimed:
+   * the value in `handle` is a guess and the user has never been asked.
+   */
+  handle_claimed_at: Date | null;
+
   created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+/**
+ * A directed follow edge. No approval, no reciprocity, two states: the row
+ * exists or it does not — docs/functional-spec/06-social.md § Follow.
+ */
+export interface FollowsTable {
+  follower_id: string;
+  following_id: string;
+  created_at: Generated<Date>;
+}
+
+/**
+ * `blocker_id` blocked `blocked_id`. Blocking drops both follow edges and
+ * hides the blocker's public saves from the blocked user.
+ */
+export interface UserBlocksTable {
+  blocker_id: string;
+  blocked_id: string;
+  created_at: Generated<Date>;
+}
+
+/**
+ * A comment on a bookmark.
+ *
+ * `parent_id` is only ever NULL or a *top-level* comment's id. The database
+ * cannot express that — the column references its own table and a reply's
+ * parent is a legal value as far as the FK is concerned — so the rule lives in
+ * `CommentService`, which re-points a reply-to-a-reply at its grandparent
+ * rather than refusing it.
+ *
+ * `deleted_at` marks a tombstone: a comment whose author removed it while
+ * replies still hung off it. A comment with no replies is hard-deleted and
+ * this table has no row for it at all.
+ */
+export interface BookmarkCommentsTable {
+  id: Generated<string>;
+  bookmark_id: string;
+  user_id: string;
+  parent_id: string | null;
+  body: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  deleted_at: Date | null;
+}
+
+/**
+ * A report of a bookmark or a comment. Exactly one target, enforced by a CHECK.
+ *
+ * `status` is a marker for the internal review queue. Nothing on the serving
+ * path reads it: reported content stays visible pending review, because
+ * auto-hide is trivially weaponised.
+ */
+export interface ContentReportsTable {
+  id: Generated<string>;
+  reporter_id: string;
+  bookmark_id: string | null;
+  comment_id: string | null;
+  reason: string;
+  status: Generated<ContentReportStatus>;
+  created_at: Generated<Date>;
+}
+
+export type ContentReportStatus = "open" | "reviewed" | "actioned";
+
+/**
+ * How far into a bookmark a reader got. A cursor, not a history: one row per
+ * (user, bookmark), and `percent` only ever moves up — the guard is on the
+ * upsert in `BookmarkReadingRepository`, not here.
+ *
+ * Distinct from `bookmarks.read_at`, which stays the only record of *read*.
+ */
+export interface BookmarkReadingProgressTable {
+  user_id: string;
+  bookmark_id: string;
+  percent: Generated<number>;
+  scroll_offset: number | null;
+  updated_at: Generated<Date>;
+}
+
+/**
+ * A span of extracted content the reader kept, anchored by quote plus context
+ * rather than by offsets — see `packages/shared/src/highlight-anchor.ts`.
+ *
+ * Private to `user_id` even when the bookmark is public. Every query against
+ * this table is scoped to the reader in SQL.
+ */
+export interface BookmarkHighlightsTable {
+  id: Generated<string>;
+  user_id: string;
+  bookmark_id: string;
+  quote: string;
+  prefix: string | null;
+  suffix: string | null;
+  note: string | null;
+  created_at: Generated<Date>;
+}
+
+/**
+ * What the feed served someone, and whether they went in.
+ *
+ * One row per (person, item), incremented in place — this table grows with the
+ * size of a library, not with the number of page views. `opened_at` NULL is
+ * the state seen-decay acts on: served, ignored. Without it the ranker has no
+ * way of knowing it is showing the same thing for the fourth time.
+ */
+export interface FeedImpressionsTable {
+  user_id: string;
+  item_type: FeedImpressionItemType;
+  item_id: string;
+  served_count: Generated<number>;
+  opened_at: Date | null;
+  last_served_at: Generated<Date>;
+}
+
+export type FeedImpressionItemType = "bookmark" | "digest";
+
+/**
+ * What a reader told the feed to stop showing them —
+ * docs/functional-spec/05-feed.md § Feedback.
+ *
+ * One target per row, and which one is decided by `kind`; the SQL check
+ * constraint enforces the pairing so the ranker never has to guess which
+ * domain a `fewer_domain` row meant.
+ */
+export interface FeedFeedbackTable {
+  id: Generated<string>;
+  user_id: string;
+  kind: FeedFeedbackKind;
+  /** `not_interested` only. */
+  bookmark_id: string | null;
+  /** `fewer_domain` only. Bare host, lowercased. */
+  domain: string | null;
+  /** `mute_topic` only. One `cosmic_tags` entry, lowercased. */
+  topic: string | null;
+  created_at: Generated<Date>;
+}
+
+export type FeedFeedbackKind =
+  | "not_interested"
+  | "fewer_domain"
+  | "mute_topic";
+
+/**
+ * An AI-authored grouping of the user's own recent saves —
+ * docs/functional-spec/05-feed.md § Digests.
+ *
+ * `source_bookmark_ids` is NOT NULL and constrained to 3–6 entries in SQL, so
+ * a digest that cannot name what it was built from is not a row this table can
+ * hold. `coherence` records the cluster's measured mean pairwise similarity:
+ * every stored row cleared the generator's threshold, because a weak cluster
+ * produces no digest at all rather than a hedged one.
+ */
+export interface FeedDigestsTable {
+  id: Generated<string>;
+  user_id: string;
+  title: string;
+  summary: string;
+  /** JSONB — `DigestKeyPoint[]`. */
+  key_points: any;
+  source_bookmark_ids: string[];
+  coherence: number;
+  model_id: string | null;
+  window_start: Date;
+  window_end: Date;
+  is_public: Generated<boolean>;
+  share_slug: string | null;
+  like_count: Generated<number>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+/**
+ * A like on a digest. Its own table, not a row in `bookmark_likes`: a digest
+ * is a first-class social object, and pointing one column at two tables is how
+ * a count starts counting the wrong things. The denormalised
+ * `feed_digests.like_count` is maintained by trigger.
+ */
+export interface FeedDigestLikesTable {
+  digest_id: string;
+  user_id: string;
+  created_at: Generated<Date>;
+}
+
+/**
+ * Ranking weights and parameters, one row per environment, read at request
+ * time. **Overrides, not a definition** — anything absent falls back to the
+ * values in `feed-ranking.config.ts`, so an empty table is a working ranker.
+ */
+export interface FeedRankingConfigTable {
+  environment: string;
+  weights: any; // JSONB — Partial<Record<FeedSignalName, number>>
+  parameters: any; // JSONB — Partial<FeedRankingParameters>
   updated_at: Generated<Date>;
 }
 
@@ -146,6 +395,7 @@ export interface BookmarkProcessingEventsTable extends BaseTable {
 // Database schema interface
 export interface Database {
   collections: CollectionsTable;
+  collection_suggestions: CollectionSuggestionsTable;
   bookmarks: BookmarksTable;
   bookmark_likes: BookmarkLikesTable;
   scraped_url_contents: ScrapedUrlContentsTable;
@@ -155,12 +405,28 @@ export interface Database {
   profiles: ProfilesTable;
   bookmark_processing_runs: BookmarkProcessingRunsTable;
   bookmark_processing_events: BookmarkProcessingEventsTable;
+  bookmark_reading_progress: BookmarkReadingProgressTable;
+  bookmark_highlights: BookmarkHighlightsTable;
+  follows: FollowsTable;
+  user_blocks: UserBlocksTable;
+  bookmark_comments: BookmarkCommentsTable;
+  content_reports: ContentReportsTable;
+  feed_impressions: FeedImpressionsTable;
+  feed_feedback: FeedFeedbackTable;
+  feed_ranking_config: FeedRankingConfigTable;
+  feed_digests: FeedDigestsTable;
+  feed_digest_likes: FeedDigestLikesTable;
 }
 
 // Type helpers for each table
 export type Collection = Selectable<CollectionsTable>;
 export type NewCollection = Insertable<CollectionsTable>;
 export type CollectionUpdate = Updateable<CollectionsTable>;
+
+export type CollectionSuggestionRow = Selectable<CollectionSuggestionsTable>;
+export type NewCollectionSuggestion = Insertable<CollectionSuggestionsTable>;
+export type CollectionSuggestionUpdate =
+  Updateable<CollectionSuggestionsTable>;
 
 export type Bookmark = Selectable<BookmarksTable>;
 export type NewBookmark = Insertable<BookmarksTable>;
@@ -189,9 +455,48 @@ export type Profile = Selectable<ProfilesTable>;
 export type NewProfile = Insertable<ProfilesTable>;
 export type ProfileUpdate = Updateable<ProfilesTable>;
 
+export type FollowRow = Selectable<FollowsTable>;
+export type NewFollow = Insertable<FollowsTable>;
+
+export type UserBlockRow = Selectable<UserBlocksTable>;
+export type NewUserBlock = Insertable<UserBlocksTable>;
+
+export type BookmarkCommentRow = Selectable<BookmarkCommentsTable>;
+export type NewBookmarkComment = Insertable<BookmarkCommentsTable>;
+export type BookmarkCommentUpdate = Updateable<BookmarkCommentsTable>;
+
+export type ContentReportRow = Selectable<ContentReportsTable>;
+export type NewContentReport = Insertable<ContentReportsTable>;
+
+export type FeedImpressionRow = Selectable<FeedImpressionsTable>;
+export type NewFeedImpression = Insertable<FeedImpressionsTable>;
+export type FeedImpressionUpdate = Updateable<FeedImpressionsTable>;
+
+export type FeedFeedbackRow = Selectable<FeedFeedbackTable>;
+export type NewFeedFeedback = Insertable<FeedFeedbackTable>;
+
+export type FeedRankingConfigRow = Selectable<FeedRankingConfigTable>;
+
+export type FeedDigestRow = Selectable<FeedDigestsTable>;
+export type NewFeedDigest = Insertable<FeedDigestsTable>;
+export type FeedDigestUpdate = Updateable<FeedDigestsTable>;
+
+export type FeedDigestLikeRow = Selectable<FeedDigestLikesTable>;
+
 export type BookmarkProcessingRun = Selectable<BookmarkProcessingRunsTable>;
 export type NewBookmarkProcessingRun = Insertable<BookmarkProcessingRunsTable>;
 export type BookmarkProcessingRunUpdate = Updateable<BookmarkProcessingRunsTable>;
+
+export type BookmarkReadingProgressRow =
+  Selectable<BookmarkReadingProgressTable>;
+export type NewBookmarkReadingProgress =
+  Insertable<BookmarkReadingProgressTable>;
+export type BookmarkReadingProgressUpdate =
+  Updateable<BookmarkReadingProgressTable>;
+
+export type BookmarkHighlightRow = Selectable<BookmarkHighlightsTable>;
+export type NewBookmarkHighlight = Insertable<BookmarkHighlightsTable>;
+export type BookmarkHighlightUpdate = Updateable<BookmarkHighlightsTable>;
 
 export type BookmarkProcessingEvent = Selectable<BookmarkProcessingEventsTable>;
 export type NewBookmarkProcessingEvent =

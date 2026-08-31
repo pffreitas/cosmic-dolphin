@@ -70,13 +70,30 @@ describe("BookmarksClientAPI.remove", () => {
     });
   });
 
-  it("should request the unread feed", async () => {
-    mockBookmarksFeed.mockResolvedValue({ bookmarks: [] });
+  it("pages the ranked feed by cursor, never by offset", async () => {
+    // The candidate set is re-ranked between requests, so an offset into it is
+    // an offset into a list that no longer exists. This asserts the wrapper
+    // cannot send one: it forwards scope, cursor and limit, and nothing else.
+    const computedAt = new Date("2026-08-28T10:00:00.000Z");
+    mockBookmarksFeed.mockResolvedValue({
+      items: [],
+      nextCursor: "next",
+      computedAt,
+    });
 
-    const result = await BookmarksClientAPI.feed({ limit: 10, offset: 20 });
+    const result = await BookmarksClientAPI.feed({
+      scope: "following",
+      cursor: "abc",
+      limit: 10,
+    });
 
-    expect(mockBookmarksFeed).toHaveBeenCalledWith({ limit: 10, offset: 20 });
-    expect(result).toEqual([]);
+    expect(mockBookmarksFeed).toHaveBeenCalledWith({
+      scope: "following",
+      cursor: "abc",
+      limit: 10,
+    });
+    expect(mockBookmarksFeed.mock.calls[0][0]).not.toHaveProperty("offset");
+    expect(result).toEqual({ items: [], nextCursor: "next", computedAt });
   });
 
   it("should map library list query params to generated client names", async () => {

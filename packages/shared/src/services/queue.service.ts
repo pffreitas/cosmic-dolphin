@@ -1,4 +1,15 @@
-import { QueueTaskPayload, BookmarkQueuePayload } from "../types";
+import {
+  QueueTaskPayload,
+  BookmarkQueuePayload,
+  BookmarkProcessingPhase,
+} from "../types";
+
+export interface BookmarkProcessingMessageOptions {
+  /** Reprocess one phase only. Absent runs the whole pipeline. */
+  phase?: BookmarkProcessingPhase;
+  /** Append to the bookmark's existing timeline instead of opening a run. */
+  resume?: boolean;
+}
 import { SupabaseClient } from "@supabase/supabase-js";
 
 export interface QueueService {
@@ -9,7 +20,8 @@ export interface QueueService {
   ): Promise<void>;
   sendBookmarkProcessingMessage(
     bookmarkId: string,
-    userId: string
+    userId: string,
+    options?: BookmarkProcessingMessageOptions
   ): Promise<void>;
 }
 
@@ -36,13 +48,16 @@ export class QueueServiceImpl implements QueueService {
 
   async sendBookmarkProcessingMessage(
     bookmarkId: string,
-    userId: string
+    userId: string,
+    options: BookmarkProcessingMessageOptions = {}
   ): Promise<void> {
     const payload: BookmarkQueuePayload = {
       type: "bookmark_process",
       data: {
         bookmarkId,
         userId,
+        ...(options.phase ? { phase: options.phase } : {}),
+        ...(options.resume ? { resume: true } : {}),
       },
       metadata: {
         source: "api",

@@ -59,6 +59,10 @@ export function useBookmarks({
   const [isOffline, setIsOffline] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
+  // The feed pages by cursor, not offset: it is re-ranked between requests, so
+  // an offset into it duplicates and skips. The library still pages by offset,
+  // because it is a stable ordering and a keyset there is D19's problem.
+  const [feedCursor, setFeedCursor] = useState<string | undefined>(undefined);
 
   const fetchBookmarks = useCallback(async (reset: boolean = false) => {
     const userId = user?.id;
@@ -82,17 +86,23 @@ export function useBookmarks({
     }
 
     try {
-      const newBookmarks =
-        mode === 'feed'
-          ? await BookmarksAPI.feed({
-              limit: PAGE_SIZE,
-              offset: currentOffset,
-            })
-          : await BookmarksAPI.list({
-              limit: PAGE_SIZE,
-              offset: currentOffset,
-              read_status: readStatus,
-            });
+      let newBookmarks: Bookmark[];
+      let nextFeedCursor: string | undefined;
+
+      if (mode === 'feed') {
+        const page = await BookmarksAPI.feed({
+          limit: PAGE_SIZE,
+          cursor: reset ? undefined : feedCursor,
+        });
+        newBookmarks = page.bookmarks;
+        nextFeedCursor = page.nextCursor;
+      } else {
+        newBookmarks = await BookmarksAPI.list({
+          limit: PAGE_SIZE,
+          offset: currentOffset,
+          read_status: readStatus,
+        });
+      }
 
       if (reset) {
         setBookmarks(newBookmarks);
@@ -102,6 +112,8 @@ export function useBookmarks({
         setOffset((prev) => prev + PAGE_SIZE);
       }
 
+      if (mode === 'feed') setFeedCursor(nextFeedCursor);
+
       setIsOffline(false);
       if (mode === 'library' && readStatus === 'all') {
         cacheLibraryPageInBackground(userId, newBookmarks, { reset });
@@ -109,8 +121,12 @@ export function useBookmarks({
         cacheBookmarksInBackground(userId, newBookmarks);
       }
 
-      // If we received fewer than PAGE_SIZE items, there are no more
-      setHasMore(newBookmarks.length === PAGE_SIZE);
+      // The feed says so explicitly; the library infers it from a short page.
+      setHasMore(
+        mode === 'feed'
+          ? Boolean(nextFeedCursor)
+          : newBookmarks.length === PAGE_SIZE
+      );
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch bookmarks';
 
@@ -123,6 +139,7 @@ export function useBookmarks({
         if (cachedBookmarks.length > 0) {
           setBookmarks(cachedBookmarks);
           setOffset(cachedBookmarks.length);
+          setFeedCursor(undefined);
           setHasMore(false);
           setIsOffline(true);
           setError(null);
@@ -136,10 +153,11 @@ export function useBookmarks({
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [mode, offset, readStatus, user?.id]);
+  }, [feedCursor, mode, offset, readStatus, user?.id]);
 
   const refresh = useCallback(async () => {
     setOffset(0);
+    setFeedCursor(undefined);
     setHasMore(true);
     await fetchBookmarks(true);
   }, [fetchBookmarks]);

@@ -9,6 +9,7 @@ import {
 } from "../types";
 import { nanoid } from "nanoid";
 import {
+  BookmarkLibraryCounts,
   BookmarkRepository,
   CollectionRepository,
   FindByUserOptions,
@@ -22,17 +23,61 @@ export interface PrivateLinkMetadata {
   description?: string;
   tags?: string[];
   collectionId?: string;
+  /** The URL exactly as the user pasted it, before normalisation. */
+  originalUrl?: string;
+}
+
+export interface CreateBookmarkOptions {
+  /**
+   * The URL exactly as the user pasted it. Stored in `metadata.originalUrl`;
+   * defaults to the normalised URL when the paste was already normal.
+   */
+  originalUrl?: string;
+  collectionId?: string;
+  /**
+   * Reshare provenance — the bookmark this save came from
+   * (docs/functional-spec/06-social.md § Reshare).
+   *
+   * It is the *only* thing a reshare inherits beyond the URL. The summary,
+   * tags, filing and thread are not copied: the pipeline runs again for the
+   * new owner, against their tree.
+   *
+   * The column is `ON DELETE SET NULL`, so deleting the original leaves this
+   * save intact with no provenance rather than deleting or orphaning it.
+   */
+  savedFromBookmarkId?: string;
+  /**
+   * A title already known — the original's, on a reshare. Saves the row
+   * showing a bare URL until the `fetch` phase lands. The pipeline overwrites
+   * it with the scraped title either way, so this is legibility, not data.
+   */
+  title?: string;
 }
 
 export interface BookmarkService {
   findByUserAndUrl(userId: string, sourceUrl: string): Promise<Bookmark | null>;
   findByIdAndUser(id: string, userId: string): Promise<Bookmark | null>;
+  /**
+   * A bookmark someone else may own, if the viewer is allowed to see it at
+   * all: public, or the viewer's own. `null` otherwise — never a "you are not
+   * allowed" distinguishable from "it does not exist".
+   *
+   * The same rule `CommentService` reads a thread by. It is deliberately *not*
+   * the whole of "may this caller reshare it": a block is a property of the
+   * two people, not of the bookmark, and lives in `SocialService`.
+   */
+  findVisibleById(id: string, viewerId: string): Promise<Bookmark | null>;
   findByIdAndUserWithLikeStatus(
     id: string,
     userId: string
   ): Promise<{ bookmark: Bookmark; isLikedByCurrentUser: boolean } | null>;
   getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
-  create(url: string, userId: string): Promise<Bookmark>;
+  create(
+    url: string,
+    userId: string,
+    options?: CreateBookmarkOptions
+  ): Promise<Bookmark>;
+  ensureScrapedContent(bookmark: Bookmark): Promise<ScrapedUrlContents | null>;
   createPrivateLink(
     url: string,
     userId: string,
@@ -43,13 +88,42 @@ export interface BookmarkService {
     metadata: PrivateLinkMetadata
   ): Promise<Bookmark>;
   findByUser(userId: string, options?: FindByUserOptions): Promise<Bookmark[]>;
+  countLibrary(userId: string): Promise<BookmarkLibraryCounts>;
   findFeed(userId: string, options?: FindByUserOptions): Promise<Bookmark[]>;
   searchByQuickAccess(
     userId: string,
     query: string,
     options?: SearchOptions
   ): Promise<Bookmark[]>;
-  update(id: string, data: Partial<Bookmark>): Promise<Bookmark>;
+  /**
+   * Everything except where the bookmark is filed. `collectionId` and
+   * `filingSource` are absent from the accepted shape on purpose — moving a
+   * bookmark is `fileByPipeline` or `refileByUser`, never a side effect of
+   * writing something else.
+   */
+  update(
+    id: string,
+    data: Partial<Omit<Bookmark, "collectionId" | "filingSource">>
+  ): Promise<Bookmark>;
+  /**
+   * File a bookmark from the pipeline. Refused, and returns `null`, when the
+   * bookmark's `filingSource` is `'user'`.
+   *
+   * The refusal happens in SQL (`BookmarkRepository.updateAiFiling`), so it
+   * holds even when the decision was taken before the user refiled.
+   */
+  fileByPipeline(id: string, collectionId: string | null): Promise<Bookmark | null>;
+  /**
+   * File a bookmark on the user's behalf and mark it theirs, permanently.
+   * The move and `filing_source = 'user'` happen in one statement.
+   */
+  refileByUser(
+    id: string,
+    userId: string,
+    collectionId: string | null
+  ): Promise<Bookmark | null>;
+  /** The user's most-used tags — candidates for the `tag` phase. */
+  getTopTags(userId: string, limit?: number): Promise<string[]>;
   updateProcessingStatus(
     id: string,
     status: ProcessingStatus,
@@ -90,6 +164,19 @@ export class BookmarkServiceImpl implements BookmarkService {
     return this.enrichWithCollectionPath(mapped);
   }
 
+  async findVisibleById(
+    id: string,
+    viewerId: string
+  ): Promise<Bookmark | null> {
+    const row = await this.bookmarkRepository.findById(id);
+    if (!row) return null;
+
+    const mapped = this.mapDatabaseToBookmark(row);
+    if (!mapped.isPublic && mapped.userId !== viewerId) return null;
+
+    return mapped;
+  }
+
   async findByIdAndUserWithLikeStatus(
     id: string,
     userId: string
@@ -102,24 +189,99 @@ export class BookmarkServiceImpl implements BookmarkService {
     return { bookmark, isLikedByCurrentUser: result.isLikedByCurrentUser };
   }
 
-  async create(url: string, userId: string): Promise<Bookmark> {
-    const scrapedUrlContents = await this.webScrapingService.scrape(url);
+  /**
+   * Write the row and return. Nothing here touches the network.
+   *
+   * Saving never blocks (docs/functional-spec/02-capture.md): the page fetch
+   * used to happen here, inline, which put a third-party server's latency on
+   * the critical path of the single most-used action in the product. It now
+   * happens in the worker via `ensureScrapedContent`, and the only metadata
+   * this writes is what can be derived from the URL string itself — a
+   * provisional title from the path, a favicon guess from the host — so the
+   * row is legible the instant it exists.
+   *
+   * `url` is expected to be normalised already; `originalUrl` is the paste.
+   */
+  async create(
+    url: string,
+    userId: string,
+    options: CreateBookmarkOptions = {}
+  ): Promise<Bookmark> {
+    const urlMetadata = this.webScrapingService.extractMetadataFromUrl(url);
+    const provisionalTitle = options.title || urlMetadata.title || url;
+
+    const metadata: BookmarkMetadata = {
+      openGraph: {
+        title: provisionalTitle,
+        favicon: urlMetadata.favicon,
+        site_name: urlMetadata.siteName,
+        url,
+      },
+      originalUrl: options.originalUrl ?? url,
+    };
 
     const newBookmark: NewBookmark = {
       source_url: url,
-      title: scrapedUrlContents.title,
-      metadata: scrapedUrlContents.metadata,
+      title: provisionalTitle,
+      metadata,
       user_id: userId,
-      quick_access: `${scrapedUrlContents.title} ${url}`,
+      collection_id: options.collectionId || null,
+      // A collection named at save time was named by a person, so the pipeline
+      // does not get to second-guess it — same rule as a manual refile.
+      filing_source: options.collectionId ? "user" : "ai",
+      // Provenance only. A reshare lands in Inbox like any other save, so the
+      // `file` phase files it against the resharer's tree — the original
+      // owner's collection is not theirs and must not travel with the URL.
+      saved_from_bookmark_id: options.savedFromBookmarkId ?? null,
+      quick_access: `${provisionalTitle} ${url}`,
     };
 
     const bookmark = await this.bookmarkRepository.create(newBookmark);
-    await this.bookmarkRepository.insertScrapedUrlContents(
-      bookmark.id,
-      scrapedUrlContents
-    );
 
     return this.mapDatabaseToBookmark(bookmark);
+  }
+
+  /**
+   * Fetch the page if it has not been fetched yet, and fold what came back
+   * into the bookmark.
+   *
+   * Called by the pipeline, never by the create path. Idempotent: a reprocess
+   * or a redelivered queue message reuses the content already on disk rather
+   * than hitting the origin again.
+   */
+  async ensureScrapedContent(
+    bookmark: Bookmark
+  ): Promise<ScrapedUrlContents | null> {
+    const existing = await this.bookmarkRepository.getScrapedUrlContent(
+      bookmark.id
+    );
+    if (existing) return existing;
+
+    const scraped = await this.webScrapingService.scrape(bookmark.sourceUrl);
+    await this.bookmarkRepository.insertScrapedUrlContents(
+      bookmark.id,
+      scraped
+    );
+
+    // The provisional title and the URL-derived favicon were placeholders.
+    // Now that the real page has been read, replace them — but keep
+    // `originalUrl`, which the scrape knows nothing about.
+    const metadata: BookmarkMetadata = {
+      ...scraped.metadata,
+      originalUrl: bookmark.metadata?.originalUrl,
+    };
+    const title = scraped.title || bookmark.title || bookmark.sourceUrl;
+
+    await this.bookmarkRepository.update(bookmark.id, {
+      title,
+      metadata,
+      quick_access: `${title} ${bookmark.sourceUrl}`,
+    });
+
+    bookmark.title = title;
+    bookmark.metadata = metadata;
+
+    return this.bookmarkRepository.getScrapedUrlContent(bookmark.id);
   }
 
   async createPrivateLink(
@@ -144,18 +306,33 @@ export class BookmarkServiceImpl implements BookmarkService {
     const privateLinkData = this.buildPrivateLinkBookmarkData(
       bookmark.sourceUrl,
       bookmark.userId,
-      metadata,
+      // The paste that created this row is already recorded; converting it to
+      // a private link must not overwrite it with the normalised form.
+      { ...metadata, originalUrl: metadata.originalUrl ?? bookmark.metadata?.originalUrl },
       bookmark.title
     );
-    const { source_url, user_id, ...updateData } = privateLinkData;
+    // Filing is not part of a generic update — see `BookmarkRepository.update`.
+    // A collection named in the conversion form was named by a person, so it
+    // goes through the user path and takes the override flag with it.
+    const { source_url, user_id, collection_id, filing_source, ...updateData } =
+      privateLinkData;
 
     await this.bookmarkRepository.deleteScrapedUrlContents(bookmark.id);
-    const updatedBookmark = await this.bookmarkRepository.update(bookmark.id, {
+    let updatedBookmark = await this.bookmarkRepository.update(bookmark.id, {
       ...updateData,
       processing_started_at: null,
       processing_completed_at: null,
       processing_error: null,
     });
+
+    if (metadata.collectionId) {
+      updatedBookmark =
+        (await this.bookmarkRepository.updateUserFiling(
+          bookmark.id,
+          bookmark.userId,
+          metadata.collectionId
+        )) ?? updatedBookmark;
+    }
 
     return this.mapDatabaseToBookmark(updatedBookmark);
   }
@@ -181,6 +358,7 @@ export class BookmarkServiceImpl implements BookmarkService {
         userDescription: description,
         userProvidedTitle: metadata.title,
       },
+      originalUrl: metadata.originalUrl ?? url,
     };
 
     return {
@@ -189,6 +367,7 @@ export class BookmarkServiceImpl implements BookmarkService {
       metadata: bookmarkMetadata,
       user_id: userId,
       collection_id: metadata.collectionId || null,
+      filing_source: metadata.collectionId ? "user" : "ai",
       cosmic_summary: null,
       cosmic_brief_summary: description || null,
       cosmic_tags: metadata.tags || null,
@@ -214,6 +393,11 @@ export class BookmarkServiceImpl implements BookmarkService {
     return this.enrichManyWithCollectionInfo(mapped);
   }
 
+  /** The Library rail's mono counts. Straight through — no enrichment to do. */
+  async countLibrary(userId: string): Promise<BookmarkLibraryCounts> {
+    return this.bookmarkRepository.countLibrary(userId);
+  }
+
   async findFeed(
     userId: string,
     options: FindByUserOptions = {}
@@ -225,24 +409,45 @@ export class BookmarkServiceImpl implements BookmarkService {
     });
   }
 
+  /**
+   * Everything a run produces except where the bookmark is filed.
+   *
+   * `collectionId` and `filingSource` are absent by design: the pipeline hands
+   * this method a whole `Bookmark`, and if filing were part of it, every
+   * unrelated write would carry a move with it — including on a bookmark the
+   * user had refiled by hand. Moving a bookmark is `fileByPipeline` or
+   * `refileByUser`, and the repository will not accept it any other way.
+   */
   async update(
     id: string,
     data: Partial<
-      Omit<Bookmark, "id" | "createdAt" | "updatedAt" | "sourceUrl" | "userId">
+      Omit<
+        Bookmark,
+        | "id"
+        | "createdAt"
+        | "updatedAt"
+        | "sourceUrl"
+        | "userId"
+        | "collectionId"
+        | "filingSource"
+      >
     >
   ): Promise<Bookmark> {
-    const updateData: BookmarkUpdate = {};
+    const updateData: Omit<
+      BookmarkUpdate,
+      "collection_id" | "filing_source"
+    > = {};
 
     if (data.title !== undefined) updateData.title = data.title;
     if (data.metadata !== undefined) updateData.metadata = data.metadata;
-    if (data.collectionId !== undefined)
-      updateData.collection_id = data.collectionId;
     if (data.isArchived !== undefined) updateData.is_archived = data.isArchived;
     if (data.isFavorite !== undefined) updateData.is_favorite = data.isFavorite;
     if (data.cosmicSummary !== undefined)
       updateData.cosmic_summary = data.cosmicSummary;
     if (data.cosmicBriefSummary !== undefined)
       updateData.cosmic_brief_summary = data.cosmicBriefSummary;
+    if (data.cosmicKeyPoints !== undefined)
+      updateData.cosmic_key_points = data.cosmicKeyPoints;
     if (data.cosmicTags !== undefined) updateData.cosmic_tags = data.cosmicTags;
     if (data.cosmicImages !== undefined)
       updateData.cosmic_images = data.cosmicImages;
@@ -255,6 +460,34 @@ export class BookmarkServiceImpl implements BookmarkService {
 
     const bookmark = await this.bookmarkRepository.update(id, updateData);
     return this.mapDatabaseToBookmark(bookmark);
+  }
+
+  async fileByPipeline(
+    id: string,
+    collectionId: string | null
+  ): Promise<Bookmark | null> {
+    const bookmark = await this.bookmarkRepository.updateAiFiling(
+      id,
+      collectionId
+    );
+    return bookmark ? this.mapDatabaseToBookmark(bookmark) : null;
+  }
+
+  async refileByUser(
+    id: string,
+    userId: string,
+    collectionId: string | null
+  ): Promise<Bookmark | null> {
+    const bookmark = await this.bookmarkRepository.updateUserFiling(
+      id,
+      userId,
+      collectionId
+    );
+    return bookmark ? this.mapDatabaseToBookmark(bookmark) : null;
+  }
+
+  async getTopTags(userId: string, limit = 50): Promise<string[]> {
+    return this.bookmarkRepository.findTopTags(userId, limit);
   }
 
   async delete(id: string, userId: string): Promise<void> {
@@ -292,7 +525,13 @@ export class BookmarkServiceImpl implements BookmarkService {
       processing_status: status,
     };
 
-    if (status === "processing") {
+    if (status === "idle") {
+      // No run has started. Anything left over from a previous one would read
+      // as a run in progress or a failure that is no longer true.
+      updateData.processing_started_at = null;
+      updateData.processing_completed_at = null;
+      updateData.processing_error = null;
+    } else if (status === "processing") {
       updateData.processing_started_at = new Date();
       updateData.processing_completed_at = null;
       updateData.processing_error = null;
@@ -438,38 +677,53 @@ export class BookmarkServiceImpl implements BookmarkService {
   }
 
   private mapDatabaseToBookmark(data: any): Bookmark {
-    return {
-      id: data.id,
-      sourceUrl: data.source_url,
-      title: data.title,
-      metadata: data.metadata,
-      collectionId: data.collection_id,
-      userId: data.user_id,
-      isArchived: data.is_archived,
-      isFavorite: data.is_favorite,
-      cosmicSummary: data.cosmic_summary,
-      cosmicBriefSummary: data.cosmic_brief_summary,
-      cosmicTags: data.cosmic_tags,
-      cosmicImages: data.cosmic_images,
-      cosmicLinks: data.cosmic_links,
-      quickAccess: data.quick_access,
-      searchDocument: data.search_document,
-      isPrivateLink: data.is_private_link ?? false,
-      likeCount: data.like_count ?? 0,
-      isPublic: data.is_public ?? false,
-      shareSlug: data.share_slug ?? undefined,
-      readAt: data.read_at ? new Date(data.read_at) : undefined,
-      isRead: data.read_at != null,
-      processingStatus: data.processing_status || "idle",
-      processingStartedAt: data.processing_started_at
-        ? new Date(data.processing_started_at)
-        : undefined,
-      processingCompletedAt: data.processing_completed_at
-        ? new Date(data.processing_completed_at)
-        : undefined,
-      processingError: data.processing_error,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at),
-    };
+    return mapDatabaseRowToBookmark(data);
   }
+}
+
+/**
+ * A bookmark row as the API's `Bookmark`.
+ *
+ * Lifted out of `BookmarkServiceImpl` so the reading service can map the rows
+ * its Continue reading join returns without either depending on the other. The
+ * mapping is pure and has no business being a method.
+ */
+export function mapDatabaseRowToBookmark(data: any): Bookmark {
+  return {
+    id: data.id,
+    sourceUrl: data.source_url,
+    title: data.title,
+    metadata: data.metadata,
+    collectionId: data.collection_id,
+    filingSource: data.filing_source ?? "ai",
+    savedFromBookmarkId: data.saved_from_bookmark_id ?? undefined,
+    userId: data.user_id,
+    isArchived: data.is_archived,
+    isFavorite: data.is_favorite,
+    cosmicSummary: data.cosmic_summary,
+    cosmicBriefSummary: data.cosmic_brief_summary,
+    cosmicKeyPoints: data.cosmic_key_points ?? undefined,
+    cosmicTags: data.cosmic_tags,
+    cosmicImages: data.cosmic_images,
+    cosmicLinks: data.cosmic_links,
+    quickAccess: data.quick_access,
+    searchDocument: data.search_document,
+    isPrivateLink: data.is_private_link ?? false,
+    likeCount: data.like_count ?? 0,
+    commentCount: data.comment_count ?? 0,
+    isPublic: data.is_public ?? false,
+    shareSlug: data.share_slug ?? undefined,
+    readAt: data.read_at ? new Date(data.read_at) : undefined,
+    isRead: data.read_at != null,
+    processingStatus: data.processing_status || "idle",
+    processingStartedAt: data.processing_started_at
+      ? new Date(data.processing_started_at)
+      : undefined,
+    processingCompletedAt: data.processing_completed_at
+      ? new Date(data.processing_completed_at)
+      : undefined,
+    processingError: data.processing_error,
+    createdAt: new Date(data.created_at),
+    updatedAt: new Date(data.updated_at),
+  };
 }

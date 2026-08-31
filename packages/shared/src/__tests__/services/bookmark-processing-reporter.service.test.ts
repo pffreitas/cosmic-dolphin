@@ -1,5 +1,8 @@
 import { describe, it, expect, jest } from "@jest/globals";
-import { BookmarkProcessingReporter } from "../../services/bookmark-processing-reporter.service";
+import {
+  BookmarkProcessingReporter,
+  mapBookmarkProcessingPhase,
+} from "../../services/bookmark-processing-reporter.service";
 import { BookmarkProcessingRepository } from "../../repositories/bookmark-processing.repository";
 
 function createMockRepository(): jest.Mocked<BookmarkProcessingRepository> {
@@ -72,8 +75,8 @@ function createMockRepository(): jest.Mocked<BookmarkProcessingRepository> {
       id,
       runId: "run-1",
       kind: "phase",
-      phase: "summarization",
-      name: "Summarization",
+      phase: "summarise",
+      name: "Summarise content",
       status: data.status ?? "running",
       sequence: 1,
       startedAt: new Date("2026-06-21T10:00:00.000Z"),
@@ -93,6 +96,7 @@ function createMockRepository(): jest.Mocked<BookmarkProcessingRepository> {
       updatedAt: data.endedAt ?? new Date("2026-06-21T10:00:00.000Z"),
     })),
     findLatestTimeline: jest.fn(async () => null),
+    countRunsSince: jest.fn(async () => 0),
   };
 }
 
@@ -114,7 +118,7 @@ describe("BookmarkProcessingReporter", () => {
     });
 
     await reporter.startRun("bookmark-1", "user-1");
-    await reporter.trackPhase("summarization", "Summarization", async (phase) => {
+    await reporter.trackPhase("summarise", "Summarise content", async (phase) => {
       await phase.trackTurn("Generate summary", "model-large", async () => ({
         value: "summary",
         usage: {
@@ -140,7 +144,7 @@ describe("BookmarkProcessingReporter", () => {
       expect.objectContaining({
         parentEventId: "event-1",
         kind: "phase",
-        phase: "summarization",
+        phase: "summarise",
         sequence: 2,
       })
     );
@@ -148,7 +152,7 @@ describe("BookmarkProcessingReporter", () => {
       expect.objectContaining({
         parentEventId: "event-2",
         kind: "turn",
-        phase: "summarization",
+        phase: "summarise",
         sequence: 3,
         modelId: "model-large",
       })
@@ -184,7 +188,7 @@ describe("BookmarkProcessingReporter", () => {
     await reporter.startRun("bookmark-1", "user-1");
 
     await expect(
-      reporter.trackPhase("tags", "Tags", async () => {
+      reporter.trackPhase("tag", "Generate tags", async () => {
         throw new Error("tag generation failed");
       })
     ).rejects.toThrow("tag generation failed");
@@ -205,6 +209,144 @@ describe("BookmarkProcessingReporter", () => {
         status: "failed",
         error: "tag generation failed",
       })
+    );
+  });
+
+  it("maps the old nine-name vocabulary onto the six phases the UI renders", () => {
+    // The pipeline no longer emits these, but a redelivered queue message or a
+    // caller that has not been redeployed still might — and the backfill
+    // migration applies exactly this table to history.
+    expect(mapBookmarkProcessingPhase("summarization")).toBe("summarise");
+    expect(mapBookmarkProcessingPhase("brief_summary")).toBe("summarise");
+    expect(mapBookmarkProcessingPhase("tags")).toBe("tag");
+    expect(mapBookmarkProcessingPhase("images")).toBe("extract");
+    expect(mapBookmarkProcessingPhase("private_link_enrichment")).toBe("extract");
+    expect(mapBookmarkProcessingPhase("categorization")).toBe("file");
+    expect(mapBookmarkProcessingPhase("chunking")).toBe("embed");
+    expect(mapBookmarkProcessingPhase("embedding")).toBe("embed");
+    // Bookkeeping, never a user-facing phase.
+    expect(mapBookmarkProcessingPhase("finalization")).toBeUndefined();
+    // The new names pass through untouched.
+    expect(mapBookmarkProcessingPhase("fetch")).toBe("fetch");
+  });
+
+  it("writes a legacy phase name to the timeline under its new name", async () => {
+    const repository = createMockRepository();
+    const reporter = new BookmarkProcessingReporter(repository, () => new Date());
+
+    await reporter.startRun("bookmark-1", "user-1");
+    await reporter.trackPhase("categorization", "Categorize", async () => "ok");
+
+    expect(repository.createEvent).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "phase", phase: "file" })
+    );
+  });
+
+  it("appends to the existing run when resuming, keeping sequence and totals", async () => {
+    // A Retry adds to the timeline the user is already watching. A fresh run
+    // would make the phases they saw succeed disappear.
+    const repository = createMockRepository();
+    repository.findLatestTimeline.mockResolvedValueOnce({
+      run: {
+        id: "run-7",
+        bookmarkId: "bookmark-1",
+        userId: "user-1",
+        status: "failed",
+        startedAt: new Date("2026-06-21T10:00:00.000Z"),
+        inputTokens: 100,
+        outputTokens: 40,
+        totalTokens: 140,
+        reasoningTokens: 3,
+        cachedInputTokens: 5,
+        costUsd: "0.001",
+        error: "summarise: model unavailable",
+        createdAt: new Date("2026-06-21T10:00:00.000Z"),
+        updatedAt: new Date("2026-06-21T10:00:00.000Z"),
+      },
+      events: [
+        {
+          id: "event-run",
+          runId: "run-7",
+          kind: "run",
+          name: "Processing run",
+          status: "failed",
+          sequence: 1,
+          startedAt: new Date("2026-06-21T10:00:00.000Z"),
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+          reasoningTokens: 0,
+          cachedInputTokens: 0,
+          createdAt: new Date("2026-06-21T10:00:00.000Z"),
+          updatedAt: new Date("2026-06-21T10:00:00.000Z"),
+        },
+        {
+          id: "event-summarise",
+          runId: "run-7",
+          kind: "phase",
+          phase: "summarise",
+          name: "Summarise content",
+          status: "failed",
+          sequence: 4,
+          startedAt: new Date("2026-06-21T10:00:01.000Z"),
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+          reasoningTokens: 0,
+          cachedInputTokens: 0,
+          createdAt: new Date("2026-06-21T10:00:01.000Z"),
+          updatedAt: new Date("2026-06-21T10:00:01.000Z"),
+        },
+      ],
+    });
+
+    const reporter = new BookmarkProcessingReporter(repository, () => new Date());
+    await reporter.resumeRun("bookmark-1", "user-1");
+
+    expect(repository.createRun).not.toHaveBeenCalled();
+    expect(repository.updateRun).toHaveBeenCalledWith(
+      "run-7",
+      expect.objectContaining({ status: "running", error: null })
+    );
+    expect(repository.updateEvent).toHaveBeenCalledWith(
+      "event-run",
+      expect.objectContaining({ status: "running", error: null })
+    );
+
+    await reporter.trackPhase("summarise", "Summarise content", async () => "ok");
+
+    // Continues after the highest sequence already on the run.
+    expect(repository.createEvent).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        runId: "run-7",
+        kind: "phase",
+        phase: "summarise",
+        sequence: 5,
+      })
+    );
+
+    await reporter.completeRun();
+
+    // The first attempt's spend is carried forward, not erased.
+    expect(repository.updateRun).toHaveBeenLastCalledWith(
+      "run-7",
+      expect.objectContaining({
+        status: "completed",
+        inputTokens: 100,
+        totalTokens: 140,
+        costUsd: "0.001",
+      })
+    );
+  });
+
+  it("opens a run when there is nothing to resume", async () => {
+    const repository = createMockRepository();
+    const reporter = new BookmarkProcessingReporter(repository, () => new Date());
+
+    await reporter.resumeRun("bookmark-1", "user-1");
+
+    expect(repository.createRun).toHaveBeenCalledWith(
+      expect.objectContaining({ bookmarkId: "bookmark-1", status: "running" })
     );
   });
 });

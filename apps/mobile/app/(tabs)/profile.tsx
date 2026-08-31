@@ -3,20 +3,23 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  Pressable,
   Image,
   ScrollView,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+
+import { TopBar } from '@/components/TopBar';
 import { useAuth } from '@/contexts/AuthContext';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { textStyle } from '@/constants/fonts';
+import { radius, space, type ThemeColors } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { colors } = useTheme();
 
   const handleSignOut = () => {
     Alert.alert(
@@ -34,254 +37,183 @@ export default function ProfileScreen() {
   const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || userEmail?.split('@')[0];
   const userAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
 
-  const styles = getStyles(isDark);
-
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['top']}>
+      <TopBar title="Profile" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Profile</Text>
+        {/* Identity */}
+        <View
+          style={[
+            styles.profileCard,
+            { backgroundColor: colors.bgPanel, borderColor: colors.border },
+          ]}
+        >
+          {userAvatar ? (
+            <Image source={{ uri: userAvatar }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.bgInset }]}>
+              <Text style={[textStyle('title1'), { color: colors.fgSecondary }]}>
+                {userName?.charAt(0).toUpperCase() || 'U'}
+              </Text>
+            </View>
+          )}
+          <Text style={[textStyle('title2'), { color: colors.fg }]}>{userName || 'User'}</Text>
+          <Text style={[textStyle('meta'), { color: colors.fgTertiary }]}>{userEmail}</Text>
         </View>
 
-        {/* Profile Card */}
-        <View style={styles.profileCard}>
-          <View style={styles.avatarContainer}>
-            {userAvatar ? (
-              <Image source={{ uri: userAvatar }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarText}>
-                  {userName?.charAt(0).toUpperCase() || 'U'}
-                </Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.userName}>{userName || 'User'}</Text>
-          <Text style={styles.userEmail}>{userEmail}</Text>
-        </View>
+        <Section title="Account" colors={colors}>
+          <MenuItem icon="person-outline" title="Edit Profile" colors={colors} onPress={() => {}} />
+          <MenuItem icon="notifications-outline" title="Notifications" colors={colors} onPress={() => {}} />
+          <MenuItem icon="shield-outline" title="Privacy & Security" colors={colors} onPress={() => {}} />
+        </Section>
 
-        {/* Menu Items */}
-        <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>Account</Text>
-          
-          <MenuItem
-            icon="person-outline"
-            title="Edit Profile"
-            isDark={isDark}
-            onPress={() => {}}
-          />
-          <MenuItem
-            icon="notifications-outline"
-            title="Notifications"
-            isDark={isDark}
-            onPress={() => {}}
-          />
-          <MenuItem
-            icon="shield-outline"
-            title="Privacy & Security"
-            isDark={isDark}
-            onPress={() => {}}
-          />
-        </View>
+        <Section title="Preferences" colors={colors}>
+          <MenuItem icon="color-palette-outline" title="Appearance" colors={colors} onPress={() => {}} />
+          <MenuItem icon="language-outline" title="Language" colors={colors} onPress={() => {}} />
+        </Section>
 
-        <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
-          
-          <MenuItem
-            icon="color-palette-outline"
-            title="Appearance"
-            isDark={isDark}
-            onPress={() => {}}
-          />
-          <MenuItem
-            icon="language-outline"
-            title="Language"
-            isDark={isDark}
-            onPress={() => {}}
-          />
-        </View>
+        <Section title="Support" colors={colors}>
+          <MenuItem icon="help-circle-outline" title="Help & FAQ" colors={colors} onPress={() => {}} />
+          <MenuItem icon="chatbubble-outline" title="Contact Us" colors={colors} onPress={() => {}} />
+          <MenuItem icon="document-text-outline" title="Terms & Privacy" colors={colors} onPress={() => {}} />
+        </Section>
 
-        <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>Support</Text>
-          
-          <MenuItem
-            icon="help-circle-outline"
-            title="Help & FAQ"
-            isDark={isDark}
-            onPress={() => {}}
-          />
-          <MenuItem
-            icon="chatbubble-outline"
-            title="Contact Us"
-            isDark={isDark}
-            onPress={() => {}}
-          />
-          <MenuItem
-            icon="document-text-outline"
-            title="Terms & Privacy"
-            isDark={isDark}
-            onPress={() => {}}
-          />
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={handleSignOut}
+          style={({ pressed }) => [
+            styles.signOutButton,
+            {
+              borderColor: colors.danger,
+              backgroundColor: pressed ? colors.bgInset : colors.bgPanel,
+            },
+          ]}
+        >
+          <Ionicons name="log-out-outline" size={20} color={colors.danger} />
+          <Text style={[textStyle('body'), styles.signOutText, { color: colors.danger }]}>
+            Sign Out
+          </Text>
+        </Pressable>
 
-        {/* Sign Out Button */}
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-          <Ionicons name="log-out-outline" size={20} color="#ef4444" />
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
-
-        {/* App Version */}
-        <Text style={styles.version}>Cosmic Dolphin v1.0.0</Text>
+        <Text style={[textStyle('meta'), styles.version, { color: colors.fgTertiary }]}>
+          Cosmic Dolphin v1.0.0
+        </Text>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function Section({
+  title,
+  colors,
+  children,
+}: {
+  title: string;
+  colors: ThemeColors;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={styles.menuSection}>
+      <Text style={[textStyle('label'), styles.sectionTitle, { color: colors.fgTertiary }]}>
+        {title}
+      </Text>
+      {children}
+    </View>
   );
 }
 
 type MenuItemProps = {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
-  isDark: boolean;
+  colors: ThemeColors;
   onPress: () => void;
 };
 
-function MenuItem({ icon, title, isDark, onPress }: MenuItemProps) {
-  const styles = getStyles(isDark);
-
+function MenuItem({ icon, title, colors, onPress }: MenuItemProps) {
   return (
-    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+    <Pressable
+      accessibilityRole="button"
+      style={({ pressed }) => [
+        styles.menuItem,
+        {
+          backgroundColor: pressed ? colors.bgSubtle : colors.bgPanel,
+          borderBottomColor: colors.border,
+        },
+      ]}
+      onPress={onPress}
+    >
       <View style={styles.menuItemLeft}>
-        <Ionicons
-          name={icon}
-          size={22}
-          color={isDark ? '#9ca3af' : '#6b7280'}
-        />
-        <Text style={styles.menuItemTitle}>{title}</Text>
+        <Ionicons name={icon} size={20} color={colors.fgSecondary} />
+        <Text style={[textStyle('body'), { color: colors.fg }]}>{title}</Text>
       </View>
-      <Ionicons
-        name="chevron-forward"
-        size={20}
-        color={isDark ? '#6b7280' : '#9ca3af'}
-      />
-    </TouchableOpacity>
+      <Ionicons name="chevron-forward" size={16} color={colors.fgTertiary} />
+    </Pressable>
   );
 }
 
-const getStyles = (isDark: boolean) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: isDark ? '#0a0a1a' : '#f9fafb',
-    },
-    scrollContent: {
-      paddingBottom: 32,
-    },
-    header: {
-      paddingHorizontal: 20,
-      paddingVertical: 16,
-    },
-    headerTitle: {
-      fontSize: 28,
-      fontWeight: '700',
-      color: isDark ? '#ffffff' : '#111827',
-    },
-    profileCard: {
-      alignItems: 'center',
-      paddingVertical: 24,
-      marginHorizontal: 16,
-      marginBottom: 24,
-      backgroundColor: isDark ? '#1a1a2e' : '#ffffff',
-      borderRadius: 16,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0.3 : 0.1,
-      shadowRadius: 8,
-      elevation: 4,
-    },
-    avatarContainer: {
-      marginBottom: 12,
-    },
-    avatar: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
-    },
-    avatarPlaceholder: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
-      backgroundColor: isDark ? '#374151' : '#e5e7eb',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    avatarText: {
-      fontSize: 32,
-      fontWeight: '600',
-      color: isDark ? '#9ca3af' : '#6b7280',
-    },
-    userName: {
-      fontSize: 20,
-      fontWeight: '600',
-      color: isDark ? '#ffffff' : '#111827',
-      marginBottom: 4,
-    },
-    userEmail: {
-      fontSize: 14,
-      color: isDark ? '#9ca3af' : '#6b7280',
-    },
-    menuSection: {
-      marginBottom: 24,
-    },
-    sectionTitle: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: isDark ? '#6b7280' : '#9ca3af',
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-      marginHorizontal: 20,
-      marginBottom: 8,
-    },
-    menuItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 14,
-      paddingHorizontal: 20,
-      backgroundColor: isDark ? '#1a1a2e' : '#ffffff',
-      borderBottomWidth: 1,
-      borderBottomColor: isDark ? '#2a2a3e' : '#f3f4f6',
-    },
-    menuItemLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-    },
-    menuItemTitle: {
-      fontSize: 16,
-      color: isDark ? '#ffffff' : '#111827',
-    },
-    signOutButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      marginHorizontal: 16,
-      marginTop: 8,
-      paddingVertical: 14,
-      backgroundColor: isDark ? '#1a1a2e' : '#ffffff',
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: '#ef4444',
-    },
-    signOutText: {
-      fontSize: 16,
-      fontWeight: '500',
-      color: '#ef4444',
-    },
-    version: {
-      textAlign: 'center',
-      marginTop: 24,
-      fontSize: 12,
-      color: isDark ? '#4b5563' : '#9ca3af',
-    },
-  });
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: space.s6,
+  },
+  profileCard: {
+    alignItems: 'center',
+    gap: space.s1,
+    paddingVertical: space.s5,
+    marginHorizontal: space.s4,
+    marginVertical: space.s5,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: radius.pill,
+    marginBottom: space.s3,
+  },
+  avatarPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuSection: {
+    marginBottom: space.s5,
+  },
+  sectionTitle: {
+    marginHorizontal: space.s4,
+    marginBottom: space.s2,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 44,
+    paddingVertical: space.s3,
+    paddingHorizontal: space.s4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  menuItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.s3,
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.s2,
+    minHeight: 44,
+    marginHorizontal: space.s4,
+    paddingVertical: space.s3,
+    borderRadius: radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  signOutText: {
+    fontWeight: '600',
+  },
+  version: {
+    textAlign: 'center',
+    marginTop: space.s5,
+  },
+});

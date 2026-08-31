@@ -15,7 +15,9 @@
     "web": "expo start --web",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watchAll",
-    "lint": "expo lint",
+    "lint": "expo lint && bun run lint:tokens && bun run tokens:check",
+    "lint:tokens": "node scripts/lint-tokens.mjs",
+    "tokens:check": "node ../../scripts/generate-tokens.mjs --check",
     "build:dev:android": "eas build --profile development --platform android",
     "build:dev:ios": "eas build --profile development --platform ios"
   },

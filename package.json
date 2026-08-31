@@ -24,6 +24,8 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean",
+    "tokens": "node scripts/generate-tokens.mjs",
+    "tokens:check": "node scripts/generate-tokens.mjs --check",
     "worktree": "scripts/init-worktree.sh",
     "apispec:install": "cd packages/apispec && bun install --ignore-scripts",
     "apispec:compile": "cd packages/apispec && bun run compile",

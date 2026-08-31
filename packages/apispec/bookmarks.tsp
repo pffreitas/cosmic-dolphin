@@ -5,23 +5,6 @@ import "@typespec/openapi3";
 using TypeSpec.Http;
 namespace CosmicDolphinService;
 
-model Collection {
-    id: string;
-    name: string;
-    description?: string;
-    color?: string;
-    icon?: string;
-    parentId?: string;
-    userId: string;
-    isPublic?: boolean;
-}
-
-@doc("Path item for breadcrumb navigation in collection hierarchy")
-model CollectionPathItem {
-    id: string;
-    name: string;
-}
-
 @doc("Processing state of AI pipeline for a bookmark")
 enum ProcessingStatus {
     idle,
@@ -35,6 +18,35 @@ enum BookmarkReadStatus {
     all,
     unread,
     read,
+}
+
+@doc("""
+    Library ordering - docs/functional-spec/04-library.md § Ordering.
+
+    `newest` is chronological by `created_at` descending. It is the default and
+    must always be one click away: AI organisation is an overlay on that order,
+    never a replacement for it.
+    """)
+enum BookmarkSort {
+    newest,
+    oldest,
+    recently_read,
+    longest_unread,
+}
+
+@doc("""
+    Which slice of the library a query is about - the Library rail's rows,
+    docs/functional-spec/04-library.md § Collections.
+
+    `all` is every non-archived save. `inbox` narrows that to the ones nothing
+    has filed yet (`collection_id IS NULL`). `archive` is the only scope that
+    returns `is_archived = true` rows, which is what makes archiving a way out
+    of the list rather than a delete.
+    """)
+enum BookmarkScope {
+    all,
+    inbox,
+    archive,
 }
 
 @doc("Durable processing timeline status for runs, phases, and turns")
@@ -51,6 +63,16 @@ enum BookmarkProcessingEventKind {
     turn,
 }
 
+@doc("The pipeline's phases, in order - docs/functional-spec/03-ai-pipeline.md. Sequential, each independently retryable. `fetch` through `file` are surfaced in the UI as a five-line checklist; `embed` runs silently because it has no user-legible output.")
+enum BookmarkProcessingPhase {
+    fetch,
+    extract,
+    summarise,
+    tag,
+    file,
+    embed,
+}
+
 model Bookmark {
     id: string;
     sourceUrl: string;
@@ -65,12 +87,30 @@ model Bookmark {
     cosmicLinks?: BookmarkLink[];
     cosmicSummary?: string;
     cosmicBriefSummary?: string;
+
+    @doc("The full brief's key points - 2-5 findings of at most 140 characters, parsed out of `cosmicSummary` once by the pipeline. Rendered with a dot marker, never numbered.")
+    cosmicKeyPoints?: string[];
+
     cosmicTags?: string[];
     metadata?: BookmarkMetadata;
     userId: string;
     isPrivateLink?: boolean;
     likeCount?: int32;
     isLikedByCurrentUser?: boolean;
+
+    @doc("Live comments on this bookmark, tombstones excluded. Denormalised and maintained by trigger — the feed reads it on every item.")
+    commentCount?: int32;
+
+    @doc("""
+        Reshare provenance: the bookmark this one was saved from, when the save
+        came from someone else's. Absent on a save made from a URL.
+
+        It goes null rather than dangling when the original is deleted, so a
+        provenance row must degrade to the domain alone rather than assume the
+        original is still there.
+        """)
+    savedFromBookmarkId?: string;
+
     isPublic?: boolean;
     shareSlug?: string;
     readAt?: utcDateTime;
@@ -112,6 +152,9 @@ model BookmarkMetadata {
     openGraph?: OpenGraphMetadata;
     wordCount?: int32;
     readingTime?: int32;
+
+    @doc("The URL exactly as the user pasted it, before normalisation. `sourceUrl` holds the normalised form.")
+    originalUrl?: string;
 }
 
 model CreateBookmarkRequest {
@@ -137,6 +180,9 @@ model CreateBookmarkRequest {
 model CreateBookmarkResponse {
     bookmark: Bookmark;
     message: string;
+
+    @doc("The user already had this URL. The bookmark returned is the existing one — nothing was created and nothing was re-queued. A duplicate paste is not an error.")
+    alreadySaved?: boolean;
 }
 
 model GetBookmarksQuery {
@@ -155,10 +201,225 @@ model GetBookmarksQuery {
     @doc("Filter bookmarks by read state")
     @query
     read_status?: BookmarkReadStatus = BookmarkReadStatus.all;
+
+    @doc("Which rail row this is. Ignored when `collection_id` names a collection.")
+    @query
+    scope?: BookmarkScope = BookmarkScope.all;
+
+    @doc("Ordering. Chronological `newest` is the default.")
+    @query
+    sort?: BookmarkSort = BookmarkSort.newest;
+
+    @doc("""
+        Opaque keyset cursor taken verbatim from the previous page's
+        `nextCursor`. Present, it wins over `offset` - a library is written to
+        while it is being paged, and an offset silently duplicates and skips.
+        A cursor produced under a different `sort` is rejected with 400.
+        """)
+    @query
+    cursor?: string;
 }
 
 model GetBookmarksResponse {
     bookmarks: Bookmark[];
+
+    @doc("Cursor for the next page. Absent when this page is the last one.")
+    nextCursor?: string;
+}
+
+@doc("""
+    Which slice of the Home feed a request is about -
+    docs/functional-spec/05-feed.md § Scopes.
+
+    `for_you` is the default and the only one that mixes sources: own unread
+    saves, saves from followed users, and AI digests, ranked. `following` is
+    the same ranking over followed saves alone. `unread` is the user's own
+    unread saves in reverse chronological order with **no ranking at all** —
+    which is what makes it the place an item the ranker has stopped serving is
+    still reachable.
+    """)
+enum FeedScope {
+    for_you,
+    following,
+    unread,
+}
+
+@doc("""
+    What a feed item *is* - docs/functional-spec/05-feed.md § Item types.
+
+    `pending` is a save still being processed. It is pinned to the top of the
+    feed regardless of score, because the user just created it and expects to
+    see it. `digest` is an AI-authored grouping of the user's own saves; it
+    carries a `digest` payload instead of a `bookmark`, and the ranker spaces
+    it at one per eight items, three per session.
+    """)
+enum FeedItemType {
+    own_save,
+    followed_save,
+    reshare,
+    digest,
+    pending,
+}
+
+@doc("""
+    One signal's contribution to one item's score. Debugging only - present
+    outside production, absent in it. Never the source of the reason string:
+    `rankingReason` is written by the ranker, which is the only thing that
+    knows what it actually weighted.
+    """)
+model RankingSignal {
+    @doc("`topic_affinity`, `source_affinity`, `recency`, `social_proof`, `effort_fit`, `novelty`.")
+    name: string;
+
+    @doc("The configured weight, from the ranking configuration row for this environment.")
+    weight: float32;
+
+    @doc("The signal's own value for this item, normalised to 0..1.")
+    value: float32;
+
+    @doc("`weight * value` - what actually moved this item.")
+    contribution: float32;
+}
+
+@doc("""
+    The person a feed item reached the viewer through — everything the
+    provenance row draws, and nothing else.
+
+    Deliberately **not** `PublicProfile`. A page of 20 items can carry 20
+    distinct authors, and a `PublicProfile` carries four counts that cost a
+    query each; 80 count queries to render a name and a 22px avatar is not a
+    trade worth making. The handle is here, so the profile — counts and all —
+    is one link away at `GET /users/{handle}`.
+    """)
+model FeedActor {
+    id: string;
+    handle: string;
+    name?: string;
+    pictureUrl?: string;
+}
+
+@doc("""
+    One row of the Home feed - docs/functional-spec/05-feed.md.
+
+    `rankingReason` is generated **server-side** from the top two contributing
+    signals and is never synthesised on the client: the client cannot know what
+    the ranker weighted, and a plausible-sounding wrong answer is worse than
+    none. It is absent on `pending`, which is pinned rather than ranked.
+    """)
+model FeedItem {
+    type: FeedItemType;
+
+    @doc("The bookmark, on every type except `digest`.")
+    bookmark?: Bookmark;
+
+    @doc("""
+        The digest, on `digest` items and nothing else — it is exactly the
+        field `bookmark` is absent for.
+
+        It arrives complete, sources included, because the `Built from`
+        provenance row is not optional decoration: an AI output that cannot
+        name what it was built from does not get rendered
+        (docs/functional-spec/05-feed.md § Digests).
+        """)
+    digest?: Digest;
+
+    @doc("Who this reached the user through - the saver, or the resharer. Absent on the user's own saves.")
+    actor?: FeedActor;
+
+    @doc("\"Why this appeared\", in one sentence of plain second-person language.")
+    rankingReason?: string;
+
+    @doc("Per-signal breakdown. Omitted in production responses.")
+    signals?: RankingSignal[];
+}
+
+model FeedResponse {
+    items: FeedItem[];
+
+    @doc("""
+        Opaque cursor for the next page. Absent when this page is the last one.
+
+        It carries the ranking session it was produced under, not a position in
+        a list: the candidate set is re-ranked between requests, so an offset
+        would duplicate and skip.
+        """)
+    nextCursor?: string;
+
+    @doc("When this ranking was computed. Drives Home's \"Updated n min ago\".")
+    computedAt: utcDateTime;
+}
+
+model GetFeedQuery {
+    @doc("Which slice. Defaults to `for_you`.")
+    @query
+    scope?: FeedScope = FeedScope.for_you;
+
+    @doc("Opaque cursor taken verbatim from the previous page's `nextCursor`. A cursor produced under a different `scope` is rejected with 400.")
+    @query
+    cursor?: string;
+
+    @doc("Page size. 20 is the product default; 50 is the ceiling.")
+    @query
+    limit?: int32 = 20;
+}
+
+@doc("Non-archived bookmarks filed in one collection.")
+model BookmarkCollectionCount {
+    collectionId: string;
+    count: int32;
+}
+
+@doc("""
+    The counts the Library rail renders beside its rows. One query rather than
+    one request per node - the rail has as many rows as the user has
+    collections, and a count per row would be a request per row.
+    """)
+model BookmarkLibraryCounts {
+    @doc("Every non-archived bookmark - the `All saves` row.")
+    all: int32;
+
+    @doc("Non-archived with `collection_id IS NULL` - the `Inbox` row.")
+    inbox: int32;
+
+    @doc("Non-archived with `read_at IS NULL` - the `Read later` row.")
+    unread: int32;
+
+    @doc("`is_archived = true` - the `Archive` row.")
+    archived: int32;
+
+    @doc("Per-collection counts. A collection holding nothing is absent, not zero.")
+    collections: BookmarkCollectionCount[];
+}
+
+@doc("""
+    Partial update of a bookmark. Every field is optional and an absent field is
+    left alone.
+
+    Where the bookmark is filed is deliberately not here: moving a bookmark is
+    `PATCH /bookmarks/{id}/collection`, which writes `filing_source` in the same
+    statement as the move.
+    """)
+model UpdateBookmarkRequest {
+    title?: string;
+
+    @doc("Archive or restore. Archiving keeps the bookmark searchable and is reversible; it is never a delete.")
+    isArchived?: boolean;
+
+    @doc("The complete tag list after the edit, not a delta - so an undo can restore exactly what was there.")
+    tags?: string[];
+
+    @doc("""
+        The reader's own summary, in markdown, written into the same field the
+        pipeline would have filled.
+
+        The detail page offers this on a **private link**: a page behind auth
+        that the fetcher could not read has no AI summary and never will, and
+        the alternative to letting the user write one is a permanently empty
+        reader. One field rather than two because there is only ever one
+        summary on a bookmark - a private link's pipeline does not write this
+        field, so there is nothing to collide with.
+        """)
+    cosmicSummary?: string;
 }
 
 model SearchBookmarksQuery {
@@ -214,7 +475,10 @@ model BookmarkProcessingEvent {
     runId: string;
     parentEventId?: string;
     kind: BookmarkProcessingEventKind;
+
+    @doc("One of `BookmarkProcessingPhase` for a phase or turn span. Absent on the run span and on bookkeeping that was never a user-facing phase.")
     phase?: string;
+
     name: string;
     status: BookmarkProcessingTimelineStatus;
     sequence: int32;
@@ -242,6 +506,16 @@ model BookmarkProcessingTimelineResponse {
     pollAfterMs: int32;
 }
 
+model ReprocessBookmarkRequest {
+    @doc("Run only this phase. Absent reprocesses the whole pipeline.")
+    phase?: BookmarkProcessingPhase;
+}
+
+model ReprocessBookmarkResponse {
+    bookmark: Bookmark;
+    message: string;
+}
+
 model PreviewMetadata {
     title?: string;
     description?: string;
@@ -261,10 +535,6 @@ model PreviewResponse {
     scrapable: boolean;
 }
 
-model GetCollectionsResponse {
-    collections: Collection[];
-}
-
 model DeleteBookmarkResponse {
     message: string;
 }
@@ -276,7 +546,22 @@ model BookmarkError {
 @route("/bookmarks")
 @tag("Bookmarks")
 interface Bookmarks {
-    @doc("Create a new bookmark")
+    @doc("""
+        Create a new bookmark.
+
+        The URL is normalised before anything else (lowercased scheme and host,
+        trailing slash stripped, `utm_*`/`fbclid`/`gclid`/`ref`/`mc_cid`
+        dropped); the normalised form is stored in `sourceUrl` and the paste is
+        preserved in `metadata.originalUrl`.
+
+        If the caller already has that normalised URL, this returns 200 with
+        `alreadySaved: true` and the existing bookmark — a duplicate paste is
+        not an error and never a 409.
+
+        The handler writes the row and enqueues; fetching, extraction,
+        summarising, tagging and filing all happen in the worker. Nothing is
+        awaited that touches the network or a model.
+        """)
     @useAuth(BearerAuth)
     @post
     create(@body request: CreateBookmarkRequest):
@@ -285,19 +570,26 @@ interface Bookmarks {
               @body body: CreateBookmarkResponse;
           }
         | {
-              @statusCode statusCode: 400;
+              @doc("Already in the caller's library. `alreadySaved` is true.")
+              @statusCode
+              statusCode: 200;
+
+              @body body: CreateBookmarkResponse;
+          }
+        | {
+              @doc("Malformed URL, or a private link with no description.")
+              @statusCode
+              statusCode: 400;
+
               @body body: BookmarkError;
           }
         | {
-              @statusCode statusCode: 408;
-              @body body: BookmarkError;
-          }
-        | {
-              @statusCode statusCode: 409;
-              @body body: BookmarkError;
-          }
-        | {
-              @statusCode statusCode: 422;
+              @doc("Save rate limit exceeded. Carries `Retry-After`, in seconds.")
+              @statusCode
+              statusCode: 429;
+
+              @header("Retry-After") retryAfter?: int32;
+
               @body body: BookmarkError;
           }
         | {
@@ -305,22 +597,65 @@ interface Bookmarks {
               @body body: BookmarkError;
           };
 
-    @doc("Get user's bookmarks")
+    @doc("""
+        Get the caller's bookmarks.
+
+        Ordered by `sort`, which defaults to `newest` - chronological, the order
+        the Library falls back to and the one every other ordering is an overlay
+        on.
+
+        Paging is keyset: read `nextCursor` off the response and hand it back as
+        `cursor`. `offset` remains for callers that have not moved over, but it
+        is not safe on a list being written to while it is paged.
+        """)
     @useAuth(BearerAuth)
     @get
     list(...GetBookmarksQuery): GetBookmarksResponse | {
+        @doc("Unknown `sort`, `scope` or `read_status`, or a cursor that does not belong to this `sort`.")
+        @statusCode
+        statusCode: 400;
+
+        @body body: BookmarkError;
+    } | {
         @statusCode statusCode: 500;
         @body body: BookmarkError;
     };
 
-    @doc("Get user's unread bookmark feed")
+    @doc("The counts beside every row of the Library rail, in one query.")
+    @useAuth(BearerAuth)
+    @get
+    @route("/counts")
+    counts(): BookmarkLibraryCounts | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+
+    @doc("""
+        The ranked Home feed — docs/functional-spec/05-feed.md.
+
+        Not a bookmark list. Each row is a `FeedItem` that says what it is, who
+        it came through, and — in one sentence the server wrote — why it is
+        here.
+
+        **Cursor-based, never offset.** The candidate set is re-ranked between
+        requests; an offset into a list that has been reordered duplicates some
+        items and skips others. Hand `nextCursor` back verbatim.
+
+        The ranking's head is cached per user for five minutes, which is what
+        `computedAt` reports. Bookmarks saved after that point bypass the cache
+        and are prepended, so a save the user just made is on the first page
+        whatever the cache says.
+        """)
     @useAuth(BearerAuth)
     @get
     @route("/feed")
-    feed(
-        @query limit?: int32 = 50,
-        @query offset?: int32 = 0,
-    ): GetBookmarksResponse | {
+    feed(...GetFeedQuery): FeedResponse | {
+        @doc("Unknown `scope`, a `limit` out of range, or a cursor that does not belong to this `scope`.")
+        @statusCode
+        statusCode: 400;
+
+        @body body: BookmarkError;
+    } | {
         @statusCode statusCode: 500;
         @body body: BookmarkError;
     };
@@ -341,6 +676,118 @@ interface Bookmarks {
     @get
     @route("/{id}/processing-timeline")
     getProcessingTimeline(@path id: string): BookmarkProcessingTimelineResponse | {
+        @statusCode statusCode: 404;
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+
+    @doc("Start a fresh processing run for a bookmark, optionally scoped to one phase. Appends to the existing timeline rather than replacing it, so the run the user already watched stays on screen. Also the **Summarise now** action on a bookmark left `idle` by the daily processing budget: an explicit request is never refused for budget.")
+    @useAuth(BearerAuth)
+    @post
+    @route("/{id}/reprocess")
+    reprocess(@path id: string, @body request: ReprocessBookmarkRequest):
+        | {
+              @statusCode statusCode: 202;
+              @body body: ReprocessBookmarkResponse;
+          }
+        | {
+              @doc("Unknown phase.")
+              @statusCode
+              statusCode: 400;
+
+              @body body: BookmarkError;
+          }
+        | {
+              @statusCode statusCode: 404;
+              @body body: BookmarkError;
+          }
+        | {
+              @doc("Reprocess rate limit exceeded. Carries `Retry-After`, in seconds.")
+              @statusCode
+              statusCode: 429;
+
+              @header("Retry-After") retryAfter?: int32;
+
+              @body body: BookmarkError;
+          }
+        | {
+              @statusCode statusCode: 500;
+              @body body: BookmarkError;
+          };
+
+    @doc("""
+        Reshare a bookmark into the caller's own library — the feed's **Save**
+        action, docs/functional-spec/06-social.md § Reshare.
+
+        The new bookmark is the caller's: it inherits only the source URL and
+        carries `savedFromBookmarkId` pointing at the original. Nothing else
+        travels. The pipeline runs again for the new owner, so the summary,
+        tags and filing are theirs and not the original saver's, and the
+        comment thread stays on the original — a reshare starts at zero.
+
+        Because it inherits the URL it meets the same per-user uniqueness
+        constraint `POST /bookmarks` does: resharing something already in the
+        library returns 200 with `alreadySaved: true` and the row the caller
+        already has. Nothing is created and nothing is re-queued.
+
+        404 covers "no such bookmark", "not public", and "blocked in either
+        direction" alike — the same refusal the social routes make, for the
+        same reason.
+        """)
+    @useAuth(BearerAuth)
+    @post
+    @route("/{id}/reshare")
+    reshare(@path id: string):
+        | {
+              @statusCode statusCode: 201;
+              @body body: CreateBookmarkResponse;
+          }
+        | {
+              @doc("Already in the caller's library. `alreadySaved` is true.")
+              @statusCode
+              statusCode: 200;
+
+              @body body: CreateBookmarkResponse;
+          }
+        | {
+              @doc("No such bookmark, not public, or blocked.")
+              @statusCode
+              statusCode: 404;
+
+              @body body: BookmarkError;
+          }
+        | {
+              @doc("Save rate limit exceeded — a reshare is a save. Carries `Retry-After`, in seconds.")
+              @statusCode
+              statusCode: 429;
+
+              @header("Retry-After") retryAfter?: int32;
+
+              @body body: BookmarkError;
+          }
+        | {
+              @statusCode statusCode: 500;
+              @body body: BookmarkError;
+          };
+
+    @doc("""
+        Update a bookmark's title, tags, or archived flag.
+
+        This is what the Library's bulk bar writes through for **Archive** and
+        **Add tag**. It takes the whole tag list rather than a delta so the
+        8-second undo can put back exactly what was there.
+        """)
+    @useAuth(BearerAuth)
+    @patch
+    update(@path id: string, @body request: UpdateBookmarkRequest): Bookmark | {
+        @doc("Malformed body - a blank tag, or nothing to change.")
+        @statusCode
+        statusCode: 400;
+
+        @body body: BookmarkError;
+    } | {
         @statusCode statusCode: 404;
         @body body: BookmarkError;
     } | {
@@ -377,6 +824,28 @@ interface Bookmarks {
     @route("/{id}/read")
     markUnread(@path id: string): Bookmark | {
         @statusCode statusCode: 404;
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+
+    @doc("""
+        Move a bookmark into a collection, or to Inbox with `collectionId: null`.
+
+        This is the override endpoint. It sets `filing_source = 'user'` in the
+        same statement as the move, so the pipeline's `file` phase will never
+        touch this bookmark again. A refile the pipeline can undo on its next
+        run is worse than no refile at all.
+        """)
+    @useAuth(BearerAuth)
+    @patch
+    @route("/{id}/collection")
+    refile(@path id: string, @body request: RefileBookmarkRequest): Bookmark | {
+        @doc("The named collection is not the caller's.")
+        @statusCode
+        statusCode: 404;
+
         @body body: BookmarkError;
     } | {
         @statusCode statusCode: 500;
@@ -442,18 +911,6 @@ interface Bookmarks {
         @statusCode statusCode: 400;
         @body body: BookmarkError;
     } | {
-        @statusCode statusCode: 500;
-        @body body: BookmarkError;
-    };
-}
-
-@route("/collections")
-@tag("Collections")
-interface Collections {
-    @doc("Get user's collections")
-    @useAuth(BearerAuth)
-    @get
-    list(): GetCollectionsResponse | {
         @statusCode statusCode: 500;
         @body body: BookmarkError;
     };

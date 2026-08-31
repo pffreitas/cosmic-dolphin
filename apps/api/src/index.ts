@@ -3,9 +3,17 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import env from '@fastify/env';
 import { config } from './config/environment';
+import { registerRateLimiting } from './plugins/rate-limit';
 import bookmarkRoutes from './routes/bookmarks';
+import collectionRoutes from './routes/collections';
+import readingRoutes from './routes/reading';
 import searchRoutes from './routes/search';
 import profileRoutes from './routes/profile';
+import userRoutes from './routes/users';
+import commentRoutes from './routes/comments';
+import feedRoutes from './routes/feed';
+import exploreRoutes from './routes/explore';
+import digestRoutes from './routes/digests';
 
 const server = Fastify({
   logger: config.NODE_ENV === 'development' ? {
@@ -25,6 +33,9 @@ server.register(cors, {
 });
 
 server.register(helmet);
+
+// Before the routes: the limiter attaches itself through an onRoute hook.
+registerRateLimiting(server);
 
 server.register(env, {
   dotenv: true,
@@ -51,14 +62,28 @@ server.register(async function (fastify) {
   
   // Register routes with /api/v1 prefix
   await fastify.register(bookmarkRoutes, { prefix: '/api/v1' });
+  await fastify.register(collectionRoutes, { prefix: '/api/v1' });
+  await fastify.register(readingRoutes, { prefix: '/api/v1' });
   await fastify.register(searchRoutes, { prefix: '/api/v1' });
   await fastify.register(profileRoutes, { prefix: '/api/v1' });
+  await fastify.register(userRoutes, { prefix: '/api/v1' });
+  await fastify.register(commentRoutes, { prefix: '/api/v1' });
+  // The ranked feed. Registered after the bookmark routes, which no longer
+  // carry `/bookmarks/feed` — the route moved, it was not duplicated.
+  await fastify.register(feedRoutes, { prefix: '/api/v1' });
+  // Digests are their own resource, not a corner of the feed: they have a
+  // detail route, likes and a share link of their own.
+  await fastify.register(digestRoutes, { prefix: '/api/v1' });
+  // Discovery. Its own resource rather than a fourth `FeedScope`: Explore
+  // ranks over everybody's public saves with no personalisation at all, and
+  // sharing the feed's route would have shared the feed's ranker.
+  await fastify.register(exploreRoutes, { prefix: '/api/v1' });
 });
 
 // Start server
 const start = async () => {
   try {
-    await server.listen({ 
+    await server.listen({
       port: config.PORT, 
       host: config.HOST 
     });

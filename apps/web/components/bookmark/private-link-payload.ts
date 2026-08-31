@@ -1,23 +1,38 @@
-import type {
-  CreateBookmarkRequest,
-  PreviewResponse,
-} from "@cosmic-dolphin/api-client";
+import type { PreviewResponse } from "@cosmic-dolphin/api-client";
 
-interface BuildPrivateLinkCreateRequestParams {
+import type { CaptureRequest } from "@/lib/store/slices/bookmarksSlice";
+
+interface BuildPrivateLinkCaptureParams {
   url: string;
-  previewData: PreviewResponse;
+  /**
+   * Optional on purpose. A private link is by definition one the fetcher may
+   * not be able to read, so the preview is a bonus, never a precondition —
+   * see docs/functional-spec/02-capture.md § Optimistic display. Whatever it
+   * carries is used if it happens to be here by the time the user saves.
+   */
+  preview?: PreviewResponse | null;
   description: string;
 }
 
-export function buildPrivateLinkCreateRequest({
+/**
+ * The private-link save, as a capture request.
+ *
+ * The user's note is the durable part: it is what makes the link findable
+ * again when nothing else about the page can be read. The preview only ever
+ * contributes a title, and only if it arrived.
+ */
+export function buildPrivateLinkCapture({
   url,
-  previewData,
+  preview,
   description,
-}: BuildPrivateLinkCreateRequestParams): CreateBookmarkRequest {
+}: BuildPrivateLinkCaptureParams): CaptureRequest {
+  const title = preview?.metadata.title || undefined;
+
   return {
-    sourceUrl: url,
-    title: previewData.metadata.title || undefined,
+    url,
     description: description.trim(),
     isPrivateLink: true,
+    ...(title ? { title } : {}),
+    ...(preview ? { preview } : {}),
   };
 }

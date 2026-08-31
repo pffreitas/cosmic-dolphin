@@ -14,9 +14,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
+import { textStyle } from '@/constants/fonts';
+import { radius, space } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
+
 export default function SignUp() {
   const { signUpWithEmail, signInWithGoogle, isLoading } = useAuth();
   const router = useRouter();
+  const { colors } = useTheme();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -63,7 +68,7 @@ export default function SignUp() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.bg }]}
     >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -73,29 +78,32 @@ export default function SignUp() {
           {/* Logo */}
           <View style={styles.logoContainer}>
             <Text style={styles.logoEmoji}>🐬</Text>
-            <Text style={styles.logoText}>Cosmic Dolphin</Text>
+            <Text style={[textStyle('body'), { color: colors.fgSecondary }]}>Cosmic Dolphin</Text>
           </View>
 
           {/* Header */}
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[textStyle('title1'), styles.title, { color: colors.fg }]}>Create Account</Text>
+          <Text style={[textStyle('bodySm'), styles.subtitle, { color: colors.fgSecondary }]}>
             Join <Text style={styles.brandText}>Cosmic Dolphin</Text> and start
             organizing your digital life.
           </Text>
 
           {/* Error Message */}
           {error ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{error}</Text>
+            <View
+              accessibilityLiveRegion="polite"
+              style={[styles.errorContainer, { backgroundColor: colors.bgInset, borderColor: colors.danger }]}
+            >
+              <Text style={[textStyle('bodySm'), { color: colors.danger }]}>{error}</Text>
             </View>
           ) : null}
 
           {/* Email Input */}
           <View style={styles.inputContainer}>
             <TextInput
-              style={styles.input}
+              style={[textStyle('body'), styles.input, { color: colors.fg, borderColor: colors.borderStrong, backgroundColor: colors.bg }]}
               placeholder="Email"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.fgTertiary}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -107,9 +115,9 @@ export default function SignUp() {
           {/* Password Input */}
           <View style={styles.inputContainer}>
             <TextInput
-              style={[styles.input, styles.passwordInput]}
+              style={[textStyle('body'), styles.input, styles.passwordInput, { color: colors.fg, borderColor: colors.borderStrong, backgroundColor: colors.bg }]}
               placeholder="Password"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.fgTertiary}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
@@ -122,7 +130,7 @@ export default function SignUp() {
               <Ionicons
                 name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                 size={20}
-                color="#9ca3af"
+                color={colors.fgTertiary}
               />
             </TouchableOpacity>
           </View>
@@ -130,9 +138,9 @@ export default function SignUp() {
           {/* Confirm Password Input */}
           <View style={styles.inputContainer}>
             <TextInput
-              style={[styles.input, styles.passwordInput]}
+              style={[textStyle('body'), styles.input, styles.passwordInput, { color: colors.fg, borderColor: colors.borderStrong, backgroundColor: colors.bg }]}
               placeholder="Confirm Password"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.fgTertiary}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry={!showConfirmPassword}
@@ -145,64 +153,75 @@ export default function SignUp() {
               <Ionicons
                 name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
                 size={20}
-                color="#9ca3af"
+                color={colors.fgTertiary}
               />
             </TouchableOpacity>
           </View>
 
           {/* Sign Up Button */}
           <TouchableOpacity
-            style={styles.signUpButton}
+            style={[styles.signUpButton, { backgroundColor: colors.accent }]}
             onPress={handleSignUp}
             disabled={isSigningUp}
           >
             {isSigningUp ? (
-              <ActivityIndicator color="#ffffff" />
+              <ActivityIndicator color={colors.accentFg} />
             ) : (
-              <Text style={styles.signUpButtonText}>Create Account</Text>
+              <Text style={[textStyle('body'), styles.signUpButtonText, { color: colors.accentFg }]}>
+                Create Account
+              </Text>
             )}
           </TouchableOpacity>
 
           {/* Divider */}
           <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or continue with</Text>
-            <View style={styles.dividerLine} />
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            <Text style={[textStyle('meta'), styles.dividerText, { color: colors.fgTertiary }]}>
+              or continue with
+            </Text>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
           </View>
 
           {/* Social Login Buttons */}
           <View style={styles.socialButtons}>
             {/* Google Sign In */}
             <TouchableOpacity
-              style={styles.socialButton}
+              style={[styles.socialButton, { backgroundColor: colors.accent }]}
               onPress={handleGoogleSignIn}
               disabled={isLoading}
+              accessibilityLabel="Continue with Google"
             >
-              <Ionicons name="logo-google" size={20} color="#ffffff" />
+              <Ionicons name="logo-google" size={20} color={colors.accentFg} />
             </TouchableOpacity>
 
             {/* Apple Sign In (disabled for now) */}
             <TouchableOpacity
-              style={[styles.socialButton, styles.disabledButton]}
+              style={[styles.socialButton, styles.disabledButton, { backgroundColor: colors.accent }]}
               disabled
+              accessibilityLabel="Continue with Apple"
             >
-              <Ionicons name="logo-apple" size={20} color="#ffffff" />
+              <Ionicons name="logo-apple" size={20} color={colors.accentFg} />
             </TouchableOpacity>
 
             {/* Facebook Sign In (disabled for now) */}
             <TouchableOpacity
-              style={[styles.socialButton, styles.disabledButton]}
+              style={[styles.socialButton, styles.disabledButton, { backgroundColor: colors.accent }]}
               disabled
+              accessibilityLabel="Continue with Facebook"
             >
-              <Ionicons name="logo-facebook" size={20} color="#ffffff" />
+              <Ionicons name="logo-facebook" size={20} color={colors.accentFg} />
             </TouchableOpacity>
           </View>
 
           {/* Sign In Link */}
           <View style={styles.signInContainer}>
-            <Text style={styles.signInText}>Already have an account? </Text>
+            <Text style={[textStyle('bodySm'), { color: colors.fgSecondary }]}>
+              Already have an account?{' '}
+            </Text>
             <TouchableOpacity onPress={() => router.replace('/(auth)/sign-in')}>
-              <Text style={styles.signInLink}>Sign in</Text>
+              <Text style={[textStyle('bodySm'), styles.signInLink, { color: colors.accent }]}>
+                Sign in
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -214,115 +233,93 @@ export default function SignUp() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
   },
   content: {
-    padding: 24,
+    padding: space.s5,
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: space.s5,
   },
   logoEmoji: {
     fontSize: 28,
-    marginRight: 8,
-  },
-  logoText: {
-    fontSize: 18,
-    fontWeight: '400',
-    color: '#1f2937',
+    marginRight: space.s2,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
+    marginBottom: space.s1,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 20,
+    marginBottom: space.s5,
   },
   brandText: {
     fontWeight: '600',
   },
   errorContainer: {
-    backgroundColor: '#fef2f2',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: '#dc2626',
-    fontSize: 14,
+    padding: space.s3,
+    borderRadius: radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: space.s3,
   },
   inputContainer: {
-    marginBottom: 12,
+    marginBottom: space.s3,
     position: 'relative',
   },
   input: {
     height: 48,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    fontSize: 14,
-    color: '#111827',
-    backgroundColor: '#ffffff',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.sm,
+    paddingHorizontal: space.s4,
   },
   passwordInput: {
-    paddingRight: 48,
+    paddingRight: space.s7,
   },
   eyeButton: {
     position: 'absolute',
-    right: 16,
-    top: 14,
+    right: space.s1,
+    top: 0,
+    bottom: 0,
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   signUpButton: {
     height: 48,
-    backgroundColor: '#111827',
-    borderRadius: 24,
+    borderRadius: radius.pill,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 20,
+    marginBottom: space.s5,
+    marginTop: space.s2,
   },
   signUpButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: space.s5,
   },
   dividerLine: {
     flex: 1,
-    height: 1,
-    backgroundColor: '#e5e7eb',
+    height: StyleSheet.hairlineWidth,
   },
   dividerText: {
-    marginHorizontal: 12,
-    fontSize: 12,
-    color: '#6b7280',
+    marginHorizontal: space.s3,
   },
   socialButtons: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 12,
-    marginBottom: 24,
+    gap: space.s3,
+    marginBottom: space.s5,
   },
   socialButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: '#111827',
+    borderRadius: radius.pill,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -332,14 +329,9 @@ const styles = StyleSheet.create({
   signInContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-  },
-  signInText: {
-    fontSize: 14,
-    color: '#6b7280',
+    alignItems: 'center',
   },
   signInLink: {
-    fontSize: 14,
-    color: '#7fb069',
-    fontWeight: '500',
+    fontWeight: '600',
   },
 });

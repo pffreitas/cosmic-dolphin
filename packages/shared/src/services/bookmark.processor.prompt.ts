@@ -65,6 +65,15 @@ You must ouput a json object following the schema below. You MUST NOT include an
 {{OUTPUT_SCHEMA}}
 `;
 
+/**
+ * The `tag` phase.
+ *
+ * `{{CANDIDATE_TAGS}}` is the user's own vocabulary — their most-used tags,
+ * most-used first. Reusing a tag they already have is worth more than coining a
+ * better one: a library where the same subject is filed under "ml",
+ * "machine-learning" and "machineLearning" cannot be browsed by tag at all.
+ * See docs/functional-spec/03-ai-pipeline.md § Outputs.
+ */
 export const GENERATE_TAGS_PROMPT = `
 Your task is to generate the tags for the content. Follow the instructions below step by step:
 
@@ -74,15 +83,40 @@ Your task is to generate the tags for the content. Follow the instructions below
 {{CONTENT}}
 </content>
 
-2. Generate the following metadata for the content:
-- Tags: 3-5 relevant keywords or phrases
+2. Consider this person's existing tag vocabulary, most-used first:
 
-3. Format the output as follows:
+<existing_tags>
+{{CANDIDATE_TAGS}}
+</existing_tags>
+
+Reuse an existing tag whenever it fits, exactly as it is written above. An
+existing tag that is roughly right beats a new tag that is exactly right — the
+point of a tag is that it collects things. Only invent a tag when nothing above
+covers the subject.
+
+3. Generate the following metadata for the content:
+- Tags: 3-5 relevant keywords or phrases, lowercase, hyphenated if multi-word
+
+4. Format the output as follows:
 You must ouput a json object following the schema below. You MUST NOT include any other text than the json object. Your output MUST be a valid json object following the schema below
 {
     "tags": [string]
 }
 `;
+
+/** How many of the user's tags the `tag` phase is shown as candidates. */
+export const TAG_CANDIDATE_LIMIT = 50;
+
+export const buildTagsPrompt = (params: {
+  content: string;
+  candidateTags: string[];
+}): string =>
+  GENERATE_TAGS_PROMPT.replace("{{CONTENT}}", params.content).replace(
+    "{{CANDIDATE_TAGS}}",
+    params.candidateTags.length > 0
+      ? params.candidateTags.join(", ")
+      : "(no tags yet — this is their first)"
+  );
 
 export const GENERATE_TITLE_PROMPT = `
 Your task is to generate the title for the content. Follow the instructions below step by step:

@@ -17,11 +17,13 @@ touches both; neither document alone is enough to build a screen.
 | [patterns.md](./patterns.md) | The seven composite patterns that carry the product's identity. |
 | [pages.md](./pages.md) | Route-by-route composition and required states. |
 | [implementation.md](./implementation.md) | How to land it in `apps/web` and `apps/mobile`, phase by phase. |
+| [audit.md](./audit.md) | The accessibility gate: what enforces rule ten, what the D20 audit found, and the one accepted deviation. |
 
 | Artifact | What it is |
 | --- | --- |
 | [tokens.json](./tokens.json) | Canonical Signal tokens. The source of truth for every value. |
 | [tokens.css](./tokens.css) | Generated from the JSON. Drop into `apps/web/app/`, import from `globals.css`. |
+| `scripts/generate-tokens.mjs` | Compiles the JSON into `apps/web/app/tokens.css` and `apps/mobile/constants/theme.ts`. `bun run tokens` writes both; `bun run tokens:check` fails when either is stale. |
 | [prototypes/index.html](./prototypes/index.html) | The visual reference. Open it beside the code. |
 
 ## Signal in one paragraph
@@ -41,8 +43,8 @@ Everything else in this directory elaborates on these.
    headings inside saved content, pull quotes. Sans for everything operable. Never a serif button,
    never a sans bookmark title.
 2. **Semantic tokens only.** No hex, no `rgb()`, no px radius, no font stack in a component. Need a
-   value that doesn't exist? Add it to `tokens.json`, regenerate `tokens.css`, document it in
-   `foundations.md` — in that order.
+   value that doesn't exist? Add it to `tokens.json`, run `bun run tokens` to regenerate both
+   clients, document it in `foundations.md` — in that order.
 3. **Borders, not elevation.** Shadows are for surfaces that genuinely float: the header capsule,
    dialogs, popovers, the command palette. Nothing in a feed or list may float.
 4. **Shape is meaning.** 6px controls, 8px content surfaces, 12px on the app frame and AI callout.
@@ -61,7 +63,9 @@ Everything else in this directory elaborates on these.
    auto-move a link the user has filed by hand.
 10. **Accessibility is build-breaking, not polish.** 4.5:1 on all text in both modes, a visible focus
     ring on every interactive element, 32px targets (44px on touch), and `prefers-reduced-motion`
-    honoured everywhere.
+    honoured everywhere. Enforced, not asserted: `apps/web/__tests__/accessibility/` and
+    `apps/web/scripts/lint-a11y.mjs`, both wired into CI. [audit.md](./audit.md) records what they
+    check, what the audit found, and the one deviation that was accepted.
 
 ## Not the spec
 

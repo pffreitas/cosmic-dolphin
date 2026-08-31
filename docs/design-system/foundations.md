@@ -1,12 +1,27 @@
 # Foundations
 
 Adopted direction: **Signal**. Canonical values live in [`tokens.json`](./tokens.json) and are
-compiled to [`tokens.css`](./tokens.css). This document explains what each token *means*, which is
-the part a hex value can't carry.
+compiled by `scripts/generate-tokens.mjs` into both clients at once:
+
+| Output | Consumed by |
+| --- | --- |
+| `apps/web/app/tokens.css` | `apps/web`, as `--cd-*` custom properties plus the shadcn HSL bridge |
+| `apps/mobile/constants/theme.ts` | `apps/mobile`, as a typed theme object for React Native |
+
+Run `bun run tokens` from the repo root after any change to `tokens.json`; `bun run tokens:check`
+fails when either output is stale and is wired into both apps' `lint`. Neither output may be
+hand-edited — a transcribed palette drifts, a generated one cannot.
+
+React Native has no gradients or box-shadows, so `nav-glass`, `nav-shadow` and the whole `elevation`
+set are absent from the mobile theme rather than approximated. Signal frames with borders, so mobile
+loses nothing by it.
+
+This document explains what each token *means*, which is the part a hex value can't carry.
 
 > **Rule zero.** No component may reference a raw hex, px radius, font stack, or shadow. If a value
-> you need isn't a token, add it to `tokens.json`, regenerate `tokens.css`, and document it here —
-> in that order.
+> you need isn't a token, add it to `tokens.json`, run `bun run tokens`, and document it here —
+> in that order. `apps/web/scripts/lint-tokens.mjs` and `apps/mobile/scripts/lint-tokens.mjs` make
+> the first half build-breaking in each client.
 
 ## Colour
 
@@ -28,7 +43,12 @@ brand ever moves to green, nothing but the token file changes.
 | --- | --- | --- | --- | --- |
 | `--cd-fg` | `#0C1622` | `#E9F0F6` | Titles, primary body, active nav. | 16:1 |
 | `--cd-fg-secondary` | `#4C5A68` | `#9FB1C0` | Summaries, descriptions, comment bodies, inactive nav. | 7:1 |
-| `--cd-fg-tertiary` | `#657485` | `#6E8394` | Metadata, timestamps, counts, section labels, placeholders. | 4.5:1 |
+| `--cd-fg-tertiary` | `#617080` | `#768A9A` | Metadata, timestamps, counts, section labels, placeholders. | 4.5:1 |
+
+The `Min contrast` column is not aspirational. `apps/web/__tests__/accessibility/contrast.test.ts`
+computes every one of these ratios out of `tokens.json` on each run, in both modes, against every
+ground the token lands on — including `--cd-bg-inset`, which is the tightest of the four and the one
+that moved `--cd-fg-tertiary` in D20.
 
 There is no fourth, lighter text token. If text needs to be quieter than `--cd-fg-tertiary`, it
 should not be on screen.
@@ -71,12 +91,13 @@ second brand.
 
 | Token | Meaning |
 | --- | --- |
-| `--cd-like` `#D6336C` | Liked. The only place this hue appears. |
+| `--cd-like` `#CE2963` | Liked. The only place this hue appears. |
 | `--cd-success` | Completed pipeline phase, "Read" confirmation, saved toast. |
 | `--cd-warning` | Degraded processing, private-link notice, quota warning. |
 | `--cd-danger` | Failed processing, destructive confirmation, form error. |
 | `--cd-hl-bg` / `--cd-hl-line` | User highlights inside reader content. |
 | `--cd-focus` | Focus ring. Identical to accent by design — focus is an action affordance. |
+| `--cd-overlay` | The scrim behind a dialog or bottom sheet. Dark in both modes — it dims the page, it does not restate the theme. |
 
 ### Header capsule
 
@@ -157,19 +178,26 @@ Borders do the work. Shadows are reserved for surfaces that genuinely float:
 | `--cd-shadow-popover` | Popovers, dropdowns, the command palette, toasts. |
 | `--cd-shadow-dialog` | Modal dialogs and sheets. |
 
-Nothing in a feed, list, or rail may cast a shadow, on hover or otherwise.
+Nothing in a feed, list, or rail may cast a shadow, on hover or otherwise. These live under
+`elevation` in `tokens.json`; `shadow-capsule` is written as the alias `{nav-shadow}`, which the
+generator emits as `var(--cd-nav-shadow)`.
 
 ## Motion
 
 `--cd-ease` `cubic-bezier(.2,.6,.3,1)`; `--cd-duration-fast` 150ms for colour and background,
-`--cd-duration` 220ms for size and position.
+`--cd-duration` 220ms for size and position. They live under `motion` in `tokens.json`; the mobile
+theme exports them as plain numbers plus `motion.easing`, the bezier's four control points.
 
 Motion is for continuity, not delight. Permitted: hover/active colour transitions, disclosure
 expansion, skeleton shimmer, the AI progress spinner, toast entry. Not permitted: entrance
 animations on feed items, parallax, staggered reveals, anything that moves while the user reads.
 
 Every animation must be neutralised under `prefers-reduced-motion: reduce` — the shimmer becomes a
-flat `--cd-bg-inset`, the spinner becomes a static ring at 60% opacity.
+flat `--cd-bg-inset`, the spinner becomes a static ring at 60% opacity. Two things enforce it:
+`apps/web/app/globals.css` carries a global `prefers-reduced-motion` block that neutralises any
+animation or transition the author forgot, and `apps/web/scripts/lint-a11y.mjs` fails the build on an
+`animate-*` class that ships without its own `motion-reduce:` answer — the safety net stops motion,
+the lint makes sure the *specified* still state is the one that renders.
 
 ## Accessibility
 
@@ -177,14 +205,20 @@ Non-negotiable, and treated as build-breaking rather than as polish:
 
 - **Contrast.** 4.5:1 for all text including `meta` and `label`; 3:1 for icons and control borders
   that carry meaning. The palette is verified at these ratios in both modes — do not introduce
-  intermediate tints.
+  intermediate tints. Verified by `apps/web/__tests__/accessibility/contrast.test.ts`, which reads
+  `tokens.json` directly; `--cd-border-strong` is the one documented exception, recorded with its
+  numbers in [audit.md](./audit.md).
 - **Focus.** A visible `2px solid var(--cd-focus)` ring with `2px` offset on every interactive
-  element. Never `outline: none` without a replacement.
+  element. Never `outline: none` without a replacement. Use `focusRing` / `focusRingInset` /
+  `focusRingAlways` from `components/ui/focus-ring`; `scripts/lint-a11y.mjs` fails the build on an
+  interactive element that carries none of them.
 - **Targets.** 32px minimum on pointer, 44px on touch. Social action buttons pad to 32px even though
-  the icon is 15px.
+  the icon is 15px. `scripts/lint-a11y.mjs` rejects an interactive element that declares a height or
+  square size below 32px, and the mobile tab bar's 44px floor is asserted in
+  `__tests__/accessibility/semantics.test.tsx`.
 - **Semantics.** Feed and library items are `<article>`; nav is `<nav>` with `aria-current="page"`;
   the like button is a `<button>` with `aria-pressed`; disclosures are `<details>` or a button with
-  `aria-expanded`.
+  `aria-expanded`. Rendered and asserted in `__tests__/accessibility/semantics.test.tsx`.
 - **Live regions.** AI processing status updates announce through `aria-live="polite"`, once per
   phase change — not per token streamed.
 - **Motion.** See above.

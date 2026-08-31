@@ -4,7 +4,10 @@ import {
   CollectionsApi,
   Bookmark,
   BookmarkReadStatus,
+  BookmarkScope,
+  BookmarkSort,
   Collection,
+  CollectionSuggestion,
   CreateBookmarkRequest,
   CreateBookmarkResponse,
   DeleteBookmarkResponse,
@@ -13,6 +16,10 @@ import {
   SearchBookmarksResponse,
   LikeResponse,
   ShareBookmarkResponse,
+  BookmarkProcessingPhase,
+  ReprocessBookmarkResponse,
+  FeedResponse,
+  FeedScope,
 } from "@cosmic-dolphin/api-client";
 import { SearchBookmarksQuery } from "@/lib/types/bookmark";
 import { createClient } from "@/utils/supabase/client";
@@ -28,6 +35,62 @@ export class ProcessingTimelineFetchError extends Error {
   }
 }
 
+/**
+ * A save refused by the daily limit.
+ *
+ * Carries the wait so the field can show it. The URL stays in the field — a
+ * rate limit is a "not yet", not a "no", and throwing the user's paste away
+ * would make it a "no".
+ */
+export class SaveRateLimitedError extends Error {
+  constructor(
+    message: string,
+    /** Seconds, from the `Retry-After` header. */
+    public readonly retryAfterSeconds: number | null
+  ) {
+    super(message);
+    this.name = "SaveRateLimitedError";
+  }
+}
+
+/**
+ * Pull what we can out of whatever the generated runtime threw.
+ *
+ * `ResponseError` carries the raw `Response`; older call sites in this file
+ * expect an axios-ish `error.response.data.error`. Handle both rather than
+ * betting on one.
+ */
+async function readApiError(
+  error: any
+): Promise<{ status: number | null; message: string | null; response: Response | null }> {
+  const response: Response | null =
+    error?.response && typeof error.response.status === "number"
+      ? (error.response as Response)
+      : null;
+
+  if (error?.response?.data?.error) {
+    return {
+      status: response?.status ?? null,
+      message: error.response.data.error,
+      response,
+    };
+  }
+
+  if (response) {
+    try {
+      const body = await response.clone().json();
+      if (body?.error) {
+        return { status: response.status, message: body.error, response };
+      }
+    } catch {
+      // Not JSON, or already consumed. Fall through to the thrown message.
+    }
+    return { status: response.status, message: null, response };
+  }
+
+  return { status: null, message: null, response: null };
+}
+
 function getApiBasePath(): string {
   const basePath = process.env.NEXT_PUBLIC_API_URL;
   if (!basePath) {
@@ -38,7 +101,11 @@ function getApiBasePath(): string {
   return basePath;
 }
 
-async function getConfiguration(): Promise<Configuration> {
+/**
+ * Exported so sibling clients (`reading-client.ts`) share one place that knows
+ * the base path and how to get a token, rather than each growing its own copy.
+ */
+export async function getConfiguration(): Promise<Configuration> {
   const accessToken = await getAccessToken();
 
   return new Configuration({
@@ -82,35 +149,88 @@ export namespace BookmarksClientAPI {
     }
   }
 
+  /**
+   * The ranked Home feed.
+   *
+   * Cursor-based, never offset — the set is re-ranked between requests, so an
+   * offset into it duplicates some items and skips others. Hand `nextCursor`
+   * back verbatim.
+   */
   export async function feed(query?: {
+    scope?: FeedScope;
+    cursor?: string;
     limit?: number;
-    offset?: number;
-  }): Promise<Bookmark[]> {
+  }): Promise<FeedResponse> {
     const bookmarksApi = await getApiInstance();
 
     try {
-      const response = await bookmarksApi.bookmarksFeed(query);
-      return response.bookmarks || [];
+      return await bookmarksApi.bookmarksFeed(query);
     } catch (error) {
       console.error("Error fetching bookmark feed", error);
-      return [];
+      return { items: [], computedAt: new Date() };
     }
   }
 
+  /**
+   * Returns the whole response, not just the id: the caller needs
+   * `alreadySaved` to decide between "Saved" and "Already in your library".
+   */
   export async function create(
     bookmarkData: CreateBookmarkRequest
-  ): Promise<string> {
+  ): Promise<CreateBookmarkResponse> {
     const bookmarksApi = await getApiInstance();
 
     try {
-      const response = await bookmarksApi.bookmarksCreate({
+      return await bookmarksApi.bookmarksCreate({
         createBookmarkRequest: bookmarkData,
       });
-      return response.bookmark.id;
     } catch (error: any) {
-      if (error?.response?.data?.error) {
-        throw new Error(error.response.data.error);
+      const { status, message, response } = await readApiError(error);
+
+      if (status === 429) {
+        const header = response?.headers?.get("retry-after");
+        const seconds = header ? Number.parseInt(header, 10) : NaN;
+        throw new SaveRateLimitedError(
+          message ?? "You have hit today's save limit.",
+          Number.isFinite(seconds) ? seconds : null
+        );
       }
+
+      if (message) throw new Error(message);
+      throw error;
+    }
+  }
+
+  /**
+   * The feed's **Save** action — a reshare.
+   *
+   * Returns the whole response for the same reason `create` does: the caller
+   * needs `alreadySaved` to choose between "Saved" and "Already in your
+   * library". The server reaches that answer through the same per-user URL
+   * constraint a duplicate paste hits, so both actions share one toast.
+   *
+   * Errors are thrown, never swallowed. A save the user pressed for and did
+   * not get has to say so, and a 429 arrives as `SaveRateLimitedError` because
+   * a reshare spends the same daily save limit.
+   */
+  export async function reshare(id: string): Promise<CreateBookmarkResponse> {
+    const bookmarksApi = await getApiInstance();
+
+    try {
+      return await bookmarksApi.bookmarksReshare({ id });
+    } catch (error: any) {
+      const { status, message, response } = await readApiError(error);
+
+      if (status === 429) {
+        const header = response?.headers?.get("retry-after");
+        const seconds = header ? Number.parseInt(header, 10) : NaN;
+        throw new SaveRateLimitedError(
+          message ?? "You have hit today's save limit.",
+          Number.isFinite(seconds) ? seconds : null
+        );
+      }
+
+      if (message) throw new Error(message);
       throw error;
     }
   }
@@ -149,6 +269,25 @@ export namespace BookmarksClientAPI {
     }
 
     return response.json();
+  }
+
+  /**
+   * Start a fresh run, optionally for one phase.
+   *
+   * Backs both **Retry** on a failed line and **Summarise now** on a bookmark
+   * the daily processing budget left idle. The server appends to the existing
+   * timeline, so the phases already on screen stay there.
+   */
+  export async function reprocess(
+    id: string,
+    phase?: BookmarkProcessingPhase
+  ): Promise<ReprocessBookmarkResponse> {
+    const bookmarksApi = await getApiInstance();
+
+    return bookmarksApi.bookmarksReprocess({
+      id,
+      reprocessBookmarkRequest: phase ? { phase } : {},
+    });
   }
 
   export async function search(
@@ -277,6 +416,108 @@ export namespace BookmarksClientAPI {
       }
       throw error;
     }
+  }
+
+  /**
+   * The next page, by cursor.
+   *
+   * Not `offset`: the Library is written to while it is being paged — a save
+   * lands, the pipeline files something — and an offset silently repeats rows
+   * across the seam and steps over others.
+   */
+  export async function listPage(query: {
+    collection_id?: string;
+    scope?: BookmarkScope;
+    read_status?: BookmarkReadStatus;
+    sort?: BookmarkSort;
+    limit?: number;
+    cursor?: string;
+  }): Promise<{ bookmarks: Bookmark[]; nextCursor?: string }> {
+    const bookmarksApi = await getApiInstance();
+
+    const response = await bookmarksApi.bookmarksList({
+      collectionId: query.collection_id,
+      scope: query.scope,
+      readStatus: query.read_status,
+      sort: query.sort,
+      limit: query.limit,
+      cursor: query.cursor,
+    });
+
+    return {
+      bookmarks: response.bookmarks ?? [],
+      nextCursor: response.nextCursor,
+    };
+  }
+
+  /**
+   * Move a bookmark, or send it back to Inbox with `null`.
+   *
+   * The server writes `filing_source = 'user'` in the same statement, so this
+   * placement outlives every later run of the pipeline. `collectionId` is
+   * optional in the generated types only because TypeSpec makes PATCH bodies
+   * implicitly optional — it is required server-side, so `null` is passed
+   * explicitly rather than omitted.
+   */
+  export async function refile(
+    bookmarkId: string,
+    collectionId: string | null
+  ): Promise<Bookmark> {
+    const bookmarksApi = await getApiInstance();
+    try {
+      return await bookmarksApi.bookmarksRefile({
+        id: bookmarkId,
+        refileBookmarkRequest: { collectionId },
+      });
+    } catch (error: any) {
+      const { message } = await readApiError(error);
+      if (message) throw new Error(message);
+      throw error;
+    }
+  }
+
+  /** Title, tags, archived. Tags are the whole list, so an undo can restore it. */
+  export async function update(
+    bookmarkId: string,
+    changes: {
+      title?: string;
+      isArchived?: boolean;
+      tags?: string[];
+      /** The reader's own summary — private links only. See the detail page. */
+      cosmicSummary?: string;
+    }
+  ): Promise<Bookmark> {
+    const bookmarksApi = await getApiInstance();
+    try {
+      return await bookmarksApi.bookmarksUpdate({
+        id: bookmarkId,
+        updateBookmarkRequest: changes,
+      });
+    } catch (error: any) {
+      const { message } = await readApiError(error);
+      if (message) throw new Error(message);
+      throw error;
+    }
+  }
+
+  export async function acceptCollectionSuggestion(
+    suggestionId: string
+  ): Promise<Collection> {
+    const collectionsApi = new CollectionsApi(await getConfiguration());
+    const response = await collectionsApi.collectionsAcceptSuggestion({
+      id: suggestionId,
+    });
+    return response.collection;
+  }
+
+  export async function dismissCollectionSuggestion(
+    suggestionId: string
+  ): Promise<CollectionSuggestion> {
+    const collectionsApi = new CollectionsApi(await getConfiguration());
+    const response = await collectionsApi.collectionsDismissSuggestion({
+      id: suggestionId,
+    });
+    return response.suggestion;
   }
 
   export async function listCollections(): Promise<Collection[]> {

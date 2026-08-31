@@ -8,8 +8,8 @@ import {
 import { ConfigService } from "@nestjs/config";
 import pLimit from "p-limit";
 import { QueueService } from "./queue.service";
-import { MessageHandler } from "./interfaces/message-handler.interface";
-import {
+import type { MessageHandler } from "./interfaces/message-handler.interface";
+import type {
   QueueMessage,
   QueueConfig,
   ProcessorOptions,
@@ -29,7 +29,7 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit() {
-    if (this.configService.get<boolean>("QUEUE_AUTO_START", true)) {
+    if (this.getBooleanConfig("QUEUE_AUTO_START", true)) {
       await this.startProcessing();
     }
   }
@@ -232,23 +232,25 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
 
   private getProcessorOptions(): ProcessorOptions {
     const queueNames = this.configService
-      .get<string>("QUEUE_NAMES", "bookmarks")
-      .split(",");
-    const defaultPollInterval = this.configService.get<number>(
+      .get<string>("QUEUE_NAMES", "bookmarks,digests")
+      .split(",")
+      .map((name) => name.trim())
+      .filter(Boolean);
+    const defaultPollInterval = this.getPositiveIntegerConfig(
       "QUEUE_POLL_INTERVAL",
       5000,
     );
-    const defaultMaxRetries = this.configService.get<number>(
+    const defaultMaxRetries = this.getPositiveIntegerConfig(
       "QUEUE_MAX_RETRIES",
       3,
     );
-    const defaultBatchSize = this.configService.get<number>(
+    const defaultBatchSize = this.getPositiveIntegerConfig(
       "QUEUE_BATCH_SIZE",
       10,
     );
 
     const queues: QueueConfig[] = queueNames.map((name) => ({
-      name: name.trim(),
+      name,
       pollInterval: defaultPollInterval,
       maxRetries: defaultMaxRetries,
       batchSize: defaultBatchSize,
@@ -256,12 +258,29 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
 
     return {
       queues,
-      concurrency: this.configService.get<number>("QUEUE_CONCURRENCY", 5),
-      gracefulShutdownTimeout: this.configService.get<number>(
+      concurrency: this.getPositiveIntegerConfig("QUEUE_CONCURRENCY", 5),
+      gracefulShutdownTimeout: this.getPositiveIntegerConfig(
         "QUEUE_GRACEFUL_SHUTDOWN_TIMEOUT",
         30000,
       ),
     };
+  }
+
+  private getBooleanConfig(name: string, fallback: boolean): boolean {
+    const value = this.configService.get<string | boolean>(name);
+    if (typeof value === "boolean") return value;
+    if (typeof value !== "string") return fallback;
+
+    const normalized = value.trim().toLowerCase();
+    if (["true", "1", "yes", "on"].includes(normalized)) return true;
+    if (["false", "0", "no", "off"].includes(normalized)) return false;
+    return fallback;
+  }
+
+  private getPositiveIntegerConfig(name: string, fallback: number): number {
+    const value = this.configService.get<string | number>(name);
+    const parsed = typeof value === "number" ? value : Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
   }
 
   private sleep(ms: number): Promise<void> {
