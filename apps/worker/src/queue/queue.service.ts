@@ -92,7 +92,7 @@ export class QueueService {
         .schema("pgmq_public")
         .rpc("archive", {
           queue_name: queueName,
-          msg_id: msgId,
+          message_id: msgId,
         });
 
       if (error) {
@@ -152,7 +152,7 @@ export class QueueService {
         .schema("pgmq_public")
         .rpc("send", {
           queue_name: queueName,
-          message: JSON.stringify(message),
+          message,
           sleep_seconds: delaySeconds || 0,
         });
 

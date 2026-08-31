@@ -39,9 +39,11 @@ export class SupabaseClientService {
 
   async testConnection(): Promise<boolean> {
     try {
-      const { error } = await this.client
-        .schema("pgmq_public")
-        .rpc("pgmq_version");
+      const { error } = await this.client.schema("pgmq_public").rpc("read", {
+        queue_name: "bookmarks",
+        sleep_seconds: 0,
+        n: 0,
+      });
 
       if (error) {
         this.logger.error("Supabase connection test failed", error);
