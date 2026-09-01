@@ -9,7 +9,7 @@ import {
   mergeFeedRankingConfig,
   seenDecayMultiplier,
   socialProofScore,
-  type Bookmark as BookmarkRow,
+  type BookmarkRow,
   type FeedImpressionItemType,
   type FeedImpressionRow,
   type FeedRankingConfigOverrides,
@@ -75,7 +75,6 @@ function daysAgo(days: number, from: Date = NOW): Date {
 
 function bookmarkRow(overrides: Partial<BookmarkRow> & { id: string }): BookmarkRow {
   return {
-    id: overrides.id,
     source_url: `https://example.com/${overrides.id}`,
     title: `Title ${overrides.id}`,
     metadata: null,

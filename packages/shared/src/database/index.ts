@@ -2,6 +2,7 @@ export { Database, BaseTable } from './schema';
 export type {
   CollectionsTable,
   BookmarksTable,
+  Bookmark as BookmarkRow,
   ProfilesTable,
   ScrapedUrlContentsTable,
   NewCollection,
@@ -29,6 +30,7 @@ export type {
   FeedImpressionsTable,
   FeedImpressionRow,
   FeedImpressionItemType,
+  FeedFeedbackRow,
   FeedDigestsTable,
   FeedDigestRow,
   NewFeedDigest,

@@ -106,7 +106,7 @@ describe("BookmarkProcessingRepository", () => {
     const event = await repository.createEvent({
       runId: run.id,
       kind: "phase",
-      phase: "tags",
+      phase: "tag",
       name: "Tags",
       status: "running",
       sequence: 1,

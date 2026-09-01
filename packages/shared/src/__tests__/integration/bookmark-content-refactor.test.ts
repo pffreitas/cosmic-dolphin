@@ -327,7 +327,7 @@ describe("Bookmark Content Refactor Integration", () => {
       }
     });
 
-    it("should handle missing scraped content gracefully", async () => {
+    it("should fetch and persist missing scraped content", async () => {
       const bookmarkData = TestDataFactory.createBookmark({
         user_id: testUserId,
       });
@@ -338,10 +338,35 @@ describe("Bookmark Content Refactor Integration", () => {
       const content = await service.getScrapedUrlContent(bookmark.id);
       expect(content).toBeNull();
 
-      // Processing should fail gracefully
-      await expect(
-        processorService.process(bookmark.id, testUserId)
-      ).rejects.toThrow(`Scraped url content not found: ${bookmark.id}`);
+      const scrapedContent = TestDataFactory.createScrapedUrlContent({
+        bookmark_id: bookmark.id,
+        title: "Fetched title",
+        content: "Fetched content",
+      });
+      mockWebScrapingService.scrape.mockResolvedValue({
+        title: scrapedContent.title,
+        content: scrapedContent.content,
+        metadata: scrapedContent.metadata,
+        images: scrapedContent.images,
+        links: scrapedContent.links,
+      });
+
+      const domainBookmark = await service.findByIdAndUser(
+        bookmark.id,
+        testUserId
+      );
+      const fetched = await service.ensureScrapedContent(domainBookmark!);
+
+      expect(mockWebScrapingService.scrape).toHaveBeenCalledWith(
+        domainBookmark!.sourceUrl
+      );
+      expect(fetched).toEqual(
+        expect.objectContaining({
+          bookmarkId: bookmark.id,
+          title: "Fetched title",
+          content: "Fetched content",
+        })
+      );
     });
 
     it("should support updating bookmark metadata without affecting scraped content", async () => {
