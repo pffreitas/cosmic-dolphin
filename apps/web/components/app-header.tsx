@@ -13,14 +13,12 @@ import { focusRing } from "@/components/ui/focus-ring";
 /**
  * Header capsule — see docs/design-system/patterns.md#header-capsule.
  *
- * A glass capsule floating on a tinted band. The band is what carries brand
- * colour into the app; the capsule stays translucent so the page reads through
- * it. Letting it go opaque throws away the whole idea.
+ * An opaque glass capsule floating directly on the page. Layered colour,
+ * edge highlights and a cool shadow provide the glass depth without allowing
+ * page content to show through the surface.
  *
- * The capsule is a three-column grid, `1fr auto 1fr` — not flexbox with a
- * spacer. That is the load-bearing detail: it keeps the centre column
- * optically centred even when the left and right columns are different widths,
- * which is what makes the header feel stable as counts and names change.
+ * The capsule is a content-sized three-column grid. Auto columns keep the pill
+ * only as wide as its contents instead of stretching it across the viewport.
  *
  * Below 900px the grid collapses to a single column and the capsule squares off
  * to `--cd-radius-lg`. On mobile the destinations move into a bottom tab bar,
@@ -83,7 +81,7 @@ function isActive(currentPath: string | undefined, href: string): boolean {
 }
 
 /**
- * 20px accent square with an offset dot, then the wordmark at 14px/600.
+ * 20px dolphin mark, then the wordmark at 14px/600.
  *
  * Exported because the auth pages need the same mark above their form, and a
  * second hand-drawn copy of it is how two brandmarks start disagreeing.
@@ -101,9 +99,9 @@ export function Brandmark() {
     >
       <span
         aria-hidden="true"
-        className="relative size-5 shrink-0 rounded-sm bg-accent"
+        className="inline-flex size-5 shrink-0 items-center justify-center text-[18px] leading-none"
       >
-        <span className="absolute right-1.5 top-1.5 size-[5px] rounded-pill bg-accent-fg opacity-90" />
+        🐬
       </span>
       Cosmic Dolphin
     </Link>
@@ -142,9 +140,7 @@ const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
       <header
         ref={ref}
         className={cn(
-          // The tinted band, with 16px of bleed below the capsule.
-          "bg-[linear-gradient(180deg,var(--cd-nav-band-top)_0%,var(--cd-nav-band-bot)_100%)]",
-          "px-4 pb-4",
+          "flex justify-center px-4 py-3",
           className,
         )}
         {...props}
@@ -152,12 +148,12 @@ const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
         <nav
           aria-label="Primary"
           className={cn(
-            "grid grid-cols-[1fr_auto_1fr] items-center gap-4",
+            "inline-grid w-fit max-w-full grid-cols-[auto_auto_auto] items-center gap-8",
+            "isolate overflow-hidden",
             "rounded-pill border border-[color:var(--cd-nav-edge)]",
             "bg-[image:var(--cd-nav-glass)]",
             "py-2 pl-[18px] pr-2",
             "shadow-[var(--cd-nav-shadow),inset_0_1px_0_var(--cd-nav-sheen)]",
-            "backdrop-blur-[10px] backdrop-saturate-[1.7]",
             "max-[900px]:grid-cols-1 max-[900px]:gap-3 max-[900px]:rounded-lg max-[900px]:p-3.5",
           )}
         >

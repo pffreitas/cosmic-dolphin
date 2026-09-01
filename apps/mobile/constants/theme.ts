@@ -51,8 +51,6 @@ export const colors = {
     focus: '#0B6F9C',
     overlay: 'rgba(9,15,22,.45)',
     /* Header capsule */
-    navBandTop: '#CFE6F3',
-    navBandBot: '#E9F3F9',
     navEdge: 'rgba(255,255,255,.9)',
     navSheen: 'rgba(255,255,255,.85)',
     navPill: 'rgba(255,255,255,.96)',
@@ -94,8 +92,6 @@ export const colors = {
     focus: '#5CC2E8',
     overlay: 'rgba(9,15,22,.45)',
     /* Header capsule */
-    navBandTop: '#0C1E2B',
-    navBandBot: '#0A1119',
     navEdge: 'rgba(255,255,255,.13)',
     navSheen: 'rgba(255,255,255,.15)',
     navPill: 'rgba(255,255,255,.11)',

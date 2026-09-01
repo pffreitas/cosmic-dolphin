@@ -101,9 +101,9 @@ second brand.
 
 ### Header capsule
 
-`--cd-nav-band-top`, `--cd-nav-band-bot`, `--cd-nav-glass`, `--cd-nav-edge`, `--cd-nav-sheen`,
-`--cd-nav-pill`, `--cd-nav-shadow`. Specified in [patterns.md](./patterns.md#header-capsule); they
-belong to that one component and must not be borrowed.
+`--cd-nav-glass`, `--cd-nav-edge`, `--cd-nav-sheen`, `--cd-nav-pill`, `--cd-nav-shadow`. Specified
+in [patterns.md](./patterns.md#header-capsule); they belong to that one component and must not be
+borrowed.
 
 ### Dark mode
 

@@ -513,7 +513,7 @@ export function PatternsGallery() {
           index="05"
           title="Header capsule"
           file="components/app-header.tsx"
-          lede="A glass capsule floating on a tinted band, laid out as a three-column grid so the centre column stays optically centred whatever the sides do. Below 900px the grid collapses and the capsule squares off — resize the window to see it."
+          lede="A content-sized opaque glass capsule floating directly on the page. Below 900px the grid collapses and the capsule squares off; resize the window to see it."
         >
           <Case label="Home active" bare>
             <div className="overflow-hidden rounded-lg border border-line">
@@ -526,8 +526,8 @@ export function PatternsGallery() {
               />
               <div className="bg-bg px-[18px] py-3.5">
                 <p className="m-0 font-sans text-[12.5px] leading-[1.4] text-fg-secondary">
-                  The band carries the brand colour; the capsule stays glass so
-                  the page reads through it.
+                  The header stays clear while the opaque gradient, highlighted
+                  edge, and cool shadow give the capsule its glass depth.
                 </p>
               </div>
             </div>

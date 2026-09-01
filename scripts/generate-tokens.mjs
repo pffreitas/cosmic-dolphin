@@ -45,7 +45,7 @@ const COLOR_SECTIONS = [
   ["State", ["like", "success", "warning", "danger", "hl-bg", "hl-line", "focus", "overlay"]],
   [
     "Header capsule",
-    ["nav-band-top", "nav-band-bot", "nav-glass", "nav-edge", "nav-sheen", "nav-pill", "nav-shadow"],
+    ["nav-glass", "nav-edge", "nav-sheen", "nav-pill", "nav-shadow"],
   ],
 ];
 

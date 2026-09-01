@@ -82,9 +82,7 @@
   --cd-overlay: rgba(9,15,22,.45);
 
   /* Header capsule */
-  --cd-nav-band-top: #CFE6F3;
-  --cd-nav-band-bot: #E9F3F9;
-  --cd-nav-glass: linear-gradient(180deg,rgba(255,255,255,.95) 0%,rgba(255,255,255,.55) 100%);
+  --cd-nav-glass: linear-gradient(145deg,#FFFFFF 0%,#F7FBFD 42%,#EDF6FA 76%,#F9FCFE 100%);
   --cd-nav-edge: rgba(255,255,255,.9);
   --cd-nav-sheen: rgba(255,255,255,.85);
   --cd-nav-pill: rgba(255,255,255,.96);
@@ -140,9 +138,7 @@
   --cd-overlay: rgba(9,15,22,.45);
 
   /* Header capsule */
-  --cd-nav-band-top: #0C1E2B;
-  --cd-nav-band-bot: #0A1119;
-  --cd-nav-glass: linear-gradient(180deg,rgba(255,255,255,.09) 0%,rgba(255,255,255,.03) 100%);
+  --cd-nav-glass: linear-gradient(145deg,#1A2A36 0%,#14222C 42%,#0E1922 76%,#172630 100%);
   --cd-nav-edge: rgba(255,255,255,.13);
   --cd-nav-sheen: rgba(255,255,255,.15);
   --cd-nav-pill: rgba(255,255,255,.11);

@@ -30,7 +30,7 @@ touches both; neither document alone is enough to build a screen.
 
 Deep blue-cyan on cool neutrals. Inter for everything the user operates, Source Serif 4 for
 everything the user evaluates. Feed items are bordered panels; the Library is separator rows; the
-header is a glass capsule floating on a tinted band. AI is a quiet editorial layer — a soft gradient
+header is a content-sized opaque glass capsule on an unpainted surface. AI is a quiet editorial layer — a soft gradient
 ground with one hairline and one corner aura — that always names its sources. Social is present but
 secondary: one compact action row, conversation on demand. Light mode defines the brand; dark is a
 first-class translation, not an inversion.

@@ -170,6 +170,35 @@ describe("feed and library items are articles", () => {
 // ---------------------------------------------------------------------------
 
 describe("nav marks where you are", () => {
+  it("uses a decorative dolphin emoji for the linked brandmark", () => {
+    const html = render(<AppHeader currentPath="/my/library" />);
+    const brandmark = html.match(
+      /<a[^>]*aria-label="Cosmic Dolphin home"[^>]*>.*?<\/a>/,
+    )?.[0];
+
+    expect(brandmark).toBeTruthy();
+    expect(brandmark).toContain('aria-hidden="true"');
+    expect(brandmark).toContain("🐬");
+    expect(brandmark).not.toContain("bg-accent");
+  });
+
+  it("leaves the header unpainted so only the capsule carries a surface", () => {
+    const html = render(<AppHeader currentPath="/my/library" />);
+    const header = html.match(/<header[^>]*>/)?.[0];
+
+    expect(header).toBeTruthy();
+    expect(header).not.toMatch(/\b(?:bg-|style=)/);
+  });
+
+  it("shrink-wraps the desktop capsule around its navigation content", () => {
+    const html = render(<AppHeader currentPath="/my/library" />);
+    const nav = html.match(/<nav[^>]*>/)?.[0];
+
+    expect(nav).toBeTruthy();
+    expect(nav).toContain("inline-grid");
+    expect(nav).toContain("w-fit");
+  });
+
   it("puts the header capsule in a <nav> and marks the current destination", () => {
     const html = render(<AppHeader currentPath="/my/library" onSearch={() => undefined} />);
     expect(html).toContain("<nav");

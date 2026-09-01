@@ -162,8 +162,6 @@ const NOT_CONTRAST_BEARING: Record<string, string> = {
   overlay: "translucent scrim — dims the page, states nothing",
   "ai-glow": "translucent corner aura",
   "ai-sheen": "translucent 1px inset highlight",
-  "nav-band-top": "gradient stop behind the header capsule",
-  "nav-band-bot": "gradient stop behind the header capsule",
   "nav-glass": "gradient",
   "nav-edge": "translucent capsule edge",
   "nav-sheen": "translucent capsule highlight",
@@ -215,6 +213,15 @@ describe("the maths", () => {
 
   it("refuses a colour it cannot measure", () => {
     expect(() => luminance("rgba(9,15,22,.45)")).toThrow();
+  });
+});
+
+describe("header material", () => {
+  it.each(MODES)("uses an opaque glass base in %s mode", (mode) => {
+    const glass = TOKENS.color[mode]["nav-glass"];
+
+    expect(glass).toBeTruthy();
+    expect(glass).not.toMatch(/rgba|hsla|transparent|#[0-9a-f]{8}\b|\//i);
   });
 });
 

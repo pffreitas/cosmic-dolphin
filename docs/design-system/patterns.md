@@ -11,34 +11,31 @@ Build all seven **before** refactoring any page.
 
 `components/app-header.tsx`
 
-A glass capsule floating on a tinted band. The band is what carries brand colour into the app;
-the capsule stays translucent so the page reads through it.
+An opaque glass capsule floating directly on the page. Its layered colour, edge highlight and cool
+shadow create depth without allowing page content to show through.
 
-**Anatomy** — a three-column grid, `1fr auto 1fr`:
+**Anatomy** — a content-sized three-column grid, `auto auto auto`:
 
 | Column | Contents |
 | --- | --- |
-| Left | Brandmark: 20px accent square with an offset dot, then "Cosmic Dolphin" at 14px/600. |
+| Left | Brandmark: 20px dolphin emoji, then "Cosmic Dolphin" at 14px/600. |
 | Centre | Destinations: Home, Library, Explore. |
 | Right | Search chip, **Save a link** (primary pill), avatar. |
 
-The grid — not flexbox with a spacer — is the load-bearing detail: it keeps the centre column
-optically centred in the capsule even when the left and right columns are different widths, which is
-what makes the header feel stable as counts and names change.
+The inline grid shrink-wraps these columns so the capsule never expands beyond its contents. The
+header centres that capsule and provides only clear spacing around it.
 
 **Surface**
 
 ```
 padding:        8px 8px 8px 18px
 border-radius:  --cd-radius-pill
-background:     --cd-nav-glass          /* vertical white gradient, translucent */
+background:     --cd-nav-glass          /* layered, fully opaque gradient */
 border:         1px solid --cd-nav-edge
 box-shadow:     --cd-nav-shadow, inset 0 1px 0 --cd-nav-sheen
-backdrop-filter: saturate(170%) blur(10px)
 ```
 
-The band behind it is `linear-gradient(180deg, --cd-nav-band-top, --cd-nav-band-bot)` with 16px of
-bleed below the capsule.
+There is no band or other full-width surface behind the capsule.
 
 **States** — active destination gets `--cd-nav-pill` fill and `--cd-fg` text, with
 `aria-current="page"`. Inactive links are `--cd-fg-secondary`, going `--cd-fg` on hover. The search
@@ -48,8 +45,7 @@ chip is a button that opens the command palette, not a real input.
 `--cd-radius-lg`, and destinations move into a bottom tab bar on mobile (Home, Library, Save,
 Search, You).
 
-**Don't:** put page-level actions in the capsule. Grow it past 56px. Let it become opaque — the
-translucency is the point.
+**Don't:** put page-level actions in the capsule. Grow it past 56px. Stretch it to the viewport.
 
 ---
 

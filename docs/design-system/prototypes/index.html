@@ -35,10 +35,6 @@
   --measure:68ch;
   --ease:cubic-bezier(.2,.6,.3,1);
 
-  /* The navigation band is assembled from two per-direction stops, so the
-     capsule, the band behind it and the doc header all stay in step. */
-  --nav-band:linear-gradient(180deg,var(--nav-band-top) 0%,var(--nav-band-bot) 100%);
-
   /* ---------- OPTION A · SIGNAL (default) — light ---------- */
   --font-sans:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
   --font-serif:"Source Serif 4",Georgia,"Times New Roman",serif;
@@ -68,9 +64,7 @@
   --hl-bg:#EAF4FA;
   --hl-line:#BEDDEC;
   --focus:#0B6F9C;
-  --nav-band-top:#CFE6F3;
-  --nav-band-bot:#E9F3F9;
-  --nav-glass:linear-gradient(180deg,rgba(255,255,255,.95) 0%,rgba(255,255,255,.55) 100%);
+  --nav-glass:linear-gradient(145deg,#FFFFFF 0%,#F7FBFD 42%,#EDF6FA 76%,#F9FCFE 100%);
   --nav-edge:rgba(255,255,255,.9);
   --nav-sheen:rgba(255,255,255,.85);
   --nav-pill:rgba(255,255,255,.96);
@@ -91,8 +85,7 @@
   --hl-bg:#0E2634;
   --hl-line:#2B6E8C;
   --focus:#5CC2E8;
-  --nav-band-top:#0C1E2B; --nav-band-bot:#0A1119;
-  --nav-glass:linear-gradient(180deg,rgba(255,255,255,.09) 0%,rgba(255,255,255,.03) 100%);
+  --nav-glass:linear-gradient(145deg,#1A2A36 0%,#14222C 42%,#0E1922 76%,#172630 100%);
   --nav-edge:rgba(255,255,255,.13); --nav-sheen:rgba(255,255,255,.15);
   --nav-pill:rgba(255,255,255,.11);
   --nav-shadow:0 12px 30px -16px rgba(0,0,0,.85);
@@ -116,7 +109,6 @@
   --hl-bg:#FBEFD6;
   --hl-line:#E3C489;
   --focus:#9E5C08;
-  --nav-band-top:#F1E3CD; --nav-band-bot:#FBF4EA;
   --nav-glass:linear-gradient(180deg,rgba(255,255,255,.96) 0%,rgba(255,255,255,.6) 100%);
   --nav-edge:rgba(255,255,255,.92); --nav-sheen:rgba(255,255,255,.9);
   --nav-pill:rgba(255,255,255,.96);
@@ -135,7 +127,6 @@
   --hl-bg:#2B2113;
   --hl-line:#6A4E1F;
   --focus:#F0B354;
-  --nav-band-top:#231A11; --nav-band-bot:#14100C;
   --nav-glass:linear-gradient(180deg,rgba(255,255,255,.08) 0%,rgba(255,255,255,.025) 100%);
   --nav-edge:rgba(255,255,255,.12); --nav-sheen:rgba(255,255,255,.14);
   --nav-pill:rgba(255,255,255,.1);
@@ -160,7 +151,6 @@
   --hl-bg:#FEF3C7;
   --hl-line:#E5C86B;
   --focus:#18181B;
-  --nav-band-top:#E9E9EC; --nav-band-bot:#F7F7F8;
   --nav-glass:linear-gradient(180deg,rgba(255,255,255,.98) 0%,rgba(255,255,255,.74) 100%);
   --nav-edge:rgba(255,255,255,.95); --nav-sheen:rgba(255,255,255,.95);
   --nav-pill:#FFFFFF;
@@ -179,7 +169,6 @@
   --hl-bg:#2E2716;
   --hl-line:#5C4E24;
   --focus:#FAFAFA;
-  --nav-band-top:#161619; --nav-band-bot:#09090B;
   --nav-glass:linear-gradient(180deg,rgba(255,255,255,.07) 0%,rgba(255,255,255,.02) 100%);
   --nav-edge:rgba(255,255,255,.1); --nav-sheen:rgba(255,255,255,.12);
   --nav-pill:rgba(255,255,255,.09);
@@ -234,7 +223,7 @@ img{max-width:100%}
 .topbar{
   position:sticky;top:0;z-index:50;
   padding:12px 0 14px;
-  background:linear-gradient(180deg,var(--nav-band-top) 0%,var(--bg) 100%);
+  background:transparent;
 }
 .topbar-in{
   display:flex;align-items:center;gap:var(--s-3);flex-wrap:wrap;
@@ -245,8 +234,7 @@ img{max-width:100%}
   backdrop-filter:saturate(170%) blur(10px);
 }
 .brandmark{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;letter-spacing:-.01em;white-space:nowrap}
-.brand-dot{width:20px;height:20px;border-radius:var(--r-sm);background:var(--accent);position:relative;flex:none}
-.brand-dot::after{content:"";position:absolute;inset:6px 6px auto auto;width:5px;height:5px;border-radius:50%;background:var(--accent-fg);opacity:.9}
+.brand-emoji{display:inline-flex;width:20px;height:20px;align-items:center;justify-content:center;font-size:18px;line-height:1;flex:none}
 .topbar .spacer{flex:1}
 
 /* Segmented control — the one place we allow a pill container */
@@ -412,18 +400,17 @@ details.why-wrap>summary::-webkit-details-marker{display:none}
 
 /* ---------- APP FRAME (screen mockups) ---------- */
 .frame{border:1px solid var(--border-strong);border-radius:var(--r-lg);overflow:hidden;background:var(--bg)}
-/* The header floats as a capsule on a tinted band — the band carries the
-   direction's colour, the capsule stays glass so content reads through it. */
-.apphead{padding:0 16px 16px;background:var(--nav-band)}
+/* The header remains unpainted; only the content-sized capsule has a surface. */
+.apphead{display:flex;justify-content:center;padding:12px 16px;background:transparent}
 .frame-bar{display:flex;align-items:center;gap:var(--s-3);padding:11px 8px 12px;background:transparent}
 .frame-bar .path{font-family:var(--font-mono);font-size:11.5px;color:var(--fg-tertiary);opacity:.9}
 .appnav{
-  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:var(--s-4);
+  display:inline-grid;grid-template-columns:auto auto auto;align-items:center;gap:var(--s-6);
+  width:max-content;max-width:100%;
   padding:8px 8px 8px 18px;border-radius:var(--r-pill);
   background:var(--nav-glass);
   border:1px solid var(--nav-edge);
   box-shadow:var(--nav-shadow), inset 0 1px 0 var(--nav-sheen);
-  backdrop-filter:saturate(170%) blur(10px);
 }
 .navlinks{display:flex;align-items:center;gap:2px;justify-self:center}
 .navactions{display:flex;align-items:center;gap:8px;justify-self:end}
@@ -566,7 +553,7 @@ code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset)
 
 <header class="topbar">
   <div class="wrap topbar-in">
-    <div class="brandmark"><span class="brand-dot"></span> Cosmic Dolphin · Design System</div>
+    <div class="brandmark"><span class="brand-emoji" aria-hidden="true">🐬</span> Cosmic Dolphin · Design System</div>
     <div class="spacer"></div>
     <div class="segmented" role="group" aria-label="Design direction">
       <button data-opt="signal" aria-pressed="true">A · Signal</button>
@@ -767,7 +754,7 @@ code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset)
     <div style="border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden">
       <div class="apphead" style="padding-top:16px">
         <nav class="appnav">
-          <span class="brandmark"><span class="brand-dot"></span> Cosmic Dolphin</span>
+          <span class="brandmark"><span class="brand-emoji" aria-hidden="true">🐬</span> Cosmic Dolphin</span>
           <div class="navlinks">
             <a class="navlink" href="#components" aria-current="page">Home</a>
             <a class="navlink" href="#components">Library</a>
@@ -781,7 +768,7 @@ code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset)
         </nav>
       </div>
       <div style="padding:14px 18px;background:var(--bg)">
-        <p class="t-meta">The band carries the direction's colour; the capsule stays glass so the page reads through it. Brand left, destinations centred, actions right — the centre column never shifts when the side columns change width.</p>
+        <p class="t-meta">The header stays clear while the opaque gradient, highlighted edge, and cool shadow give the capsule its glass depth. Its three auto-sized columns keep the pill fitted to its content.</p>
       </div>
     </div>
   </div>
@@ -833,7 +820,7 @@ code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset)
     <div class="apphead">
       <div class="frame-bar"><span class="path">cosmicdolphin.app/my/dashboard</span></div>
       <nav class="appnav">
-        <span class="brandmark"><span class="brand-dot"></span> Cosmic Dolphin</span>
+        <span class="brandmark"><span class="brand-emoji" aria-hidden="true">🐬</span> Cosmic Dolphin</span>
         <div class="navlinks">
           <a class="navlink" href="#home" aria-current="page">Home</a>
           <a class="navlink" href="#library">Library</a>
@@ -1028,7 +1015,7 @@ code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset)
     <div class="apphead">
       <div class="frame-bar"><span class="path">cosmicdolphin.app/my/library</span></div>
       <nav class="appnav">
-        <span class="brandmark"><span class="brand-dot"></span> Cosmic Dolphin</span>
+        <span class="brandmark"><span class="brand-emoji" aria-hidden="true">🐬</span> Cosmic Dolphin</span>
         <div class="navlinks">
           <a class="navlink" href="#home">Home</a>
           <a class="navlink" href="#library" aria-current="page">Library</a>
@@ -1179,7 +1166,7 @@ code.inl{font-family:var(--font-mono);font-size:.88em;background:var(--bg-inset)
     <div class="apphead">
       <div class="frame-bar"><span class="path">cosmicdolphin.app/bookmarks/bk_8f2a</span></div>
       <nav class="appnav">
-        <span class="brandmark"><span class="brand-dot"></span> Cosmic Dolphin</span>
+        <span class="brandmark"><span class="brand-emoji" aria-hidden="true">🐬</span> Cosmic Dolphin</span>
         <div class="navlinks">
           <a class="navlink" href="#home">Home</a>
           <a class="navlink" href="#library">Library</a>
