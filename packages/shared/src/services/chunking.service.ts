@@ -30,7 +30,7 @@ export class ChunkingServiceImpl implements ChunkingService {
     const $ = cheerio.load(html);
     $("script, style, nav, footer, header, aside").remove();
 
-    const text = $.text();
+    const text = $("body").text();
     return text
       .replace(/\s+/g, " ")
       .replace(/\n{3,}/g, "\n\n")
