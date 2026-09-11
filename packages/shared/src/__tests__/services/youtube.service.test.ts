@@ -42,6 +42,7 @@ const MOCK_CAPTION_XML = `
 
 describe("YouTubeServiceImpl", () => {
   let mockHttpClient: jest.Mocked<HttpClient>;
+  let mockFetch: jest.Mock;
   let service: YouTubeServiceImpl;
 
   beforeEach(() => {
@@ -59,7 +60,8 @@ describe("YouTubeServiceImpl", () => {
     });
 
     // Default: global fetch is not called (library handles it)
-    global.fetch = jest.fn();
+    mockFetch = jest.fn();
+    global.fetch = mockFetch as unknown as typeof fetch;
   });
 
   describe("isYouTubeUrl", () => {
@@ -123,7 +125,7 @@ describe("YouTubeServiceImpl", () => {
 
     it("should try InnerTube fallback when library throws a non-language error", async () => {
       MockedYoutubeTranscript.fetchTranscript.mockRejectedValue(new Error("YouTube blocked the request"));
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => MOCK_INNERTUBE_RESPONSE,
       });
@@ -157,7 +159,7 @@ describe("YouTubeServiceImpl", () => {
 
     it("should try InnerTube fallback when library returns empty segments", async () => {
       MockedYoutubeTranscript.fetchTranscript.mockResolvedValue([]);
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => MOCK_INNERTUBE_RESPONSE,
       });
@@ -189,7 +191,7 @@ describe("YouTubeServiceImpl", () => {
 
     it("should show no transcript message when both library and InnerTube fallback fail", async () => {
       MockedYoutubeTranscript.fetchTranscript.mockRejectedValue(new Error("Transcripts disabled"));
-      (global.fetch as jest.Mock).mockResolvedValueOnce({ ok: false, status: 403 });
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 403 });
 
       const result = await service.scrape(URL);
 
@@ -200,7 +202,7 @@ describe("YouTubeServiceImpl", () => {
 
     it("should show no transcript message when InnerTube returns no caption tracks", async () => {
       MockedYoutubeTranscript.fetchTranscript.mockRejectedValue(new Error("Transcripts disabled"));
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ captions: { playerCaptionsTracklistRenderer: { captionTracks: [] } } }),
       });
@@ -214,7 +216,7 @@ describe("YouTubeServiceImpl", () => {
       MockedYoutubeTranscript.fetchTranscript
         .mockRejectedValueOnce(new YoutubeTranscriptNotAvailableLanguageError("en", ["pt"], "dQw4w9WgXcQ"))
         .mockRejectedValueOnce(new Error("Network error"));
-      (global.fetch as jest.Mock).mockResolvedValueOnce({ ok: false, status: 500 });
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
 
       const result = await service.scrape(URL);
 

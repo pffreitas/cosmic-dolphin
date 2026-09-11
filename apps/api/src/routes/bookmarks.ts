@@ -444,6 +444,8 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
       request: FastifyRequest<{ Body: Omit<CreateBookmarkRequest, "user_id"> }>,
       reply: FastifyReply
     ) => {
+      let normalizedUrlForRaceRecovery: string | undefined;
+      const userIdForRaceRecovery = request.userId!;
       try {
         const {
           source_url,
@@ -472,6 +474,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         // one string or the unique index and the "already saved" answer drift
         // apart.
         const { url: normalizedUrl, originalUrl } = normalizeUrl(source_url);
+        normalizedUrlForRaceRecovery = normalizedUrl;
 
         const existingBookmark = await services.bookmark.findByUserAndUrl(
           user_id,
@@ -561,6 +564,28 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           message: queued.message ?? "Bookmark created successfully",
         });
       } catch (error) {
+        // The optimistic lookup above keeps the common duplicate path cheap,
+        // while the database unique index is authoritative under concurrency.
+        // If two requests race, the loser returns the winner's durable row and
+        // never queues a second processing run.
+        if (isUniqueViolation(error) && normalizedUrlForRaceRecovery) {
+          const existingBookmark = await services.bookmark.findByUserAndUrl(
+            userIdForRaceRecovery,
+            normalizedUrlForRaceRecovery
+          );
+          if (existingBookmark) {
+            fastify.log.info(
+              { bookmarkId: existingBookmark.id, userId: userIdForRaceRecovery },
+              "Concurrent duplicate bookmark save recovered"
+            );
+            return reply.status(200).send({
+              bookmark: existingBookmark,
+              alreadySaved: true,
+              message: "Already in your library",
+            });
+          }
+        }
+
         // The 408 and 422 branches that used to live here mapped scraping
         // failures — a timeout, a bad content type, an unreadable page. This
         // handler no longer scrapes, so an unreachable host is now a failed
@@ -1205,4 +1230,19 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
       }
     }
   );
+}
+
+/** PostgreSQL reports unique conflicts as SQLSTATE 23505. */
+export function isUniqueViolation(error: unknown): boolean {
+  const seen = new Set<object>();
+  let candidate: unknown = error;
+
+  while (candidate && typeof candidate === "object" && !seen.has(candidate)) {
+    seen.add(candidate);
+    const databaseError = candidate as { code?: unknown; cause?: unknown };
+    if (databaseError.code === "23505") return true;
+    candidate = databaseError.cause;
+  }
+
+  return false;
 }

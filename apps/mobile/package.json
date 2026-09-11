@@ -22,7 +22,10 @@
     "build:dev:ios": "eas build --profile development --platform ios"
   },
   "jest": {
-    "preset": "jest-expo"
+    "preset": "jest-expo",
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/$1"
+    }
   },
   "dependencies": {
     "@cosmic-dolphin/api-client": "*",

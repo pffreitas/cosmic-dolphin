@@ -39,7 +39,6 @@ Thumbs.db
 packages/apispec/tsp-output/
 
 # Generated API client (can be regenerated)
-packages/api-client/src/
 packages/api-client/dist/
 
 # Supabase

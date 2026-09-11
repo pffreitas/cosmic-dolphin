@@ -1,6 +1,9 @@
 import { describe, it, expect } from "bun:test";
 import { WebScrapingServiceImpl } from "@cosmic-dolphin/shared";
-import { validateCreateBookmarkBody } from "../routes/bookmarks";
+import {
+  isUniqueViolation,
+  validateCreateBookmarkBody,
+} from "../routes/bookmarks";
 
 describe("Bookmark Feature Validation", () => {
   describe("URL validation", () => {
@@ -145,6 +148,18 @@ describe("Bookmark Feature Validation", () => {
       );
 
       expect(result).toEqual({ ok: true });
+    });
+  });
+
+  describe("Concurrent duplicate recovery", () => {
+    it("recognizes direct and wrapped PostgreSQL unique violations", () => {
+      expect(isUniqueViolation({ code: "23505" })).toBe(true);
+      expect(isUniqueViolation({ cause: { code: "23505" } })).toBe(true);
+    });
+
+    it("does not misclassify other database failures", () => {
+      expect(isUniqueViolation({ code: "23503" })).toBe(false);
+      expect(isUniqueViolation(new Error("connection failed"))).toBe(false);
     });
   });
 

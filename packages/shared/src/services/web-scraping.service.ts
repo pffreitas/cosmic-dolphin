@@ -1,4 +1,3 @@
-import { CheerioAPI } from "cheerio";
 import {
   OpenGraphMetadata,
   BookmarkMetadata,
@@ -9,6 +8,8 @@ import * as cheerio from "cheerio";
 import { HttpClient, CosmicHttpClient } from "./http-client";
 import { YouTubeService, YouTubeServiceImpl } from "./youtube.service";
 import { TwitterService, TwitterServiceImpl } from "./twitter.service";
+
+type LoadedCheerio = ReturnType<typeof cheerio.load>;
 
 export interface WebScrapingService {
   isValidUrl(url: string): boolean;
@@ -175,11 +176,11 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     }
   }
 
-  private extractTitle($: CheerioAPI): ScrapedUrlContents["title"] {
+  private extractTitle($: LoadedCheerio): ScrapedUrlContents["title"] {
     return $("h1").text() ?? "";
   }
 
-  private extractImages($: CheerioAPI): ScrapedUrlContents["images"] {
+  private extractImages($: LoadedCheerio): ScrapedUrlContents["images"] {
     const images = $("img");
     return images
       .map((_, img) => {
@@ -191,7 +192,7 @@ export class WebScrapingServiceImpl implements WebScrapingService {
       .get();
   }
 
-  private extractLinks($: CheerioAPI): ScrapedUrlContents["links"] {
+  private extractLinks($: LoadedCheerio): ScrapedUrlContents["links"] {
     return $("a")
       .map((_, link) => {
         return {
@@ -202,7 +203,7 @@ export class WebScrapingServiceImpl implements WebScrapingService {
       .get();
   }
 
-  private extractMetadata(sourceUrl: string, $: CheerioAPI): BookmarkMetadata {
+  private extractMetadata(sourceUrl: string, $: LoadedCheerio): BookmarkMetadata {
     const ogData = this.extractOpenGraphMetadata(sourceUrl, $);
 
     const textContent = $.root().text();
@@ -257,7 +258,7 @@ export class WebScrapingServiceImpl implements WebScrapingService {
 
   private extractOpenGraphMetadata(
     sourceUrl: string,
-    $: CheerioAPI
+    $: LoadedCheerio
   ): OpenGraphMetadata {
     const ogData: OpenGraphMetadata = {};
 
