@@ -1,5 +1,5 @@
-# Use the official Node.js 22 image as base
-FROM node:22-alpine AS base
+# Keep dependency resolution aligned with the repository package manager pinned in package.json.
+FROM oven/bun:1.3.11-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -16,8 +16,9 @@ COPY apps/web/package.json ./apps/web/
 # Copy pre-built API client (generated in CI before Docker build)
 COPY packages/api-client/ ./packages/api-client/
 
-# Install dependencies without running postinstall (client is pre-generated in CI)
-RUN npm install --ignore-scripts
+# Install the exact dependency graph from bun.lock without running postinstall
+# (the API client is pre-generated in CI).
+RUN bun install --frozen-lockfile --ignore-scripts
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -49,10 +50,10 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
 WORKDIR /app/apps/web
-RUN npm run build
+RUN bun run build
 
 # Production image, copy all the files and run next
-FROM base AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
