@@ -9,9 +9,14 @@ WORKDIR /app
 # Copy root workspace files
 COPY package.json bun.lock ./
 
-# Copy package.json files for all packages
-COPY packages/api-client/package.json ./packages/api-client/
+# Copy package.json files for every workspace represented in bun.lock
+COPY apps/api/package.json ./apps/api/
+COPY apps/mobile/package.json ./apps/mobile/
 COPY apps/web/package.json ./apps/web/
+COPY apps/worker/package.json ./apps/worker/
+COPY packages/api-client/package.json ./packages/api-client/
+COPY packages/apispec/package.json ./packages/apispec/
+COPY packages/shared/package.json ./packages/shared/
 
 # Copy pre-built API client (generated in CI before Docker build)
 COPY packages/api-client/ ./packages/api-client/
