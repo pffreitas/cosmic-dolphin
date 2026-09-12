@@ -372,7 +372,13 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       if (reporter.hasStarted()) {
         await reporter.failRun(errorMessage);
       }
-      throw error;
+      // The bookmark and its run are now durably terminal. pgmq must archive
+      // this delivery instead of making the same job processing again after
+      // its visibility timeout. A user can still explicitly retry a phase.
+      const terminalError =
+        error instanceof Error ? error : new Error(errorMessage);
+      Object.assign(terminalError, { shouldRetry: false });
+      throw terminalError;
     }
   }
 

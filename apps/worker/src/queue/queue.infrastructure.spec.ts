@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { QueueProcessor } from "./queue.processor";
 import { QueueService } from "./queue.service";
 import { SupabaseClientService } from "./supabase-client.service";
@@ -81,6 +81,42 @@ describe("queue configuration", () => {
       concurrency: 3,
       gracefulShutdownTimeout: 15000,
     });
+  });
+});
+
+describe("terminal message failures", () => {
+  test("archives a durably failed bookmark without queue redelivery", async () => {
+    const queue = {
+      deleteMessage: async () => undefined,
+      archiveMessage: async () => undefined,
+    };
+    const archive = spyOn(queue, "archiveMessage");
+    const handler = {
+      canHandle: () => true,
+      handle: async () => {
+        throw Object.assign(new Error("HTTP 401: Unauthorized"), {
+          shouldRetry: false,
+        });
+      },
+    };
+    const processor = new QueueProcessor(
+      queue as never,
+      configService({}) as never,
+      [handler] as never,
+    );
+
+    await (processor as any).processMessage(
+      {
+        msg_id: 42,
+        read_ct: 1,
+        enqueued_at: new Date(),
+        vt: new Date(),
+        message: { type: "bookmark_process", data: {} },
+      },
+      { name: "bookmarks", pollInterval: 5000, maxRetries: 3, batchSize: 10 },
+    );
+
+    expect(archive).toHaveBeenCalledWith("bookmarks", 42);
   });
 });
 

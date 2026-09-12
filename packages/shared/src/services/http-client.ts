@@ -1,4 +1,21 @@
-const got = require("got").default || require("got");
+const gotModule = require("got");
+const got = gotModule.default || gotModule;
+
+function errorName(error: unknown): string | undefined {
+  return typeof error === "object" && error !== null && "name" in error
+    ? String((error as { name?: unknown }).name)
+    : undefined;
+}
+
+function errorResponse(error: unknown):
+  | { statusCode?: number; statusMessage?: string }
+  | undefined {
+  if (typeof error !== "object" || error === null || !("response" in error)) {
+    return undefined;
+  }
+  return (error as { response?: { statusCode?: number; statusMessage?: string } })
+    .response;
+}
 
 export interface HttpClient {
   /**
@@ -27,14 +44,14 @@ export interface HttpHeaders {
  * Robust HTTP client implementation using Got with retry logic and proper error handling
  */
 export class CosmicHttpClient implements HttpClient {
-  private readonly requestTimeout = 30000; // 30 seconds for complex sites
+  private readonly requestTimeout = 15000; // bounded even for unreachable hosts
 
   async fetch(url: string): Promise<HttpResponse> {
     try {
       const response = await got(url, {
         timeout: { request: this.requestTimeout },
         retry: {
-          limit: 3,
+          limit: 2,
           methods: ["GET"],
           statusCodes: [408, 413, 429, 500, 502, 503, 504, 521, 522, 524],
           calculateDelay: function ({ attemptCount }: any) {
@@ -107,13 +124,16 @@ export class CosmicHttpClient implements HttpClient {
         arrayBuffer: async () => Buffer.from(response.body).buffer,
       };
     } catch (error) {
-      if (error instanceof (got as any).TimeoutError) {
+      // Got 14 exposes error classes on the module namespace, not necessarily
+      // on its default request function. Shape checks also work across CJS/ESM
+      // boundaries and avoid instanceof undefined on Bun.
+      if (errorName(error) === "TimeoutError") {
         throw new Error("Request timeout: URL took too long to respond");
       }
-      if (error instanceof (got as any).HTTPError) {
-        const httpError = error as any;
+      const response = errorResponse(error);
+      if (errorName(error) === "HTTPError" && response) {
         throw new Error(
-          `HTTP ${httpError.response.statusCode}: ${httpError.response.statusMessage}`
+          `HTTP ${response.statusCode}: ${response.statusMessage || "Request denied"}`
         );
       }
       throw error;
