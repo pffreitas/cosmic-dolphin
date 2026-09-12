@@ -164,7 +164,16 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
     error: any,
     messageKey: string,
   ): Promise<void> {
-    const currentAttempts = this.retryAttempts.get(messageKey) || 0;
+    // pgmq owns the durable delivery count. The in-memory map is useful only
+    // within one worker lifetime; relying on it alone resets poison messages
+    // to attempt zero after every deploy and lets them monopolise the front of
+    // the queue forever. `read_ct` includes the current delivery, while
+    // `currentAttempts` is the number of deliveries already attempted.
+    const durableAttempts = Math.max(0, (message.read_ct || 1) - 1);
+    const currentAttempts = Math.max(
+      this.retryAttempts.get(messageKey) || 0,
+      durableAttempts,
+    );
     const shouldRetry = this.shouldRetryMessage(
       error,
       currentAttempts,

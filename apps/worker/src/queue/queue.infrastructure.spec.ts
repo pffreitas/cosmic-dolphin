@@ -118,6 +118,38 @@ describe("terminal message failures", () => {
 
     expect(archive).toHaveBeenCalledWith("bookmarks", 42);
   });
+
+  test("uses pgmq read count to exhaust retries across worker restarts", async () => {
+    const queue = {
+      deleteMessage: async () => undefined,
+      archiveMessage: async () => undefined,
+    };
+    const archive = spyOn(queue, "archiveMessage");
+    const handler = {
+      canHandle: () => true,
+      handle: async () => {
+        throw new Error("Bookmark not found");
+      },
+    };
+    const processor = new QueueProcessor(
+      queue as never,
+      configService({}) as never,
+      [handler] as never,
+    );
+
+    await (processor as any).processMessage(
+      {
+        msg_id: 43,
+        read_ct: 4,
+        enqueued_at: new Date(),
+        vt: new Date(),
+        message: { type: "bookmark_process", data: {} },
+      },
+      { name: "bookmarks", pollInterval: 5000, maxRetries: 3, batchSize: 10 },
+    );
+
+    expect(archive).toHaveBeenCalledWith("bookmarks", 43);
+  });
 });
 
 describe("pgmq RPC contracts", () => {
