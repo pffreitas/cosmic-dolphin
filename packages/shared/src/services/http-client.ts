@@ -17,6 +17,24 @@ function errorResponse(error: unknown):
     .response;
 }
 
+export function calculateHttpRetryDelay({
+  attemptCount,
+  computedValue,
+}: {
+  attemptCount: number;
+  computedValue: number;
+}): number {
+  // Got uses zero to signal that the error/status is not retryable or that
+  // `retry.limit` has been exhausted. A custom calculateDelay must preserve
+  // that decision; replacing zero with a positive delay retries forever.
+  if (computedValue === 0) return 0;
+
+  const baseDelay = 1000;
+  const exponentialDelay = baseDelay * Math.pow(2, attemptCount - 1);
+  const jitter = Math.random() * 1000;
+  return Math.min(exponentialDelay + jitter, 10000);
+}
+
 export interface HttpClient {
   /**
    * Fetch data from a URL
@@ -54,13 +72,7 @@ export class CosmicHttpClient implements HttpClient {
           limit: 2,
           methods: ["GET"],
           statusCodes: [408, 413, 429, 500, 502, 503, 504, 521, 522, 524],
-          calculateDelay: function ({ attemptCount }: any) {
-            const baseDelay = 1000;
-            const exponentialDelay = baseDelay * Math.pow(2, attemptCount - 1);
-            const jitter = Math.random() * 1000;
-            // backoffLimit is ignored when calculateDelay is provided, so cap explicitly
-            return Math.min(exponentialDelay + jitter, 10000);
-          },
+          calculateDelay: calculateHttpRetryDelay,
           backoffLimit: 10000,
         },
         headers: {
