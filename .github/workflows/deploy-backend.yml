@@ -174,4 +174,21 @@ jobs:
             doctl apps update "$APP_ID" --spec /tmp/worker-app-resolved.yml --wait
           else
             doctl apps create --spec /tmp/worker-app-resolved.yml --wait
+            APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep cosmic-dolphin-worker-nodejs | awk '{print $1}')
           fi
+
+          # App Platform can report a successful spec deployment even when the
+          # worker process immediately crash-loops. Preserve logs and require
+          # proof that the bookmarks poll loop started.
+          for attempt in $(seq 1 12); do
+            WORKER_LOGS=$(doctl apps logs "$APP_ID" cosmic-dolphin-worker-nodejs --type run --tail 200 2>&1 || true)
+            if printf '%s\n' "$WORKER_LOGS" | grep -q 'Starting to process queue: bookmarks'; then
+              printf '%s\n' "$WORKER_LOGS"
+              exit 0
+            fi
+            sleep 10
+          done
+
+          printf '%s\n' "$WORKER_LOGS"
+          echo 'Worker did not start the bookmarks queue within 120 seconds.' >&2
+          exit 1
