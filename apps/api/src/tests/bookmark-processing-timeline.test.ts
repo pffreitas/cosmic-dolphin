@@ -28,6 +28,11 @@ describe("GET /bookmarks/:id/processing-timeline", () => {
             ? { bookmark, isLikedByCurrentUser: true }
             : overrides.bookmarkResult
         ),
+        updateProcessingStatus: mock(async (_id, status, error) => ({
+          ...bookmark,
+          processingStatus: status,
+          processingError: error,
+        })),
       },
       bookmarkProcessing: {
         findLatestTimeline: mock(async () => overrides.timeline ?? null),
@@ -192,6 +197,52 @@ describe("GET /bookmarks/:id/processing-timeline", () => {
       throw new Error("Expected timeline response");
     }
 
+    expect(response.body.pollAfterMs).toBe(2000);
+  });
+
+  it("fails processing when no worker run starts within two minutes", async () => {
+    const staleBookmark = {
+      ...bookmark,
+      processingStartedAt: new Date(Date.now() - 2 * 60 * 1000 - 1),
+    };
+    const services = createServices({
+      bookmarkResult: { bookmark: staleBookmark, isLikedByCurrentUser: true },
+    });
+
+    const response = await buildBookmarkProcessingTimelineResponse(
+      services,
+      "bookmark-1",
+      "user-1"
+    );
+    if (response.statusCode) throw new Error("Expected timeline response");
+
+    expect(services.bookmark.updateProcessingStatus).toHaveBeenCalledWith(
+      "bookmark-1",
+      "failed",
+      "Processing could not start because the background worker is unavailable. Please try again."
+    );
+    expect(response.body.bookmark.processingStatus).toBe("failed");
+    expect(response.body.pollAfterMs).toBe(0);
+  });
+
+  it("keeps polling before the worker-start deadline", async () => {
+    const recentBookmark = {
+      ...bookmark,
+      processingStartedAt: new Date(Date.now() - 60 * 1000),
+    };
+    const services = createServices({
+      bookmarkResult: { bookmark: recentBookmark, isLikedByCurrentUser: false },
+    });
+
+    const response = await buildBookmarkProcessingTimelineResponse(
+      services,
+      "bookmark-1",
+      "user-1"
+    );
+    if (response.statusCode) throw new Error("Expected timeline response");
+
+    expect(services.bookmark.updateProcessingStatus).not.toHaveBeenCalled();
+    expect(response.body.bookmark.processingStatus).toBe("processing");
     expect(response.body.pollAfterMs).toBe(2000);
   });
 });

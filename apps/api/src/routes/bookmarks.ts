@@ -173,6 +173,10 @@ type BookmarkTimelineServices = Pick<
   "bookmark" | "bookmarkProcessing"
 >;
 
+const WORKER_START_DEADLINE_MS = 2 * 60 * 1000;
+const WORKER_START_FAILURE_MESSAGE =
+  "Processing could not start because the background worker is unavailable. Please try again.";
+
 type BookmarkQueueServices = Pick<
   ServiceContainer,
   "bookmark" | "queue" | "processingBudget"
@@ -261,10 +265,33 @@ export async function buildBookmarkProcessingTimelineResponse(
     bookmarkId,
     userId
   );
-  const bookmark = {
+  let bookmark = {
     ...result.bookmark,
     isLikedByCurrentUser: result.isLikedByCurrentUser,
   };
+
+  // The worker normally creates a run as its first durable action. If that
+  // never happens, polling is the only API traffic guaranteed to revisit the
+  // bookmark, so reconcile the optimistic `processing` state here instead of
+  // leaving the UI spinning forever.
+  if (
+    !timeline &&
+    bookmark.processingStatus === "processing" &&
+    bookmark.processingStartedAt &&
+    Date.now() - bookmark.processingStartedAt.getTime() >=
+      WORKER_START_DEADLINE_MS
+  ) {
+    const failedBookmark = await services.bookmark.updateProcessingStatus(
+      bookmarkId,
+      "failed",
+      WORKER_START_FAILURE_MESSAGE
+    );
+    bookmark = {
+      ...failedBookmark,
+      isLikedByCurrentUser: result.isLikedByCurrentUser,
+    };
+  }
+
   const hasRunningTimeline =
     timeline?.run.status === "running" ||
     timeline?.events.some((event) => event.status === "running") === true;
