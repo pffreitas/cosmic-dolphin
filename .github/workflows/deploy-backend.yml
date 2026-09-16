@@ -179,10 +179,12 @@ jobs:
 
           # App Platform can report a successful spec deployment even when the
           # worker process immediately crash-loops. Preserve logs and require
-          # proof that the bookmarks poll loop started.
+          # proof that the bookmarks poll loop started or handled work. Under a
+          # backlog, the startup marker can rotate out of the bounded log tail.
           for attempt in $(seq 1 12); do
             WORKER_LOGS=$(doctl apps logs "$APP_ID" cosmic-dolphin-worker-nodejs --type run --tail 200 2>&1 || true)
-            if printf '%s\n' "$WORKER_LOGS" | grep -q 'Starting to process queue: bookmarks'; then
+            if printf '%s\n' "$WORKER_LOGS" | grep -Eq \
+              'Starting to process queue: bookmarks|from queue bookmarks'; then
               printf '%s\n' "$WORKER_LOGS"
               exit 0
             fi
