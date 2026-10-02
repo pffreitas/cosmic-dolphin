@@ -70,7 +70,7 @@ import {
  * be carried out and says what it will do.
  */
 export function GlobalCommandDialog() {
-  const { open, setOpen } = useCommandDialog();
+  const { open, setOpen, seed } = useCommandDialog();
   const isMobile = useIsMobile();
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -159,8 +159,11 @@ export function GlobalCommandDialog() {
       setValue("");
       setItems([]);
       setSearching(false);
+      return;
     }
-  }, [open]);
+    // Opened from the omnibox with ⌘K: carry over what was typed there.
+    if (seed) setValue(seed);
+  }, [open, seed]);
 
   const go = React.useCallback(
     (href: string) => {

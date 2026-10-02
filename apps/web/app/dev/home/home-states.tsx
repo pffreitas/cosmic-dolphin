@@ -272,7 +272,7 @@ export function HomeStates() {
       </div>
 
       {state === "loading" ? (
-        <HomeFallback scope={FeedScope.ForYou} />
+        <HomeFallback scope={FeedScope.ForYou} readerName="Paulo Freitas" />
       ) : (
         <HomeView
           key={state}
@@ -293,6 +293,7 @@ export function HomeStates() {
           newUser={state === "new-user"}
           error={state === "error" ? "We couldn't reach your feed." : undefined}
           rail={state === "empty-scope" ? EMPTY_RAIL : RAIL}
+          readerName="Paulo Freitas"
         />
       )}
     </div>

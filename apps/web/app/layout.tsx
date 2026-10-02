@@ -114,7 +114,7 @@ export default async function RootLayout({
             One <ToastProvider> for the whole app, inside the store so anything
             that can dispatch can also confirm what it did. It sits at the root
             rather than on a route group because the thing that toasts most —
-            Save a link — lives in the header, above every route.
+            the omnibox's save — lives in the header, above every route.
           */}
           <ToastProvider>
             <CommandDialogProvider>
@@ -126,11 +126,7 @@ export default async function RootLayout({
                   disableTransitionOnChange
                 >
                   <div className="flex min-h-screen flex-col">
-                    <AppChrome
-                      isLoggedIn={isLoggedIn}
-                      user={headerUser}
-                      saveAction={isLoggedIn ? <NewBookmarkButton /> : undefined}
-                    />
+                    <AppChrome isLoggedIn={isLoggedIn} user={headerUser} />
 
                     {/*
                       `pb-28` on touch clears the bottom tab bar, which floats
@@ -144,9 +140,11 @@ export default async function RootLayout({
                       <div className="mx-auto w-full max-w-screen-xl">
                         {/*
                           The optimistic capture row. It sits above the page
-                          because Save a link is in the header and works from
+                          because the omnibox is in the header and works from
                           every route — the row has to appear wherever the paste
-                          happened. It renders nothing when nothing is in flight.
+                          happened. It renders nothing when nothing is in flight,
+                          and nothing on Home, which shows captures in its own
+                          *Saving now* strip.
                         */}
                         {isLoggedIn && <PendingCaptures />}
                         {children}
@@ -158,6 +156,13 @@ export default async function RootLayout({
                   {isLoggedIn && <BottomNavigation />}
 
                   <HandleClaimPrompt isLoggedIn={isLoggedIn} />
+
+                  {/*
+                    The Save a link dialog, without a trigger of its own: the
+                    omnibox saves directly, and the tab bar's Save and the
+                    omnibox's *Behind a login* open it (lib/chrome-actions.ts).
+                  */}
+                  {isLoggedIn && <NewBookmarkButton showTrigger={false} />}
 
                   <GlobalCommandDialog />
                   <GlobalKeyboardShortcuts />

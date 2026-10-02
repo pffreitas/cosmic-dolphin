@@ -374,3 +374,88 @@ export function feedEmptyCopy(scope: FeedScope): {
       };
   }
 }
+
+// ---------------------------------------------------------------------------
+// The morning edition — docs/design-system/pages.md § Home
+// ---------------------------------------------------------------------------
+
+export interface Edition {
+  /** Saves still processing. They go to *Saving now*, never into the ranking. */
+  saving: FeedBookmarkEntry[];
+  /** The first ranked bookmark that has finished processing. At most one. */
+  lead?: FeedBookmarkEntry;
+  /** Everything else, in the ranker's order: digests and rows. */
+  rest: FeedEntry[];
+}
+
+/**
+ * Split a ranked page into the edition's three places.
+ *
+ * The lead is the first *bookmark* that is not pending — never a digest (an AI
+ * callout at headline size would be the machine shouting) and never a save
+ * still being read (it has no summary to lead with). Everything else keeps
+ * its rank order; the split moves items between frames, it never re-ranks.
+ */
+export function splitEdition(entries: FeedEntry[]): Edition {
+  const saving: FeedBookmarkEntry[] = [];
+  const rest: FeedEntry[] = [];
+  let lead: FeedBookmarkEntry | undefined;
+
+  for (const entry of entries) {
+    if (entry.kind === "bookmark" && entry.variant === "pending") {
+      saving.push(entry);
+    } else if (!lead && entry.kind === "bookmark") {
+      lead = entry;
+    } else {
+      rest.push(entry);
+    }
+  }
+
+  return { saving, lead, rest };
+}
+
+/**
+ * "Good morning" — by the reader's clock.
+ *
+ * Like `formatUpdatedAt`, **never call this during the server pass**: the
+ * server's hour is not the reader's, and the mismatch would cost hydration.
+ */
+export function greetingFor(now: Date): string {
+  const hour = now.getHours();
+  if (hour >= 5 && hour < 12) return "Good morning";
+  if (hour >= 12 && hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+/** "Friday, 2 October" — the edition's kicker. Reader's clock and locale. */
+export function formatEditionDate(now: Date, locale?: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(now);
+}
+
+/**
+ * The first word of a display name, for the greeting. A handle-shaped name
+ * ("@maya", "maya.okafor") is used whole minus the sigil rather than guessed
+ * at — "Good morning, maya.okafor" is odd; "Good morning, Maya" from a guess
+ * that happened to be wrong is worse.
+ */
+export function greetingName(name: string | undefined): string | undefined {
+  const trimmed = name?.trim().replace(/^@/, "");
+  if (!trimmed) return undefined;
+  return /\s/.test(trimmed) ? trimmed.split(/\s+/)[0] : trimmed;
+}
+
+/** How the scope is ordered, in one clause — the edition's sub line. */
+export function scopeOrderCopy(scope: FeedScope): string {
+  switch (scope) {
+    case FeedScope.Following:
+      return "From people you follow, ranked for what you're likely to finish";
+    case FeedScope.Unread:
+      return "Your unread saves, newest first";
+    default:
+      return "Ranked for what you're likely to finish";
+  }
+}

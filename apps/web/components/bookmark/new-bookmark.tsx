@@ -18,6 +18,10 @@ import { clearErrors, saveCapture } from "@/lib/store/slices/bookmarksSlice";
 import { isCaptureUrl } from "@/lib/capture";
 import PrivateLinkDialog from "./private-link-dialog";
 import { useCaptureToast } from "./capture-toast";
+import {
+  OPEN_SAVE_DIALOG_EVENT,
+  type OpenSaveDialogDetail,
+} from "@/lib/chrome-actions";
 
 /**
  * Save a link.
@@ -40,7 +44,16 @@ import { useCaptureToast } from "./capture-toast";
  *   - a malformed URL, rejected inline at the field before any request;
  *   - a 429, which keeps the URL in the field and shows the wait.
  */
-export default function NewBookmarkButton() {
+export default function NewBookmarkButton({
+  showTrigger = true,
+}: {
+  /**
+   * The header no longer carries this button — the omnibox saves — so the
+   * layout mounts the dialog alone and reaches it through
+   * `openSaveDialog()`. Pages that want a visible **Save** keep the trigger.
+   */
+  showTrigger?: boolean;
+} = {}) {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [invalid, setInvalid] = useState(false);
@@ -133,16 +146,24 @@ export default function NewBookmarkButton() {
     }
   };
 
+  // The other doors in: the tab bar's **Save** and the omnibox's *Behind a
+  // login* (lib/chrome-actions.ts). ⌘K is not one of them any more — it
+  // belongs to the omnibox, and a second listener on the same chord opened
+  // this dialog and the palette at once.
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.metaKey && event.key === "k") {
-        event.preventDefault();
-        openDialog();
+    const handleOpen = (event: Event) => {
+      const detail = (event as CustomEvent<OpenSaveDialogDetail>).detail ?? {};
+      if (detail.privateLink && detail.url) {
+        setPrivateLinkUrl(detail.url);
+        setPrivateLinkDialogOpen(true);
+        return;
       }
+      openDialog();
+      if (detail.url) setUrl(detail.url);
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener(OPEN_SAVE_DIALOG_EVENT, handleOpen);
+    return () => window.removeEventListener(OPEN_SAVE_DIALOG_EVENT, handleOpen);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -242,15 +263,16 @@ export default function NewBookmarkButton() {
         url={privateLinkUrl}
       />
 
-      <Button
-        id="new-bookmark-button"
-        type="button"
-        variant="primary"
-        icon={<Bookmark aria-hidden="true" />}
-        onClick={openDialog}
-      >
-        Save Bookmark
-      </Button>
+      {showTrigger ? (
+        <Button
+          type="button"
+          variant="primary"
+          icon={<Bookmark aria-hidden="true" />}
+          onClick={openDialog}
+        >
+          Save a link
+        </Button>
+      ) : null}
     </>
   );
 }

@@ -5,8 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { AppHeader, AppHeaderUser } from "@/components/app-header";
+import { HeaderOmnibox } from "@/components/header-omnibox";
 import { Button } from "@/components/ui/button";
-import { useCommandDialog } from "@/components/providers/command-dialog-provider";
 
 /**
  * The header capsule, bound to the app — D18.
@@ -19,10 +19,10 @@ import { useCommandDialog } from "@/components/providers/command-dialog-provider
  *
  * Three things it deliberately does *not* do:
  *
- *  - **It does not render a second search field.** The capsule's search chip
- *    is a button that opens the palette. `command-dialog-trigger.tsx` used to
- *    sit beside the old header as a separate control; the capsule absorbed it,
- *    and two things that open the same palette is one thing too many.
+ *  - **It does not render a second field.** Signed in, the capsule's one
+ *    field is the omnibox — it saves a pasted link and searches anything else,
+ *    replacing both the search chip and the Save a link button. ⌘K focuses
+ *    it, and a second ⌘K opens the palette (`global-keyboard-shortcuts.tsx`).
  *  - **It does not carry a profile dropdown.** The avatar is a link to
  *    `/my/profile`, which is where the account lives now — sign-out included.
  *    A menu whose only two items are "Profile" and "Sign out" is a menu
@@ -37,13 +37,10 @@ export interface AppChromeProps {
   isLoggedIn: boolean;
   /** From the session, on the server. Absent when signed out. */
   user?: AppHeaderUser;
-  /** The save control. `NewBookmarkButton`, passed down so it stays a leaf. */
-  saveAction?: React.ReactNode;
 }
 
-export function AppChrome({ isLoggedIn, user, saveAction }: AppChromeProps) {
+export function AppChrome({ isLoggedIn, user }: AppChromeProps) {
   const pathname = usePathname();
-  const { toggle } = useCommandDialog();
 
   if (!isLoggedIn) {
     return (
@@ -68,11 +65,6 @@ export function AppChrome({ isLoggedIn, user, saveAction }: AppChromeProps) {
   }
 
   return (
-    <AppHeader
-      currentPath={pathname}
-      user={user}
-      onSearch={toggle}
-      action={saveAction}
-    />
+    <AppHeader currentPath={pathname} user={user} omnibox={<HeaderOmnibox />} />
   );
 }

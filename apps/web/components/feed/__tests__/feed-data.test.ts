@@ -6,9 +6,14 @@ import {
   dedupeEntries,
   feedEmptyCopy,
   feedHref,
+  formatEditionDate,
   formatUpdatedAt,
+  greetingFor,
+  greetingName,
   parseFeedScope,
   pipelineSteps,
+  scopeOrderCopy,
+  splitEdition,
   toFeedEntries,
 } from "../feed-data";
 
@@ -280,5 +285,60 @@ describe("formatUpdatedAt", () => {
     );
     // A clock that ran backwards is not a negative age.
     expect(formatUpdatedAt(at, after(-60_000))).toBe("Updated just now");
+  });
+});
+
+describe("splitEdition", () => {
+  const digestItem = {
+    type: "digest",
+    digest: { id: "d1", title: "Digest", summary: "…", keyPoints: [], sources: [] },
+  } as unknown as FeedItem;
+
+  it("sends pending saves to Saving now and leads with the first finished bookmark", () => {
+    const entries = toFeedEntries(
+      [
+        { bookmark: bookmark({ id: "p1", processingStatus: "processing" }) } as FeedItem,
+        digestItem,
+        { bookmark: bookmark({ id: "b1" }) } as FeedItem,
+        { bookmark: bookmark({ id: "b2" }) } as FeedItem,
+      ],
+      NOW
+    );
+    const edition = splitEdition(entries);
+
+    expect(edition.saving.map((entry) => entry.key)).toEqual(["bookmark:p1"]);
+    expect(edition.lead?.key).toBe("bookmark:b1");
+    // A digest never leads, and the split never re-ranks what it moves.
+    expect(edition.rest.map((entry) => entry.key)).toEqual(["digest:d1", "bookmark:b2"]);
+  });
+
+  it("has no lead when the page holds only digests", () => {
+    const edition = splitEdition(toFeedEntries([digestItem], NOW));
+    expect(edition.lead).toBeUndefined();
+    expect(edition.rest).toHaveLength(1);
+  });
+});
+
+describe("the edition header", () => {
+  it("greets by the reader's hour", () => {
+    expect(greetingFor(new Date(2026, 9, 2, 8))).toBe("Good morning");
+    expect(greetingFor(new Date(2026, 9, 2, 14))).toBe("Good afternoon");
+    expect(greetingFor(new Date(2026, 9, 2, 22))).toBe("Good evening");
+    expect(greetingFor(new Date(2026, 9, 2, 3))).toBe("Good evening");
+  });
+
+  it("dates the edition as weekday, day, month", () => {
+    expect(formatEditionDate(new Date(2026, 9, 2), "en-GB")).toBe("Friday 2 October");
+  });
+
+  it("uses the first word of a name and leaves a handle whole", () => {
+    expect(greetingName("Paulo Freitas")).toBe("Paulo");
+    expect(greetingName("@maya.okafor")).toBe("maya.okafor");
+    expect(greetingName("  ")).toBeUndefined();
+  });
+
+  it("says how each scope is ordered", () => {
+    expect(scopeOrderCopy(FeedScope.Unread)).toBe("Your unread saves, newest first");
+    expect(scopeOrderCopy(FeedScope.ForYou)).toMatch(/ranked/i);
   });
 });

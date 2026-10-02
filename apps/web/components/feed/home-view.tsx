@@ -24,10 +24,12 @@ import { useReshare } from "@/components/social/use-reshare";
 import { isCaptureUrl } from "@/lib/capture";
 import { BookmarksClientAPI } from "@/lib/api/bookmarks-client";
 import { FeedClientAPI } from "@/lib/api/feed-client";
-import { useAppDispatch } from "@/lib/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { saveCapture } from "@/lib/store/slices/bookmarksSlice";
 
-import { FeedItem, FeedItemSkeleton } from "./feed-item";
+import { FeedItem, FeedLeadSkeleton, FeedRowSkeleton } from "./feed-item";
+import { SavingNow, SavingRow } from "./saving-now";
+import { PendingCaptureRow } from "@/components/bookmark/pending-captures";
 import {
   FEED_SCOPES,
   FeedBookmarkEntry,
@@ -35,26 +37,35 @@ import {
   dedupeEntries,
   feedEmptyCopy,
   feedHref,
+  formatEditionDate,
   formatUpdatedAt,
+  greetingFor,
+  greetingName,
+  scopeOrderCopy,
+  splitEdition,
   toFeedEntries,
 } from "./feed-data";
-import { HomeRail, HomeRailProps, HomeRailSkeleton } from "./home-rail";
+import { HomeRail, HomeRailProps, HomeRailSkeleton, PickUp } from "./home-rail";
 
 /**
  * Home — `/my/dashboard`, docs/design-system/pages.md § Home.
  *
- * The page is a two-column grid: `minmax(0,1fr) 268px` with a 32px gap and
- * 24px of page padding, the feed column capped at 680px, and **the rail gone
- * entirely below 900px**. That last one is a promise as well as a breakpoint —
- * nothing in the rail is unique, so a narrow window costs the reader a
- * shortcut and never a destination.
+ * **The morning edition.** One 1100px column that reads top-down: the edition
+ * header (date, greeting, how this scope is ordered, the scope control), what
+ * is *Saving now*, what to *Pick up where you left off*, and then the feed —
+ * the first ranked bookmark as the `lead`, digests as AI callouts, everything
+ * else as `row`s — beside a 260px rail that is **gone entirely below 900px**.
+ * That last one is a promise as well as a breakpoint: nothing in the rail is
+ * unique, so a narrow window costs the reader a shortcut and never a
+ * destination.
  *
  * Three things in here exist because of the hydration trap, and all three
  * would be invisible if they were wrong: the page would screenshot perfectly
  * and every control on it would be dead.
  *
- *  - **"Updated n min ago"** is the difference between two clocks, one of
- *    which does not exist during the server pass. It renders only after mount.
+ *  - **"Updated n min ago", the date and the greeting** are the reader's
+ *    clock, which does not exist during the server pass. They render only
+ *    after mount, into lines that already hold their height.
  *  - **The offline strip** reads `navigator.onLine`, which the server cannot
  *    know. Same guard.
  *  - **Relative times on the rows** are formatted on the server, once, in
@@ -78,6 +89,8 @@ export interface HomeViewProps {
    */
   newUser: boolean;
   rail: HomeRailProps;
+  /** The reader's display name, for the greeting. */
+  readerName?: string;
   /** Suppresses every network call — the states gallery and the tests. */
   offline?: boolean;
   /**
@@ -97,33 +110,69 @@ export interface HomeViewProps {
    --------------------------------------------------------------------------- */
 
 /**
- * The grid, in one place so the fallback and the view cannot drift.
+ * The page and its grid, in one place so the fallback and the view cannot
+ * drift.
  *
- * `min-[900px]` rather than a Tailwind screen: 900 is where 680 + 32 + 268
- * stops fitting, which is a fact about this page and not about the breakpoint
- * scale.
+ * `min-[900px]` rather than a Tailwind screen: 900 is where 720 + 40 + 260
+ * stops fitting with page padding, which is a fact about this page and not
+ * about the breakpoint scale.
  */
-const HOME_GRID =
-  "grid grid-cols-1 gap-8 py-6 min-[900px]:grid-cols-[minmax(0,1fr)_268px]";
+const EDITION = "mx-auto flex w-full max-w-[1100px] flex-col gap-7 pb-10 pt-4";
 
-/** 680px, per the spec. The column is centred in whatever space it gets. */
-const FEED_COLUMN = "flex min-w-0 max-w-[680px] flex-col";
+const HOME_GRID = cn(
+  "grid grid-cols-1 gap-10 border-t border-line pt-7",
+  "min-[900px]:grid-cols-[minmax(0,720px)_260px] min-[900px]:justify-between",
+);
+
+const FEED_COLUMN = "flex min-w-0 flex-col";
 
 /* ---------------------------------------------------------------------------
-   The scope control and its meta line
+   The edition header
    --------------------------------------------------------------------------- */
 
-function ScopeBar({
+/**
+ * Date, greeting, how this scope is ordered, and the scope control.
+ *
+ * Everything clock-shaped arrives one paint after hydration (see the note at
+ * the top of this file), so every line here reserves its height up front: a
+ * header that grows into existence would push the whole edition down under
+ * the reader's cursor. Before mount the greeting is a plain "Hello" — true at
+ * any hour — rather than an empty heading a screen reader would skip.
+ */
+function EditionHeader({
   scope,
   onScopeChange,
-  meta,
+  readerName,
+  now,
+  updated,
 }: {
   scope: FeedScope;
   onScopeChange?: (scope: FeedScope) => void;
-  meta?: React.ReactNode;
+  readerName?: string;
+  /** The reader's clock. Absent during the server pass. */
+  now?: Date;
+  updated?: string;
 }) {
+  const name = greetingName(readerName);
+  const greeting = now ? greetingFor(now) : "Hello";
+
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pb-4">
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex min-w-0 flex-col gap-1.5">
+        <p className="m-0 min-h-[14px] font-sans text-[12px] font-semibold uppercase leading-none tracking-[.08em] text-fg-tertiary">
+          {now ? formatEditionDate(now) : null}
+        </p>
+        <h1 className="m-0 font-serif text-[29px] font-semibold leading-[1.2] tracking-[-.01em] text-fg max-[640px]:text-2xl">
+          {name ? `${greeting}, ${name}` : greeting}
+        </h1>
+        <p
+          className="m-0 min-h-5 font-sans text-[13.5px] leading-[1.5] text-fg-secondary"
+          aria-live="off"
+        >
+          {scopeOrderCopy(scope)}
+          {updated ? ` · ${updated.charAt(0).toLowerCase()}${updated.slice(1)}` : null}
+        </p>
+      </div>
       <Segmented
         aria-label="Feed scope"
         value={scope}
@@ -135,17 +184,6 @@ function ScopeBar({
           </SegmentedItem>
         ))}
       </Segmented>
-      {/*
-        Reserves its line whether or not it has text yet. The meta appears one
-        paint after hydration, and a line that grows into existence would push
-        the first feed item down under the reader's cursor.
-      */}
-      <p
-        className="m-0 min-h-4 font-sans text-[12.5px] leading-[1.4] text-fg-tertiary"
-        aria-live="off"
-      >
-        {meta}
-      </p>
     </div>
   );
 }
@@ -215,11 +253,14 @@ function BookmarkRow({
   offline,
   onComment,
   menu,
+  frame = "row",
 }: {
   entry: FeedBookmarkEntry;
   offline: boolean;
   onComment: () => void;
   menu: React.ReactNode;
+  /** The edition's two scales: the page's one `lead`, or a `row` after it. */
+  frame?: "lead" | "row";
 }) {
   const reshare = useReshare({
     bookmarkId: entry.bookmarkId,
@@ -280,28 +321,9 @@ function BookmarkRow({
     savedLabel: entry.own ? "In your library" : "Saved",
   };
 
-  if (entry.variant === "video") {
-    return (
-      <FeedItem
-        variant="video"
-        href={entry.href}
-        title={entry.title}
-        provenance={provenance}
-        menu={menu}
-        summary={entry.summary}
-        tags={entry.tags}
-        readingTime={entry.readingTime}
-        rankingReason={entry.rankingReason}
-        thumbnailUrl={entry.thumbnailUrl}
-        duration={entry.duration}
-        watchHref={entry.href}
-        social={social}
-      />
-    );
-  }
-
   return (
     <FeedItem
+      variant={frame}
       href={entry.href}
       title={entry.title}
       provenance={provenance}
@@ -312,11 +334,54 @@ function BookmarkRow({
       rankingReason={entry.rankingReason}
       thumbnailUrl={entry.thumbnailUrl}
       privateLink={entry.privateLink}
+      // A video keeps its **Watch with summary** at either scale.
+      watchHref={entry.variant === "video" ? entry.href : undefined}
       // A partially-failed run goes where the brief would have been. The item
       // stays usable and the original link still opens.
       steps={entry.steps}
       social={social}
     />
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   Saving now
+   --------------------------------------------------------------------------- */
+
+/**
+ * Every save in flight: the reader's optimistic captures (the omnibox's
+ * pastes, newest first) and the feed's own `pending` items.
+ *
+ * A capture the server has accepted is also, one refresh later, a pending
+ * item in the feed — the same save twice. The capture wins: it is the row the
+ * reader watched appear, and it carries the Retry and Dismiss the feed row
+ * does not.
+ */
+function SavingNowStrip({ pending }: { pending: FeedBookmarkEntry[] }) {
+  const captures = useAppSelector((state) => state.bookmarks.captures);
+  const captured = new Set(
+    captures.map((capture) => capture.bookmarkId).filter(Boolean)
+  );
+
+  return (
+    <SavingNow>
+      {captures.map((capture) => (
+        <PendingCaptureRow key={capture.id} capture={capture} compact />
+      ))}
+      {pending
+        .filter((entry) => !captured.has(entry.bookmarkId))
+        .map((entry) => (
+          <SavingRow
+            key={entry.key}
+            href={entry.href}
+            title={entry.title}
+            domain={entry.domain ?? ""}
+            faviconUrl={entry.faviconUrl}
+            timestamp={entry.savedAt}
+            steps={entry.steps}
+          />
+        ))}
+    </SavingNow>
   );
 }
 
@@ -463,6 +528,7 @@ export function HomeView({
   error,
   newUser,
   rail,
+  readerName,
   offline = false,
   forceOffline = false,
 }: HomeViewProps) {
@@ -509,6 +575,14 @@ export function HomeView({
     const id = window.setInterval(() => setTick((value) => value + 1), 30_000);
     return () => window.clearInterval(id);
   }, []);
+
+  // The reader's clock, for the date and the greeting. Same mounted gate, same
+  // tick: an edition left open past noon should stop saying "Good morning".
+  const readerNow = React.useMemo(
+    () => (mounted ? new Date() : undefined),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mounted, tick]
+  );
 
   const updatedLabel = React.useMemo(
     () => (mounted ? formatUpdatedAt(computedAt, new Date()) : ""),
@@ -656,138 +730,169 @@ export function HomeView({
     );
   }
 
+  const edition = splitEdition(entries);
+
+  const renderBookmark = (entry: FeedBookmarkEntry, frame: "lead" | "row") => (
+    <BookmarkRow
+      key={entry.key}
+      entry={entry}
+      frame={frame}
+      offline={offline || isOffline}
+      onComment={() => setCommentsFor(entry)}
+      menu={
+        <FeedbackMenu
+          entry={entry}
+          onNotInterested={() => notInterested(entry)}
+          onFewerFromDomain={() => fewerFromDomain(entry)}
+          onMuteTopic={() => muteTopic(entry)}
+        />
+      }
+    />
+  );
+
+  const empty = !edition.lead && edition.rest.length === 0 && !pageError;
+
   return (
-    <div className="px-6">
-      <div className={HOME_GRID}>
-        <section className={FEED_COLUMN}>
-          {/*
-            The offline strip. Persistent — it is not a toast, because the
-            condition does not pass on its own — and it sits above the items
-            rather than instead of them: what is on screen was fetched and is
-            still readable.
-          */}
-          {isOffline ? (
-            <div
-              role="status"
-              className={cn(
-                "mb-4 flex items-start gap-2 rounded-md border border-line bg-bg-subtle px-3.5 py-2.5"
-              )}
-            >
-              <WifiOff
-                aria-hidden="true"
-                className="mt-px size-3.5 shrink-0 text-[color:var(--cd-warning)] [stroke-width:1.7]"
+    <div className="px-6 max-[640px]:px-0">
+      <div className={EDITION}>
+        {/*
+          The offline strip. Persistent — it is not a toast, because the
+          condition does not pass on its own — and it sits above the edition
+          rather than instead of it: what is on screen was fetched and is
+          still readable.
+        */}
+        {isOffline ? (
+          <div
+            role="status"
+            className="flex items-start gap-2 rounded-md border border-line bg-bg-subtle px-3.5 py-2.5"
+          >
+            <WifiOff
+              aria-hidden="true"
+              className="mt-px size-3.5 shrink-0 text-[color:var(--cd-warning)] [stroke-width:1.7]"
+            />
+            <p className="m-0 font-sans text-[12.5px] leading-[1.5] text-fg-secondary">
+              <b className="font-medium text-fg">You&apos;re offline.</b>{" "}
+              These are the items already loaded. Nothing new arrives, and
+              likes and saves wait until you&apos;re back.
+            </p>
+          </div>
+        ) : null}
+
+        <EditionHeader
+          scope={scope}
+          onScopeChange={(next) => router.push(feedHref(next))}
+          readerName={readerName}
+          now={readerNow}
+          updated={updatedLabel}
+        />
+
+        <SavingNowStrip pending={edition.saving} />
+
+        <PickUp entries={rail.continueReading} />
+
+        <div className={HOME_GRID}>
+          <section aria-label="Feed" className={FEED_COLUMN}>
+            {empty ? (
+              <EmptyState
+                ground
+                icon={Inbox}
+                title={feedEmptyCopy(scope).title}
+                description={feedEmptyCopy(scope).description}
+                action={
+                  scope === FeedScope.ForYou ? null : (
+                    <Button
+                      size="sm"
+                      onClick={() => router.push(feedHref(FeedScope.ForYou))}
+                    >
+                      Back to For you
+                    </Button>
+                  )
+                }
               />
-              <p className="m-0 font-sans text-[12.5px] leading-[1.5] text-fg-secondary">
-                <b className="font-medium text-fg">You&apos;re offline.</b>{" "}
-                These are the items already loaded. Nothing new arrives, and
-                likes and saves wait until you&apos;re back.
-              </p>
-            </div>
-          ) : null}
+            ) : (
+              <>
+                {edition.lead ? (
+                  <div className="pb-6">{renderBookmark(edition.lead, "lead")}</div>
+                ) : null}
 
-          <ScopeBar
-            scope={scope}
-            onScopeChange={(next) => router.push(feedHref(next))}
-            meta={updatedLabel}
-          />
+                {edition.rest.length > 0 ? (
+                  <div className="flex flex-col">
+                    {edition.lead ? (
+                      <h2 className="m-0 pb-1 font-sans text-[11px] font-semibold uppercase leading-none tracking-[.07em] text-fg-tertiary">
+                        More for you
+                      </h2>
+                    ) : null}
+                    {edition.rest.map((entry) =>
+                      entry.kind === "digest" ? (
+                        // A digest keeps its own frame — the AI callout — with
+                        // air above and below so it does not read as a row.
+                        <FeedItem
+                          key={entry.key}
+                          variant="digest"
+                          className="my-4"
+                          href={entry.href}
+                          title={entry.title}
+                          summary={entry.summary}
+                          keyPoints={entry.keyPoints}
+                          sources={entry.sources}
+                          rankingReason={entry.rankingReason}
+                          social={{
+                            likeCount: entry.likeCount,
+                            liked: entry.liked,
+                            shareUrl: entry.shareUrl,
+                            itemTitle: entry.title,
+                          }}
+                        />
+                      ) : (
+                        renderBookmark(entry, "row")
+                      )
+                    )}
+                  </div>
+                ) : null}
+              </>
+            )}
 
-          {entries.length === 0 && !pageError ? (
-            <EmptyState
-              ground
-              icon={Inbox}
-              title={feedEmptyCopy(scope).title}
-              description={feedEmptyCopy(scope).description}
-              action={
-                scope === FeedScope.ForYou ? null : (
+            {/*
+              The error panel. Below whatever is already on screen, never in
+              place of it, and it carries the one thing worth pressing.
+            */}
+            {pageError ? (
+              <div className="mt-4 rounded-md border border-line bg-bg-subtle p-5">
+                <p className="m-0 font-sans text-[13.5px] leading-[1.55] text-fg">
+                  {pageError}
+                </p>
+                <p className="m-0 pt-1 font-sans text-[12.5px] leading-[1.5] text-fg-secondary">
+                  Nothing is lost — everything above is still here.
+                </p>
+                <div className="pt-3">
                   <Button
                     size="sm"
-                    onClick={() => router.push(feedHref(FeedScope.ForYou))}
-                  >
-                    Back to For you
-                  </Button>
-                )
-              }
-            />
-          ) : (
-            <div className="flex flex-col">
-              {entries.map((entry) =>
-                entry.kind === "digest" ? (
-                  <FeedItem
-                    key={entry.key}
-                    variant="digest"
-                    href={entry.href}
-                    title={entry.title}
-                    summary={entry.summary}
-                    keyPoints={entry.keyPoints}
-                    sources={entry.sources}
-                    rankingReason={entry.rankingReason}
-                    social={{
-                      likeCount: entry.likeCount,
-                      liked: entry.liked,
-                      shareUrl: entry.shareUrl,
-                      itemTitle: entry.title,
+                    loading={loadingMore}
+                    onClick={() => {
+                      setPageError(undefined);
+                      if (cursor) void loadMore();
+                      else router.refresh();
                     }}
-                  />
-                ) : (
-                  <BookmarkRow
-                    key={entry.key}
-                    entry={entry}
-                    offline={offline || isOffline}
-                    onComment={() => setCommentsFor(entry)}
-                    menu={
-                      <FeedbackMenu
-                        entry={entry}
-                        onNotInterested={() => notInterested(entry)}
-                        onFewerFromDomain={() => fewerFromDomain(entry)}
-                        onMuteTopic={() => muteTopic(entry)}
-                      />
-                    }
-                  />
-                )
-              )}
-            </div>
-          )}
-
-          {/*
-            The error panel. Below whatever is already on screen, never in
-            place of it, and it carries the one thing worth pressing.
-          */}
-          {pageError ? (
-            <div className="mt-2 rounded-md border border-line bg-bg-subtle p-5">
-              <p className="m-0 font-sans text-[13.5px] leading-[1.55] text-fg">
-                {pageError}
-              </p>
-              <p className="m-0 pt-1 font-sans text-[12.5px] leading-[1.5] text-fg-secondary">
-                Nothing is lost — everything above is still here.
-              </p>
-              <div className="pt-3">
-                <Button
-                  size="sm"
-                  loading={loadingMore}
-                  onClick={() => {
-                    setPageError(undefined);
-                    if (cursor) void loadMore();
-                    else router.refresh();
-                  }}
-                >
-                  Retry
-                </Button>
+                  >
+                    Retry
+                  </Button>
+                </div>
               </div>
-            </div>
-          ) : null}
+            ) : null}
 
-          {/*
-            The sentinel: a skeleton feed item that is both the trigger and the
-            signal. No "Load more" button — Home has no pagination controls.
-          */}
-          {cursor && !pageError ? (
-            <div ref={sentinelRef} aria-hidden="true">
-              <FeedItemSkeleton />
-            </div>
-          ) : null}
-        </section>
+            {/*
+              The sentinel: a skeleton row that is both the trigger and the
+              signal. No "Load more" button — Home has no pagination controls.
+            */}
+            {cursor && !pageError ? (
+              <div ref={sentinelRef} aria-hidden="true">
+                <FeedRowSkeleton />
+              </div>
+            ) : null}
+          </section>
 
-        <HomeRail {...rail} />
+          <HomeRail topics={rail.topics} people={rail.people} />
+        </div>
       </div>
 
       {/*
@@ -807,26 +912,34 @@ export function HomeView({
 }
 
 /**
- * Loading — three skeleton feed items, and a rail whose labels are already
- * readable (docs/design-system/pages.md § Home).
+ * Loading — the edition header with its scope control live, a skeleton lead,
+ * three skeleton rows, and a rail whose labels are already readable
+ * (docs/design-system/pages.md § Home).
  *
- * The scope control is in here too and is not a skeleton: it is the one
- * control on the page that works before the data does, and greying it out
- * would make the page look further from ready than it is.
+ * The scope control is not a skeleton: it is the one control on the page that
+ * works before the data does, and greying it out would make the page look
+ * further from ready than it is.
  */
-export function HomeFallback({ scope }: { scope: FeedScope }) {
+export function HomeFallback({
+  scope,
+  readerName,
+}: {
+  scope: FeedScope;
+  readerName?: string;
+}) {
   return (
-    <div className="px-6">
-      <div className={HOME_GRID}>
-        <section className={FEED_COLUMN} aria-busy="true">
-          <ScopeBar scope={scope} />
-          <div className="flex flex-col">
-            <FeedItemSkeleton />
-            <FeedItemSkeleton />
-            <FeedItemSkeleton />
-          </div>
-        </section>
-        <HomeRailSkeleton />
+    <div className="px-6 max-[640px]:px-0">
+      <div className={EDITION}>
+        <EditionHeader scope={scope} readerName={readerName} />
+        <div className={HOME_GRID}>
+          <section className={FEED_COLUMN} aria-busy="true">
+            <FeedLeadSkeleton className="pb-6" />
+            <FeedRowSkeleton />
+            <FeedRowSkeleton />
+            <FeedRowSkeleton />
+          </section>
+          <HomeRailSkeleton />
+        </div>
       </div>
     </div>
   );

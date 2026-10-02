@@ -24,6 +24,7 @@ import { ActionRow } from "@/components/social/action-row";
 import { CommentDrawer } from "@/components/social/comment-drawer";
 import { useReshare } from "@/components/social/use-reshare";
 import { AppHeader } from "@/components/app-header";
+import { HeaderOmnibox } from "@/components/header-omnibox";
 import {
   LibraryList,
   LibraryRow,
@@ -513,16 +514,15 @@ export function PatternsGallery() {
           index="05"
           title="Header capsule"
           file="components/app-header.tsx"
-          lede="A content-sized opaque glass capsule floating directly on the page. Below 900px the grid collapses and the capsule squares off; resize the window to see it."
+          lede="A content-sized opaque glass capsule floating directly on the page, carrying one omnibox that saves a pasted link and searches anything else. Below 1000px the destination labels drop to glyphs; below 900px the capsule wraps and the omnibox takes its own row. Resize the window to see both."
         >
-          <Case label="Home active" bare>
-            <div className="overflow-hidden rounded-lg border border-line">
+          <Case label="Home active · omnibox (paste a link to see it switch to Save)" bare>
+            <div className="rounded-lg border border-line pb-24">
               <AppHeader
                 className="pt-4"
                 currentPath="/my/dashboard"
                 user={{ name: "Paulo Freitas" }}
-                onSearch={() => undefined}
-                onSave={() => undefined}
+                omnibox={<HeaderOmnibox />}
               />
               <div className="bg-bg px-[18px] py-3.5">
                 <p className="m-0 font-sans text-[12.5px] leading-[1.4] text-fg-secondary">

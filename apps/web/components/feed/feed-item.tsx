@@ -45,6 +45,12 @@ import { Thumbnail } from "@/components/bookmark/thumbnail";
  *
  * Never a comment thread inline. Never a "trending" badge. Never an entrance
  * animation. Never two digests within one screenful.
+ *
+ * Two more shapes carry Home's morning edition (docs/design-system/pages.md
+ * § Home): `lead`, the top-ranked item at title-1 with its image leading, and
+ * `row`, everything after it as separator rows at title-3. Same anatomy, same
+ * order — only the scale and the frame change, so a reader who learned one
+ * item has learned all of them.
  */
 
 export type FeedItemVariant = "article" | "video" | "digest" | "pending";
@@ -132,6 +138,17 @@ export type FeedItemProps =
       watchHref?: string;
     } & FeedItemContent)
   | ({
+      /** Home's top-ranked item. One per page. */
+      variant: "lead";
+      /** Adds **Watch with summary** — a video can lead too. */
+      watchHref?: string;
+    } & FeedItemContent)
+  | ({
+      /** Home's tail: a separator row, not a panel. */
+      variant: "row";
+      watchHref?: string;
+    } & FeedItemContent)
+  | ({
       variant: "digest";
       /** Badge label: "This week in your library". */
       label?: React.ReactNode;
@@ -162,24 +179,36 @@ const MAX_TAGS = 3;
 
 const PANEL = "rounded-md border border-line bg-bg-panel p-4";
 
+/** foundations.md § Typography: title-1 (29px), title-2 (20px), title-3 (17px). */
+const TITLE_SIZE = {
+  1: "text-[29px] leading-[1.2] tracking-[-.01em] [text-wrap:balance]",
+  2: "text-xl leading-[1.3] tracking-[-.005em]",
+  3: "text-[17px] leading-[1.35]",
+} as const;
+
 function Title({
   href,
   title,
   privateLink,
+  size = 2,
   className,
 }: {
   href: string;
   title: string;
   privateLink?: boolean;
+  size?: keyof typeof TITLE_SIZE;
   className?: string;
 }) {
+  // The lead is the page's headline; everything else is an item within it.
+  const Heading = size === 1 ? "h2" : "h3";
   return (
-    <h3 className={cn("m-0 min-w-0", className)}>
+    <Heading className={cn("m-0 min-w-0", className)}>
       <Link
         href={href}
         className={cn(
           "flex items-start gap-2 rounded-xs",
-          "font-serif text-xl font-semibold leading-[1.3] tracking-[-.005em] text-fg",
+          "font-serif font-semibold text-fg",
+          TITLE_SIZE[size],
           "hover:underline hover:decoration-line-strong hover:underline-offset-[3px]",
           focusRing,
         )}
@@ -187,12 +216,15 @@ function Title({
         {privateLink ? (
           <Lock
             aria-hidden="true"
-            className="mt-1.5 size-4 shrink-0 text-fg-tertiary [stroke-width:1.7]"
+            className={cn(
+              "shrink-0 text-fg-tertiary [stroke-width:1.7]",
+              size === 1 ? "mt-2.5 size-5" : size === 3 ? "mt-1 size-3.5" : "mt-1.5 size-4",
+            )}
           />
         ) : null}
-        <span className="line-clamp-2">{title}</span>
+        <span className={size === 1 ? "line-clamp-3" : "line-clamp-2"}>{title}</span>
       </Link>
-    </h3>
+    </Heading>
   );
 }
 
@@ -326,6 +358,11 @@ function FeedItem(props: FeedItemProps) {
     );
   }
 
+  // ---- lead & row --------------------------------------------------------
+  if (variant === "lead" || variant === "row") {
+    return <EditionItem {...(props as EditionItemProps)} />;
+  }
+
   // ---- article & video ---------------------------------------------------
   const {
     href,
@@ -423,6 +460,167 @@ function FeedItem(props: FeedItemProps) {
 }
 FeedItem.displayName = "FeedItem";
 
+type EditionItemProps = Extract<FeedItemProps, { variant: "lead" | "row" }>;
+
+/**
+ * `lead` and `row` — the morning edition's two scales of the same item.
+ *
+ * `lead`: no panel. The image leads at full width × 300 *when there is one* —
+ * a 300px placeholder wash would be decoration, and thumbnails are evidence,
+ * not ornament (decisions.md #9). Then provenance, a title-1 title, the
+ * summary at 15px within 62ch, tags, why, and the action row.
+ *
+ * `row`: a separator row on Home's tail — title-3, a two-line summary in
+ * body-sm, and an 88×64 thumbnail that always holds its box so the list stays
+ * scannable.
+ */
+function EditionItem(props: EditionItemProps) {
+  const {
+    variant,
+    href,
+    title,
+    provenance,
+    menu,
+    summary,
+    tags,
+    readingTime,
+    rankingReason,
+    thumbnailUrl,
+    social,
+    privateLink,
+    steps,
+    onRetry,
+    watchHref,
+    className,
+  } = props;
+
+  const lead = variant === "lead";
+
+  const actions =
+    social || watchHref ? (
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {social ? (
+          <ActionRow {...social} itemTitle={social.itemTitle ?? title} />
+        ) : (
+          <span />
+        )}
+        {watchHref ? (
+          <Button size="sm" asChild>
+            <Link href={watchHref}>Watch with summary</Link>
+          </Button>
+        ) : null}
+      </div>
+    ) : null;
+
+  const brief = privateLink ? (
+    <PrivateLinkNote />
+  ) : summary ? (
+    <p
+      className={cn(
+        "m-0 font-sans text-fg-secondary [text-wrap:pretty]",
+        lead
+          ? "line-clamp-4 max-w-[62ch] text-[15px] leading-[1.65]"
+          : "line-clamp-2 text-[13.5px] leading-[1.55]",
+      )}
+    >
+      {summary}
+    </p>
+  ) : null;
+
+  const progress =
+    steps && steps.length > 0 ? (
+      <ProcessingSteps steps={steps} onRetry={onRetry} announceLabel={title} />
+    ) : null;
+
+  if (lead) {
+    return (
+      <article className={cn("flex flex-col gap-3.5", className)}>
+        {thumbnailUrl ? (
+          <Thumbnail
+            src={thumbnailUrl}
+            className="h-[300px] w-full rounded-md max-[640px]:h-[180px]"
+          />
+        ) : null}
+        <TopRow provenance={provenance} menu={menu} className="mb-0" />
+        <Title
+          href={href}
+          title={title}
+          privateLink={privateLink}
+          size={1}
+          className="max-[640px]:[&_a]:text-2xl"
+        />
+        {brief}
+        {progress}
+        <Tags tags={tags} readingTime={readingTime} />
+        <WhyThisAppeared reason={rankingReason} />
+        {actions}
+      </article>
+    );
+  }
+
+  return (
+    <article
+      className={cn(
+        "-mx-2 flex items-start gap-4 rounded-sm border-b border-line px-2 py-4",
+        "transition-colors duration-cd-fast ease-cd hover:bg-bg-subtle",
+        className,
+      )}
+    >
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <TopRow provenance={provenance} menu={menu} className="mb-0" />
+        <Title href={href} title={title} privateLink={privateLink} size={3} />
+        {brief}
+        {progress}
+        <Tags tags={tags} readingTime={readingTime} />
+        <WhyThisAppeared reason={rankingReason} />
+        {actions}
+      </div>
+      <Thumbnail
+        src={thumbnailUrl}
+        className="mt-8 h-16 w-[88px] rounded-md max-[640px]:hidden"
+      />
+    </article>
+  );
+}
+
+/**
+ * The tail's loading row — the `row` variant's geometry, so the skeleton
+ * sentinel that triggers the next page sits exactly where a row will land.
+ */
+function FeedRowSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("flex items-start gap-4 border-b border-line py-4", className)}>
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Skeleton className="size-4 rounded-xs" />
+          <Skeleton shape="line" className="h-3 w-40" />
+        </div>
+        <Skeleton className="h-[17px] w-[64%] rounded-xs" />
+        <Skeleton shape="line" className="w-[92%]" />
+        <Skeleton shape="line" className="w-[70%]" />
+      </div>
+      <Skeleton shape="thumb" className="mt-8 h-16 w-[88px] shrink-0 rounded-md max-[640px]:hidden" />
+    </div>
+  );
+}
+
+/** The lead's loading shape: image box, provenance, a two-line headline. */
+function FeedLeadSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("flex flex-col gap-3.5", className)}>
+      <Skeleton shape="thumb" className="h-[300px] w-full rounded-md max-[640px]:h-[180px]" />
+      <div className="flex items-center gap-2">
+        <Skeleton className="size-4 rounded-xs" />
+        <Skeleton shape="line" className="h-3 w-48" />
+      </div>
+      <Skeleton className="h-7 w-[86%] rounded-xs" />
+      <Skeleton className="h-7 w-[52%] rounded-xs" />
+      <Skeleton shape="line" className="w-[90%]" />
+      <Skeleton shape="line" className="w-[76%]" />
+    </div>
+  );
+}
+
 /**
  * The loading item. Mirrors the article variant's geometry — provenance line,
  * 20px title, three summary lines, tag row, 132×88 thumbnail — so nothing
@@ -453,4 +651,4 @@ function FeedItemSkeleton({ className }: { className?: string }) {
   );
 }
 
-export { FeedItem, FeedItemSkeleton };
+export { FeedItem, FeedItemSkeleton, FeedLeadSkeleton, FeedRowSkeleton };

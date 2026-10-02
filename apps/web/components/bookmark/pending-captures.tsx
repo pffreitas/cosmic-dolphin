@@ -1,12 +1,14 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 import { Sparkles, X } from "lucide-react";
 import type { Bookmark } from "@cosmic-dolphin/api-client";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { FeedItem } from "@/components/feed/feed-item";
+import { SavingRow } from "@/components/feed/saving-now";
 import type {
   ProcessingPhase,
   ProcessingStep,
@@ -95,11 +97,14 @@ function CaptureRow({
   steps,
   onRetry,
   action,
+  compact,
 }: {
   capture: PendingCapture;
   steps: ProcessingStep[];
   onRetry?: (phase: ProcessingPhase) => void;
   action?: React.ReactNode;
+  /** A row in Home's *Saving now* strip rather than a full pending item. */
+  compact?: boolean;
 }) {
   const dispatch = useAppDispatch();
   const failed = capture.status === "failed";
@@ -110,6 +115,38 @@ function CaptureRow({
   const href = capture.bookmarkId
     ? `/bookmarks/${capture.bookmarkId}`
     : capture.url;
+
+  const dismiss = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      aria-label="Dismiss"
+      onClick={() => dispatch(captureDismissed(capture.id))}
+    >
+      <X aria-hidden="true" />
+    </Button>
+  );
+
+  if (compact) {
+    return (
+      <SavingRow
+        href={href}
+        title={capture.title}
+        domain={capture.domain}
+        faviconUrl={capture.faviconUrl}
+        timestamp={failed ? "could not be saved" : "just now"}
+        steps={steps}
+        onRetry={onRetry}
+        actions={
+          <>
+            {action}
+            {dismiss}
+          </>
+        }
+      />
+    );
+  }
 
   return (
     <FeedItem
@@ -124,15 +161,7 @@ function CaptureRow({
       menu={
         <span className="flex items-center gap-1">
           {action}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Dismiss"
-            onClick={() => dispatch(captureDismissed(capture.id))}
-          >
-            <X aria-hidden="true" />
-          </Button>
+          {dismiss}
         </span>
       }
       steps={steps}
@@ -146,7 +175,13 @@ function CaptureRow({
  * A capture the server has accepted. The checklist is now the run's own
  * events, and **Retry** on a failed line reprocesses that phase alone.
  */
-function SavedCaptureRow({ capture }: { capture: PendingCapture }) {
+function SavedCaptureRow({
+  capture,
+  compact,
+}: {
+  capture: PendingCapture;
+  compact?: boolean;
+}) {
   const seed = React.useMemo(() => seedBookmark(capture), [capture]);
   const { bookmark, steps } = useBookmarkProcessingTimeline(
     capture.bookmarkId!,
@@ -173,6 +208,7 @@ function SavedCaptureRow({ capture }: { capture: PendingCapture }) {
   return (
     <CaptureRow
       capture={capture}
+      compact={compact}
       steps={idle && !requested ? UNPROCESSED_STEPS : steps}
       onRetry={(phase) => void reprocess(phase)}
       action={
@@ -192,11 +228,18 @@ function SavedCaptureRow({ capture }: { capture: PendingCapture }) {
   );
 }
 
-export function PendingCaptureRow({ capture }: { capture: PendingCapture }) {
+export function PendingCaptureRow({
+  capture,
+  compact,
+}: {
+  capture: PendingCapture;
+  /** A row in Home's *Saving now* strip rather than a full pending item. */
+  compact?: boolean;
+}) {
   const dispatch = useAppDispatch();
 
   if (capture.status === "saved" && capture.bookmarkId) {
-    return <SavedCaptureRow capture={capture} />;
+    return <SavedCaptureRow capture={capture} compact={compact} />;
   }
 
   const failed = capture.status === "failed";
@@ -204,6 +247,7 @@ export function PendingCaptureRow({ capture }: { capture: PendingCapture }) {
   return (
     <CaptureRow
       capture={capture}
+      compact={compact}
       steps={failed ? failedSteps(capture.error) : SAVING_STEPS}
       onRetry={
         failed
@@ -225,13 +269,21 @@ export function PendingCaptureRow({ capture }: { capture: PendingCapture }) {
 }
 
 /**
+ * The route that shows captures itself — Home's *Saving now* strip
+ * (docs/design-system/pages.md § Home). Everywhere else they sit above the page.
+ */
+export const HOME_PATH = "/my/dashboard";
+
+/**
  * Every capture in flight, newest first. Renders nothing when there are none,
- * so it can sit above any list without reserving space.
+ * so it can sit above any list without reserving space — and nothing on Home,
+ * where the same captures render inside the edition instead of on top of it.
  */
 export function PendingCaptures({ className }: { className?: string }) {
   const captures = useAppSelector((state) => state.bookmarks.captures);
+  const pathname = usePathname();
 
-  if (captures.length === 0) return null;
+  if (captures.length === 0 || pathname === HOME_PATH) return null;
 
   return (
     <div className={cn("mb-3", className)}>

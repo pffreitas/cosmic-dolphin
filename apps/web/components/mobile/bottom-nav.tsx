@@ -6,7 +6,7 @@ import { Home, Library, Plus, Search, User } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { focusRing } from "@/components/ui/focus-ring";
-import { useCommandDialog } from "@/components/providers/command-dialog-provider";
+import { focusOmnibox, openSaveDialog } from "@/lib/chrome-actions";
 
 /**
  * The bottom tab bar — the header capsule's touch half.
@@ -18,10 +18,11 @@ import { useCommandDialog } from "@/components/providers/command-dialog-provider
  * Add and Explore, which left the account unreachable on touch and offered no
  * search at all.
  *
- * Save reaches the header's dialog rather than owning a second one. There is
- * one **Save a link** dialog in the product and this bar is a second door to
- * it, not a second copy of it — two dialogs would be two rate-limit states and
- * two definitions of a valid URL.
+ * Save reaches the one **Save a link** dialog rather than owning a second one —
+ * two dialogs would be two rate-limit states and two definitions of a valid
+ * URL. Search focuses the header omnibox, which is on screen at every width;
+ * the command palette is desktop chrome and renders nothing on touch, so the
+ * tab used to open nothing at all.
  */
 interface BottomNavLink {
   kind: "link";
@@ -55,12 +56,12 @@ const LINKS: Omit<BottomNavLink, "icon">[] = [
 
 export function BottomNavigation() {
   const pathname = usePathname();
-  const { toggle } = useCommandDialog();
-
-  const openSave = () => {
-    // The header's trigger. Reaching for it by id keeps this bar a leaf: it
-    // has no dialog, no rate-limit state and no idea what a valid URL is.
-    document.getElementById("new-bookmark-button")?.click();
+  // Both doors are named in lib/chrome-actions.ts, which keeps this bar a
+  // leaf: it has no dialog, no rate-limit state and no idea what a valid URL is.
+  const openSave = () => openSaveDialog();
+  const openSearch = () => {
+    window.scrollTo({ top: 0 });
+    focusOmnibox();
   };
 
   const items: (BottomNavLink | BottomNavAction)[] = [
@@ -76,7 +77,7 @@ export function BottomNavigation() {
       kind: "action",
       label: "Search",
       icon: <Search aria-hidden="true" />,
-      onPress: toggle,
+      onPress: openSearch,
     },
     {
       kind: "link",

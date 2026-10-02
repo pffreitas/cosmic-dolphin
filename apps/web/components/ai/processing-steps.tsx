@@ -60,6 +60,14 @@ export interface ProcessingStepsProps
    * row moved when several are processing at once.
    */
   announceLabel?: string;
+  /**
+   * `stack` — one line per phase, the default inside feed and library items.
+   * `inline` — the phases side by side at 12.5px, for Home's *Saving now*
+   * strip, where a save is one row among several and four stacked lines would
+   * push the edition below the fold. Below 640px only the line that matters
+   * (the active or failed one) stays visible.
+   */
+  layout?: "stack" | "inline";
 }
 
 function Marker({ state }: { state: ProcessingStepState }) {
@@ -122,7 +130,15 @@ const STATE_TEXT: Record<ProcessingStepState, string> = {
 
 const ProcessingSteps = React.forwardRef<HTMLDivElement, ProcessingStepsProps>(
   (
-    { className, steps, onRetry, retryLabel = "Retry", announceLabel, ...props },
+    {
+      className,
+      steps,
+      onRetry,
+      retryLabel = "Retry",
+      announceLabel,
+      layout = "stack",
+      ...props
+    },
     ref,
   ) => {
     const failed = steps.find((step) => step.state === "failed");
@@ -145,14 +161,29 @@ const ProcessingSteps = React.forwardRef<HTMLDivElement, ProcessingStepsProps>(
         <p role="status" aria-live="polite" className="sr-only">
           {announcement}
         </p>
-        <ol className="m-0 flex list-none flex-col gap-[9px] p-0">
+        <ol
+          className={cn(
+            "m-0 flex list-none p-0",
+            layout === "inline"
+              ? "flex-row flex-wrap items-center gap-x-4 gap-y-1.5"
+              : "flex-col gap-[9px]",
+          )}
+        >
           {steps.map((step) => (
             <li
               key={step.phase}
               className={cn(
-                "flex min-w-0 flex-wrap items-center gap-[9px]",
-                "font-sans text-[13px] leading-[1.4]",
+                "flex min-w-0 flex-wrap items-center",
+                layout === "inline"
+                  ? "gap-[7px] text-[12.5px]"
+                  : "gap-[9px] text-[13px]",
+                "font-sans leading-[1.4]",
                 STATE_TEXT[step.state],
+                layout === "inline" &&
+                  steps.length > 1 &&
+                  step.state !== "active" &&
+                  step.state !== "failed" &&
+                  "max-[640px]:hidden",
               )}
             >
               <Marker state={step.state} />

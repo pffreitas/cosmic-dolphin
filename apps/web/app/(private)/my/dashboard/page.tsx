@@ -6,6 +6,7 @@ import { FeedAPI } from "@/lib/api/feed";
 import { HomeFallback, HomeView } from "@/components/feed/home-view";
 import { parseFeedScope, toFeedEntries } from "@/components/feed/feed-data";
 import type { HomeRailProps } from "@/components/feed/home-rail";
+import { createClient } from "@/utils/supabase/server";
 
 /**
  * Home — `/my/dashboard`, the ranked feed.
@@ -37,22 +38,43 @@ export default async function HomePage({
 }) {
   const scope = parseFeedScope((await searchParams).scope);
 
+  // For the edition's greeting. The session is already in hand on the server,
+  // so the greeting renders with the name on the first paint rather than
+  // waiting for a profile request — the same derivation the header uses.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const readerName: string | undefined =
+    user?.user_metadata?.full_name ??
+    user?.user_metadata?.name ??
+    user?.email?.split("@")[0];
+
   return (
-    <main className="mx-auto w-full max-w-screen-lg">
+    <main className="mx-auto w-full max-w-screen-xl">
       {/*
         Keyed on the scope so a switch tears the list down rather than
         animating one ranking's items into another's. The fallback holds the
         real geometry: the scope control, three skeleton items, and a rail
         whose labels are already readable.
       */}
-      <Suspense key={scope} fallback={<HomeFallback scope={scope} />}>
-        <HomeData scope={scope} />
+      <Suspense
+        key={scope}
+        fallback={<HomeFallback scope={scope} readerName={readerName} />}
+      >
+        <HomeData scope={scope} readerName={readerName} />
       </Suspense>
     </main>
   );
 }
 
-async function HomeData({ scope }: { scope: FeedScope }) {
+async function HomeData({
+  scope,
+  readerName,
+}: {
+  scope: FeedScope;
+  readerName?: string;
+}) {
   // Four independent reads, one round trip's worth of waiting. The rail cannot
   // render without its own data and the column cannot render without the feed,
   // so serialising them would only make the page slower.
@@ -117,6 +139,7 @@ async function HomeData({ scope }: { scope: FeedScope }) {
           : undefined
       }
       rail={railProps}
+      readerName={readerName}
     />
   );
 }

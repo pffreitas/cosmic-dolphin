@@ -9,7 +9,10 @@ import { focusRing } from "@/components/ui/focus-ring";
 /**
  * Home's rail — docs/design-system/pages.md § Home.
  *
- * Continue reading · Your topics this week · People you follow.
+ * Your topics this week · People you follow. Continue reading used to open the
+ * rail; the morning edition moved it to the top of the page as *Pick up where
+ * you left off* (`PickUp`, below), because finishing is what the ranker is
+ * tuned for and the thing it optimises should not sit in the margin.
  *
  * **Nothing here is unique.** Below 900px the rail is not rendered at all, and
  * the page's definition of done says that costs the reader nothing — so every
@@ -77,11 +80,17 @@ function Section({
 }
 
 /** The one place in the rail that is not a link list: a row plus its meter. */
-function ProgressMeter({ percent }: { percent: number }) {
+function ProgressMeter({
+  percent,
+  className,
+}: {
+  percent: number;
+  className?: string;
+}) {
   const clamped = Math.min(100, Math.max(0, percent));
   return (
     <div
-      className="mt-1.5 h-1 w-full overflow-hidden rounded-pill bg-bg-inset"
+      className={cn("mt-1.5 h-1 w-full overflow-hidden rounded-pill bg-bg-inset", className)}
       role="progressbar"
       aria-valuenow={clamped}
       aria-valuemin={0}
@@ -96,16 +105,71 @@ function ProgressMeter({ percent }: { percent: number }) {
   );
 }
 
-const RAIL_LINK = cn(
-  "block rounded-xs font-sans text-[13px] leading-[1.4] text-fg",
-  "hover:underline hover:decoration-line-strong hover:underline-offset-[3px]",
-  focusRing
-);
-
 const EMPTY_NOTE =
   "m-0 font-sans text-[12.5px] leading-[1.5] text-fg-tertiary";
 
-export function HomeRail({ continueReading, topics, people }: HomeRailProps) {
+/**
+ * *Pick up where you left off* — the edition's block 3.
+ *
+ * Up to three in-progress saves as bordered cards: a title-3 title and a meter
+ * with the time left. Absent when nothing is part-read — an empty block above
+ * the lead would be the page apologising before it has said anything. Below
+ * 640px the cards become a snapping horizontal strip, so three of them cost
+ * one row of a phone screen rather than three.
+ */
+export function PickUp({ entries }: { entries: ContinueReadingEntry[] }) {
+  if (entries.length === 0) return null;
+
+  return (
+    <section aria-labelledby="home-pickup" className="min-w-0">
+      {/*
+        No "see all" link: Library has no in-progress filter to land on, and a
+        link to a view that ignores its own query string is a link that lies.
+      */}
+      <h2
+        id="home-pickup"
+        className="m-0 pb-3 font-sans text-[11px] font-semibold uppercase leading-none tracking-[.07em] text-fg-tertiary"
+      >
+        Pick up where you left off
+      </h2>
+      <ul
+        className={cn(
+          "m-0 grid list-none gap-3 p-0",
+          "grid-cols-[repeat(auto-fit,minmax(min(240px,100%),1fr))]",
+          "max-[640px]:-mx-4 max-[640px]:auto-cols-[78%] max-[640px]:grid-flow-col max-[640px]:grid-cols-none",
+          "max-[640px]:snap-x max-[640px]:snap-mandatory max-[640px]:overflow-x-auto max-[640px]:px-4",
+        )}
+      >
+        {entries.map((entry) => (
+          <li key={entry.bookmarkId} className="min-w-0 snap-start">
+            <Link
+              href={entry.href}
+              className={cn(
+                "group flex h-full flex-col gap-3.5 rounded-md border border-line bg-bg-panel px-4 py-3.5",
+                "transition-colors duration-cd-fast ease-cd hover:border-line-strong",
+                focusRing,
+              )}
+            >
+              <span className="line-clamp-2 font-serif text-[17px] font-semibold leading-[1.35] text-fg group-hover:underline group-hover:decoration-line-strong group-hover:underline-offset-[3px]">
+                {entry.title}
+              </span>
+              <span className="mt-auto flex items-center gap-2.5">
+                <span className="min-w-0 flex-1">
+                  <ProgressMeter percent={entry.percent} className="mt-0" />
+                </span>
+                <span className="shrink-0 font-sans text-[12.5px] leading-none text-fg-tertiary">
+                  {entry.timeLeft ?? `${entry.percent}% read`}
+                </span>
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+export function HomeRail({ topics, people }: Omit<HomeRailProps, "continueReading">) {
   return (
     <aside
       aria-label="Reading context"
@@ -116,50 +180,27 @@ export function HomeRail({ continueReading, topics, people }: HomeRailProps) {
       */
       className="flex min-w-0 flex-col gap-7 max-[900px]:hidden"
     >
-      <Section label="Continue reading">
-        {continueReading.length === 0 ? (
-          <p className={EMPTY_NOTE}>
-            Nothing part-read. Open a save and it appears here.
-          </p>
-        ) : (
-          <ul className="m-0 flex list-none flex-col gap-3 p-0">
-            {continueReading.map((entry) => (
-              <li key={entry.bookmarkId} className="min-w-0">
-                <Link href={entry.href} className={RAIL_LINK}>
-                  <span className="line-clamp-2 font-serif">{entry.title}</span>
-                </Link>
-                <ProgressMeter percent={entry.percent} />
-                <p className="m-0 pt-1 font-sans text-[11.5px] leading-[1.4] text-fg-tertiary">
-                  <span className="font-mono">{entry.percent}%</span>
-                  {entry.timeLeft ? ` · ${entry.timeLeft}` : null}
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
-
       <Section label="Your topics this week">
         {topics.length === 0 ? (
           <p className={EMPTY_NOTE}>
             Topics appear once the pipeline has tagged a few saves.
           </p>
         ) : (
-          <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0">
+          <ul className="-mx-2 m-0 flex list-none flex-col p-0">
             {topics.map((topic) => (
               <li key={topic.topic}>
                 <Link
                   href={topic.href}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-pill border border-line bg-bg-subtle px-2.5 py-1",
-                    "font-sans text-[12px] leading-none text-fg-secondary",
-                    "transition-colors duration-cd-fast ease-cd hover:bg-bg-inset hover:text-fg",
+                    "flex items-baseline justify-between gap-3 rounded-sm px-2 py-[7px]",
+                    "font-sans text-[13.5px] leading-[1.3] text-fg",
+                    "transition-colors duration-cd-fast ease-cd hover:bg-bg-subtle",
                     focusRing
                   )}
                 >
-                  {topic.topic}
-                  <span className="font-mono text-[11px] text-fg-tertiary">
-                    {topic.count}
+                  <span className="min-w-0 truncate">{topic.topic}</span>
+                  <span className="shrink-0 font-sans text-[12.5px] text-fg-tertiary">
+                    {topic.count === 1 ? "1 save" : `${topic.count} saves`}
                   </span>
                 </Link>
               </li>
@@ -228,26 +269,13 @@ export function HomeRailSkeleton() {
       aria-busy="true"
       className="flex min-w-0 flex-col gap-7 max-[900px]:hidden"
     >
-      <Section label="Continue reading">
-        <div className="flex flex-col gap-4">
-          {[0, 1, 2].map((index) => (
-            <div key={index} className="flex flex-col gap-1.5">
-              <Skeleton shape="line" className="w-[88%]" />
-              <Skeleton className="h-1 w-full rounded-pill" />
-              <Skeleton shape="line" className="h-2.5 w-16" />
-            </div>
-          ))}
-        </div>
-      </Section>
-
       <Section label="Your topics this week">
-        <div className="flex flex-wrap gap-1.5">
-          {[64, 88, 52, 72].map((width, index) => (
-            <Skeleton
-              key={index}
-              className="h-[22px] rounded-pill"
-              style={{ width }}
-            />
+        <div className="flex flex-col gap-3 py-1">
+          {[88, 64, 76, 52].map((width, index) => (
+            <div key={index} className="flex items-center justify-between gap-3">
+              <Skeleton shape="line" style={{ width }} />
+              <Skeleton shape="line" className="h-2.5 w-12" />
+            </div>
           ))}
         </div>
       </Section>

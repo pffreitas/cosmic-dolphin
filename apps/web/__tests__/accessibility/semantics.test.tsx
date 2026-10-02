@@ -195,8 +195,32 @@ describe("nav marks where you are", () => {
     const nav = html.match(/<nav[^>]*>/)?.[0];
 
     expect(nav).toBeTruthy();
-    expect(nav).toContain("inline-grid");
+    expect(nav).toContain("inline-flex");
     expect(nav).toContain("w-fit");
+  });
+
+  it("names every destination even when only its glyph is showing", () => {
+    // Below 1000px the labels are visually hidden. The link keeps its name.
+    const html = render(<AppHeader currentPath="/my/library" />);
+    for (const label of ["Home", "Library", "Explore"]) {
+      expect(html).toContain(`aria-label="${label}"`);
+    }
+  });
+
+  it("carries the omnibox instead of a search chip and a Save button", () => {
+    const html = render(
+      <AppHeader
+        currentPath="/my/dashboard"
+        omnibox={<input id="header-omnibox" aria-label="Omnibox" />}
+        onSearch={() => undefined}
+        onSave={() => undefined}
+      />,
+    );
+    expect(html).toContain('id="header-omnibox"');
+    // One text field in the capsule, and nothing beside it that also searches
+    // or saves.
+    expect(html).not.toContain(">Search<");
+    expect(html).not.toContain("Save a link");
   });
 
   it("puts the header capsule in a <nav> and marks the current destination", () => {
