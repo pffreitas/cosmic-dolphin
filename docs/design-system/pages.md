@@ -12,22 +12,37 @@ Routes below map to `apps/web/app/`.
 The algorithmically ranked social feed. See
 [functional-spec/05-feed.md](../functional-spec/05-feed.md) for ranking behaviour.
 
-**Layout** — header capsule; then a two-column grid, `minmax(0,1fr) 268px`, 32px gap, 24px page
-padding. Feed column caps at 680px. Below 900px the rail drops entirely; nothing in it is unique.
+**The morning edition.** Home reads top-down like an edition: what's arriving, what you were halfway
+through, the one thing most worth your time, then the rest. Every block answers *what should I read
+now* before the next one is asked.
 
-**Feed column** — a scope segmented control (For you / Following / Unread) with a "Updated *n* min
-ago" `meta` on the right, then the feed items. Infinite scroll with a skeleton feed item as the
-sentinel; no pagination controls.
+**Layout** — header capsule; then a single 1100px column with 24px page padding, holding, in order:
 
-**Rail** — Continue reading (up to 3 in-progress saves with percentage and time left) · Your topics
-this week (tags, linking into Library filtered) · People you follow (up to 5, with weekly save
-counts).
+1. **Edition header** — a `label`-style kicker with the reader's date ("Friday, 2 October"), a
+   `title-1` greeting by time of day ("Good morning, Paulo"), and one `body-sm` line saying how the
+   scope is ordered plus "updated *n* min ago". The scope segmented control (For you / Following /
+   Unread) sits on the right, bottom-aligned. Date, greeting and the updated time are the reader's
+   clock, so they render after mount.
+2. **Saving now** — one `--cd-bg-subtle` bordered strip, a hairline between rows: each in-flight
+   save (optimistic captures and the feed's `pending` items, de-duplicated) as favicon · `title-3`
+   title (clamp 1) · time, with staged AI progress laid out inline on the right. Absent when nothing
+   is in flight. On Home this replaces the global pending rows above the page.
+3. **Pick up where you left off** — up to 3 in-progress saves as bordered cards in an auto-fit grid
+   (`minmax(240px,1fr)`): `title-3` title (clamp 2) and a progress meter with the time left. A
+   horizontally scrolling, snapping strip below 640px. Absent when nothing is part-read.
+4. **The feed and its rail** — below a hairline, a grid of `minmax(0,720px) 260px`, 40px gap. The
+   first ranked bookmark renders as the feed item's `lead` variant; digests stay AI callouts; every
+   other bookmark is a `row`. Infinite scroll with a skeleton row as the sentinel; no pagination
+   controls. Below 900px the rail drops entirely; nothing in it is unique.
+
+**Rail** — Your topics this week (rows of topic · "*n* saves", linking into search) · People you
+follow (up to 5, with weekly save counts).
 
 **States**
 
 | State | Treatment |
 | --- | --- |
-| Loading | Three skeleton feed items. The rail renders its labels immediately with skeleton rows beneath. |
+| Loading | The edition header with the scope control live, a skeleton `lead`, and three skeleton rows. The rail renders its labels immediately with skeleton rows beneath. |
 | Empty (new user) | Display-size hero: "Save your first link." A URL input with the primary CTA, and three suggested sources. The rail is hidden. |
 | Empty (scope filter) | Inline empty state inside the feed column; the segmented control stays. |
 | Error | Inline panel with the reason and a **Retry** button. Never replace the whole page. |

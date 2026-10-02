@@ -91,7 +91,7 @@ Implemented as a radiogroup: `role="radiogroup"` on the trough, `aria-checked` o
 ## Kbd
 
 `--cd-font-mono`, 11px, `--cd-border-strong` with a 2px bottom border, `--cd-radius-xs`. Used in the
-header search chip and the command palette. Shortcuts are shown, not hidden — this product is for
+header omnibox and the command palette. Shortcuts are shown, not hidden — this product is for
 people who will learn them.
 
 ---
@@ -141,7 +141,9 @@ destructive action is the primary in a destructive dialog, filled `--cd-danger`.
 
 ## Command palette
 
-`cmdk`, already a dependency. Opens on `⌘K` / `Ctrl-K`. `--cd-bg-panel`, `--cd-radius-md`,
+`cmdk`, already a dependency. `⌘K` / `Ctrl-K` first focuses the header omnibox; pressing it again
+from the omnibox opens the palette with the typed text carried over (patterns.md § Header capsule).
+`--cd-bg-panel`, `--cd-radius-md`,
 `--cd-shadow-dialog`, 560px wide, anchored 15vh from the top.
 
 Sections in fixed order: **Actions** (Save a link, Go to Library), **Your saves** (title match, with

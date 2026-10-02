@@ -14,21 +14,26 @@ Build all seven **before** refactoring any page.
 An opaque glass capsule floating directly on the page. Its layered colour, edge highlight and cool
 shadow create depth without allowing page content to show through.
 
-**Anatomy** — a content-sized three-column grid, `auto auto auto`:
+**Anatomy** — a content-sized row, left to right:
 
-| Column | Contents |
+| Slot | Contents |
 | --- | --- |
-| Left | Brandmark: 20px dolphin emoji, then "Cosmic Dolphin" at 14px/600. |
-| Centre | Destinations: Home, Library, Explore. |
-| Right | Search chip, **Save a link** (primary pill), avatar. |
+| Brand | Brandmark: 20px dolphin emoji, then "Cosmic Dolphin" at 14px/600. |
+| Destinations | Home, Library, Explore — each a 15px glyph plus its label. |
+| Divider | 1px × 20px `--cd-border`. Separates where you go from what you do. |
+| Omnibox | One field that both saves and searches. See below. |
+| Avatar | Links to `/my/profile`. |
 
-The inline grid shrink-wraps these columns so the capsule never expands beyond its contents. The
-header centres that capsule and provides only clear spacing around it.
+The capsule shrink-wraps its contents and never expands beyond them. The header centres that capsule
+and provides only clear spacing around it.
+
+Signed out, and on `/s/[slug]`, the destinations and omnibox are absent and an `action` slot takes
+their place (Sign in / Sign up, or **Save to your library**).
 
 **Surface**
 
 ```
-padding:        8px 8px 8px 18px
+padding:        6px 6px 6px 16px
 border-radius:  --cd-radius-pill
 background:     --cd-nav-glass          /* layered, fully opaque gradient */
 border:         1px solid --cd-nav-edge
@@ -37,15 +42,34 @@ box-shadow:     --cd-nav-shadow, inset 0 1px 0 --cd-nav-sheen
 
 There is no band or other full-width surface behind the capsule.
 
+**The omnibox** — `components/header-omnibox.tsx`. A real text input, 440px wide, 38px tall, pill,
+`--cd-bg-panel` with a 1px `--cd-border-strong` hairline that turns `--cd-accent` on focus.
+
+- **A URL saves.** When the value parses as a capture URL (`lib/capture.ts`), the leading glyph
+  becomes a link, the `⌘K` hint is replaced by a small primary **Save** pill, and Enter hands the
+  URL to `saveCapture`. The field clears at once and the optimistic row appears under Home's
+  *Saving now* (or above the page on any other route). Saving never blocks.
+- **Words search.** Anything else goes to `/search?q=` on Enter.
+- **It says what Enter will do before you press it.** A popover under the field, open while it has
+  focus, carries one sentence: the default instruction, "Press Enter to save every.to", or "Press
+  Enter to search your library for …". A rate-limit answer lands here too, with the URL left in the
+  field.
+- **Behind a login** — for a URL, the popover offers the private-link save, which opens the Save a
+  link dialog with the URL already in it.
+- **`⌘K` focuses the omnibox.** Pressing it again while the omnibox has focus opens the command
+  palette with the typed text carried over — the palette stays the place for collections, people
+  and navigation, one keystroke further away.
+
 **States** — active destination gets `--cd-nav-pill` fill and `--cd-fg` text, with
-`aria-current="page"`. Inactive links are `--cd-fg-secondary`, going `--cd-fg` on hover. The search
-chip is a button that opens the command palette, not a real input.
+`aria-current="page"`. Inactive links are `--cd-fg-secondary`, going `--cd-fg` on hover.
 
-**Responsive** — below 900px the grid collapses to a single column, the capsule squares off to
-`--cd-radius-lg`, and destinations move into a bottom tab bar on mobile (Home, Library, Save,
-Search, You).
+**Responsive** — below 1000px destination labels drop and only the glyphs remain (each keeps its
+`aria-label`). Below 900px the capsule wraps, squares off to `--cd-radius-lg`, and the omnibox takes a
+full-width second row. Below 768px destinations move into the bottom tab bar (Home, Library, Save,
+Search, You); **Save** opens the Save a link dialog and **Search** focuses the omnibox.
 
-**Don't:** put page-level actions in the capsule. Grow it past 56px. Stretch it to the viewport.
+**Don't:** put page-level actions in the capsule. Add a second text field beside the omnibox. Grow the
+first row past 56px. Stretch it to the viewport.
 
 ---
 
@@ -76,9 +100,11 @@ Thumbnail (132×88, `--cd-radius-md`) sits right of blocks 2–6, in the same fl
 | `video` | Thumbnail leads at full width × 210 above the title, with a mono duration badge bottom-right. A **Watch with summary** secondary button joins the action row. |
 | `digest` | The panel border and padding are dropped (`.feed-item--ai`); the AI callout *is* the frame. See below. |
 | `pending` | Title plus staged AI progress in place of the summary, and a skeleton thumbnail. Appears the instant a link is saved. |
+| `lead` | Home's top-ranked item. No panel: the thumbnail leads at full width × 300 (`--cd-radius-md`), then the provenance row, a `title-1` title (clamp 3), the summary at `body` 15px within 62ch, tags, *why this appeared* and the action row. One per page, never a digest or a pending save. |
+| `row` | The rest of Home's feed, as `divide-y` separator rows rather than panels: `title-3` title (clamp 2), summary in `body-sm` (clamp 2), a `meta` provenance line with reading time, tags, *why this appeared*, the action row, and an 88×64 thumbnail on the right. Same anatomy order as the base; only the scale drops. |
 
 **Don't:** render a comment thread inline. Show a "trending" badge. Animate items in. Stack two
-digests within one screenful.
+digests within one screenful. Render more than one `lead`.
 
 ---
 

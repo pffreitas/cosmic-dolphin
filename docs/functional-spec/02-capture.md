@@ -13,7 +13,8 @@ worker and streams into a row that is already on screen.
 
 | Entry point | Status | Behaviour |
 | --- | --- | --- |
-| Header **Save a link** | exists (restyle) | Opens a URL field in a dialog. `⌘V` into an empty field submits on paste. |
+| Header omnibox | new | The header's one field. A URL saves on Enter; anything else searches. Replaces the header's **Save a link** button. |
+| **Save a link** dialog | exists (restyle) | Opened by the mobile tab bar's **Save** and the omnibox's *Behind a login*. `⌘V` into an empty field submits on paste. |
 | Command palette | exists | Typing a URL surfaces "Save this link" as the first action. |
 | `/my/library` empty state | new | The URL field is the empty state's primary action. |
 | Feed **Save** action | new | Reshare — see [06-social.md](./06-social.md#reshare). |
