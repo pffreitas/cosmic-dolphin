@@ -76,11 +76,37 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
+// Stubbed for the avatar's reason above: both are hoisted to the workspace
+// root and bind the root's React. The account menu's contents are not what
+// these tests assert; its trigger is.
+vi.mock("next-themes", () => ({
+  useTheme: () => ({ theme: "light", setTheme: () => undefined }),
+}));
+vi.mock("@/components/ui/dropdown-menu", () => {
+  const Pass = ({ children }: { children?: ReactNode }) => <>{children}</>;
+  return {
+    DropdownMenu: Pass,
+    DropdownMenuContent: () => null,
+    DropdownMenuItem: Pass,
+    DropdownMenuLabel: Pass,
+    DropdownMenuRadioGroup: Pass,
+    DropdownMenuRadioItem: Pass,
+    DropdownMenuSeparator: () => null,
+    DropdownMenuTrigger: ({ children }: { children?: ReactNode }) => (
+      <button type="button">{children}</button>
+    ),
+  };
+});
+
+// A server action module; the sidebar only hands it to a <form>.
+vi.mock("@/app/actions", () => ({ signOutAction: async () => undefined }));
+
 vi.mock("@/components/providers/command-dialog-provider", () => ({
   useCommandDialog: () => ({ open: false, toggle: () => undefined, setOpen: () => undefined }),
 }));
 
-import { AppHeader } from "@/components/app-header";
+import { Sidebar } from "@/components/shell/sidebar";
+import { Brandmark } from "@/components/brand/logo";
 import { BottomNavigation } from "@/components/mobile/bottom-nav";
 import { FeedItem, FeedItemSkeleton } from "@/components/feed/feed-item";
 import { LibraryList, LibraryRow } from "@/components/bookmark/library-row";
@@ -169,77 +195,64 @@ describe("feed and library items are articles", () => {
 // nav + aria-current
 // ---------------------------------------------------------------------------
 
+const SIDEBAR_DATA = {
+  user: { name: "Paulo Freitas", href: "/my/profile" },
+  collections: [
+    { id: "design", name: "Design", userId: "u" },
+    { id: "type", name: "Typography", userId: "u", parentId: "design" },
+  ],
+  counts: {
+    all: 12,
+    inbox: 3,
+    unread: 5,
+    archived: 1,
+    collections: [
+      { collectionId: "design", count: 4 },
+      { collectionId: "type", count: 2 },
+    ],
+  },
+};
+
 describe("nav marks where you are", () => {
-  it("uses a decorative dolphin emoji for the linked brandmark", () => {
-    const html = render(<AppHeader currentPath="/my/library" />);
+  it("draws the brandmark rather than borrowing an emoji", () => {
+    const html = render(<Brandmark />);
     const brandmark = html.match(
       /<a[^>]*aria-label="Cosmic Dolphin home"[^>]*>.*?<\/a>/,
     )?.[0];
 
     expect(brandmark).toBeTruthy();
-    expect(brandmark).toContain('aria-hidden="true"');
-    expect(brandmark).toContain("🐬");
-    expect(brandmark).not.toContain("bg-accent");
+    // The mark is decorative inside a named link.
+    expect(brandmark).toMatch(/<svg[^>]*aria-hidden="true"/);
+    expect(brandmark).not.toContain("🐬");
   });
 
-  it("leaves the header unpainted so only the capsule carries a surface", () => {
-    const html = render(<AppHeader currentPath="/my/library" />);
-    const header = html.match(/<header[^>]*>/)?.[0];
-
-    expect(header).toBeTruthy();
-    expect(header).not.toMatch(/\b(?:bg-|style=)/);
-  });
-
-  it("shrink-wraps the desktop capsule around its navigation content", () => {
-    const html = render(<AppHeader currentPath="/my/library" />);
-    const nav = html.match(/<nav[^>]*>/)?.[0];
-
-    expect(nav).toBeTruthy();
-    expect(nav).toContain("inline-flex");
-    expect(nav).toContain("w-fit");
-  });
-
-  it("names every destination even when only its glyph is showing", () => {
-    // Below 1000px the labels are visually hidden. The link keeps its name.
-    const html = render(<AppHeader currentPath="/my/library" />);
-    for (const label of ["Home", "Library", "Explore"]) {
-      expect(html).toContain(`aria-label="${label}"`);
-    }
-  });
-
-  it("carries the omnibox instead of a search chip and a Save button", () => {
-    const html = render(
-      <AppHeader
-        currentPath="/my/dashboard"
-        omnibox={<input id="header-omnibox" aria-label="Omnibox" />}
-        onSearch={() => undefined}
-        onSave={() => undefined}
-      />,
-    );
-    expect(html).toContain('id="header-omnibox"');
-    // One text field in the capsule, and nothing beside it that also searches
-    // or saves.
-    expect(html).not.toContain(">Search<");
-    expect(html).not.toContain("Save a link");
-  });
-
-  it("puts the header capsule in a <nav> and marks the current destination", () => {
-    const html = render(<AppHeader currentPath="/my/library" onSearch={() => undefined} />);
-    expect(html).toContain("<nav");
-    expect(html).toContain('aria-current="page"');
-    // Exactly one destination is current. Two is a lie and zero is a
-    // navigation that never tells you where you are.
+  it("puts the sidebar's destinations in a <nav> and marks the current one", () => {
+    const html = render(<Sidebar currentPath="/my/dashboard" {...SIDEBAR_DATA} />);
+    expect(html).toContain('aria-label="Primary"');
+    // Exactly one row in the whole sidebar is current. Two is a lie and zero
+    // is a navigation that never tells you where you are.
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
+    expect(html).toMatch(/aria-current="page"[^>]*>(?:(?!<\/a>).)*Home/);
   });
 
-  it("marks a nested route against its section", () => {
-    const html = render(<AppHeader currentPath="/my/library/collections/c1" />);
+  it("marks the Library row, not a destination, on the Library", () => {
+    const html = render(<Sidebar currentPath="/my/library" {...SIDEBAR_DATA} />);
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
+    expect(html).toMatch(/aria-current="page"[^>]*>(?:(?!<\/a>).)*All saves/);
   });
 
-  it("marks nothing when you are somewhere the capsule does not list", () => {
-    const html = render(<AppHeader currentPath="/settings" />);
+  it("marks nothing when you are somewhere the sidebar does not list", () => {
+    const html = render(<Sidebar currentPath="/settings" {...SIDEBAR_DATA} />);
     expect(html).not.toContain('aria-current="page"');
+  });
+
+  it("names every destination and the AI-filed collections", () => {
+    const html = render(<Sidebar currentPath="/explore" {...SIDEBAR_DATA} />);
+    for (const label of ["Home", "Explore", "Search", "All saves", "Inbox", "Design", "Typography"]) {
+      expect(html).toContain(`>${label}<`);
+    }
+    // Rule 8: what the pipeline decided says so.
+    expect(html).toContain("AI filed");
   });
 
   it("does the same in the mobile tab bar", () => {
