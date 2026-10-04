@@ -78,7 +78,7 @@ function initials(name: string): string {
 function Count({ value, label }: { value: number; label: string }) {
   return (
     <span className="flex items-baseline gap-1.5">
-      <span className="font-mono text-[13px] font-medium leading-none text-fg tabular-nums">
+      <span className="nums font-sans text-[15px] font-semibold leading-none text-fg">
         {value}
       </span>
       <span className="font-sans text-[13px] leading-none text-fg-secondary">
@@ -103,21 +103,21 @@ export function ProfileView({
   action,
 }: ProfileViewProps) {
   return (
-    <div className="mx-auto flex w-full max-w-[720px] flex-col gap-8 py-8">
-      <header className="flex flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-[720px] flex-col gap-8 pb-8">
+      <header className="flex flex-col gap-6">
         <div className="flex items-start justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-4">
-            <Avatar className="size-16 shrink-0">
+          <div className="flex min-w-0 items-center gap-5">
+            <Avatar className="size-[72px] shrink-0">
               {avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
               <AvatarFallback className="text-base">
                 {initials(name)}
               </AvatarFallback>
             </Avatar>
             <div className="flex min-w-0 flex-col gap-1">
-              <h1 className="m-0 truncate font-serif text-[24px] font-semibold leading-[1.25] tracking-[-.01em] text-fg">
+              <h1 className="m-0 truncate font-serif text-[30px] font-semibold leading-[1.15] tracking-[-.022em] text-fg">
                 {name}
               </h1>
-              <p className="m-0 font-sans text-[13px] leading-[1.4] text-fg-secondary">
+              <p className="m-0 font-sans text-[13.5px] leading-[1.4] text-fg-secondary">
                 @{handle}
                 {joinedAt ? ` · ${joinedAt}` : ""}
               </p>
@@ -203,7 +203,7 @@ function ProfileTabs({
           >
             {PROFILE_TAB_LABELS[candidate]}
             {count !== null ? (
-              <span className="font-mono text-[11.5px] leading-none text-fg-tertiary tabular-nums">
+              <span className="nums font-sans text-[11.5px] leading-none text-fg-tertiary">
                 {count}
               </span>
             ) : null}
