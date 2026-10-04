@@ -1,15 +1,10 @@
 import * as React from "react";
 
-import { Brandmark } from "@/components/app-header";
-
 /**
  * The head of every auth page — docs/design-system/pages.md § Auth.
  *
- * "Brandmark, `title-2` heading, one line of `body-sm`, then the form."
- * `title-2` is 20px/600 serif (docs/design-system/foundations.md), which is
- * what replaces the three pages' hand-set 2rem Georgia headings. Georgia was
- * not a token, was not the product's serif, and was inlined as a `style` prop
- * on each of the three so they could drift.
+ * A 30px serif heading, one line of `body-sm`, then the form. The brandmark
+ * lives in the layout's top-left corner, not above every heading.
  */
 export function AuthShell({
   title,
@@ -24,17 +19,14 @@ export function AuthShell({
   footer?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4">
-        <Brandmark />
-        <div className="flex flex-col gap-1.5">
-          <h1 className="font-serif text-[20px] font-semibold leading-[1.3] tracking-[-.01em] text-fg">
-            {title}
-          </h1>
-          <p className="font-sans text-[13.5px] leading-[1.55] text-fg-secondary">
-            {subtitle}
-          </p>
-        </div>
+    <div className="flex flex-col gap-7">
+      <div className="flex flex-col gap-2">
+        <h1 className="font-serif text-[30px] font-semibold leading-[1.15] tracking-[-.022em] text-fg">
+          {title}
+        </h1>
+        <p className="font-sans text-[14px] leading-[1.55] text-fg-secondary">
+          {subtitle}
+        </p>
       </div>
 
       {children}
