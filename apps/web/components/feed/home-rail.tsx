@@ -58,7 +58,7 @@ export interface HomeRailProps {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="m-0 pb-2.5 font-sans text-[11px] font-semibold uppercase leading-none tracking-[.07em] text-fg-tertiary">
+    <h2 className="m-0 pb-2.5 font-sans text-[13px] font-semibold leading-none tracking-[-.005em] text-fg">
       {children}
     </h2>
   );
@@ -128,7 +128,7 @@ export function PickUp({ entries }: { entries: ContinueReadingEntry[] }) {
       */}
       <h2
         id="home-pickup"
-        className="m-0 pb-3 font-sans text-[11px] font-semibold uppercase leading-none tracking-[.07em] text-fg-tertiary"
+        className="m-0 pb-3 font-sans text-[13px] font-semibold leading-none tracking-[-.005em] text-fg"
       >
         Pick up where you left off
       </h2>

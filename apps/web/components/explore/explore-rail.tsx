@@ -47,7 +47,7 @@ export interface ExploreRailProps {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="m-0 pb-2.5 font-sans text-[11px] font-semibold uppercase leading-none tracking-[.07em] text-fg-tertiary">
+    <h2 className="m-0 pb-2.5 font-sans text-[13px] font-semibold leading-none tracking-[-.005em] text-fg">
       {children}
     </h2>
   );

@@ -181,9 +181,9 @@ const PANEL = "rounded-md border border-line bg-bg-panel p-4";
 
 /** foundations.md § Typography: title-1 (29px), title-2 (20px), title-3 (17px). */
 const TITLE_SIZE = {
-  1: "text-[29px] leading-[1.2] tracking-[-.01em] [text-wrap:balance]",
-  2: "text-xl leading-[1.3] tracking-[-.005em]",
-  3: "text-[17px] leading-[1.35]",
+  1: "text-[36px] leading-[1.12] tracking-[-.022em] [text-wrap:balance]",
+  2: "text-xl leading-[1.3] tracking-[-.01em]",
+  3: "text-[19px] leading-[1.3] tracking-[-.008em]",
 } as const;
 
 function Title({
@@ -231,23 +231,53 @@ function Title({
 function Tags({
   tags,
   readingTime,
+  max = MAX_TAGS,
 }: {
   tags?: string[];
   readingTime?: string;
+  max?: number;
 }) {
-  const shown = tags?.slice(0, MAX_TAGS) ?? [];
+  const shown = tags?.slice(0, max) ?? [];
   const overflow = (tags?.length ?? 0) - shown.length;
   if (shown.length === 0 && overflow <= 0 && !readingTime) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-1.5">
       {shown.map((tag) => (
         <Tag key={tag}>{tag}</Tag>
       ))}
       {overflow > 0 ? <Tag variant="neutral">{`+${overflow}`}</Tag> : null}
       {readingTime ? (
-        <Tag variant="neutral">{`${readingTime} read`}</Tag>
+        <span className="nums pl-1 font-sans text-[12.5px] leading-none text-fg-tertiary">
+          {`${readingTime} read`}
+        </span>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * The item's last line: the social actions on the left, the topics and
+ * reading time on the right. One line where there used to be three.
+ */
+function Footer({
+  actions,
+  tags,
+  readingTime,
+  maxTags,
+}: {
+  actions?: React.ReactNode;
+  tags?: string[];
+  readingTime?: string;
+  maxTags?: number;
+}) {
+  const hasMeta = Boolean(tags?.length || readingTime);
+  if (!actions && !hasMeta) return null;
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      {actions ?? <span />}
+      {hasMeta ? <Tags tags={tags} readingTime={readingTime} max={maxTags} /> : null}
     </div>
   );
 }
@@ -255,16 +285,30 @@ function Tags({
 function TopRow({
   provenance,
   menu,
+  rankingReason,
   className,
 }: {
   provenance: ProvenanceRowProps;
   menu?: React.ReactNode;
+  /** "Why this appeared" rides on the provenance line; open, it takes a line of its own. */
+  rankingReason?: string;
   className?: string;
 }) {
   return (
-    <div className={cn("mb-2.5 flex flex-wrap items-center gap-2", className)}>
+    <div className={cn("mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1", className)}>
       <ProvenanceRow {...provenance} />
-      {menu ? <span className="ml-auto shrink-0">{menu}</span> : null}
+      {rankingReason ? (
+        <>
+          <span aria-hidden="true" className="text-[12.5px] leading-none text-fg-tertiary">
+            ·
+          </span>
+          <WhyThisAppeared
+            reason={rankingReason}
+            className="open:order-last open:basis-full"
+          />
+        </>
+      ) : null}
+      {menu ? <span className="-my-1 ml-auto shrink-0">{menu}</span> : null}
     </div>
   );
 }
@@ -404,29 +448,30 @@ function FeedItem(props: FeedItemProps) {
         <ProcessingSteps steps={steps} onRetry={onRetry} announceLabel={title} />
       ) : null}
 
-      <Tags tags={tags} readingTime={readingTime} />
+      <Footer
+        actions={
+          social ? <ActionRow {...social} itemTitle={social.itemTitle ?? title} /> : undefined
+        }
+        tags={tags}
+        readingTime={readingTime}
+      />
 
-      <WhyThisAppeared reason={rankingReason} />
-
-      {social || video ? (
-        <div className="mt-0.5 flex flex-wrap items-center justify-between gap-3">
-          {social ? <ActionRow {...social} itemTitle={social.itemTitle ?? title} /> : <span />}
-          {video && (video.watchHref || video.onWatchWithSummary) ? (
-            video.watchHref ? (
-              <Button size="sm" asChild>
-                <Link href={video.watchHref}>Watch with summary</Link>
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                type="button"
-                onClick={video.onWatchWithSummary}
-                icon={<Play aria-hidden="true" className="fill-current" />}
-              >
-                Watch with summary
-              </Button>
-            )
-          ) : null}
+      {video && (video.watchHref || video.onWatchWithSummary) ? (
+        <div className="mt-0.5 flex justify-start">
+          {video.watchHref ? (
+            <Button size="sm" asChild>
+              <Link href={video.watchHref}>Watch with summary</Link>
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              type="button"
+              onClick={video.onWatchWithSummary}
+              icon={<Play aria-hidden="true" className="fill-current" />}
+            >
+              Watch with summary
+            </Button>
+          )}
         </div>
       ) : null}
     </div>
@@ -434,7 +479,7 @@ function FeedItem(props: FeedItemProps) {
 
   return (
     <article className={cn(PANEL, "mb-3 last:mb-0", className)}>
-      <TopRow provenance={provenance} menu={menu} />
+      <TopRow provenance={provenance} menu={menu} rankingReason={rankingReason} />
 
       {isVideo ? (
         <>
@@ -496,21 +541,28 @@ function EditionItem(props: EditionItemProps) {
 
   const lead = variant === "lead";
 
-  const actions =
+  const actionRow =
     social || watchHref ? (
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         {social ? (
           <ActionRow {...social} itemTitle={social.itemTitle ?? title} />
-        ) : (
-          <span />
-        )}
+        ) : null}
         {watchHref ? (
           <Button size="sm" asChild>
             <Link href={watchHref}>Watch with summary</Link>
           </Button>
         ) : null}
       </div>
-    ) : null;
+    ) : undefined;
+
+  const footer = (
+    <Footer
+      actions={actionRow}
+      tags={tags}
+      readingTime={readingTime}
+      maxTags={lead ? MAX_TAGS : 2}
+    />
+  );
 
   const brief = privateLink ? (
     <PrivateLinkNote />
@@ -541,19 +593,22 @@ function EditionItem(props: EditionItemProps) {
             className="h-[300px] w-full rounded-md max-[640px]:h-[180px]"
           />
         ) : null}
-        <TopRow provenance={provenance} menu={menu} className="mb-0" />
+        <TopRow
+          provenance={provenance}
+          menu={menu}
+          rankingReason={rankingReason}
+          className="mb-0"
+        />
         <Title
           href={href}
           title={title}
           privateLink={privateLink}
           size={1}
-          className="max-[640px]:[&_a]:text-2xl"
+          className="max-[640px]:[&_a]:text-[28px]"
         />
         {brief}
         {progress}
-        <Tags tags={tags} readingTime={readingTime} />
-        <WhyThisAppeared reason={rankingReason} />
-        {actions}
+        <div className="pt-1">{footer}</div>
       </article>
     );
   }
@@ -561,24 +616,31 @@ function EditionItem(props: EditionItemProps) {
   return (
     <article
       className={cn(
-        "-mx-2 flex items-start gap-4 rounded-sm border-b border-line px-2 py-4",
+        "-mx-3 flex items-start gap-4 border-b border-line px-3 py-5",
         "transition-colors duration-cd-fast ease-cd hover:bg-bg-subtle",
         className,
       )}
     >
       <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <TopRow provenance={provenance} menu={menu} className="mb-0" />
-        <Title href={href} title={title} privateLink={privateLink} size={3} />
-        {brief}
-        {progress}
-        <Tags tags={tags} readingTime={readingTime} />
-        <WhyThisAppeared reason={rankingReason} />
-        {actions}
+        <TopRow
+          provenance={provenance}
+          menu={menu}
+          rankingReason={rankingReason}
+          className="mb-0"
+        />
+        <div className="flex items-start gap-5">
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <Title href={href} title={title} privateLink={privateLink} size={3} />
+            {brief}
+            {progress}
+          </div>
+          <Thumbnail
+            src={thumbnailUrl}
+            className="h-[72px] w-[108px] rounded-md max-[640px]:hidden"
+          />
+        </div>
+        {footer}
       </div>
-      <Thumbnail
-        src={thumbnailUrl}
-        className="mt-8 h-16 w-[88px] rounded-md max-[640px]:hidden"
-      />
     </article>
   );
 }
