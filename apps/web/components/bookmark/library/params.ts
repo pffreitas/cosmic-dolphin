@@ -134,14 +134,21 @@ export interface LibraryHeading {
   title: string;
   /** What the collection breadcrumb should say when it is not a collection. */
   countNoun: string;
+  /** The parent collection's name, for the eyebrow: Library › Design. */
+  parent?: string;
 }
 
 export function libraryHeading(
   view: LibraryView,
-  collectionName?: string
+  collectionName?: string,
+  parentName?: string
 ): LibraryHeading {
   if (view.collectionId) {
-    return { title: collectionName ?? "Collection", countNoun: "save" };
+    return {
+      title: collectionName ?? "Collection",
+      countNoun: "save",
+      parent: parentName,
+    };
   }
   if (view.scope === BookmarkScope.Inbox) {
     return { title: "Inbox", countNoun: "unfiled save" };

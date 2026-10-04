@@ -29,8 +29,14 @@ import { libraryHref } from "./params";
  */
 export function CollectionSuggestionCallout({
   suggestion,
+  layout = "stacked",
 }: {
   suggestion: CollectionSuggestion;
+  /**
+   * `stacked` for a narrow column; `banner` for the top of the Library list,
+   * where the proposal, its sources and its two answers sit on one line.
+   */
+  layout?: "stacked" | "banner";
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -83,23 +89,63 @@ export function CollectionSuggestionCallout({
     }
   }
 
+  const sources = (
+    <Link
+      href={libraryHref({ scope: BookmarkScope.Inbox })}
+      className={cn(
+        "rounded-xs text-accent underline-offset-4 hover:underline",
+        focusRing,
+      )}
+    >
+      {supporters} unfiled {supporters === 1 ? "save" : "saves"}
+    </Link>
+  );
+
+  const answers = (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button
+        size="sm"
+        variant="primary"
+        loading={pending === "create"}
+        disabled={pending !== null}
+        onClick={accept}
+      >
+        Create collection
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        loading={pending === "dismiss"}
+        disabled={pending !== null}
+        onClick={dismiss}
+      >
+        Not now
+      </Button>
+    </div>
+  );
+
+  if (layout === "banner") {
+    return (
+      <AiCallout compact label="Suggestion" className="px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <p className="m-0 min-w-0 font-sans text-[13.5px] leading-[1.55] text-fg-secondary">
+            {supporters} {supporters === 1 ? "save looks" : "saves look"} like a
+            new collection: <b className="font-medium text-fg">{suggestion.name}</b>
+            <span className="text-fg-tertiary"> · drawn from {sources}</span>
+          </p>
+          {answers}
+        </div>
+      </AiCallout>
+    );
+  }
+
   return (
     <AiCallout
       compact
       label="Suggestion"
       footer={
         <p className="m-0 font-sans text-[12px] leading-[1.5] text-fg-secondary">
-          Drawn from{" "}
-          <Link
-            href={libraryHref({ scope: BookmarkScope.Inbox })}
-            className={cn(
-              "rounded-xs text-accent underline-offset-4 hover:underline",
-              focusRing,
-            )}
-          >
-            {supporters} unfiled {supporters === 1 ? "save" : "saves"}
-          </Link>
-          .
+          Drawn from {sources}.
         </p>
       }
     >
@@ -108,26 +154,7 @@ export function CollectionSuggestionCallout({
         collection:{" "}
         <b className="font-medium text-fg">{suggestion.name}</b>
       </p>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button
-          size="sm"
-          variant="primary"
-          loading={pending === "create"}
-          disabled={pending !== null}
-          onClick={accept}
-        >
-          Create
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          loading={pending === "dismiss"}
-          disabled={pending !== null}
-          onClick={dismiss}
-        >
-          Not now
-        </Button>
-      </div>
+      <div className="mt-3">{answers}</div>
     </AiCallout>
   );
 }
