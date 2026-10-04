@@ -126,15 +126,13 @@ export function HeaderOmnibox({ className }: { className?: string }) {
       <label
         htmlFor={OMNIBOX_INPUT_ID}
         className={cn(
-          "flex h-[38px] w-[440px] max-w-full cursor-text items-center gap-2.5 rounded-pill",
-          "border border-line-strong bg-bg-panel pl-3.5 pr-[5px]",
-          "transition-colors duration-cd-fast ease-cd",
-          // The focus ring lives on the pill, not on the bare input inside it:
-          // a rectangle ringed inside a pill reads as a bug. Same 2px
-          // `--cd-focus` ring and 2px offset as `focusRing`.
-          "focus-within:border-[color:var(--cd-accent)]",
+          "flex h-9 w-full cursor-text items-center gap-2.5 rounded-md",
+          "border border-line bg-bg-subtle pl-3 pr-1",
+          "transition-colors duration-cd-fast ease-cd hover:border-line-strong",
+          // The focus ring lives on the field, not on the bare input inside
+          // it. Same 2px `--cd-focus` ring and 2px offset as `focusRing`.
+          "focus-within:border-[color:var(--cd-accent)] focus-within:bg-bg-panel",
           "focus-within:ring-2 focus-within:ring-[color:var(--cd-focus)] focus-within:ring-offset-2 focus-within:ring-offset-[color:var(--cd-bg)]",
-          "max-[1000px]:w-[360px] max-[900px]:w-full",
         )}
       >
         {capture ? (
@@ -143,7 +141,7 @@ export function HeaderOmnibox({ className }: { className?: string }) {
           <Search aria-hidden="true" className="size-4 shrink-0 text-fg-tertiary [stroke-width:1.8]" />
         )}
         <span className="sr-only">Paste a link to save it, or search your library</span>
-        {/* cd-a11y-allow: the 2px focus ring is drawn on the enclosing pill via focus-within */}
+        {/* cd-a11y-allow: the 2px focus ring is drawn on the enclosing field via focus-within */}
         <input
           id={OMNIBOX_INPUT_ID}
           type="text"
@@ -175,7 +173,7 @@ export function HeaderOmnibox({ className }: { className?: string }) {
             type="submit"
             variant="primary"
             size="sm"
-            className="h-7 pl-2.5 pr-3"
+            className="h-7 rounded-sm pl-2.5 pr-3"
             icon={<Plus aria-hidden="true" />}
           >
             Save

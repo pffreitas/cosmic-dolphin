@@ -35,8 +35,8 @@ export default async function SearchPage({
   const collections = await CollectionsAPI.list();
 
   return (
-    <main className="mx-auto w-full max-w-screen-lg px-4 sm:px-6">
+    <div className="mx-auto w-full max-w-[960px]">
       <SearchView view={view} collections={collections} />
-    </main>
+    </div>
   );
 }

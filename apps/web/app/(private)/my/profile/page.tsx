@@ -52,14 +52,14 @@ export default async function MyProfilePage({
 
   if (!me) {
     return (
-      <main className="mx-auto w-full max-w-[720px] py-8">
+      <div className="mx-auto w-full max-w-[720px] pb-8">
         <EmptyState
           ground
           icon={UserRound}
           title="We couldn't load your profile."
           description="The request didn't reach us. Reload the page — nothing has been changed."
         />
-      </main>
+      </div>
     );
   }
 
@@ -77,7 +77,7 @@ export default async function MyProfilePage({
    */
   if (!me.handle) {
     return (
-      <main className="mx-auto w-full max-w-[720px] py-8">
+      <div className="mx-auto w-full max-w-[720px] pb-8">
         <EmptyState
           ground
           icon={UserRound}
@@ -92,14 +92,14 @@ export default async function MyProfilePage({
             />
           }
         />
-      </main>
+      </div>
     );
   }
 
   const handle = me.handle;
 
   return (
-    <main>
+    <div>
       <ProfilePage
         handle={handle}
         basePath="/my/profile"
@@ -113,6 +113,6 @@ export default async function MyProfilePage({
           />
         )}
       />
-    </main>
+    </div>
   );
 }

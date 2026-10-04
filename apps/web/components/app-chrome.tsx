@@ -1,70 +1,92 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type {
+  BookmarkLibraryCounts,
+  Collection,
+} from "@cosmic-dolphin/api-client";
 
-import { AppHeader, AppHeaderUser } from "@/components/app-header";
-import { HeaderOmnibox } from "@/components/header-omnibox";
-import { Button } from "@/components/ui/button";
+import { AppShell, SkipLink } from "@/components/shell/app-shell";
+import { PublicHeader } from "@/components/shell/public-header";
+import type { ShellUser } from "@/components/shell/sidebar";
+import { PendingCaptures } from "@/components/bookmark/pending-captures";
 
 /**
- * The header capsule, bound to the app — D18.
+ * Which frame a route sits in — docs/design-system/patterns.md § App shell.
  *
- * `AppHeader` (D3) is a presentational component: it takes a path, a list of
- * destinations, a user and two callbacks, and it knows nothing about routing,
- * the command palette or the save dialog. This is the thin client shell that
- * connects it to all three, and it exists so `app/layout.tsx` can stay a
- * server component that reads the session.
+ * `app/layout.tsx` is a server component that knows the session but not the
+ * path; this is the thin client seam that knows both. Three frames:
  *
- * Three things it deliberately does *not* do:
+ *  - **Bare** — routes that draw their own frame: the landing page, the auth
+ *    pages (a split-screen of their own), and the `/dev/*` state galleries,
+ *    which render the app shell around fixture data so the signed-in frame can
+ *    be inspected without a session.
+ *  - **App shell** — signed in: sidebar, top bar with the omnibox, one <main>.
+ *  - **Public** — signed out on a public route (`/s/[slug]`, `/u/[handle]`):
+ *    the public header above one <main>.
  *
- *  - **It does not render a second field.** Signed in, the capsule's one
- *    field is the omnibox — it saves a pasted link and searches anything else,
- *    replacing both the search chip and the Save a link button. ⌘K focuses
- *    it, and a second ⌘K opens the palette (`global-keyboard-shortcuts.tsx`).
- *  - **It does not carry a profile dropdown.** The avatar is a link to
- *    `/my/profile`, which is where the account lives now — sign-out included.
- *    A menu whose only two items are "Profile" and "Sign out" is a menu
- *    standing in front of a page.
- *  - **It does not branch on viewport.** The capsule is responsive by itself
- *    (below 900px it collapses to a single column and squares off), and the
- *    bottom tab bar is a separate component. Rendering two headers and hiding
- *    one is what the old layout did, and it is why every element in the tree
- *    existed twice.
+ * Pages never render a <main> of their own; the frame owns the one landmark.
  */
+const BARE_PREFIXES = [
+  "/dev",
+  "/sign-in",
+  "/sign-up",
+  "/forgot-password",
+  "/protected/reset-password",
+];
+
+export function isBareRoute(pathname: string): boolean {
+  if (pathname === "/") return true;
+  return BARE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 export interface AppChromeProps {
   isLoggedIn: boolean;
   /** From the session, on the server. Absent when signed out. */
-  user?: AppHeaderUser;
+  user?: ShellUser;
+  collections: Collection[];
+  counts: BookmarkLibraryCounts | null;
+  children: React.ReactNode;
 }
 
-export function AppChrome({ isLoggedIn, user }: AppChromeProps) {
-  const pathname = usePathname();
+export function AppChrome({
+  isLoggedIn,
+  user,
+  collections,
+  counts,
+  children,
+}: AppChromeProps) {
+  const pathname = usePathname() ?? "/";
 
-  if (!isLoggedIn) {
+  if (isBareRoute(pathname)) return <>{children}</>;
+
+  if (isLoggedIn) {
     return (
-      <AppHeader
-        currentPath={pathname}
-        // Home, Library and Explore are all behind auth. Offering them to a
-        // signed-out reader is offering three links to the sign-in page.
-        destinations={[]}
-        onSearch={undefined}
-        action={
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" asChild>
-              <Link href="/sign-in">Sign in</Link>
-            </Button>
-            <Button variant="primary" size="sm" asChild>
-              <Link href="/sign-up">Sign up</Link>
-            </Button>
-          </div>
-        }
-      />
+      <AppShell
+        user={user}
+        collections={collections}
+        counts={counts}
+        // The optimistic capture row. It sits above the page because the
+        // omnibox works from every route, so the row has to appear wherever
+        // the paste happened. Nothing renders when nothing is in flight, and
+        // nothing on Home, which shows captures in its own Saving now strip.
+        banner={<PendingCaptures />}
+      >
+        {children}
+      </AppShell>
     );
   }
 
   return (
-    <AppHeader currentPath={pathname} user={user} omnibox={<HeaderOmnibox />} />
+    <>
+      <SkipLink />
+      <PublicHeader />
+      <main id="main" tabIndex={-1} className="px-4 pb-20 pt-8 outline-none sm:px-6">
+        {children}
+      </main>
+    </>
   );
 }
