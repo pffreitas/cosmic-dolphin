@@ -370,12 +370,14 @@ export function BookmarkDetail({
   const highlightCount = owner ? highlights.length : 0;
 
   return (
-    <article className="mx-auto flex w-full max-w-[720px] flex-col gap-8 pt-8">
+    <article className="mx-auto flex w-full max-w-[680px] flex-col gap-10 pt-4 md:pt-6">
+      <ReadingProgress />
+
       {/* 1 · Hero ------------------------------------------------------ */}
-      <header className="flex flex-col gap-3.5">
+      <header className="flex flex-col gap-4">
         {owner ? <Breadcrumb model={model} /> : null}
 
-        <h1 className="font-serif text-[30px] font-semibold leading-[1.2] tracking-[-0.01em] text-fg sm:text-[34px]">
+        <h1 className="font-serif text-[32px] font-semibold leading-[1.1] tracking-[-0.022em] text-fg sm:text-[44px]">
           {model.title}
         </h1>
 
@@ -404,7 +406,7 @@ export function BookmarkDetail({
           }
         />
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 pt-1">
           {owner ? (
             <Button
               type="button"
@@ -731,4 +733,45 @@ async function share(
   } catch {
     toast({ title: "Couldn't create a share link", variant: "danger" });
   }
+}
+
+/**
+ * A 2px accent hairline across the top of the viewport that fills as the
+ * article is read. Position, not animation: it tracks the scroll directly and
+ * never eases, so there is nothing for `prefers-reduced-motion` to stop.
+ * Decorative — the reading time in the provenance row is the accessible fact.
+ */
+function ReadingProgress() {
+  const barRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const doc = document.documentElement;
+      const max = doc.scrollHeight - window.innerHeight;
+      const ratio = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+      if (barRef.current) barRef.current.style.transform = `scaleX(${ratio})`;
+    };
+    const schedule = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  return (
+    <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-0 z-40 h-0.5">
+      <div
+        ref={barRef}
+        className="h-full origin-left scale-x-0 bg-accent"
+      />
+    </div>
+  );
 }
