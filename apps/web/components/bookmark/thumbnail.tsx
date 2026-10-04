@@ -74,7 +74,7 @@ const Thumbnail = React.forwardRef<HTMLDivElement, ThumbnailProps>(
           <span
             className={cn(
               "absolute bottom-1.5 right-1.5 z-[1] rounded-xs border border-line",
-              "bg-bg-panel px-1.5 py-0.5 font-mono text-[10.5px] leading-[1.4] text-fg",
+              "bg-bg-panel px-1.5 py-0.5 nums font-sans text-[11px] font-medium leading-[1.4] text-fg",
             )}
           >
             {badge}
