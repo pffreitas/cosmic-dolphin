@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Ban,
@@ -179,9 +180,12 @@ function EditionHeader({
           aria-live="off"
         >
           {scopeOrderCopy(scope)}
-          {updated
-            ? ` · ${updated.charAt(0).toLowerCase()}${updated.slice(1)}`
-            : null}
+          {/* Kept whole, so a narrow screen never strands "min ago" alone. */}
+          {updated ? (
+            <span className="whitespace-nowrap">
+              {` · ${updated.charAt(0).toLowerCase()}${updated.slice(1)}`}
+            </span>
+          ) : null}
         </p>
       </div>
       <Segmented
@@ -776,8 +780,10 @@ export function HomeView({
   // is a different thing and keeps both the control and the rail.
   if (newUser && entries.length === 0 && !pageError) {
     return (
-      <div className="px-6 py-6">
-        <NewUserHero offline={offline || isOffline} />
+      <div className="px-6 py-6 max-[640px]:px-0">
+        <div className="mx-auto w-full max-w-[1100px]">
+          <NewUserHero offline={offline || isOffline} />
+        </div>
       </div>
     );
   }
@@ -851,7 +857,15 @@ export function HomeView({
                 title={feedEmptyCopy(scope).title}
                 description={feedEmptyCopy(scope).description}
                 action={
-                  scope === FeedScope.ForYou ? null : (
+                  // The scope control is still right above, so "back" is
+                  // already one click away. An empty Following is a reader
+                  // with nobody to follow — the copy names Explore, and so
+                  // does the one button.
+                  scope === FeedScope.Following ? (
+                    <Button size="sm" asChild>
+                      <Link href="/explore">Find people on Explore</Link>
+                    </Button>
+                  ) : scope === FeedScope.ForYou ? null : (
                     <Button
                       size="sm"
                       onClick={() => router.push(feedHref(FeedScope.ForYou))}
@@ -915,9 +929,12 @@ export function HomeView({
                 <p className="m-0 font-sans text-[13.5px] leading-[1.55] text-fg">
                   {pageError}
                 </p>
-                <p className="m-0 pt-1 font-sans text-[12.5px] leading-[1.5] text-fg-secondary">
-                  Nothing is lost — everything above is still here.
-                </p>
+                {/* Only true when there *is* something above. */}
+                {entries.length > 0 ? (
+                  <p className="m-0 pt-1 font-sans text-[12.5px] leading-[1.5] text-fg-secondary">
+                    Nothing is lost — everything above is still here.
+                  </p>
+                ) : null}
                 <div className="pt-3">
                   <Button
                     size="sm"
@@ -942,6 +959,16 @@ export function HomeView({
               <div ref={sentinelRef} aria-hidden="true">
                 <FeedRowSkeleton />
               </div>
+            ) : null}
+
+            {/*
+              The end of the edition. A feed built to be finished says when it
+              is, rather than trailing off into a hairline and blank page.
+            */}
+            {!cursor && !pageError && !empty ? (
+              <p className="m-0 pt-6 font-sans text-[12.5px] leading-[1.5] text-fg-tertiary">
+                That&apos;s everything for now.
+              </p>
             ) : null}
           </section>
 

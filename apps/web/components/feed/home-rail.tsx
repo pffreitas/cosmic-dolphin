@@ -138,6 +138,10 @@ export function PickUp({ entries }: { entries: ContinueReadingEntry[] }) {
           "grid-cols-[repeat(auto-fit,minmax(min(240px,100%),1fr))]",
           "max-[640px]:-mx-4 max-[640px]:auto-cols-[78%] max-[640px]:grid-flow-col max-[640px]:grid-cols-none",
           "max-[640px]:snap-x max-[640px]:snap-mandatory max-[640px]:overflow-x-auto max-[640px]:px-4",
+          // Snap to the page gutter, not the screen edge — without the scroll
+          // padding the first card lands flush against the bezel. The strip is
+          // swiped, so its scrollbar is only a grey line under the cards.
+          "max-[640px]:scroll-px-4 max-[640px]:[scrollbar-width:none] max-[640px]:[&::-webkit-scrollbar]:hidden",
         )}
       >
         {entries.map((entry) => (
@@ -212,8 +216,18 @@ export function HomeRail({ topics, people }: Omit<HomeRailProps, "continueReadin
       <Section label="People you follow">
         {people.length === 0 ? (
           <p className={EMPTY_NOTE}>
-            You&apos;re not following anyone yet. Explore is where you find
-            people.
+            You&apos;re not following anyone yet.{" "}
+            <Link
+              href="/explore"
+              className={cn(
+                "rounded-xs text-fg-secondary underline decoration-line-strong underline-offset-[3px]",
+                "transition-colors duration-cd-fast ease-cd hover:text-fg",
+                focusRing,
+              )}
+            >
+              Explore
+            </Link>{" "}
+            is where you find people.
           </p>
         ) : (
           <ul className="m-0 flex list-none flex-col gap-2.5 p-0">

@@ -199,12 +199,21 @@ const ProvenanceRow = React.forwardRef<HTMLDivElement, ProvenanceRowProps>(
         {...props}
       >
         {lead ? <span>{lead}</span> : null}
-        {segments.map((segment, index) => (
-          <React.Fragment key={index}>
-            {index > 0 ? <Dot /> : null}
-            {segment}
-          </React.Fragment>
-        ))}
+        {/*
+          Each separator travels with the segment after it, so when the row
+          wraps the dot opens the next line instead of dangling at the end of
+          the last one, pointing at nothing.
+        */}
+        {segments.map((segment, index) =>
+          index === 0 ? (
+            <React.Fragment key={index}>{segment}</React.Fragment>
+          ) : (
+            <span key={index} className="flex min-w-0 items-center gap-[7px]">
+              <Dot />
+              {segment}
+            </span>
+          ),
+        )}
         {trailing ? <span className="ml-auto">{trailing}</span> : null}
       </div>
     );

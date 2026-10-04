@@ -296,15 +296,28 @@ function TopRow({
 }) {
   return (
     <div className={cn("mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1", className)}>
-      <ProvenanceRow {...provenance} />
+      {/*
+        On a phone the provenance shares its line with the menu and wraps
+        inside itself, rather than pushing the menu onto a line of its own.
+      */}
+      <ProvenanceRow {...provenance} className="max-[640px]:flex-[1_1_0%]" />
       {rankingReason ? (
         <>
-          <span aria-hidden="true" className="text-[12.5px] leading-none text-fg-tertiary">
+          {/*
+            Below 640px the provenance wraps unpredictably, and a separator
+            left at the end of a line points at nothing. So on a phone the
+            disclosure always takes the line under the provenance — the menu
+            stays up beside it — and the dot goes.
+          */}
+          <span
+            aria-hidden="true"
+            className="text-[12.5px] leading-none text-fg-tertiary max-[640px]:hidden"
+          >
             ·
           </span>
           <WhyThisAppeared
             reason={rankingReason}
-            className="open:order-last open:basis-full"
+            className="open:order-last open:basis-full max-[640px]:order-last max-[640px]:basis-full"
           />
         </>
       ) : null}
@@ -651,17 +664,17 @@ function EditionItem(props: EditionItemProps) {
  */
 function FeedRowSkeleton({ className }: { className?: string }) {
   return (
-    <div className={cn("flex items-start gap-4 border-b border-line py-4", className)}>
+    <div className={cn("-mx-3 flex items-start gap-4 border-b border-line px-3 py-5", className)}>
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex items-center gap-2">
           <Skeleton className="size-4 rounded-xs" />
           <Skeleton shape="line" className="h-3 w-40" />
         </div>
-        <Skeleton className="h-[17px] w-[64%] rounded-xs" />
+        <Skeleton className="h-[19px] w-[64%] rounded-xs" />
         <Skeleton shape="line" className="w-[92%]" />
         <Skeleton shape="line" className="w-[70%]" />
       </div>
-      <Skeleton shape="thumb" className="mt-8 h-16 w-[88px] shrink-0 rounded-md max-[640px]:hidden" />
+      <Skeleton shape="thumb" className="mt-8 h-[72px] w-[108px] shrink-0 rounded-md max-[640px]:hidden" />
     </div>
   );
 }
