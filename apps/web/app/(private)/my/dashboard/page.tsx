@@ -51,7 +51,7 @@ export default async function HomePage({
     user?.email?.split("@")[0];
 
   return (
-    <main className="mx-auto w-full max-w-screen-xl">
+    <div className="mx-auto w-full max-w-screen-xl">
       {/*
         Keyed on the scope so a switch tears the list down rather than
         animating one ranking's items into another's. The fallback holds the
@@ -64,7 +64,7 @@ export default async function HomePage({
       >
         <HomeData scope={scope} readerName={readerName} />
       </Suspense>
-    </main>
+    </div>
   );
 }
 

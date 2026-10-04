@@ -8,27 +8,24 @@ import { GlobalCommandDialog } from "@/components/global-command-dialog";
 import { GlobalKeyboardShortcuts } from "@/components/global-keyboard-shortcuts";
 import { AppChrome } from "@/components/app-chrome";
 import NewBookmarkButton from "@/components/bookmark/new-bookmark";
-import { PendingCaptures } from "@/components/bookmark/pending-captures";
 import { ToastProvider } from "@/components/ui/toast";
 import { BottomNavigation } from "@/components/mobile/bottom-nav";
 import { createClient } from "@/utils/supabase/server";
+import { BookmarksAPI, CollectionsAPI } from "@/lib/api/bookmarks";
 import { HandleClaimPrompt } from "@/components/social/handle-claim-prompt";
 
 /**
- * The app frame — D18, where the pre-revamp chrome was deleted.
+ * The root frame.
  *
- * What used to be here: a `MobileHeader`, a `DesktopSiteHeader` wrapping a
- * `CosmicMenu` and a `HeaderAuth` dropdown, and **two `<main>` elements that
- * each rendered `{children}`** — one `hidden md:flex`, one `md:hidden`. Every
- * element in the app existed twice in the DOM, ids included, and every page
- * was mounted twice, which meant every page's effects ran twice and every
- * `getElementById` was a coin toss.
+ * This reads the session and the sidebar's data on the server, then hands
+ * both to `AppChrome`, which picks the frame by route: the signed-in app shell
+ * (sidebar + top bar), the public header, or nothing for routes that draw
+ * their own (landing, auth, the dev galleries). See
+ * docs/design-system/patterns.md § App shell.
  *
- * There is now one `<main>`, one header, and one copy of the page. The header
- * capsule is responsive by itself (docs/design-system/patterns.md § Header
- * capsule): below 900px it collapses to a single column and squares off, and
- * the bottom tab bar takes over navigation on touch. Nothing is duplicated to
- * achieve that.
+ * There is exactly one <main> in the document and one copy of the page. The
+ * pre-revamp layout mounted every page twice (one tree per breakpoint); that is
+ * why responsiveness lives inside the frame and never in a second render.
  */
 
 // The two voices. Signal's token file stays authoritative: next/font only fills
@@ -40,9 +37,12 @@ const inter = Inter({
   variable: "--cd-font-sans",
 });
 
+// Variable, with the optical-size axis: the same family draws a tighter,
+// higher-contrast cut at display sizes and a sturdier one at 17px, which is
+// what lets one serif carry both a 44px detail title and a library row.
 const sourceSerif = Source_Serif_4({
   subsets: ["latin"],
-  weight: ["400", "600"],
+  axes: ["opsz"],
   style: ["normal", "italic"],
   display: "swap",
   variable: "--cd-font-serif",
@@ -64,18 +64,28 @@ export default async function RootLayout({
   // in the client from `onAuthStateChange` — which is what the old mobile
   // header did — means the header renders nameless, then re-renders with a
   // name, on every single navigation.
-  const headerUser = user
+  const shellUser = user
     ? {
         name:
           user.user_metadata?.full_name ??
           user.user_metadata?.name ??
           user.email?.split("@")[0] ??
           "You",
+        email: user.email ?? null,
         avatarUrl:
           user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null,
         href: "/my/profile",
       }
     : undefined;
+
+  // The sidebar's Library and collections. Both reads fail soft — an empty
+  // tree and dashed counts — so a slow API dims the sidebar, never the page.
+  // A layout is not re-rendered on client navigation, so these run on a hard
+  // load and on `router.refresh()` (which every Library write already calls,
+  // and which is what keeps the counts honest after a refile).
+  const [collections, counts] = isLoggedIn
+    ? await Promise.all([CollectionsAPI.list(), BookmarksAPI.counts()])
+    : [[], null];
 
   return (
     <html
@@ -125,32 +135,14 @@ export default async function RootLayout({
                   enableSystem
                   disableTransitionOnChange
                 >
-                  <div className="flex min-h-screen flex-col">
-                    <AppChrome isLoggedIn={isLoggedIn} user={headerUser} />
-
-                    {/*
-                      `pb-28` on touch clears the bottom tab bar, which floats
-                      over the page rather than displacing it.
-                    */}
-                    <main
-                      className={`flex-1 px-4 pb-8 md:px-6 ${
-                        isLoggedIn ? "max-md:pb-28" : ""
-                      }`}
-                    >
-                      <div className="mx-auto w-full max-w-screen-xl">
-                        {/*
-                          The optimistic capture row. It sits above the page
-                          because the omnibox is in the header and works from
-                          every route — the row has to appear wherever the paste
-                          happened. It renders nothing when nothing is in flight,
-                          and nothing on Home, which shows captures in its own
-                          *Saving now* strip.
-                        */}
-                        {isLoggedIn && <PendingCaptures />}
-                        {children}
-                      </div>
-                    </main>
-                  </div>
+                  <AppChrome
+                    isLoggedIn={isLoggedIn}
+                    user={shellUser}
+                    collections={collections}
+                    counts={counts}
+                  >
+                    {children}
+                  </AppChrome>
 
                   {/* Home, Library, Save, Search, You — touch only. */}
                   {isLoggedIn && <BottomNavigation />}

@@ -1,52 +1,64 @@
 # Patterns
 
-The seven composite patterns that carry Cosmic Dolphin's identity. Each ships as a shared component
+The composite patterns that carry Cosmic Dolphin's identity. Each ships as a shared component
 in `apps/web/components/` and is reused verbatim — a page never re-implements one of these inline.
 
-Build all seven **before** refactoring any page.
+Build them **before** refactoring any page. A page composes them; it never re-implements one.
 
 ---
 
-## Header capsule
+## App shell
 
-`components/app-header.tsx`
+`components/shell/app-shell.tsx` · `components/shell/sidebar.tsx` · `components/app-chrome.tsx`
 
-An opaque glass capsule floating directly on the page. Its layered colour, edge highlight and cool
-shadow create depth without allowing page content to show through.
+The signed-in frame. It replaced the header capsule (revision R1 in [decisions.md](./decisions.md)):
+a floating, content-sized capsule gave the product no persistent sense of place, and kept the
+AI-filed collections — the product's argument — inside one page.
 
-**Anatomy** — a content-sized row, left to right:
+```
+┌───────────┬──────────────────────────────────────┐
+│ sidebar   │ top bar · omnibox (on the centre axis)│
+│ 256px     ├──────────────────────────────────────┤
+│ sticky,   │ <main> — the page owns its width     │
+│ full      │                                      │
+│ height    │                                      │
+└───────────┴──────────────────────────────────────┘
+```
 
-| Slot | Contents |
+**Sidebar** — `--cd-bg-subtle`, 1px `--cd-border` on its right edge, full viewport height, sticky.
+Three groups, top to bottom:
+
+| Group | Contents |
 | --- | --- |
-| Brand | Brandmark: 20px dolphin emoji, then "Cosmic Dolphin" at 14px/600. |
-| Destinations | Home, Library, Explore — each a 15px glyph plus its label. |
-| Divider | 1px × 20px `--cd-border`. Separates where you go from what you do. |
-| Omnibox | One field that both saves and searches. See below. |
-| Avatar | Links to `/my/profile`. |
+| Brand | The brandmark (see [foundations.md § Brand](./foundations.md#brand)), 56px row. |
+| Destinations | Home, Explore, Search. `nav[aria-label=Primary]`. |
+| Library | All saves, Inbox, Read later, Archive — each with a tabular count. `nav[aria-label=Library]`. |
+| Collections | The AI-filed tree, one level of nesting shown with a hairline guide; an **AI filed** marker beside the group label. `nav[aria-label=Collections]`. |
+| Account | Pinned to the bottom: avatar, name, email, and a menu holding Your profile, Theme (Light / Dark / Match system) and Sign out. |
 
-The capsule shrink-wraps its contents and never expands beyond them. The header centres that capsule
-and provides only clear spacing around it.
+Rows are 32px links: 16px glyph at stroke 1.7, 13.5px label, count right-aligned at 11.5px
+`--cd-fg-tertiary` with `tabular-nums`. Inactive rows are `--cd-fg-secondary`, `--cd-bg-inset` on
+hover. The **one** current row is `--cd-bg-panel` with a 1px inset `--cd-border` ring, `--cd-fg` at
+500, its glyph in `--cd-accent`, and `aria-current="page"`. Library is a group, never also a
+destination, so no route can mark two rows current.
 
-Signed out, and on `/s/[slug]`, the destinations and omnibox are absent and an `action` slot takes
-their place (Sign in / Sign up, or **Save to your library**).
+Collection and Inbox rows are drop targets while the Library list is dragging (the seam is
+`components/shell/library-dnd.tsx`). A drop refiles and pins the placement. `Read later` is a query,
+not a folder, and never takes a drop.
 
-**Surface**
+Counts and collections are read on the server in `app/layout.tsx` and fail soft — dashes and an
+empty tree, never a broken page. `router.refresh()` after a Library write re-reads them.
 
-```
-padding:        6px 6px 6px 16px
-border-radius:  --cd-radius-pill
-background:     --cd-nav-glass          /* layered, fully opaque gradient */
-border:         1px solid --cd-nav-edge
-box-shadow:     --cd-nav-shadow, inset 0 1px 0 --cd-nav-sheen
-```
+**Top bar** — 56px, `--cd-bg`, 1px `--cd-border` below, sticky. It carries exactly one thing: the
+omnibox, on the content's centre axis (`grid-cols-[1fr_minmax(0,600px)_1fr]`). Page-level controls
+belong to the page's own header, never here.
 
-There is no band or other full-width surface behind the capsule.
-
-**The omnibox** — `components/header-omnibox.tsx`. A real text input, 440px wide, 38px tall, pill,
-`--cd-bg-panel` with a 1px `--cd-border-strong` hairline that turns `--cd-accent` on focus.
+**The omnibox** — `components/header-omnibox.tsx`. A real text input, full width of its 600px
+slot, 36px tall, `--cd-radius-md`, `--cd-bg-subtle` with a 1px `--cd-border` hairline; on focus it
+takes `--cd-bg-panel`, an `--cd-accent` border and the focus ring.
 
 - **A URL saves.** When the value parses as a capture URL (`lib/capture.ts`), the leading glyph
-  becomes a link, the `⌘K` hint is replaced by a small primary **Save** pill, and Enter hands the
+  becomes a link, the `⌘K` hint is replaced by a small primary **Save** button, and Enter hands the
   URL to `saveCapture`. The field clears at once and the optimistic row appears under Home's
   *Saving now* (or above the page on any other route). Saving never blocks.
 - **Words search.** Anything else goes to `/search?q=` on Enter.
@@ -57,19 +69,20 @@ There is no band or other full-width surface behind the capsule.
 - **Behind a login** — for a URL, the popover offers the private-link save, which opens the Save a
   link dialog with the URL already in it.
 - **`⌘K` focuses the omnibox.** Pressing it again while the omnibox has focus opens the command
-  palette with the typed text carried over — the palette stays the place for collections, people
-  and navigation, one keystroke further away.
+  palette with the typed text carried over.
 
-**States** — active destination gets `--cd-nav-pill` fill and `--cd-fg` text, with
-`aria-current="page"`. Inactive links are `--cd-fg-secondary`, going `--cd-fg` on hover.
+**Responsive** — below 1024px the sidebar becomes a left sheet (288px) behind a menu button at the
+top bar's left edge; any navigation closes it. Below 768px the bottom tab bar (Home, Library, Save,
+Search, You) takes over primary navigation, and the sheet remains the way into collections.
 
-**Responsive** — below 1000px destination labels drop and only the glyphs remain (each keeps its
-`aria-label`). Below 900px the capsule wraps, squares off to `--cd-radius-lg`, and the omnibox takes a
-full-width second row. Below 768px destinations move into the bottom tab bar (Home, Library, Save,
-Search, You); **Save** opens the Save a link dialog and **Search** focuses the omnibox.
+**Frames** — `components/app-chrome.tsx` picks the frame by route. Signed in: the app shell.
+Signed out on a public route (`/s/[slug]`, `/u/[handle]`): `components/shell/public-header.tsx`, a
+full-width 64px bar with the brandmark and **Sign in** / **Get started**. Bare: `/`, the auth pages
+and `/dev/*` draw their own frame. Every frame owns the document's single `<main id="main">`, and a
+skip link to it is the first tab stop. Pages never render a `<main>`.
 
-**Don't:** put page-level actions in the capsule. Add a second text field beside the omnibox. Grow the
-first row past 56px. Stretch it to the viewport.
+**Don't:** put page actions in the top bar. Add a second text field beside the omnibox. Mark two
+sidebar rows current. Give the sidebar a shadow — it is separated by its hairline.
 
 ---
 
@@ -80,17 +93,18 @@ first row past 56px. Stretch it to the viewport.
 A bordered panel — `--cd-bg-panel`, 1px `--cd-border`, `--cd-radius-md`, 16px padding, 12px between
 siblings. Four shapes share one skeleton.
 
-**Anatomy, in fixed order:**
+**Anatomy, in fixed order — four lines, not six:**
 
-1. **Provenance row** — who and where, before anything else. Trust precedes attention.
+1. **Provenance row** — who and where, before anything else. Trust precedes attention. *Why this
+   appeared* rides at the end of this line as a `<details>` disclosure; opened, it takes a full line
+   of its own beneath (`open:basis-full open:order-last`), so the overflow menu never moves.
 2. **Title** — `title-2`, serif, clamp 2, wrapped in the link to the detail route.
 3. **Summary** — `body` at 14px in `--cd-fg-secondary`, clamp 3. Source: `cosmicBriefSummary`,
    falling back to `metadata.openGraph.description`.
-4. **Tags** — max 3, plus reading time as a neutral tag.
-5. **"Why this appeared"** — a `<details>` disclosure.
-6. **Social action row.**
+4. **Footer** — the social action row on the left; on the right, up to 3 topic tags and the reading
+   time as plain `meta` text.
 
-Thumbnail (132×88, `--cd-radius-md`) sits right of blocks 2–6, in the same flex row.
+Thumbnail (132×88, `--cd-radius-md`) sits right of blocks 2–3, in the same flex row.
 
 **Variants**
 
@@ -100,8 +114,8 @@ Thumbnail (132×88, `--cd-radius-md`) sits right of blocks 2–6, in the same fl
 | `video` | Thumbnail leads at full width × 210 above the title, with a mono duration badge bottom-right. A **Watch with summary** secondary button joins the action row. |
 | `digest` | The panel border and padding are dropped (`.feed-item--ai`); the AI callout *is* the frame. See below. |
 | `pending` | Title plus staged AI progress in place of the summary, and a skeleton thumbnail. Appears the instant a link is saved. |
-| `lead` | Home's top-ranked item. No panel: the thumbnail leads at full width × 300 (`--cd-radius-md`), then the provenance row, a `title-1` title (clamp 3), the summary at `body` 15px within 62ch, tags, *why this appeared* and the action row. One per page, never a digest or a pending save. |
-| `row` | The rest of Home's feed, as `divide-y` separator rows rather than panels: `title-3` title (clamp 2), summary in `body-sm` (clamp 2), a `meta` provenance line with reading time, tags, *why this appeared*, the action row, and an 88×64 thumbnail on the right. Same anatomy order as the base; only the scale drops. |
+| `lead` | Home's top-ranked item. No panel: the thumbnail leads at full width × 300 (`--cd-radius-md`), then the provenance row, a 36px `display`-scale serif title (clamp 3), the summary at `body` 15px within 62ch, and the footer. One per page, never a digest or a pending save. |
+| `row` | The rest of Home's feed, as `divide-y` separator rows rather than panels: provenance line, a 19px serif title (clamp 2) and `body-sm` summary (clamp 2) beside a 108×72 thumbnail, then the footer with at most 2 tags. Same anatomy order as the base; only the scale drops. |
 
 **Don't:** render a comment thread inline. Show a "trending" badge. Animate items in. Stack two
 digests within one screenful. Render more than one `lead`.
@@ -115,12 +129,19 @@ digests within one screenful. Render more than one `lead`.
 Separator rows, not cards: `divide-y` with `--cd-border`, 16px vertical padding, `--cd-bg-subtle` on
 hover. This surface is private, so it carries **no social counts**.
 
-**Anatomy:** unread dot (6px `--cd-accent`, or a transparent spacer when read, so titles stay
-aligned) · collection breadcrumb · `title-3` title, clamp 2 · summary in `body-sm`, clamp 2 · tags
-plus a `meta` line of `domain · relative time · reading time` · 88×64 thumbnail.
+**Anatomy — three lines:** unread dot (7px `--cd-accent`, or a transparent spacer when read, so
+titles stay aligned) · `title-3` title, clamp 2 · summary in `body-sm`, clamp 2 · one footer line
+holding the collection breadcrumb, a `meta` run of `domain · relative time · reading time`, up to 3
+topic tags, and the row's overflow menu (revealed on hover or focus from 768px) · 96×64 thumbnail.
+There is no "Read" tag: the absent dot already says it.
 
 The breadcrumb comes from `collectionPath` and is clickable at every level. When the pipeline is
-still filing, it reads `Inbox` followed by an AI *filing…* marker.
+still filing, it reads `Inbox` followed by an AI *Filing…* marker.
+
+**In the Library** the dot's gutter is shared with the selection checkbox (`leading` slot): the
+dot shows at rest, the box on row hover or keyboard focus, and every box shows while anything is
+selected. The gutter hangs into the page margin (`md:-ml-[52px]`) so row titles align with the page
+title above them.
 
 **Don't:** auto-move a row the user has manually filed. Hide the chronological order behind the
 tree. Use a badge for unread.

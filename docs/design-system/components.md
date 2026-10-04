@@ -47,10 +47,15 @@ The URL-capture field is the one input that gets `--cd-radius-pill` and a `prima
 
 ## Tag
 
-Pill, `--cd-accent-soft` fill, `--cd-accent` text, 12px/500, 5×10px, no border.
+Pill, 12px/500. Three variants:
 
-- `neutral` variant (`--cd-bg-inset` fill, `--cd-fg-secondary` text) for non-topical facts: read
-  state, reading time, counts.
+- `topic` (default) — 1px `--cd-border` outline, no fill, `--cd-fg-secondary` text, 4×9px. Topics
+  are evidence about a save, not actions; painting every one in the accent spent the accent on the
+  least decisive thing on screen (revision R3).
+- `neutral` — `--cd-bg-inset` fill, `--cd-fg-secondary` text, for non-topical facts: `+n`
+  overflow, counts.
+- `accent` — `--cd-accent-soft` fill, `--cd-accent` text. Only for a tag that *is* a selection,
+  such as an active filter.
 - `removable` adds a 12px × at the trailing edge with its own `aria-label`.
 
 AI-suggested tags and user tags render **identically**. The user cannot be asked to care which is
@@ -58,6 +63,21 @@ which, and both are editable.
 
 **Don't:** more than 3 tags in a feed item or library row (`+n` beyond that). Tags as navigation
 chrome — they filter, they are not a menu.
+
+---
+
+## Page header
+
+`components/ui/page-header.tsx`. How every route inside the app shell opens: an optional eyebrow
+(12.5px/500 `--cd-fg-tertiary` — "Library", or "Library › Design" for a nested collection), a
+28px serif title at -0.018em (24px below 640px), one `body-sm` description line with tabular
+numerals, and the page's own controls right-aligned and bottom-aligned to the title block.
+
+The title is serif because it names content — a collection, a query, a person — not a control.
+One per page, as its `<h1>`.
+
+**Don't:** put more than one segmented control in `actions`. A preference that is set and left
+(sort) is a menu, not a second row of pills.
 
 ---
 
@@ -142,7 +162,7 @@ destructive action is the primary in a destructive dialog, filled `--cd-danger`.
 ## Command palette
 
 `cmdk`, already a dependency. `⌘K` / `Ctrl-K` first focuses the header omnibox; pressing it again
-from the omnibox opens the palette with the typed text carried over (patterns.md § Header capsule).
+from the omnibox opens the palette with the typed text carried over (patterns.md § App shell).
 `--cd-bg-panel`, `--cd-radius-md`,
 `--cd-shadow-dialog`, 560px wide, anchored 15vh from the top.
 

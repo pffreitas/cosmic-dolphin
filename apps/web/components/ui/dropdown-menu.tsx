@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
-import { Check, ChevronRight, Circle } from "lucide-react";
+import { Check, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { focusRing } from "./focus-ring";
@@ -98,7 +98,7 @@ const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 font-sans text-sm text-fg outline-none",
+      "relative flex min-h-8 cursor-default select-none items-center gap-2.5 rounded-sm px-2 py-1.5 font-sans text-[13.5px] text-fg outline-none",
       "transition-colors duration-cd-fast ease-cd",
       "focus:bg-bg-inset focus:text-fg data-[disabled]:pointer-events-none data-[disabled]:opacity-45",
       "[&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:[stroke-width:1.7]",
@@ -117,7 +117,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 font-sans text-sm text-fg outline-none",
+      "relative flex min-h-8 cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 font-sans text-[13.5px] text-fg outline-none",
       "transition-colors duration-cd-fast ease-cd",
       "focus:bg-bg-inset focus:text-fg data-[disabled]:pointer-events-none data-[disabled]:opacity-45",
       className,
@@ -127,7 +127,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
   >
     <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
       <DropdownMenuPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
+        <Check aria-hidden="true" className="size-4 text-accent [stroke-width:2]" />
       </DropdownMenuPrimitive.ItemIndicator>
     </span>
     {children}
@@ -143,7 +143,7 @@ const DropdownMenuRadioItem = React.forwardRef<
   <DropdownMenuPrimitive.RadioItem
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 font-sans text-sm text-fg outline-none",
+      "relative flex min-h-8 cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 font-sans text-[13.5px] text-fg outline-none",
       "transition-colors duration-cd-fast ease-cd",
       "focus:bg-bg-inset focus:text-fg data-[disabled]:pointer-events-none data-[disabled]:opacity-45",
       className,
@@ -152,7 +152,7 @@ const DropdownMenuRadioItem = React.forwardRef<
   >
     <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
       <DropdownMenuPrimitive.ItemIndicator>
-        <Circle className="h-2 w-2 fill-current" />
+        <Check aria-hidden="true" className="size-4 text-accent [stroke-width:2]" />
       </DropdownMenuPrimitive.ItemIndicator>
     </span>
     {children}
@@ -169,7 +169,7 @@ const DropdownMenuLabel = React.forwardRef<
   <DropdownMenuPrimitive.Label
     ref={ref}
     className={cn(
-      "px-2 py-1.5 font-sans text-[11px] font-semibold uppercase tracking-[0.09em] text-fg-tertiary",
+      "px-2 pb-1 pt-2 font-sans text-[11.5px] font-semibold text-fg-tertiary",
       inset && "pl-8",
       className,
     )}

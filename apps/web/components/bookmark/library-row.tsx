@@ -1,6 +1,6 @@
 import * as React from "react";
 import Link from "next/link";
-import { Check, ChevronRight, Folder, Lock, Sparkles } from "lucide-react";
+import { ChevronRight, Folder, Lock, Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Tag } from "@/components/ui/badge";
@@ -84,6 +84,12 @@ export interface LibraryRowProps
 
   /** Trailing controls — a read toggle, an overflow menu. */
   actions?: React.ReactNode;
+  /**
+   * Replaces the unread dot's gutter. The Library passes its selection toggle,
+   * which shows the dot at rest and the checkbox on hover — one gutter, not
+   * two side by side.
+   */
+  leading?: React.ReactNode;
 }
 
 const MAX_TAGS = 3;
@@ -96,8 +102,8 @@ function Breadcrumb({
   const inbox = path.length === 0;
 
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-1.5 font-sans text-xs leading-[1.4] text-fg-tertiary">
-      <Folder aria-hidden="true" className="size-3 shrink-0 [stroke-width:1.7]" />
+    <div className="flex min-w-0 items-center gap-1 font-sans text-[12.5px] leading-[1.4] text-fg-tertiary">
+      <Folder aria-hidden="true" className="size-3.5 shrink-0 [stroke-width:1.7]" />
       {inbox ? (
         <span>Inbox</span>
       ) : (
@@ -134,9 +140,9 @@ function Breadcrumb({
         })
       )}
       {filing ? (
-        <span className="ml-1 inline-flex items-center gap-1 font-semibold uppercase tracking-[.08em] text-ai opacity-85 text-[10.5px]">
-          <Sparkles aria-hidden="true" className="size-2.5 shrink-0 fill-current" />
-          filing…
+        <span className="ml-1 inline-flex items-center gap-1 font-medium text-ai">
+          <Sparkles aria-hidden="true" className="size-3 shrink-0 [stroke-width:1.8]" />
+          Filing…
         </span>
       ) : null}
     </div>
@@ -162,6 +168,7 @@ const LibraryRow = React.forwardRef<HTMLElement, LibraryRowProps>(
       privateLink = false,
       summaryLoading = false,
       actions,
+      leading,
       ...props
     },
     ref,
@@ -174,30 +181,30 @@ const LibraryRow = React.forwardRef<HTMLElement, LibraryRowProps>(
       <article
         ref={ref}
         className={cn(
-          "flex gap-4 border-b border-line py-4 last:border-b-0",
+          "group/item relative flex gap-4 border-b border-line px-3 py-4 last:border-b-0",
           "transition-colors duration-cd-fast ease-cd hover:bg-bg-subtle",
           className,
         )}
         {...props}
       >
-        <span
-          aria-hidden="true"
-          className={cn(
-            "mt-[9px] size-1.5 shrink-0 rounded-pill",
-            unread ? "bg-accent" : "bg-transparent",
-          )}
-        />
+        {leading ?? (
+          <span
+            aria-hidden="true"
+            className={cn(
+              "mt-[9px] size-[7px] shrink-0 rounded-pill",
+              unread ? "bg-accent" : "bg-transparent",
+            )}
+          />
+        )}
 
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <Breadcrumb collectionPath={collectionPath} filing={filing} />
-
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
           <h3 className="m-0 min-w-0">
             <Link
               href={href}
               className={cn(
                 "flex items-start gap-1.5 rounded-xs",
                 "font-serif text-[17px] font-semibold leading-[1.35] text-fg",
-                "hover:underline hover:decoration-line-strong hover:underline-offset-[3px]",
+                "decoration-line-strong underline-offset-[3px] hover:underline",
                 focusRing,
               )}
             >
@@ -213,45 +220,48 @@ const LibraryRow = React.forwardRef<HTMLElement, LibraryRowProps>(
           </h3>
 
           {privateLink ? (
-            <PrivateLinkNote className="mt-0.5" />
+            <PrivateLinkNote className="mt-1" />
           ) : summaryLoading ? (
-            <div className="flex max-w-[420px] flex-col gap-2 py-1">
+            <div className="flex max-w-[420px] flex-col gap-2 py-1.5">
               <Skeleton shape="line" className="w-[88%]" />
               <Skeleton shape="line" className="w-[52%]" />
             </div>
           ) : summary ? (
-            <p className="m-0 line-clamp-2 font-sans text-[13.5px] leading-[1.55] text-fg-secondary">
+            <p className="m-0 line-clamp-2 max-w-[68ch] font-sans text-[13.5px] leading-[1.55] text-fg-secondary">
               {summary}
             </p>
           ) : null}
 
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            {unread ? null : (
-              <Tag variant="neutral">
-                <Check aria-hidden="true" className="size-3 [stroke-width:2.2]" />
-                Read
-              </Tag>
-            )}
-            {badge}
-            {shownTags.map((tag) => (
-              <Tag key={tag}>{tag}</Tag>
-            ))}
-            {overflow > 0 ? <Tag variant="neutral">{`+${overflow}`}</Tag> : null}
+          <div className="flex min-h-8 min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 pt-1">
+            <Breadcrumb collectionPath={collectionPath} filing={filing} />
             {meta ? (
-              <span className="ml-1 font-sans text-[12.5px] leading-[1.4] text-fg-secondary">
+              <span className="nums font-sans text-[12.5px] leading-[1.4] text-fg-tertiary">
                 {meta}
               </span>
             ) : null}
-            {actions ? <span className="ml-auto">{actions}</span> : null}
+            {badge}
+            {shownTags.length > 0 ? (
+              <span className="flex flex-wrap items-center gap-1.5">
+                {shownTags.map((tag) => (
+                  <Tag key={tag}>{tag}</Tag>
+                ))}
+                {overflow > 0 ? <Tag variant="neutral">{`+${overflow}`}</Tag> : null}
+              </span>
+            ) : null}
+            {actions ? (
+              <span className="ml-auto opacity-100 transition-opacity duration-cd-fast ease-cd md:opacity-0 md:focus-within:opacity-100 md:group-hover/item:opacity-100 md:has-[[data-state=open]]:opacity-100">
+                {actions}
+              </span>
+            ) : null}
           </div>
         </div>
 
         {summaryLoading && !thumbnailUrl ? (
-          <Skeleton shape="thumb" className="h-16 w-[88px] shrink-0 rounded-sm" />
+          <Skeleton shape="thumb" className="h-16 w-[96px] shrink-0 rounded-sm max-sm:hidden" />
         ) : (
           <Thumbnail
             src={thumbnailUrl}
-            className="h-16 w-[88px] rounded-sm"
+            className="h-16 w-[96px] rounded-sm max-sm:h-14 max-sm:w-[72px]"
           />
         )}
       </article>
@@ -268,7 +278,7 @@ const LibraryList = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("border-t border-line", className)} {...props} />
+  <div ref={ref} className={cn("flex flex-col", className)} {...props} />
 ));
 LibraryList.displayName = "LibraryList";
 
@@ -279,25 +289,34 @@ LibraryList.displayName = "LibraryList";
  */
 const LibraryRowSkeleton = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLDivElement> & {
+    /** Match a row rendered with a 32px `leading` toggle instead of the dot. */
+    wideGutter?: boolean;
+  }
+>(({ className, wideGutter = false, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex gap-4 border-b border-line py-4 last:border-b-0", className)}
+    className={cn(
+      "flex gap-4 border-b border-line px-3 py-4 last:border-b-0",
+      wideGutter && "pl-1",
+      className,
+    )}
     {...props}
   >
-    <span aria-hidden="true" className="mt-[9px] size-1.5 shrink-0" />
+    <span
+      aria-hidden="true"
+      className={cn("shrink-0", wideGutter ? "w-8" : "mt-[9px] size-[7px]")}
+    />
     <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-      <Skeleton shape="line" className="h-3 w-[120px]" />
       <Skeleton shape="title" className="my-[3px]" />
       <Skeleton shape="line" className="w-[92%]" />
       <Skeleton shape="line" className="w-[64%]" />
-      <div className="flex items-center gap-2 pt-1">
-        <Skeleton className="h-[22px] w-16 rounded-pill" />
-        <Skeleton className="h-[22px] w-20 rounded-pill" />
+      <div className="flex min-h-8 items-center gap-3 pt-1">
+        <Skeleton shape="line" className="h-3 w-[96px]" />
+        <Skeleton shape="line" className="h-3 w-[140px]" />
       </div>
     </div>
-    <Skeleton shape="thumb" className="h-16 w-[88px] shrink-0 rounded-sm" />
+    <Skeleton shape="thumb" className="h-16 w-[96px] shrink-0 rounded-sm max-sm:hidden" />
   </div>
 ));
 LibraryRowSkeleton.displayName = "LibraryRowSkeleton";

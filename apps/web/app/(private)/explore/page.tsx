@@ -36,7 +36,7 @@ export default async function ExplorePage({
   const topic = parseTopic((await searchParams).topic);
 
   return (
-    <main className="mx-auto w-full max-w-screen-lg">
+    <div className="mx-auto w-full max-w-[1100px]">
       {/*
         Keyed on the topic so a switch tears the list down rather than
         animating one topic's items into another's.
@@ -44,7 +44,7 @@ export default async function ExplorePage({
       <Suspense key={topic} fallback={<ExploreFallback />}>
         <ExploreData topic={topic} />
       </Suspense>
-    </main>
+    </div>
   );
 }
 

@@ -61,7 +61,8 @@ earlier ones:
 2. `components/ai/ai-callout.tsx`
 3. `components/ai/processing-steps.tsx`
 4. `components/social/action-row.tsx`
-5. `components/app-header.tsx` (header capsule)
+5. `components/shell/` — the app shell: `app-shell.tsx`, `sidebar.tsx`, `public-header.tsx`
+   (originally the header capsule, `app-header.tsx`; replaced by revision R1 and deleted)
 6. `components/bookmark/library-row.tsx`
 7. `components/feed/feed-item.tsx`
 
@@ -89,7 +90,7 @@ versions in the tree stops being a migration.
 `apps/mobile` consumes the same `tokens.json`. `scripts/generate-tokens.mjs` compiles it into
 `apps/mobile/constants/theme.ts` alongside the web stylesheet, so the two clients cannot drift —
 `bun run tokens` writes both, `bun run tokens:check` fails when either is stale, and both apps' lint
-runs that check. Patterns translate directly; the header capsule becomes a bottom tab bar plus the
+runs that check. Patterns translate directly; the app shell becomes a bottom tab bar plus the
 compact `components/TopBar.tsx`, and hover states become pressed states (a row's `--cd-bg-subtle`
 hover becomes its pressed ground). Parity beyond token adoption is out of scope.
 

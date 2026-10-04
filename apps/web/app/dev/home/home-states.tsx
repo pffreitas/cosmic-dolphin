@@ -3,8 +3,7 @@
 import * as React from "react";
 import { FeedScope } from "@cosmic-dolphin/api-client";
 
-import { DevThemeToggle } from "@/app/dev/dev-theme-toggle";
-import { Segmented, SegmentedItem } from "@/components/ui/segmented";
+import { DevShell } from "@/app/dev/dev-shell";
 import { HomeFallback, HomeView } from "@/components/feed/home-view";
 import type {
   FeedBookmarkEntry,
@@ -244,32 +243,13 @@ export function HomeStates() {
   const [state, setState] = React.useState<StateKey>("populated");
 
   return (
-    <div className="mx-auto w-full max-w-screen-lg px-4 py-8 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
-        <div>
-          <h1 className="m-0 font-serif text-[22px] font-semibold leading-[1.25] text-fg">
-            Home states
-          </h1>
-          <p className="m-0 pt-1 font-sans text-[12.5px] leading-[1.4] text-fg-secondary">
-            The real components on fixture data. Dev only — nothing here posts.
-          </p>
-        </div>
-        <DevThemeToggle />
-      </div>
-
-      <div className="py-4">
-        <Segmented
-          aria-label="Home state"
-          value={state}
-          onValueChange={(value) => setState(value as StateKey)}
-        >
-          {STATES.map((option) => (
-            <SegmentedItem key={option.value} value={option.value}>
-              {option.label}
-            </SegmentedItem>
-          ))}
-        </Segmented>
-      </div>
+    <DevShell
+      title="Home states"
+      currentPath="/my/dashboard"
+      states={STATES}
+      state={state}
+      onStateChange={setState}
+    >
 
       {state === "loading" ? (
         <HomeFallback scope={FeedScope.ForYou} readerName="Paulo Freitas" />
@@ -296,6 +276,6 @@ export function HomeStates() {
           readerName="Paulo Freitas"
         />
       )}
-    </div>
+    </DevShell>
   );
 }

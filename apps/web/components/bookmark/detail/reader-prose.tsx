@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
  * The reading column's typography — foundations.md, and the one place in the
  * product where the serif runs at full size.
  *
- * 16px at 1.75, capped at `--cd-measure`. Everything else here follows from
+ * 17–18px at 1.72 on the 680px column. Everything else here follows from
  * those two numbers: the paragraph rhythm is a multiple of the line, headings
  * step down from the page's `title-1` rather than starting a new scale, and
  * the measure is on the prose element rather than the page so the hero, the
@@ -29,11 +29,14 @@ export interface ReaderProseProps
  * looks identical to the reader's without the reader's machinery around it.
  */
 export const readerProseClass = cn(
-  "max-w-[var(--cd-measure)] font-serif text-[16px] leading-[1.75] text-fg",
+  // 17px on a phone, 18px from 640px — on the 680px column that is the same
+  // ~70 characters `--cd-measure` asks for, without a second, narrower edge
+  // inside the column the brief already defines.
+  "font-serif text-[17px] leading-[1.72] text-fg sm:text-[18px]",
   // Blocks
-  "[&_p]:my-[1.15em]",
-  "[&_h2]:mb-[0.5em] [&_h2]:mt-[1.9em] [&_h2]:font-serif [&_h2]:text-[22px] [&_h2]:font-semibold [&_h2]:leading-[1.3]",
-  "[&_h3]:mb-[0.45em] [&_h3]:mt-[1.7em] [&_h3]:font-serif [&_h3]:text-[18px] [&_h3]:font-semibold [&_h3]:leading-[1.35]",
+  "[&_p]:my-[1.1em]",
+  "[&_h2]:mb-[0.5em] [&_h2]:mt-[1.8em] [&_h2]:font-serif [&_h2]:text-[26px] [&_h2]:font-semibold [&_h2]:leading-[1.25] [&_h2]:tracking-[-0.015em]",
+  "[&_h3]:mb-[0.45em] [&_h3]:mt-[1.6em] [&_h3]:font-serif [&_h3]:text-[20px] [&_h3]:font-semibold [&_h3]:leading-[1.35] [&_h3]:tracking-[-0.01em]",
   "[&_h4]:mb-[0.4em] [&_h4]:mt-[1.5em] [&_h4]:font-sans [&_h4]:text-[14px] [&_h4]:font-semibold",
   "[&_ul]:my-[1.15em] [&_ul]:list-disc [&_ul]:pl-[1.4em]",
   "[&_ol]:my-[1.15em] [&_ol]:list-decimal [&_ol]:pl-[1.4em]",
@@ -41,7 +44,7 @@ export const readerProseClass = cn(
   "[&_li::marker]:text-fg-tertiary",
   // A pull quote, which is the only place the reader raises its voice.
   "[&_blockquote]:my-[1.6em] [&_blockquote]:border-l-2 [&_blockquote]:border-accent-border",
-  "[&_blockquote]:pl-[1.1em] [&_blockquote]:text-[18px] [&_blockquote]:italic [&_blockquote]:text-fg-secondary",
+  "[&_blockquote]:pl-[1.1em] [&_blockquote]:text-[21px] [&_blockquote]:leading-[1.55] [&_blockquote]:italic [&_blockquote]:text-fg-secondary",
   "[&_blockquote_p]:my-[0.6em]",
   "[&_hr]:my-[2.2em] [&_hr]:border-line",
   // Inline

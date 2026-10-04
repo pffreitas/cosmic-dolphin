@@ -93,7 +93,7 @@ export function CosmicBrief({
 
       {keyPoints.length > 0 ? (
         <>
-          <p className="mb-2.5 font-sans text-[11px] font-semibold uppercase tracking-[0.08em] text-fg-tertiary">
+          <p className="mb-2.5 font-sans text-[12.5px] font-semibold text-fg">
             Key points
           </p>
           <AiKeyPoints>

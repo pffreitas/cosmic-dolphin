@@ -150,9 +150,9 @@ const CommandGroup = React.forwardRef<
     className={cn(
       "overflow-hidden p-2 text-fg",
       "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2",
-      "[&_[cmdk-group-heading]]:font-sans [&_[cmdk-group-heading]]:text-[11px]",
-      "[&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase",
-      "[&_[cmdk-group-heading]]:tracking-[.08em] [&_[cmdk-group-heading]]:text-fg-tertiary",
+      "[&_[cmdk-group-heading]]:font-sans [&_[cmdk-group-heading]]:text-[11.5px]",
+      "[&_[cmdk-group-heading]]:font-semibold",
+      "[&_[cmdk-group-heading]]:text-fg-tertiary",
       className
     )}
     {...props}

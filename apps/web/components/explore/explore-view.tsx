@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Compass } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Segmented, SegmentedItem } from "@/components/ui/segmented";
@@ -21,7 +22,11 @@ import {
   toFeedEntries,
 } from "@/components/feed/feed-data";
 
-import { ExploreRail, ExploreRailProps, ExploreRailSkeleton } from "./explore-rail";
+import {
+  ExploreRail,
+  ExploreRailProps,
+  ExploreRailSkeleton,
+} from "./explore-rail";
 import { ExploreTopicOption, exploreHref, ALL_TOPICS } from "./explore-data";
 
 /**
@@ -70,9 +75,8 @@ export function ExploreView({
   const [cursor, setCursor] = React.useState<string | undefined>(initialCursor);
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [pageError, setPageError] = React.useState<string | undefined>(error);
-  const [commentsFor, setCommentsFor] = React.useState<FeedBookmarkEntry | null>(
-    null
-  );
+  const [commentsFor, setCommentsFor] =
+    React.useState<FeedBookmarkEntry | null>(null);
 
   // The server render and the first client render must agree, so the initial
   // props are the only source of truth until something is actually clicked.
@@ -112,7 +116,7 @@ export function ExploreView({
       (records) => {
         if (records.some((record) => record.isIntersecting)) void loadMore();
       },
-      { rootMargin: "600px 0px" }
+      { rootMargin: "600px 0px" },
     );
 
     observer.observe(node);
@@ -121,7 +125,12 @@ export function ExploreView({
 
   return (
     <>
-      <div className="flex justify-center gap-8 py-6">
+      <PageHeader
+        title="Explore"
+        description="What readers you might like are saving, ranked for discovery rather than for you."
+        className="pb-6"
+      />
+      <div className="flex justify-between gap-10 pb-6">
         <div className="flex min-w-0 max-w-[680px] flex-1 flex-col gap-4">
           <ExploreTopics
             topic={topic}
@@ -162,7 +171,7 @@ export function ExploreView({
                     entry={entry}
                     onComment={() => setCommentsFor(entry)}
                   />
-                ) : null
+                ) : null,
               )}
             </div>
           )}
@@ -336,16 +345,23 @@ function ExploreRow({
 /** The loading shape: the control's geometry, three items, and a live rail. */
 export function ExploreFallback() {
   return (
-    <div className="flex justify-center gap-8 py-6">
-      <div className={cn("flex min-w-0 max-w-[680px] flex-1 flex-col gap-4")}>
-        <Skeleton className="h-[38px] w-[280px] rounded-pill" />
-        <div className="flex flex-col gap-3">
-          <FeedItemSkeleton />
-          <FeedItemSkeleton />
-          <FeedItemSkeleton />
+    <>
+      <PageHeader
+        title="Explore"
+        description="What readers you might like are saving, ranked for discovery rather than for you."
+        className="pb-6"
+      />
+      <div className="flex justify-between gap-10 pb-6">
+        <div className={cn("flex min-w-0 max-w-[680px] flex-1 flex-col gap-4")}>
+          <Skeleton className="h-[38px] w-[280px] rounded-pill" />
+          <div className="flex flex-col gap-3">
+            <FeedItemSkeleton />
+            <FeedItemSkeleton />
+            <FeedItemSkeleton />
+          </div>
         </div>
+        <ExploreRailSkeleton />
       </div>
-      <ExploreRailSkeleton />
-    </div>
+    </>
   );
 }

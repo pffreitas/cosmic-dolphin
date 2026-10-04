@@ -23,7 +23,8 @@ import {
 import { ActionRow } from "@/components/social/action-row";
 import { CommentDrawer } from "@/components/social/comment-drawer";
 import { useReshare } from "@/components/social/use-reshare";
-import { AppHeader } from "@/components/app-header";
+import { Sidebar } from "@/components/shell/sidebar";
+import { COLLECTIONS, COUNTS } from "@/app/dev/fixtures";
 import { HeaderOmnibox } from "@/components/header-omnibox";
 import {
   LibraryList,
@@ -508,40 +509,39 @@ export function PatternsGallery() {
           </Grid>
         </Section>
 
-        {/* ============ 05 · HEADER CAPSULE ============ */}
+        {/* ============ 05 · APP SHELL ============ */}
         <Section
-          id="header"
+          id="shell"
           index="05"
-          title="Header capsule"
-          file="components/app-header.tsx"
-          lede="A content-sized opaque glass capsule floating directly on the page, carrying one omnibox that saves a pasted link and searches anything else. Below 1000px the destination labels drop to glyphs; below 900px the capsule wraps and the omnibox takes its own row. Resize the window to see both."
+          title="App shell"
+          file="components/shell/sidebar.tsx"
+          lede="The signed-in frame: a 256px sidebar holding the destinations, the Library and its AI-filed collections, and the account; a top bar holding the one omnibox. Below 1024px the sidebar becomes a sheet behind the top bar's menu button. Exactly one row is current at a time."
         >
-          <Case label="Home active · omnibox (paste a link to see it switch to Save)" bare>
-            <div className="rounded-lg border border-line pb-24">
-              <AppHeader
-                className="pt-4"
-                currentPath="/my/dashboard"
-                user={{ name: "Paulo Freitas" }}
-                omnibox={<HeaderOmnibox />}
-              />
-              <div className="bg-bg px-[18px] py-3.5">
-                <p className="m-0 font-sans text-[12.5px] leading-[1.4] text-fg-secondary">
-                  The header stays clear while the opaque gradient, highlighted
-                  edge, and cool shadow give the capsule its glass depth.
-                </p>
+          <Grid>
+            <Case label="Home current · counts loaded" bare>
+              <div className="h-[640px] overflow-hidden rounded-lg border border-line bg-bg-subtle">
+                <Sidebar
+                  currentPath="/my/dashboard"
+                  user={{ name: "Paulo Freitas", email: "paulo@cosmic.dev", href: "/my/profile" }}
+                  collections={COLLECTIONS}
+                  counts={COUNTS}
+                />
               </div>
-            </div>
-          </Case>
-
-          <Case label="Library active · signed out (no avatar, no save)" bare>
-            <div className="overflow-hidden rounded-lg border border-line">
-              <AppHeader
-                className="pt-4"
-                currentPath="/my/library"
-                saveHref="/sign-in"
-                saveLabel="Get started"
-                onSearch={() => undefined}
-              />
+            </Case>
+            <Case label="Counts unavailable · no collections yet" bare>
+              <div className="h-[640px] overflow-hidden rounded-lg border border-line bg-bg-subtle">
+                <Sidebar
+                  currentPath="/explore"
+                  user={{ name: "Maya Okafor", href: "/my/profile" }}
+                  collections={[]}
+                  counts={null}
+                />
+              </div>
+            </Case>
+          </Grid>
+          <Case label="Omnibox (paste a link to see it switch to Save)">
+            <div className="max-w-[600px]">
+              <HeaderOmnibox />
             </div>
           </Case>
         </Section>

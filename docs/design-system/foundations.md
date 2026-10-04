@@ -85,7 +85,7 @@ second brand.
 | `--cd-ai-border` | The callout hairline and its internal divider. |
 | `--cd-ai-chip` | Fill behind the AI badge. |
 | `--cd-ai-glow` | The single corner aura. Never used anywhere else. |
-| `--cd-ai-sheen` | 1px inset top highlight, shared with the header capsule. |
+| `--cd-ai-sheen` | 1px inset top highlight on the AI callout. |
 
 ### State
 
@@ -99,11 +99,16 @@ second brand.
 | `--cd-focus` | Focus ring. Identical to accent by design — focus is an action affordance. |
 | `--cd-overlay` | The scrim behind a dialog or bottom sheet. Dark in both modes — it dims the page, it does not restate the theme. |
 
-### Header capsule
+### Header capsule (retired on web)
 
 `--cd-nav-glass`, `--cd-nav-edge`, `--cd-nav-sheen`, `--cd-nav-pill`, `--cd-nav-shadow`. Specified
 in [patterns.md](./patterns.md#header-capsule); they belong to that one component and must not be
 borrowed.
+
+
+The capsule was replaced by the app shell (revision R1). Nothing in `apps/web` reads these tokens
+any more; they stay in `tokens.json` because the mobile theme still exports `navEdge`, `navSheen`
+and `navPill`, and are removed with the mobile pass.
 
 ### Dark mode
 
@@ -131,18 +136,32 @@ Never a serif button. Never a sans bookmark title.
 
 | Role | Family | Size | Line | Weight | Notes |
 | --- | --- | --- | --- | --- | --- |
-| `display` | serif | 40px | 1.1 | 600 | Marketing and empty-state hero only. `text-wrap: balance`. |
-| `title-1` | serif | 29px | 1.2 | 600 | Bookmark detail title. One per page. |
-| `title-2` | serif | 20px | 1.3 | 600 | Feed post title, section headings in app chrome. |
-| `title-3` | serif | 17px | 1.35 | 600 | Library row title, rail item title. |
-| `body` | sans | 15px | 1.65 | 400 | AI summaries, article body, descriptions. |
-| `body-sm` | sans | 13.5px | 1.55 | 400 | Comments, secondary copy, help text. |
+| `display` | serif | 44–68px | 1.04–1.1 | 600 | Landing hero (68px), empty-state hero (44px), Home's lead item (36px). -0.022 to -0.03em. `text-wrap: balance`. |
+| `title-1` | serif | 44px (32px < 640px) | 1.1 | 600 | Bookmark detail title. One per page. -0.022em. |
+| `page` | serif | 28px (24px < 640px) | 1.15 | 600 | Page header title (`components/ui/page-header.tsx`); Home's greeting at 34px. -0.018em. |
+| `title-2` | serif | 20px | 1.3 | 600 | Feed post title, digest titles. |
+| `title-3` | serif | 17–19px | 1.3–1.35 | 600 | Library row title (17), Home feed row (19), rail item title. |
+| `reader` | serif | 18px (17px < 640px) | 1.72 | 400 | Extracted article body on the detail page; h2 26px, h3 20px. |
+| `body` | sans | 15px | 1.65 | 400 | AI summaries, descriptions. |
+| `body-sm` | sans | 13.5px | 1.55 | 400 | Comments, secondary copy, help text, sidebar rows. |
 | `meta` | sans | 12.5px | 1.4 | 400 | Domain, timestamp, reading time, counts. `--cd-fg-tertiary`. |
-| `label` | sans | 11px | 1.3 | 600 | Uppercase, `0.09em` tracking. Rail and section labels. |
-| `quote` | serif | 19px | 1.5 | 400 italic | Pull quotes inside reader content. |
+| `section` | sans | 13px | 1 | 600 | In-page section headings ("Pick up where you left off", rail headings). Sentence case, `--cd-fg`. |
+| `label` | sans | 11.5px | 1.3 | 600 | Group labels in the sidebar and menus. Sentence case, `--cd-fg-tertiary`. |
+| `quote` | serif | 21px | 1.55 | 400 italic | Pull quotes inside reader content. |
 
-Reading measure caps at `--cd-measure` (68ch). Feed summaries clamp to 3 lines, library summaries to
-2, titles to 2 — always with `-webkit-line-clamp`, never by truncating server-side.
+**Sentence case everywhere** (revision R4). The uppercase, letter-spaced micro-label is gone from
+the product: it shouted at the smallest size on screen and made every rail look like a dashboard.
+Hierarchy comes from weight and colour instead.
+
+**Character.** Inter runs with `cv02 cv03 cv04 cv11` (open 4, open 6/9, single-storey a), set once
+on `<html>`. Source Serif 4 loads as a variable font with its `opsz` axis, so display sizes get the
+tighter, higher-contrast cut and 17px rows the sturdier one; serif text tracks at -0.006em by
+default and tighter at display sizes. Anything that ticks — counts, timestamps, reading times —
+takes the `.nums` utility (`tabular-nums`).
+
+The reading column is 680px, which at the 18px `reader` size is the same ~70 characters
+`--cd-measure` (68ch) asks for. Feed summaries clamp to 3 lines, library summaries to 2, titles to 2
+— always with `-webkit-line-clamp`, never by truncating server-side.
 
 ## Shape
 
@@ -152,7 +171,7 @@ Reading measure caps at `--cd-measure` (68ch). Feed summaries clamp to 3 lines, 
 | `--cd-radius-sm` | 6px | Buttons, inputs, chips, ghost hit areas, small thumbnails. |
 | `--cd-radius-md` | 8px | Cards, feed items, panels, dialogs, thumbnails, popovers. |
 | `--cd-radius-lg` | 12px | The app frame and the AI callout. Nothing else. |
-| `--cd-radius-pill` | 999px | Header capsule and its nav pills, tags, avatars, segmented filters, primary CTA. |
+| `--cd-radius-pill` | 999px | Tags, avatars, segmented filters, the primary CTA. |
 
 Pills are a signal that something is a *token of identity or a single decisive action*. A pill on an
 ordinary secondary button dilutes the primary CTA and is a bug.
@@ -174,7 +193,7 @@ Borders do the work. Shadows are reserved for surfaces that genuinely float:
 
 | Token | Applies to |
 | --- | --- |
-| `--cd-shadow-capsule` | The header capsule. |
+| `--cd-shadow-capsule` | Retired with the header capsule; unused on web. |
 | `--cd-shadow-popover` | Popovers, dropdowns, the command palette, toasts. |
 | `--cd-shadow-dialog` | Modal dialogs and sheets. |
 
@@ -222,6 +241,22 @@ Non-negotiable, and treated as build-breaking rather than as polish:
 - **Live regions.** AI processing status updates announce through `aria-live="polite"`, once per
   phase change — not per token streamed.
 - **Motion.** See above.
+
+## Brand
+
+`components/brand/logo.tsx`. The mark is a leaping arc over a single point of light on a 9/32-radius
+accent tile — the "quiet metaphor for depth and connection" of decision 11, drawn rather than
+borrowed. It replaced a 🐬 emoji, which rendered differently on every platform and could take
+neither the accent, a size, nor dark mode.
+
+- `LogoMark` — the tile alone, 24px by default, coloured through `fill-accent` /
+  `stroke-accent-fg`, so it translates to dark mode with everything else. Decorative unless given a
+  `title`.
+- `Brandmark` — mark plus "Cosmic Dolphin" at 15px/600, -0.015em, linking home. The one lockup.
+- `app/icon.svg` — the favicon copy of the same geometry, with literals, because a favicon cannot
+  read CSS.
+
+Never a dolphin illustration in app chrome, never the mark recoloured outside the accent tokens.
 
 ## Icons
 

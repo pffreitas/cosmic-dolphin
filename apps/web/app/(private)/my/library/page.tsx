@@ -41,7 +41,7 @@ export default async function LibraryPage({
   const view = parseLibraryView(params);
 
   return (
-    <main className="mx-auto w-full max-w-screen-lg px-4 sm:px-6">
+    <div>
       {/*
         Keyed on the view so a filter change tears the list down rather than
         animating one collection's rows into another's. The fallback holds the
@@ -50,7 +50,7 @@ export default async function LibraryPage({
       <Suspense key={libraryViewKey(view)} fallback={<LibraryFallback view={view} />}>
         <LibraryData view={view} sortExplicit={Boolean(params.sort)} />
       </Suspense>
-    </main>
+    </div>
   );
 }
 

@@ -8,10 +8,13 @@ import { focusRing } from "./focus-ring";
 /**
  * Tag — see docs/design-system/components.md#tag.
  *
- * Pill, accent-soft fill, accent text, 12px/500, 5×10px, no border. The
- * `neutral` variant carries non-topical facts (read state, reading time,
- * counts). AI-suggested tags and user tags render identically: the user cannot
- * be asked to care which is which.
+ * Pill, 12px/500. The default `topic` variant is a hairline outline on no fill
+ * — topics are evidence about a save, not actions, and painting every one in
+ * the accent spent the accent on the least decisive thing on screen. `neutral`
+ * carries non-topical facts (reading time, counts) on `--cd-bg-inset`.
+ * `accent` is for the rare tag that *is* a selection — an active filter.
+ * AI-suggested tags and user tags render identically: the user cannot be
+ * asked to care which is which.
  *
  * `Badge` stays exported as an alias so existing callers keep working; new code
  * should reach for `Tag`.
@@ -25,6 +28,7 @@ const tagVariants = cva(
   {
     variants: {
       variant: {
+        topic: "border border-line bg-transparent px-[9px] py-1 text-fg-secondary",
         accent: "bg-accent-soft text-accent",
         neutral: "bg-bg-inset text-fg-secondary",
         danger: "bg-bg-inset text-[color:var(--cd-danger)]",
@@ -37,7 +41,7 @@ const tagVariants = cva(
       },
     },
     defaultVariants: {
-      variant: "accent",
+      variant: "topic",
     },
   },
 );

@@ -6,6 +6,7 @@ import { Loader2, Search as SearchIcon, SearchX } from "lucide-react";
 import type { Collection, HybridSearchResultItem } from "@cosmic-dolphin/api-client";
 
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
@@ -209,7 +210,11 @@ export function SearchView({ view, collections }: SearchViewProps) {
   const searched = view.q.length > 0;
 
   return (
-    <div className="flex flex-col gap-5 py-6">
+    <div className="flex flex-col gap-5 pb-6">
+      <PageHeader
+        title="Search"
+        description="Words and meaning, across everything you have saved — titles, summaries and the full text."
+      />
       {/*
         Pinned under the header. The field is the page's subject, and a reader
         scrolling a long result list is a reader about to refine the query.
@@ -218,7 +223,8 @@ export function SearchView({ view, collections }: SearchViewProps) {
         onSubmit={submit}
         role="search"
         className={cn(
-          "sticky top-0 z-20 -mx-4 flex flex-col gap-3 px-4 pb-3 pt-1 sm:-mx-6 sm:px-6",
+          // top-14 clears the app shell's 56px top bar.
+          "sticky top-14 z-20 -mx-4 flex flex-col gap-3 px-4 pb-3 pt-3 sm:-mx-6 sm:px-6",
           "bg-bg"
         )}
       >

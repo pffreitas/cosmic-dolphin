@@ -2,17 +2,14 @@
 
 import * as React from "react";
 import {
-  BookmarkLibraryCounts,
   BookmarkReadStatus,
   BookmarkScope,
   BookmarkSort,
-  Collection,
   CollectionSuggestion,
 } from "@cosmic-dolphin/api-client";
 
-import { Button } from "@/components/ui/button";
-import { DevThemeToggle } from "@/app/dev/dev-theme-toggle";
-import { Segmented, SegmentedItem } from "@/components/ui/segmented";
+import { DevShell } from "@/app/dev/dev-shell";
+import { COLLECTIONS, COUNTS } from "@/app/dev/fixtures";
 import {
   LibraryFallback,
   LibraryView,
@@ -28,27 +25,6 @@ import type { LibraryView as LibraryViewParams } from "@/components/bookmark/lib
    the real `LibraryView`, so what this page shows is what `/my/library` shows.
    --------------------------------------------------------------------------- */
 
-const COLLECTIONS: Collection[] = [
-  { id: "design", name: "Design", userId: "u" },
-  { id: "typography", name: "Typography & reading UX", userId: "u", parentId: "design" },
-  { id: "engineering", name: "Engineering", userId: "u" },
-  { id: "agents", name: "Agents", userId: "u", parentId: "engineering" },
-  { id: "reading", name: "Reading", userId: "u" },
-];
-
-const COUNTS: BookmarkLibraryCounts = {
-  all: 148,
-  inbox: 9,
-  unread: 34,
-  archived: 12,
-  collections: [
-    { collectionId: "design", count: 21 },
-    { collectionId: "typography", count: 14 },
-    { collectionId: "engineering", count: 38 },
-    { collectionId: "agents", count: 17 },
-    { collectionId: "reading", count: 26 },
-  ],
-};
 
 const SUGGESTION: CollectionSuggestion = {
   id: "s1",
@@ -195,33 +171,13 @@ export function LibraryStates() {
   const [state, setState] = React.useState<StateKey>("populated");
 
   return (
-    <div className="mx-auto w-full max-w-screen-lg px-4 py-8 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
-        <div>
-          <h1 className="m-0 font-serif text-[22px] font-semibold leading-[1.25] text-fg">
-            Library states
-          </h1>
-          <p className="m-0 pt-1 font-sans text-[12.5px] leading-[1.4] text-fg-secondary">
-            The real components on fixture data. Dev only.
-          </p>
-        </div>
-        <DevThemeToggle />
-      </div>
-
-      <div className="py-4">
-        <Segmented
-          aria-label="Library state"
-          value={state}
-          onValueChange={(value) => setState(value as StateKey)}
-        >
-          {STATES.map((option) => (
-            <SegmentedItem key={option.value} value={option.value}>
-              {option.label}
-            </SegmentedItem>
-          ))}
-        </Segmented>
-      </div>
-
+    <DevShell
+      title="Library states"
+      currentPath="/my/library"
+      states={STATES}
+      state={state}
+      onStateChange={setState}
+    >
       {state === "loading" ? (
         <LibraryFallback view={VIEWS.all} />
       ) : (
@@ -244,6 +200,6 @@ export function LibraryStates() {
           error={state === "error" ? "We couldn't load your library." : undefined}
         />
       )}
-    </div>
+    </DevShell>
   );
 }

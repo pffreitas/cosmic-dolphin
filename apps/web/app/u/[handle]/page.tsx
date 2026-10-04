@@ -65,7 +65,7 @@ export default async function PublicProfileRoute({
    */
   if (!user) {
     return (
-      <main className="mx-auto w-full max-w-[720px] py-8">
+      <div className="mx-auto w-full max-w-[720px] pb-8">
         <EmptyState
           ground
           icon={UserRound}
@@ -83,12 +83,12 @@ export default async function PublicProfileRoute({
             </Button>
           }
         />
-      </main>
+      </div>
     );
   }
 
   return (
-    <main>
+    <div>
       <ProfilePage
         handle={handle}
         basePath={`/u/${handle}`}
@@ -110,6 +110,6 @@ export default async function PublicProfileRoute({
           )
         }
       />
-    </main>
+    </div>
   );
 }

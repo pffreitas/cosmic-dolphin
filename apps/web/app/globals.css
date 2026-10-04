@@ -22,6 +22,52 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /*
+   * Inter's character variants — open 4, open 6 and 9, single-storey a. They
+   * move the sans from "default UI font" to a drawn voice of its own, and the
+   * open numerals read better at the 11–12.5px sizes counts live at.
+   */
+  html {
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* The serif runs on its optical-size axis; display sizes tighten slightly. */
+  .font-serif {
+    font-optical-sizing: auto;
+    letter-spacing: -0.006em;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: var(--cd-hl-bg);
+    color: var(--cd-fg);
+  }
+}
+
+@layer utilities {
+  /* Counts, timestamps, anything that ticks: columns stay put as digits change. */
+  .nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Hairline scrollbars for the app shell's own scroll areas. */
+  .scrollbar-quiet {
+    scrollbar-width: thin;
+    scrollbar-color: var(--cd-border-strong) transparent;
+  }
 }
 
 /*
@@ -53,7 +99,7 @@
 
 
 
-/* TipTap Editor Styles */
+/* TipTap Editor Styles (the legacy notes editor; not a revamp surface) */
 .tiptap {
   outline: none;
   position: static !important;

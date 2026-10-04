@@ -336,7 +336,7 @@ export function Reader({
 
   if (loading) {
     return (
-      <div className={cn("max-w-[var(--cd-measure)]", className)} aria-hidden="true">
+      <div className={className} aria-hidden="true">
         <ReaderSkeleton />
       </div>
     );

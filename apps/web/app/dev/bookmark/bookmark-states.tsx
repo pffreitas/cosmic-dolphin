@@ -3,9 +3,7 @@
 import * as React from "react";
 import { Highlight, ReadingProgress } from "@cosmic-dolphin/api-client";
 
-import { Button } from "@/components/ui/button";
-import { DevThemeToggle } from "@/app/dev/dev-theme-toggle";
-import { Segmented, SegmentedItem } from "@/components/ui/segmented";
+import { DevShell } from "@/app/dev/dev-shell";
 import { BookmarkDetail } from "@/components/bookmark/detail/bookmark-detail";
 import type {
   BookmarkDetailModel,
@@ -302,33 +300,13 @@ export function BookmarkStates() {
   }, [state]);
 
   return (
-    <div className="mx-auto w-full max-w-screen-lg px-4 py-8 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
-        <div>
-          <h1 className="m-0 font-serif text-[22px] font-semibold leading-[1.25] text-fg">
-            Bookmark detail states
-          </h1>
-          <p className="m-0 pt-1 font-sans text-[12.5px] leading-[1.4] text-fg-secondary">
-            The real page on fixture data. Dev only. Select text in the reader
-            to see the popover.
-          </p>
-        </div>
-        <DevThemeToggle />
-      </div>
-
-      <div className="py-4">
-        <Segmented
-          aria-label="Detail state"
-          value={state}
-          onValueChange={(value) => setState(value as StateKey)}
-        >
-          {STATES.map((option) => (
-            <SegmentedItem key={option.value} value={option.value}>
-              {option.label}
-            </SegmentedItem>
-          ))}
-        </Segmented>
-      </div>
+    <DevShell
+      title="Bookmark detail states"
+      currentPath="/bookmarks/fixture"
+      states={STATES}
+      state={state}
+      onStateChange={setState}
+    >
 
       <BookmarkDetail
         key={state}
@@ -340,6 +318,6 @@ export function BookmarkStates() {
         // new anchor in memory and the reader repaints from it.
         offline={state !== "ready"}
       />
-    </div>
+    </DevShell>
   );
 }

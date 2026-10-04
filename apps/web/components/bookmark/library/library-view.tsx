@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import {
   Archive,
   ArchiveRestore,
+  ArrowDownUp,
+  ChevronRight,
   BookmarkIcon,
   Check,
   Inbox,
@@ -36,12 +38,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/ui/empty-state";
 import { focusRing } from "@/components/ui/focus-ring";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
+import { useLibraryDnd } from "@/components/shell/library-dnd";
 import { Segmented, SegmentedItem } from "@/components/ui/segmented";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -51,7 +57,6 @@ import {
 } from "@/components/bookmark/library-row";
 import { BookmarksClientAPI } from "@/lib/api/bookmarks-client";
 
-import { CollectionTree, CollectionTreeSkeleton } from "./collection-tree";
 import {
   LIBRARY_PAGE_SIZE,
   LibraryView as LibraryViewParams,
@@ -75,6 +80,9 @@ import { CollectionSuggestionCallout } from "./suggestion-callout";
 import { buildLibraryTree, flattenCollections } from "./tree";
 
 const DRAG_MIME = "application/x-cosmic-bookmarks";
+
+/** pl-1 + the 32px toggle + the 16px gap — the distance from row edge to title. */
+const HANGING_GUTTER = "md:-ml-[52px]";
 
 export interface LibraryViewProps {
   view: LibraryViewParams;
@@ -121,7 +129,8 @@ export function LibraryView({
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [selection, setSelection] =
     React.useState<SelectionState>(EMPTY_SELECTION);
-  const [dragging, setDragging] = React.useState<string[]>([]);
+  // Shared with the sidebar, whose collections are the drop targets.
+  const { dragging, setDragging, registerDropHandler } = useLibraryDnd();
   const [tagDialogOpen, setTagDialogOpen] = React.useState(false);
   const [tagDraft, setTagDraft] = React.useState("");
   const [pendingDelete, setPendingDelete] = React.useState<LibraryItem[] | null>(
@@ -133,11 +142,15 @@ export function LibraryView({
     [collections, counts, view]
   );
   const flatCollections = React.useMemo(() => flattenCollections(tree), [tree]);
-  const collectionName = view.collectionId
-    ? collections.find((entry) => entry.id === view.collectionId)?.name
+  const current = view.collectionId
+    ? collections.find((entry) => entry.id === view.collectionId)
+    : undefined;
+  const collectionName = current?.name;
+  const parentName = current?.parentId
+    ? collections.find((entry) => entry.id === current.parentId)?.name
     : undefined;
 
-  const heading = libraryHeading(view, collectionName);
+  const heading = libraryHeading(view, collectionName, parentName);
   const selected = React.useMemo(
     () => new Set(selection.selected),
     [selection.selected]
@@ -312,6 +325,19 @@ export function LibraryView({
     });
   }
 
+  // The sidebar calls back into the latest `refile`, which closes over the
+  // current rows; the ref spares re-registering on every render.
+  const refileRef = React.useRef(refile);
+  React.useEffect(() => {
+    refileRef.current = refile;
+  });
+  React.useEffect(() => {
+    registerDropHandler((ids, collectionId) => {
+      void refileRef.current(ids, collectionId);
+    });
+    return () => registerDropHandler(null);
+  }, [registerDropHandler]);
+
   function setRead(ids: string[], read: boolean) {
     return mutate({
       ids,
@@ -432,37 +458,22 @@ export function LibraryView({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-8 py-6 md:grid-cols-[216px_minmax(0,1fr)]">
-      <aside className="flex min-w-0 flex-col gap-5">
-        <CollectionTree
-          tree={tree}
-          draggingCount={dragging.length}
-          onDropBookmarks={(collectionId) => {
-            const ids = dragging;
-            setDragging([]);
-            if (ids.length) void refile(ids, collectionId);
-          }}
-        />
-        {suggestion ? (
-          <CollectionSuggestionCallout suggestion={suggestion} />
-        ) : null}
-      </aside>
-
-      <section className="flex min-w-0 flex-col">
-        <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 pb-4">
-          <div className="min-w-0">
-            <h1 className="m-0 font-serif text-[22px] font-semibold leading-[1.25] text-fg">
-              {heading.title}
-            </h1>
-            <p className="m-0 pt-1 font-sans text-[12.5px] leading-[1.4] text-fg-secondary">
-              {headerCount === null
-                ? "Counts unavailable"
-                : `${headerCount} ${heading.countNoun}${headerCount === 1 ? "" : "s"}`}
-              {counts && !inArchive ? ` · ${counts.unread} unread` : ""}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
+    <div className="mx-auto flex w-full max-w-[960px] flex-col gap-6">
+      <PageHeader
+        eyebrow={<LibraryEyebrow parent={heading.parent} />}
+        title={heading.title}
+        description={
+          <>
+            {headerCount === null
+              ? "Counts unavailable"
+              : `${headerCount} ${heading.countNoun}${headerCount === 1 ? "" : "s"}`}
+            {counts && !inArchive ? (
+              <span className="text-fg-tertiary"> · {counts.unread} unread</span>
+            ) : null}
+          </>
+        }
+        actions={
+          <>
             <Segmented
               aria-label="Read status"
               value={view.readStatus}
@@ -476,21 +487,19 @@ export function LibraryView({
                 </SegmentedItem>
               ))}
             </Segmented>
-
-            <Segmented
-              aria-label="Sort"
+            <SortMenu
               value={view.sort}
-              onValueChange={(value) => navigate({ sort: value as BookmarkSort })}
-            >
-              {SORT_OPTIONS.map((option) => (
-                <SegmentedItem key={option.value} value={option.value}>
-                  {option.label}
-                </SegmentedItem>
-              ))}
-            </Segmented>
-          </div>
-        </header>
+              onChange={(sort) => navigate({ sort })}
+            />
+          </>
+        }
+      />
 
+      {suggestion ? (
+        <CollectionSuggestionCallout suggestion={suggestion} layout="banner" />
+      ) : null}
+
+      <section aria-label={heading.title} className="flex min-w-0 flex-col">
         {error ? (
           <div className="rounded-md border border-line bg-bg-subtle p-5">
             <p className="m-0 font-sans text-[13.5px] leading-[1.55] text-fg">
@@ -530,7 +539,11 @@ export function LibraryView({
           />
         ) : (
           <>
-            <LibraryList>
+            {/*
+              The gutter hangs: the toggle column sits in the page margin, so
+              titles align with the page title above them.
+            */}
+            <LibraryList className={HANGING_GUTTER}>
               {items.map((item, index) => (
                 <div
                   key={item.id}
@@ -543,20 +556,24 @@ export function LibraryView({
                   }}
                   onDragEnd={() => setDragging([])}
                   className={cn(
-                    "group/row flex items-start gap-1 border-b border-line last:border-b-0",
+                    "group/row border-b border-line last:border-b-0",
                     dragging.includes(item.id) && "opacity-60",
                   )}
                 >
-                  <SelectionToggle
-                    label={item.title}
-                    checked={selected.has(item.id)}
-                    onToggle={(shiftKey) => toggleAt(index, shiftKey)}
-                  />
                   <LibraryRow
                     className={cn(
-                      "min-w-0 flex-1 border-b-0",
+                      "border-b-0 pl-1",
                       selected.has(item.id) && "bg-accent-soft hover:bg-accent-soft",
                     )}
+                    leading={
+                      <SelectionToggle
+                        label={item.title}
+                        unread={item.unread}
+                        checked={selected.has(item.id)}
+                        selecting={selection.selected.length > 0}
+                        onToggle={(shiftKey) => toggleAt(index, shiftKey)}
+                      />
+                    }
                     href={item.href}
                     title={item.title}
                     summary={item.summary}
@@ -735,13 +752,20 @@ function countLabel(count: number): string {
  */
 function SelectionToggle({
   label,
+  unread,
   checked,
+  selecting,
   onToggle,
 }: {
   label: string;
+  unread: boolean;
   checked: boolean;
+  /** Something is selected: every row shows its box, so the next click lands. */
+  selecting: boolean;
   onToggle: (shiftKey: boolean) => void;
 }) {
+  const boxVisible = checked || selecting;
+
   return (
     <button
       type="button"
@@ -750,20 +774,32 @@ function SelectionToggle({
       aria-label={`Select ${label}`}
       onClick={(event) => onToggle(event.shiftKey)}
       className={cn(
-        "mt-[18px] flex size-8 shrink-0 items-center justify-center rounded-sm",
-        "transition-opacity duration-cd-fast ease-cd",
-        "opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100",
-        checked && "opacity-100",
+        "group/toggle relative -my-1 flex size-8 shrink-0 items-center justify-center rounded-sm",
         focusRing,
       )}
     >
+      {/* The unread dot, at rest. It yields to the box on hover or focus. */}
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute size-[7px] rounded-pill transition-opacity duration-cd-fast ease-cd",
+          unread ? "bg-accent" : "bg-transparent",
+          boxVisible
+            ? "opacity-0"
+            : "group-hover/row:opacity-0 group-focus-visible/toggle:opacity-0",
+        )}
+      />
       <span
         aria-hidden="true"
         className={cn(
           "flex size-[18px] items-center justify-center rounded-xs border",
+          "transition-opacity duration-cd-fast ease-cd",
           checked
             ? "border-accent bg-accent text-accent-fg"
             : "border-line-strong bg-bg-panel",
+          boxVisible
+            ? "opacity-100"
+            : "opacity-0 group-hover/row:opacity-100 group-focus-visible/toggle:opacity-100",
         )}
       >
         {checked ? <Check className="size-3 [stroke-width:2.4]" /> : null}
@@ -933,9 +969,9 @@ function BulkBar({
 /** Six rows, the geometry of the real ones. */
 export function LibraryListSkeleton() {
   return (
-    <LibraryList>
+    <LibraryList className={HANGING_GUTTER}>
       {Array.from({ length: 6 }).map((_, index) => (
-        <LibraryRowSkeleton key={index} />
+        <LibraryRowSkeleton key={index} wideGutter />
       ))}
     </LibraryList>
   );
@@ -952,21 +988,72 @@ export function LibraryFallback({ view }: { view: LibraryViewParams }) {
   const heading = libraryHeading(view);
 
   return (
-    <div className="grid grid-cols-1 gap-8 py-6 md:grid-cols-[216px_minmax(0,1fr)]">
-      <aside className="flex min-w-0 flex-col gap-5">
-        <CollectionTreeSkeleton />
-      </aside>
-      <section className="flex min-w-0 flex-col">
-        <header className="pb-4">
-          <h1 className="m-0 font-serif text-[22px] font-semibold leading-[1.25] text-fg">
-            {heading.title}
-          </h1>
-          <p className="m-0 pt-1 font-sans text-[12.5px] leading-[1.4] text-fg-secondary">
-            Loading your saves…
-          </p>
-        </header>
-        <LibraryListSkeleton />
-      </section>
+    <div className="mx-auto flex w-full max-w-[960px] flex-col gap-6">
+      <PageHeader
+        eyebrow={<LibraryEyebrow />}
+        title={heading.title}
+        description="Loading your saves…"
+      />
+      <LibraryListSkeleton />
     </div>
+  );
+}
+
+/** Library, or Library › Parent when a nested collection is open. */
+function LibraryEyebrow({ parent }: { parent?: string }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      Library
+      {parent ? (
+        <>
+          <ChevronRight aria-hidden="true" className="size-3 [stroke-width:1.8]" />
+          {parent}
+        </>
+      ) : null}
+    </span>
+  );
+}
+
+/**
+ * Sort, as a menu rather than a second segmented control. Read status is a
+ * filter you flip between constantly; sort is a preference you set and leave,
+ * and it was the second row of pills that made the header read as a toolbar.
+ */
+function SortMenu({
+  value,
+  onChange,
+}: {
+  value: BookmarkSort;
+  onChange: (sort: BookmarkSort) => void;
+}) {
+  const label = SORT_OPTIONS.find((option) => option.value === value)?.label;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<ArrowDownUp aria-hidden="true" />}
+          aria-label={`Sort: ${label}`}
+          className="text-fg-secondary"
+        >
+          {label}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-44">
+        <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={value}
+          onValueChange={(next) => onChange(next as BookmarkSort)}
+        >
+          {SORT_OPTIONS.map((option) => (
+            <DropdownMenuRadioItem key={option.value} value={option.value}>
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

@@ -2,7 +2,16 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Ban, Inbox, MoreHorizontal, VolumeX, WifiOff } from "lucide-react";
+import {
+  Ban,
+  FolderTree,
+  Inbox,
+  Link2,
+  MoreHorizontal,
+  Sparkles,
+  VolumeX,
+  WifiOff,
+} from "lucide-react";
 import { FeedScope } from "@cosmic-dolphin/api-client";
 
 import { cn } from "@/lib/utils";
@@ -159,10 +168,10 @@ function EditionHeader({
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div className="flex min-w-0 flex-col gap-1.5">
-        <p className="m-0 min-h-[14px] font-sans text-[12px] font-semibold uppercase leading-none tracking-[.08em] text-fg-tertiary">
+        <p className="m-0 min-h-[14px] nums font-sans text-[13px] font-medium leading-none text-fg-tertiary">
           {now ? formatEditionDate(now) : null}
         </p>
-        <h1 className="m-0 font-serif text-[29px] font-semibold leading-[1.2] tracking-[-.01em] text-fg max-[640px]:text-2xl">
+        <h1 className="m-0 font-serif text-[34px] font-semibold leading-[1.12] tracking-[-.022em] text-fg max-[640px]:text-[28px]">
           {name ? `${greeting}, ${name}` : greeting}
         </h1>
         <p
@@ -170,7 +179,9 @@ function EditionHeader({
           aria-live="off"
         >
           {scopeOrderCopy(scope)}
-          {updated ? ` · ${updated.charAt(0).toLowerCase()}${updated.slice(1)}` : null}
+          {updated
+            ? ` · ${updated.charAt(0).toLowerCase()}${updated.slice(1)}`
+            : null}
         </p>
       </div>
       <Segmented
@@ -360,7 +371,7 @@ function BookmarkRow({
 function SavingNowStrip({ pending }: { pending: FeedBookmarkEntry[] }) {
   const captures = useAppSelector((state) => state.bookmarks.captures);
   const captured = new Set(
-    captures.map((capture) => capture.bookmarkId).filter(Boolean)
+    captures.map((capture) => capture.bookmarkId).filter(Boolean),
   );
 
   return (
@@ -441,80 +452,122 @@ function NewUserHero({ offline }: { offline: boolean }) {
   }
 
   return (
-    <div className="flex flex-col items-start gap-5 py-10">
-      <div className="flex max-w-[38ch] flex-col gap-2">
-        <h1
-          className="m-0 font-serif text-[40px] font-semibold leading-[1.1] text-fg"
-          style={{ textWrap: "balance" }}
-        >
-          Save your first link.
-        </h1>
-        <p className="m-0 font-sans text-[13.5px] leading-[1.55] text-fg-secondary">
-          Paste a URL and it is yours in a second — summarised, tagged and
-          filed while you carry on. Home fills in as you save.
-        </p>
-      </div>
+    <div className="grid items-center gap-12 py-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)] lg:py-16">
+      <div className="flex flex-col items-start gap-6">
+        <div className="flex max-w-[40ch] flex-col gap-3">
+          <h1 className="m-0 font-serif text-[44px] font-semibold leading-[1.06] tracking-[-.028em] text-fg max-[640px]:text-[34px]">
+            Save your first link.
+          </h1>
+          <p className="m-0 font-sans text-[15px] leading-[1.6] text-fg-secondary">
+            Paste a URL and it is yours in a second — summarised, tagged and
+            filed while you carry on. Home fills in as you save.
+          </p>
+        </div>
 
-      <form
-        className="flex w-full max-w-[520px] flex-wrap items-center gap-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void submit(url);
-        }}
-      >
-        <Input
-          shape="pill"
-          className="min-w-0 flex-1"
-          value={url}
-          onChange={(event) => {
-            setUrl(event.target.value);
-            if (invalid) setInvalid(false);
+        <form
+          className="flex w-full max-w-[520px] flex-wrap items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submit(url);
           }}
-          placeholder="https://"
-          aria-label="Link to save"
-          aria-invalid={invalid || undefined}
-          aria-describedby={invalid ? "home-hero-url-error" : undefined}
-          inputMode="url"
-          autoComplete="off"
-        />
-        <Button type="submit" variant="primary">
-          Save link
-        </Button>
-      </form>
-
-      {invalid ? (
-        <p
-          id="home-hero-url-error"
-          className="m-0 font-sans text-[12.5px] leading-[1.4] text-[color:var(--cd-danger)]"
         >
-          That doesn&apos;t look like a link. It needs a domain, like
-          example.com/article.
-        </p>
-      ) : null}
+          <Input
+            className="h-10 min-w-0 flex-1"
+            value={url}
+            onChange={(event) => {
+              setUrl(event.target.value);
+              if (invalid) setInvalid(false);
+            }}
+            placeholder="https://"
+            aria-label="Link to save"
+            aria-invalid={invalid || undefined}
+            aria-describedby={invalid ? "home-hero-url-error" : undefined}
+            inputMode="url"
+            autoComplete="off"
+          />
+          <Button type="submit" variant="primary" size="lg">
+            Save link
+          </Button>
+        </form>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-sans text-[12.5px] leading-[1.4] text-fg-tertiary">
-          Try one of these
-        </span>
-        {SUGGESTED_SOURCES.map((source) => (
-          <button
-            key={source.url}
-            type="button"
-            onClick={() => setUrl(source.url)}
-            className={cn(
-              "rounded-pill border border-line bg-bg-subtle px-2.5 py-1",
-              "font-sans text-[12px] leading-none text-fg-secondary",
-              "transition-colors duration-cd-fast ease-cd hover:bg-bg-inset hover:text-fg",
-              focusRing
-            )}
+        {invalid ? (
+          <p
+            id="home-hero-url-error"
+            className="m-0 font-sans text-[12.5px] leading-[1.4] text-[color:var(--cd-danger)]"
           >
-            {source.label}
-          </button>
-        ))}
+            That doesn&apos;t look like a link. It needs a domain, like
+            example.com/article.
+          </p>
+        ) : null}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-sans text-[12.5px] leading-[1.4] text-fg-tertiary">
+            Try one of these
+          </span>
+          {SUGGESTED_SOURCES.map((source) => (
+            <button
+              key={source.url}
+              type="button"
+              onClick={() => setUrl(source.url)}
+              className={cn(
+                "inline-flex min-h-8 items-center rounded-pill border border-line bg-bg-subtle px-3",
+                "font-sans text-[12.5px] leading-none text-fg-secondary",
+                "transition-colors duration-cd-fast ease-cd hover:bg-bg-inset hover:text-fg",
+                focusRing,
+              )}
+            >
+              {source.label}
+            </button>
+          ))}
+        </div>
       </div>
+
+      <ol
+        aria-label="What happens when you save"
+        className="m-0 flex list-none flex-col gap-0 rounded-lg border border-line bg-bg-subtle p-0"
+      >
+        {FIRST_SAVE_STEPS.map(({ Icon, title, body }, index) => (
+          <li
+            key={title}
+            className="flex gap-4 border-b border-line px-5 py-4 last:border-b-0"
+          >
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-line bg-bg-panel text-accent">
+              <Icon aria-hidden="true" className="size-4 [stroke-width:1.7]" />
+            </span>
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="font-sans text-[13.5px] font-semibold text-fg">
+                <span className="nums text-fg-tertiary">{index + 1}.</span>{" "}
+                {title}
+              </span>
+              <span className="font-sans text-[13px] leading-[1.5] text-fg-secondary">
+                {body}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
+
+/** The new-user hero's sequence: what a first paste sets in motion. */
+const FIRST_SAVE_STEPS = [
+  {
+    Icon: Link2,
+    title: "It lands in your library",
+    body: "A row appears the moment you paste — readable before anything else happens.",
+  },
+  {
+    Icon: Sparkles,
+    title: "Cosmic writes a brief",
+    body: "A short summary and the points worth keeping, naming the page it came from.",
+  },
+  {
+    Icon: FolderTree,
+    title: "It gets filed, and Home fills in",
+    body: "Collections form as you save; move anything and it stays where you put it.",
+  },
+] as const;
 
 /* ---------------------------------------------------------------------------
    The view
@@ -539,9 +592,8 @@ export function HomeView({
   const [cursor, setCursor] = React.useState<string | undefined>(initialCursor);
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [pageError, setPageError] = React.useState<string | undefined>(error);
-  const [commentsFor, setCommentsFor] = React.useState<FeedBookmarkEntry | null>(
-    null
-  );
+  const [commentsFor, setCommentsFor] =
+    React.useState<FeedBookmarkEntry | null>(null);
 
   /**
    * The one flag that gates everything the server cannot know.
@@ -581,14 +633,14 @@ export function HomeView({
   const readerNow = React.useMemo(
     () => (mounted ? new Date() : undefined),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mounted, tick]
+    [mounted, tick],
   );
 
   const updatedLabel = React.useMemo(
     () => (mounted ? formatUpdatedAt(computedAt, new Date()) : ""),
     // `tick` is the dependency that matters; `computedAt` changes on a refresh.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mounted, computedAt, tick]
+    [mounted, computedAt, tick],
   );
 
   const sentinelRef = React.useRef<HTMLDivElement | null>(null);
@@ -633,7 +685,7 @@ export function HomeView({
       },
       // A screenful of warning, so the skeleton is usually replaced before it
       // is read rather than after.
-      { rootMargin: "600px 0px" }
+      { rootMargin: "600px 0px" },
     );
 
     observer.observe(node);
@@ -658,7 +710,7 @@ export function HomeView({
       if (removed.length === 0) return;
 
       setEntries((current) =>
-        current.filter((entry) => !options.matches(entry))
+        current.filter((entry) => !options.matches(entry)),
       );
 
       if (offline) {
@@ -681,7 +733,7 @@ export function HomeView({
         });
       }
     },
-    [entries, offline, router, toast]
+    [entries, offline, router, toast],
   );
 
   const notInterested = (entry: FeedBookmarkEntry) =>
@@ -771,9 +823,9 @@ export function HomeView({
               className="mt-px size-3.5 shrink-0 text-[color:var(--cd-warning)] [stroke-width:1.7]"
             />
             <p className="m-0 font-sans text-[12.5px] leading-[1.5] text-fg-secondary">
-              <b className="font-medium text-fg">You&apos;re offline.</b>{" "}
-              These are the items already loaded. Nothing new arrives, and
-              likes and saves wait until you&apos;re back.
+              <b className="font-medium text-fg">You&apos;re offline.</b> These
+              are the items already loaded. Nothing new arrives, and likes and
+              saves wait until you&apos;re back.
             </p>
           </div>
         ) : null}
@@ -812,13 +864,15 @@ export function HomeView({
             ) : (
               <>
                 {edition.lead ? (
-                  <div className="pb-6">{renderBookmark(edition.lead, "lead")}</div>
+                  <div className="pb-6">
+                    {renderBookmark(edition.lead, "lead")}
+                  </div>
                 ) : null}
 
                 {edition.rest.length > 0 ? (
                   <div className="flex flex-col">
                     {edition.lead ? (
-                      <h2 className="m-0 pb-1 font-sans text-[11px] font-semibold uppercase leading-none tracking-[.07em] text-fg-tertiary">
+                      <h2 className="m-0 pb-1 font-sans text-[13px] font-semibold leading-none tracking-[-.005em] text-fg">
                         More for you
                       </h2>
                     ) : null}
@@ -845,7 +899,7 @@ export function HomeView({
                         />
                       ) : (
                         renderBookmark(entry, "row")
-                      )
+                      ),
                     )}
                   </div>
                 ) : null}
