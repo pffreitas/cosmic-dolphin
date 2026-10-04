@@ -28,6 +28,19 @@ decision here, the decision has to be reopened first.
 | 19 | Source trust and provenance? | **Always visible, compact, inspectable.** Source domain, author/profile, saved/shared context, and an expandable "why this appeared". A system pattern, not one-off copy. |
 | 20 | AI processing and loading states? | **Quiet staged progress.** A pasted link becomes a usable pending row immediately, then shows subtle "Extracting", "Summarising", "Filing" steps. No big spinners. |
 
+## Revisions
+
+Decisions are reopened here, never edited in place above. Each revision names what it changes and
+why.
+
+| # | Revises | Revision |
+| --- | --- | --- |
+| R1 | Header capsule (patterns) | **A sidebar app shell replaces the floating header capsule.** The capsule gave the product no persistent sense of place, and the AI-filed collections — the product's argument (decisions 5, 7) — lived inside one page. The sidebar makes every collection one click from every route; the top bar keeps the omnibox as the one primary action. |
+| R2 | 11 | **A drawn brandmark replaces the 🐬 emoji.** Still a quiet metaphor and still no dolphin in the chrome — an arc over a point of light on an accent tile. The emoji could not take the accent, a size, or dark mode, and rendered differently on every platform. |
+| R3 | 13 (accent budget) | **Topic tags are hairline outlines, not accent fills.** With every tag, link, CTA and unread dot in the same blue, nothing stood out. The accent is spent on action, selection, links and unread state. |
+| R4 | 12 | **Sentence case replaces uppercase micro-labels**, and the type scale gains presence: a 44px detail title, an 18px reader, a 28px page title, Source Serif's optical sizes, Inter's character variants. Hierarchy from weight, size and colour rather than letter-spacing. |
+| R5 | Pages · Auth, `/` | **The signed-out surfaces are designed, not placeholders**: a four-beat landing page illustrated with the product's own components, and a split-screen auth layout. They are how the product is first met. |
+
 ## Inspiration set
 
 Vercel (precision, restraint, hairlines), Linear (product density, keyboard-first, confident
