@@ -15,7 +15,6 @@ import {
   Layers,
   LogOut,
   Search,
-  Sparkles,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
@@ -53,7 +52,7 @@ import { useLibraryDnd } from "./library-dnd";
  * Three groups, top to bottom, in the order a reader reaches for them:
  *
  *  1. **Destinations** — Home, Explore, Search. Where you go.
- *  2. **Library** — All saves, Inbox, Read later, Archive, then the AI-filed
+ *  2. **Library** — All saves, Inbox, Read later, Archive, then the
  *     collections. What you have. This used to be a rail inside the Library
  *     page; promoting it here makes a collection one click from anywhere and
  *     turns the AI's filing into the app's navigation, which is the product's
@@ -259,11 +258,6 @@ function LibraryGroups({
       <nav aria-label="Collections" className="flex flex-col gap-1">
         <GroupLabel>
           Collections
-          {/* Rule 8: anything the pipeline decided says so. */}
-          <span className="ml-auto inline-flex items-center gap-1 font-medium normal-case tracking-normal text-ai">
-            <Sparkles aria-hidden="true" className="size-3 shrink-0 [stroke-width:1.8]" />
-            AI filed
-          </span>
         </GroupLabel>
 
         {tree.collections.length === 0 ? (

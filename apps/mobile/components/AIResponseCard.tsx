@@ -87,12 +87,11 @@ export function AIResponseCard({ response, isStreaming, isLoading }: AIResponseC
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.aiBg, borderColor: colors.aiBorder }]}>
+    <View style={[styles.container, { backgroundColor: colors.bgPanel, borderColor: colors.border }]}>
       <View style={styles.header}>
-        <Ionicons name="sparkles" size={16} color={colors.ai} />
-        <Text style={[textStyle('label'), { color: colors.ai }]}>AI Response</Text>
+        <Text style={[textStyle('label'), { color: colors.fgSecondary }]}>Answer</Text>
         {isStreaming && (
-          <ActivityIndicator size="small" color={colors.ai} style={styles.spinner} />
+          <ActivityIndicator size="small" color={colors.fgSecondary} style={styles.spinner} />
         )}
       </View>
       <View style={styles.content}>

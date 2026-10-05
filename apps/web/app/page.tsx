@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, Lock, Quote, Sparkles, Target } from "lucide-react";
+import { ArrowRight, Lock, Quote, Target } from "lucide-react";
 
 import { Brandmark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
@@ -54,15 +54,9 @@ export default async function Index() {
 function Hero() {
   return (
     <section className="relative isolate overflow-hidden">
-      {/* One aura, top-centre — the AI layer's glow, never a second gradient. */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-0 top-0 -z-10 h-[720px] bg-[radial-gradient(55%_60%_at_50%_0%,var(--cd-ai-glow),transparent_72%)]"
-      />
 
       <div className="mx-auto flex max-w-[1200px] flex-col items-center px-4 pt-16 text-center sm:px-6 md:pt-24">
-        <span className="inline-flex items-center gap-1.5 rounded-pill border border-ai-border bg-ai-chip py-1.5 pl-2.5 pr-3 font-sans text-[12.5px] font-medium leading-none text-ai">
-          <Sparkles aria-hidden="true" className="size-3.5 [stroke-width:1.8]" />
+        <span className="inline-flex items-center rounded-pill border border-line bg-bg-subtle px-3 py-1.5 font-sans text-[12.5px] font-medium leading-none text-fg-secondary">
           Summaries that name their sources
         </span>
 
@@ -213,11 +207,7 @@ function Principles() {
 function Closing() {
   return (
     <section className="px-4 pb-20 sm:px-6 md:pb-28">
-      <div className="relative isolate mx-auto max-w-[1120px] overflow-hidden rounded-lg border border-ai-border bg-[linear-gradient(180deg,var(--cd-ai-bg-top)_0%,var(--cd-ai-bg)_100%)] px-6 py-14 text-center shadow-[inset_0_1px_0_var(--cd-ai-sheen)] md:py-20">
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 -z-10 bg-[radial-gradient(70%_120%_at_100%_0%,var(--cd-ai-glow),transparent_60%)]"
-        />
+      <div className="relative isolate mx-auto max-w-[1120px] overflow-hidden rounded-lg border border-line bg-bg-subtle px-6 py-14 text-center md:py-20">
         <h2 className="mx-auto max-w-[18ch] font-serif text-[32px] font-semibold leading-[1.1] tracking-[-.022em] text-fg md:text-[44px]">
           Start the library you’ll actually read.
         </h2>

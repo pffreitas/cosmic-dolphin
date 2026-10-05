@@ -8,7 +8,6 @@ import {
   Layers,
   Link2,
   Search,
-  Sparkles,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -123,10 +122,6 @@ function MiniSidebar() {
       <div className="flex flex-col gap-px">
         <div className="flex items-center px-2 pb-1 font-sans text-[11px] font-semibold text-fg-tertiary">
           Collections
-          <span className="ml-auto inline-flex items-center gap-1 font-medium text-ai">
-            <Sparkles aria-hidden="true" className="size-2.5 [stroke-width:1.8]" />
-            AI filed
-          </span>
         </div>
         {SIDEBAR_COLLECTIONS.map(({ label, count }) => (
           <div
@@ -147,7 +142,7 @@ function MiniSidebar() {
 export function LibraryVignette({ className }: { className?: string }) {
   return (
     <AppWindow
-      label="The Cosmic Dolphin library: saved articles, each summarised and filed into an AI-suggested collection."
+      label="The Cosmic Dolphin library: saved articles, each summarised and filed into a suggested collection."
       className={className}
     >
       <div className="grid grid-cols-[208px_minmax(0,1fr)] max-md:grid-cols-1">
@@ -249,20 +244,16 @@ export function BriefVignette({ className }: { className?: string }) {
   );
 }
 
-/** Filing: a save's breadcrumb, the AI marker, and a proposed collection. */
+/** Filing: a save's breadcrumb and a proposed collection. */
 export function FilingVignette({ className }: { className?: string }) {
   return (
     <AppWindow
-      label="AI filing: saves grouped into collections the reader can rename or override."
+      label="Filing: saves grouped into collections the reader can rename or override."
       className={cn("bg-bg-subtle", className)}
     >
       <div className="flex flex-col gap-3 p-5">
         <div className="flex items-center gap-2 font-sans text-[12px] font-semibold text-fg-tertiary">
           Collections
-          <span className="ml-auto inline-flex items-center gap-1 font-medium text-ai">
-            <Sparkles aria-hidden="true" className="size-3 [stroke-width:1.8]" />
-            AI filed
-          </span>
         </div>
         <div className="flex flex-col gap-px">
           {[

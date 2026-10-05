@@ -41,10 +41,6 @@ export default async function Layout({
         aria-label="What Cosmic Dolphin does"
         className="relative isolate hidden overflow-hidden border-l border-line bg-bg-subtle lg:flex lg:flex-col lg:justify-center lg:px-14 xl:px-20"
       >
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 -z-10 bg-[radial-gradient(70%_55%_at_70%_20%,var(--cd-ai-glow),transparent_70%)]"
-        />
         <div className="mx-auto flex w-full max-w-[520px] flex-col gap-10">
           <BriefVignette />
           <div className="flex flex-col gap-3">

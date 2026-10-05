@@ -515,7 +515,7 @@ export function PatternsGallery() {
           index="05"
           title="App shell"
           file="components/shell/sidebar.tsx"
-          lede="The signed-in frame: a 256px sidebar holding the destinations, the Library and its AI-filed collections, and the account; a top bar holding the one omnibox. Below 1024px the sidebar becomes a sheet behind the top bar's menu button. Exactly one row is current at a time."
+          lede="The signed-in frame: a 256px sidebar holding the destinations, the Library and its collections, and the account; a top bar holding the one omnibox. Below 1024px the sidebar becomes a sheet behind the top bar's menu button. Exactly one row is current at a time."
         >
           <Grid>
             <Case label="Home current · counts loaded" bare>

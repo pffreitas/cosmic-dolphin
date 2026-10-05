@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
-import { Sparkles, X } from "lucide-react";
+import { X } from "lucide-react";
 import type { Bookmark } from "@cosmic-dolphin/api-client";
 
 import { cn } from "@/lib/utils";
@@ -217,7 +217,6 @@ function SavedCaptureRow({
             type="button"
             variant="ghost"
             size="sm"
-            icon={<Sparkles aria-hidden="true" />}
             onClick={() => void reprocess()}
           >
             Summarise now

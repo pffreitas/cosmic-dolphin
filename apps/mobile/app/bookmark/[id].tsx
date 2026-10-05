@@ -628,11 +628,11 @@ export default function BookmarkDetailScreen() {
               accessibilityLiveRegion="polite"
               style={[
                 styles.processingContainer,
-                { backgroundColor: colors.aiBg, borderColor: colors.aiBorder },
+                { backgroundColor: colors.bgSubtle, borderColor: colors.border },
               ]}
             >
-              <ActivityIndicator size="small" color={colors.ai} />
-              <Text style={[textStyle('bodySm'), styles.processingText, { color: colors.ai }]}>
+              <ActivityIndicator size="small" color={colors.fgSecondary} />
+              <Text style={[textStyle('bodySm'), styles.processingText, { color: colors.fgSecondary }]}>
                 Organizing for quick access...
               </Text>
             </View>

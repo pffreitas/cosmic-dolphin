@@ -3,13 +3,15 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { identityClass } from "@/lib/identity";
 
 /**
  * Favicon chip — see docs/design-system/components.md#favicon-chip.
  *
  * 16px, `--cd-radius-xs`, the site's favicon from
- * `metadata.openGraph.favicon`, falling back to the domain's first letter in
- * `--cd-fg-secondary`.
+ * `metadata.openGraph.favicon`, falling back to the domain's first letter on
+ * the domain's identity hue (`lib/identity.ts`) — so every.to is the same
+ * small colour wherever it is cited.
  *
  * Always paired with the domain in text — the chip alone is not identification,
  * so this component renders only the chip and the provenance row supplies the
@@ -39,7 +41,8 @@ const FaviconChip = React.forwardRef<HTMLSpanElement, FaviconChipProps>(
         aria-hidden="true"
         className={cn(
           "inline-grid size-4 shrink-0 place-items-center overflow-hidden rounded-xs",
-          "bg-bg-inset font-sans text-[9px] font-semibold leading-none text-fg-secondary",
+          "font-sans text-[9px] font-semibold leading-none",
+          showImage ? "bg-bg-inset" : identityClass(domain),
           className,
         )}
         {...props}

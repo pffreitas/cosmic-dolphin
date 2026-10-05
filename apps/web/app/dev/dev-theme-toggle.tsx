@@ -27,6 +27,13 @@ export function DevThemeToggle() {
 
   React.useEffect(() => setMounted(true), []);
 
+  // `?theme=dark` opens a gallery straight into a mode — for headless captures,
+  // which have no button to press.
+  React.useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("theme");
+    if (requested === "dark" || requested === "light") setTheme(requested);
+  }, [setTheme]);
+
   const isDark = resolvedTheme === "dark";
 
   return (

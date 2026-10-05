@@ -81,18 +81,17 @@ type Pairs = Record<string, string[]>;
  * names where, so a pair can be removed when its surface is.
  */
 const TEXT: Pairs = {
-  // Titles and primary body. `hl-bg` is reader highlight, `ai-bg*` the callout.
-  fg: ["bg", "bg-subtle", "bg-panel", "bg-inset", "accent-soft", "hl-bg", "ai-bg", "ai-bg-top"],
+  // Titles and primary body. `hl-bg` is reader highlight and text selection.
+  fg: ["bg", "bg-subtle", "bg-panel", "bg-inset", "accent-soft", "hl-bg"],
   // Summaries, comment bodies, inactive nav, neutral Tag label (`bg-inset`),
-  // AI callout body copy (`ai-bg`, `ai-bg-top`).
-  "fg-secondary": ["bg", "bg-subtle", "bg-panel", "bg-inset", "ai-bg", "ai-bg-top"],
+  // callout body copy (`bg-subtle`).
+  "fg-secondary": ["bg", "bg-subtle", "bg-panel", "bg-inset"],
   // Metadata, timestamps, counts, section labels, placeholders. Library rows
-  // sit on `bg`, feed items on `bg-panel`, row hover is `bg-subtle`.
+  // sit on `bg`, feed items on `bg-panel`, row hover and Home's Saving now
+  // strip are `bg-subtle`.
   "fg-tertiary": ["bg", "bg-subtle", "bg-panel", "bg-inset"],
-  // Links, active nav, accent Tag label (`accent-soft`), AI badge (`ai-chip`).
-  accent: ["bg", "bg-subtle", "bg-panel", "bg-inset", "accent-soft", "ai-chip"],
-  // The AI voice. Identical hue to accent by design, different meaning.
-  ai: ["bg", "bg-panel", "ai-bg", "ai-bg-top", "ai-chip"],
+  // Links, active nav, accent Tag label (`accent-soft`).
+  accent: ["bg", "bg-subtle", "bg-panel", "bg-inset", "accent-soft"],
   // The label on a filled accent button, at rest and on hover.
   "accent-fg": ["accent", "accent-hover"],
   // Like count, beside the heart.
@@ -102,6 +101,13 @@ const TEXT: Pairs = {
   success: ["bg", "bg-subtle", "bg-panel", "bg-inset"],
   warning: ["bg", "bg-subtle", "bg-panel", "bg-inset"],
   danger: ["bg", "bg-subtle", "bg-panel", "bg-inset"],
+  // Identity: a person's initials on their avatar fallback, a source's letter
+  // on its favicon chip. Always on their own soft ground.
+  "id-1": ["id-1-bg"],
+  "id-2": ["id-2-bg"],
+  "id-3": ["id-3-bg"],
+  "id-4": ["id-4-bg"],
+  "id-5": ["id-5-bg"],
 };
 
 /**
@@ -116,14 +122,12 @@ const NON_TEXT: Pairs = {
   focus: ["bg", "bg-subtle", "bg-panel", "bg-inset"],
   // Filled primary button, unread dot, selected tree row marker.
   accent: ["bg", "bg-subtle", "bg-panel", "bg-inset"],
-  // AI key-point dot and the badge glyph.
-  ai: ["bg", "bg-panel", "ai-bg", "ai-bg-top", "ai-chip"],
   // Heart glyph, filled when liked.
   like: ["bg", "bg-subtle", "bg-panel", "bg-inset"],
   // ProcessingSteps markers: a filled disc per phase.
-  success: ["bg", "bg-panel", "bg-inset", "ai-bg"],
-  warning: ["bg", "bg-panel", "bg-inset", "ai-bg"],
-  danger: ["bg", "bg-panel", "bg-inset", "ai-bg"],
+  success: ["bg", "bg-subtle", "bg-panel", "bg-inset"],
+  warning: ["bg", "bg-subtle", "bg-panel", "bg-inset"],
+  danger: ["bg", "bg-subtle", "bg-panel", "bg-inset"],
 };
 
 /**
@@ -142,9 +146,6 @@ const NOT_CONTRAST_BEARING: Record<string, string> = {
   "accent-hover": "ground — hover fill under accent-fg",
   "accent-soft": "ground — Tag fill, highlight, selected tree row",
   "hl-bg": "ground — reader highlight",
-  "ai-bg": "ground — AI callout gradient stop",
-  "ai-bg-top": "ground — AI callout gradient stop",
-  "ai-chip": "ground — AI badge fill",
 
   // Hairlines. SC 1.4.11 asks for 3:1 on information *required to identify* a
   // component or its state. These separate and decorate; nothing is identified
@@ -154,14 +155,11 @@ const NOT_CONTRAST_BEARING: Record<string, string> = {
     "control outline — see docs/design-system/audit.md § Accepted deviation. " +
     "Every control it outlines is identified by its own label or glyph at 4.5:1.",
   "accent-border": "decorative hairline on accent-soft, pull-quote rule",
-  "ai-border": "decorative hairline on the AI callout",
   "hl-line": "decorative rule under a reader highlight",
 
   // Not solid colours at all: gradients, shadows and translucent washes. There
   // is no single pair to measure, and none of them carries information.
   overlay: "translucent scrim — dims the page, states nothing",
-  "ai-glow": "translucent corner aura",
-  "ai-sheen": "translucent 1px inset highlight",
   "nav-glass": "gradient",
   "nav-edge": "translucent capsule edge",
   "nav-sheen": "translucent capsule highlight",

@@ -5,11 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Ban,
+  FileText,
   FolderTree,
   Inbox,
   Link2,
   MoreHorizontal,
-  Sparkles,
   VolumeX,
   WifiOff,
 } from "lucide-react";
@@ -562,7 +562,7 @@ const FIRST_SAVE_STEPS = [
     body: "A row appears the moment you paste — readable before anything else happens.",
   },
   {
-    Icon: Sparkles,
+    Icon: FileText,
     title: "Cosmic writes a brief",
     body: "A short summary and the points worth keeping, naming the page it came from.",
   },

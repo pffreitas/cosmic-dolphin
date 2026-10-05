@@ -246,13 +246,13 @@ describe("nav marks where you are", () => {
     expect(html).not.toContain('aria-current="page"');
   });
 
-  it("names every destination and the AI-filed collections", () => {
+  it("names every destination and the collections", () => {
     const html = render(<Sidebar currentPath="/explore" {...SIDEBAR_DATA} />);
     for (const label of ["Home", "Explore", "Search", "All saves", "Inbox", "Design", "Typography"]) {
       expect(html).toContain(`>${label}<`);
     }
-    // Rule 8: what the pipeline decided says so.
-    expect(html).toContain("AI filed");
+    // R6: collections carry no "AI filed" badge — the machine does not label itself.
+    expect(html).not.toContain("AI filed");
   });
 
   it("does the same in the mobile tab bar", () => {

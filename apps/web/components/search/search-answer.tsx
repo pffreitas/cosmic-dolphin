@@ -72,7 +72,7 @@ export function SearchAnswer({
           {streaming ? (
             <span
               aria-hidden="true"
-              className="ml-0.5 inline-block h-[1em] w-[2px] translate-y-[2px] bg-ai"
+              className="ml-0.5 inline-block h-[1em] w-[2px] translate-y-[2px] bg-fg-tertiary"
             />
           ) : null}
         </p>
@@ -95,8 +95,7 @@ export function SearchAnswerSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "rounded-lg border border-ai-border p-6",
-        "bg-[linear-gradient(180deg,var(--cd-ai-bg-top)_0%,var(--cd-ai-bg)_100%)]",
+        "rounded-md border border-line bg-bg-panel p-5",
         className
       )}
     >

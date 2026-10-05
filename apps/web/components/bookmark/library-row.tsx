@@ -1,6 +1,6 @@
 import * as React from "react";
 import Link from "next/link";
-import { ChevronRight, Folder, Lock, Sparkles } from "lucide-react";
+import { ChevronRight, Folder, Lock } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Tag } from "@/components/ui/badge";
@@ -140,8 +140,7 @@ function Breadcrumb({
         })
       )}
       {filing ? (
-        <span className="ml-1 inline-flex items-center gap-1 font-medium text-ai">
-          <Sparkles aria-hidden="true" className="size-3 shrink-0 [stroke-width:1.8]" />
+        <span className="ml-1 font-medium text-fg-tertiary">
           Filing…
         </span>
       ) : null}

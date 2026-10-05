@@ -41,8 +41,11 @@ const COLOR_SECTIONS = [
   ["Text", ["fg", "fg-secondary", "fg-tertiary"]],
   ["Lines", ["border", "border-strong"]],
   ["Accent", ["accent", "accent-hover", "accent-fg", "accent-soft", "accent-border"]],
-  ["AI layer", ["ai", "ai-bg", "ai-bg-top", "ai-border", "ai-chip", "ai-glow", "ai-sheen"]],
   ["State", ["like", "success", "warning", "danger", "hl-bg", "hl-line", "focus", "overlay"]],
+  [
+    "Identity",
+    ["id-1", "id-1-bg", "id-2", "id-2-bg", "id-3", "id-3-bg", "id-4", "id-4-bg", "id-5", "id-5-bg"],
+  ],
   [
     "Header capsule",
     ["nav-glass", "nav-edge", "nav-sheen", "nav-pill", "nav-shadow"],

@@ -7,6 +7,7 @@ const config = {
     "./pages/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
     "./app/**/*.{ts,tsx}",
+    "./lib/**/*.{ts,tsx}",
     "./src/**/*.{ts,tsx}",
   ],
   prefix: "",
@@ -56,13 +57,21 @@ const config = {
           soft: "var(--cd-accent-soft)",
           border: "var(--cd-accent-border)",
         },
-        ai: {
-          DEFAULT: "var(--cd-ai)",
-          bg: "var(--cd-ai-bg)",
-          border: "var(--cd-ai-border)",
-          chip: "var(--cd-ai-chip)",
-        },
         like: "var(--cd-like)",
+        // Identity hues — a person's initials, a source's letter. Never a
+        // topic, never a state. `lib/identity.ts` picks the slot.
+        id: {
+          1: "var(--cd-id-1)",
+          "1-bg": "var(--cd-id-1-bg)",
+          2: "var(--cd-id-2)",
+          "2-bg": "var(--cd-id-2-bg)",
+          3: "var(--cd-id-3)",
+          "3-bg": "var(--cd-id-3-bg)",
+          4: "var(--cd-id-4)",
+          "4-bg": "var(--cd-id-4-bg)",
+          5: "var(--cd-id-5)",
+          "5-bg": "var(--cd-id-5-bg)",
+        },
 
         // ---- shadcn bridge ----------------------------------------------
         // Stays until every primitive has been migrated off it; then delete

@@ -27,13 +27,13 @@ export interface ThumbnailProps
 }
 
 /**
- * Two soft radial washes mixed out of the accent and the foreground over
+ * Two soft radial washes mixed out of the strong border and the foreground over
  * `--cd-bg-inset`. `color-mix` keeps it token-pure: there is no literal here,
  * and it re-derives itself in dark mode along with everything else.
  */
 const PLACEHOLDER = cn(
   "bg-bg-inset",
-  "bg-[image:radial-gradient(110%_85%_at_16%_10%,color-mix(in_srgb,var(--cd-accent)_62%,transparent),transparent_58%),radial-gradient(95%_95%_at_86%_90%,color-mix(in_srgb,var(--cd-fg)_38%,transparent),transparent_56%)]",
+  "bg-[image:radial-gradient(110%_85%_at_16%_10%,color-mix(in_srgb,var(--cd-border-strong)_90%,transparent),transparent_58%),radial-gradient(95%_95%_at_86%_90%,color-mix(in_srgb,var(--cd-fg)_14%,transparent),transparent_56%)]",
 );
 
 const Thumbnail = React.forwardRef<HTMLDivElement, ThumbnailProps>(

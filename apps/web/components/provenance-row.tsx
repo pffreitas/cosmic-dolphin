@@ -47,7 +47,7 @@ export interface ProvenanceSource {
 
 export interface ProvenanceActor {
   name: string;
-  /** `profiles.picture_url`. Falls back to initials on the accent. */
+  /** `profiles.picture_url`. Falls back to initials on their identity hue. */
   avatarUrl?: string | null;
   /** Makes the name a link to the person's profile. */
   href?: string;
@@ -124,7 +124,7 @@ function ActorSegment({ actor }: { actor: ProvenanceActor }) {
         {actor.avatarUrl ? (
           <AvatarImage src={actor.avatarUrl} alt="" />
         ) : null}
-        <AvatarFallback>{initials(actor.name)}</AvatarFallback>
+        <AvatarFallback seed={actor.name}>{initials(actor.name)}</AvatarFallback>
       </Avatar>
       <span className="truncate font-medium text-fg">{actor.name}</span>
     </>
@@ -224,7 +224,7 @@ ProvenanceRow.displayName = "ProvenanceRow";
 /**
  * "Why this appeared" — a sibling of the provenance row, never a child of it.
  *
- * A dotted-underline `--cd-ai` summary that expands into a `--cd-ai-bg` panel
+ * A dotted-underline `--cd-fg-tertiary` summary that expands into a `--cd-bg-subtle` panel
  * giving the actual ranking reason in one sentence, in plain language and in
  * the second person. It is a disclosure, not a tooltip, and it is never hidden
  * behind a hover.
@@ -252,8 +252,9 @@ const WhyThisAppeared = React.forwardRef<
       <summary
         className={cn(
           "inline-flex w-fit cursor-pointer list-none items-center rounded-xs",
-          "font-sans text-[12.5px] leading-[1.4] text-ai",
+          "font-sans text-[12.5px] leading-[1.4] text-fg-tertiary",
           "underline decoration-dotted underline-offset-[3px]",
+          "transition-colors duration-cd-fast ease-cd hover:text-fg",
           "[&::-webkit-details-marker]:hidden",
           focusRing,
         )}
@@ -262,9 +263,7 @@ const WhyThisAppeared = React.forwardRef<
       </summary>
       <div
         className={cn(
-          "mt-2 rounded-md border border-ai-border px-[13px] py-[11px]",
-          "bg-[linear-gradient(180deg,var(--cd-ai-bg-top)_0%,var(--cd-ai-bg)_100%)]",
-          "shadow-[inset_0_1px_0_var(--cd-ai-sheen)]",
+          "mt-2 rounded-md border border-line bg-bg-subtle px-[13px] py-[11px]",
           "font-sans text-[13px] leading-[1.55] text-fg-secondary",
         )}
       >

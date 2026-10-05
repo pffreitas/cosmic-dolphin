@@ -244,7 +244,9 @@ export function HomeRail({ topics, people }: Omit<HomeRailProps, "continueReadin
                     {person.avatarUrl ? (
                       <AvatarImage src={person.avatarUrl} alt="" />
                     ) : null}
-                    <AvatarFallback>
+                    {/* Seeded by name, as the provenance row is, so a person
+                        is one colour on the whole page. */}
+                    <AvatarFallback seed={person.name}>
                       {person.name.slice(0, 1).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>

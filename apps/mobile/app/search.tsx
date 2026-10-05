@@ -68,14 +68,14 @@ export default function SearchScreen() {
             style={({ pressed }) => [
               styles.aiSearchItem,
               {
-                backgroundColor: pressed ? colors.bgSubtle : colors.aiBg,
-                borderBottomColor: colors.aiBorder,
+                backgroundColor: pressed ? colors.bgInset : colors.bgSubtle,
+                borderBottomColor: colors.border,
               },
             ]}
             onPress={handleAISearchPress}
           >
-            <View style={[styles.aiSearchIcon, { backgroundColor: colors.aiChip }]}>
-              <Ionicons name="sparkles" size={14} color={colors.ai} />
+            <View style={[styles.aiSearchIcon, { backgroundColor: colors.bgInset }]}>
+              <Ionicons name="chatbox-ellipses-outline" size={14} color={colors.fgSecondary} />
             </View>
             <Text
               style={[textStyle('body'), styles.aiSearchText, { color: colors.fg }]}
@@ -136,7 +136,7 @@ export default function SearchScreen() {
         <View style={[styles.searchBar, { borderBottomColor: colors.border }]}>
           <TopBarAction icon="arrow-back" label="Back to quick search" onPress={handleBackToQuick} />
           <View style={styles.aiQueryContainer}>
-            <Ionicons name="sparkles" size={14} color={colors.ai} />
+            <Ionicons name="chatbox-ellipses-outline" size={14} color={colors.fgSecondary} />
             <Text
               style={[textStyle('body'), styles.aiQueryText, { color: colors.fg }]}
               numberOfLines={1}
