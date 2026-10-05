@@ -28,12 +28,12 @@ touches both; neither document alone is enough to build a screen.
 
 ## Signal in one paragraph
 
-Deep blue-cyan on cool neutrals. Inter for everything the user operates, Source Serif 4 — on its
+Warm ink on stone greys (revision R6) — no blue, no violet; muted earth hues for people and sources. Inter for everything the user operates, Source Serif 4 — on its
 optical-size axis — for everything the user evaluates. The signed-in app is a sidebar shell: a
-256px sidebar holding the destinations, the Library and its AI-filed collections, and a top bar
+256px sidebar holding the destinations, the Library and its collections, and a top bar
 carrying one omnibox. Feed items are bordered panels and four-line rows; the Library is separator
-rows. AI is a quiet editorial layer — a soft gradient ground with one hairline and one corner aura —
-that always names its sources. Social is present but secondary: one compact action row,
+rows. Machine-made content is not dressed as AI — it sits in plain bordered panels and always names its
+sources. Social is present but secondary: one compact action row,
 conversation on demand. Labels are sentence case; the accent is spent on action and selection, not
 on topics. Light mode defines the brand; dark is a first-class translation, not an inversion.
 
@@ -49,7 +49,7 @@ Everything else in this directory elaborates on these.
    clients, document it in `foundations.md` — in that order.
 3. **Borders, not elevation.** Shadows are for surfaces that genuinely float: dialogs, sheets,
    popovers, the command palette. The sidebar and top bar are separated by hairlines. Nothing in a feed or list may float.
-4. **Shape is meaning.** 6px controls, 8px content surfaces, 12px on the app frame and AI callout.
+4. **Shape is meaning.** 6px controls, 8px content surfaces, 12px on the app frame.
    Pills mark identity or a single decisive action: tags,
    avatars, segmented filters, the primary CTA.
 5. **Restyle primitives, never fork them.** Radix plus `components/ui` is the single source. A screen

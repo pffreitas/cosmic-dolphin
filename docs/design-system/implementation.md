@@ -28,7 +28,7 @@ colors: {
   fg:      { DEFAULT: "var(--cd-fg)", secondary: "var(--cd-fg-secondary)", tertiary: "var(--cd-fg-tertiary)" },
   line:    { DEFAULT: "var(--cd-border)", strong: "var(--cd-border-strong)" },
   accent:  { DEFAULT: "var(--cd-accent)", hover: "var(--cd-accent-hover)", fg: "var(--cd-accent-fg)", soft: "var(--cd-accent-soft)", border: "var(--cd-accent-border)" },
-  ai:      { DEFAULT: "var(--cd-ai)", bg: "var(--cd-ai-bg)", border: "var(--cd-ai-border)", chip: "var(--cd-ai-chip)" },
+  id:      { 1: "var(--cd-id-1)", "1-bg": "var(--cd-id-1-bg)", /* … through 5 */ },
   like:    "var(--cd-like)",
 },
 borderRadius: {

@@ -31,7 +31,7 @@ now* before the next one is asked.
    (`minmax(240px,1fr)`): `title-3` title (clamp 2) and a progress meter with the time left. A
    horizontally scrolling, snapping strip below 640px. Absent when nothing is part-read.
 4. **The feed and its rail** — below a hairline, a grid of `minmax(0,720px) 260px`, 40px gap. The
-   first ranked bookmark renders as the feed item's `lead` variant; digests stay AI callouts; every
+   first ranked bookmark renders as the feed item's `lead` variant; digests stay callouts; every
    other bookmark is a `row`. Infinite scroll with a skeleton row as the sentinel; no pagination
    controls. Below 900px the rail drops entirely; nothing in it is unique.
 
@@ -145,14 +145,13 @@ primary button.
 Signed out only — a signed-in reader is redirected to Home. Draws its own frame: the public header,
 then four beats, then a footer.
 
-1. **Hero** — an AI-chip kicker ("Summaries that name their sources"), a two-line 68px `display`
+1. **Hero** — a neutral chip kicker ("Summaries that name their sources"), a two-line 68px `display`
    headline whose second line is `--cd-fg-secondary`, one 18px line of what the product does,
-   **Start your library** (primary, large) and **Sign in**. Behind it, the single top-centre
-   `--cd-ai-glow` aura. Below, the Library in an app window, fading out at its foot.
+   **Start your library** (primary, large) and **Sign in**. Below, the Library in an app window, fading out at its foot.
 2. **How it works** — on `--cd-bg-subtle`: three alternating text-and-vignette rows (capture,
    Cosmic brief, filing), numbered `01`–`03`.
 3. **Principles** — "Built to be finished, not scrolled." beside a hairline-ruled definition list.
-4. **Closing** — an AI-callout-material panel with one sentence and **Create your account**.
+4. **Closing** — a `--cd-bg-subtle` bordered panel with one sentence and **Create your account**.
 
 Every illustration is a vignette from `components/marketing/vignettes.tsx`: the product's own
 components on illustrative content, marked `inert` and labelled with what they depict. Never a

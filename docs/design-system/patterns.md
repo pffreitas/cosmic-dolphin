@@ -33,7 +33,7 @@ Three groups, top to bottom:
 | Brand | The brandmark (see [foundations.md § Brand](./foundations.md#brand)), 56px row. |
 | Destinations | Home, Explore, Search. `nav[aria-label=Primary]`. |
 | Library | All saves, Inbox, Read later, Archive — each with a tabular count. `nav[aria-label=Library]`. |
-| Collections | The AI-filed tree, one level of nesting shown with a hairline guide; an **AI filed** marker beside the group label. `nav[aria-label=Collections]`. |
+| Collections | The filed tree, one level of nesting shown with a hairline guide. No "AI filed" marker (R6). `nav[aria-label=Collections]`. |
 | Account | Pinned to the bottom: avatar, name, email, and a menu holding Your profile, Theme (Light / Dark / Match system) and Sign out. |
 
 Rows are 32px links: 16px glyph at stroke 1.7, 13.5px label, count right-aligned at 11.5px
@@ -168,40 +168,37 @@ Content by context:
 | AI digest | `Built from · domain · domain · +n more` |
 | AI summary | `domain · summarised from the full article` |
 
-**"Why this appeared"** is a sibling `<details>`: a dotted-underline `--cd-ai` summary that expands
-into a `--cd-ai-bg` panel giving the actual ranking reason in one sentence, in plain language and in
+**"Why this appeared"** is a sibling `<details>`: a dotted-underline `--cd-fg-tertiary` summary that
+expands into a `--cd-bg-subtle` panel giving the actual ranking reason in one sentence, in plain language and in
 the second person. It is a disclosure, not a tooltip, and it is never hidden behind a hover.
 
 ---
 
-## AI callout
+## Callout
 
-`components/ai/ai-callout.tsx`
+`components/ai/ai-callout.tsx` (`AiCallout`; the name predates R6)
 
-The quiet editorial layer. Used for the Cosmic brief, feed digests, and collection suggestions.
+The panel for a Cosmic brief, a feed digest, or a collection suggestion. Since R6 it is not dressed as
+AI: it is the same material as any other panel.
 
 **Surface**
 
 ```
-border-radius:  --cd-radius-lg
-background:     linear-gradient(180deg, --cd-ai-bg-top, --cd-ai-bg)
-border:         1px solid --cd-ai-border
-box-shadow:     inset 0 1px 0 --cd-ai-sheen
-padding:        --cd-space-5
-::before        radial-gradient(110% 130% at 100% 0%, --cd-ai-glow, transparent 58%)
+border-radius:  --cd-radius-md
+background:     --cd-bg-panel
+border:         1px solid --cd-border
+padding:        --cd-space-5   (14px when compact)
 ```
 
-That corner aura is the only decorative gradient in the product. One per callout, always top-right,
-always behind the content (`z-index: -1` with `isolation: isolate` on the parent).
+**Anatomy:** a sentence-case label in 12.5px/600 `--cd-fg-secondary` — optional right-aligned meta
+— content — a footer: a 14px-padded `--cd-border` divider above the provenance row.
 
-**Anatomy:** badge chip (12px sparkle + label, `--cd-ai-chip` fill, pill) — optional right-aligned
-meta — content — `.ai-foot`: a 14px-padded divider above the provenance row.
+**Key points** use a 5px `--cd-fg-tertiary` dot. Never `01 / 02 / 03`: findings are not a sequence,
+and numbering claims an order the content doesn't have.
 
-**Key points** use a 6px `--cd-ai` dot with a 3px `--cd-ai-chip` halo. Never `01 / 02 / 03`:
-findings are not a sequence, and numbering claims an order the content doesn't have.
-
-**Don't:** an accent rail down the left edge. A second gradient. Purple. A chat bubble. The word
-"magic". Any AI output without a `.ai-foot` naming its sources.
+**Don't:** a sparkle, a tinted or gradient ground, a glow, an "AI" badge or label. An accent rail
+down the left edge. A chat bubble. The word "magic". Any callout without a footer naming its
+sources.
 
 ---
 

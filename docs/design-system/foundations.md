@@ -25,25 +25,34 @@ This document explains what each token *means*, which is the part a hex value ca
 
 ## Colour
 
-Tokens are semantic, not descriptive. `--cd-accent` is "the brand action colour", not "blue"; if the
-brand ever moves to green, nothing but the token file changes.
+**Revision R6 — ink on stone.** The neutrals are warm stone greys: one lightness ramp at OKLCH hue
+72 with a whisper of chroma (≈0.005), so the ground reads as paper rather than as blue-tinted slate.
+The accent is warm ink — near-black in light mode, warm off-white in dark — so action is carried by
+contrast and weight, not by a hue. There is no blue and no violet anywhere in the palette, and no
+colour exists to mark machine-made content (see *AI layer — retired*). Colour is kept for meaning:
+an earthy identity hue per person and source, pink for a like, green for done, amber for warning,
+red for failure, an ochre marker for highlights. All values were derived in OKLCH and are stored as
+hex.
+
+Tokens are semantic, not descriptive. `--cd-accent` is "the brand action colour", not "ink"; if the
+brand ever moves to a hue, nothing but the token file changes.
 
 ### Surfaces
 
 | Token | Light | Dark | Use |
 | --- | --- | --- | --- |
-| `--cd-bg` | `#FFFFFF` | `#0A1119` | Page ground. The default background of every route. |
-| `--cd-bg-subtle` | `#F7F9FB` | `#0E1720` | Recessed areas: row hover, the frame chrome, empty-state grounds. |
-| `--cd-bg-panel` | `#FFFFFF` | `#101A24` | Anything with a border around it: cards, feed items, dialogs, popovers. In light mode it equals `--cd-bg` by design — the border does the separating, not a fill. |
-| `--cd-bg-inset` | `#EEF2F6` | `#16222E` | Inset controls: segmented-control troughs, neutral chips, ghost-button hover, skeleton base. |
+| `--cd-bg` | `#FFFFFF` | `#12100E` | Page ground. The default background of every route. |
+| `--cd-bg-subtle` | `#F8F6F3` | `#171513` | Recessed areas: row hover, the frame chrome, empty-state grounds. |
+| `--cd-bg-panel` | `#FFFFFF` | `#1A1816` | Anything with a border around it: cards, feed items, dialogs, popovers. In light mode it equals `--cd-bg` by design — the border does the separating, not a fill. |
+| `--cd-bg-inset` | `#F2EFEC` | `#252220` | Inset controls: segmented-control troughs, neutral chips, ghost-button hover, skeleton base. |
 
 ### Text
 
 | Token | Light | Dark | Use | Min contrast |
 | --- | --- | --- | --- | --- |
-| `--cd-fg` | `#0C1622` | `#E9F0F6` | Titles, primary body, active nav. | 16:1 |
-| `--cd-fg-secondary` | `#4C5A68` | `#9FB1C0` | Summaries, descriptions, comment bodies, inactive nav. | 7:1 |
-| `--cd-fg-tertiary` | `#617080` | `#768A9A` | Metadata, timestamps, counts, section labels, placeholders. | 4.5:1 |
+| `--cd-fg` | `#191714` | `#F2F0ED` | Titles, primary body, active nav. | 16:1 |
+| `--cd-fg-secondary` | `#53514E` | `#BDBAB6` | Summaries, descriptions, comment bodies, inactive nav. | 7:1 |
+| `--cd-fg-tertiary` | `#6A6764` | `#9B9894` | Metadata, timestamps, counts, section labels, placeholders. | 4.5:1 |
 
 The `Min contrast` column is not aspirational. `apps/web/__tests__/accessibility/contrast.test.ts`
 computes every one of these ratios out of `tokens.json` on each run, in both modes, against every
@@ -64,40 +73,48 @@ should not be on screen.
 
 | Token | Use |
 | --- | --- |
-| `--cd-accent` `#0B6F9C` | Primary CTA fill, active nav text, links, selected state, unread dot, focus ring. |
+| `--cd-accent` `#25221F` | Primary CTA fill, active nav text, links, selected state, unread dot, focus ring, reading progress. |
 | `--cd-accent-hover` | Hover/active on filled accent surfaces only. |
 | `--cd-accent-fg` | Text and icons on top of `--cd-accent`. |
 | `--cd-accent-soft` | Tag fill, highlight ground, selected tree row. |
 | `--cd-accent-border` | Hairline on soft accent surfaces, pull-quote rule. |
 
-Accent is a budget, not a palette. A screen should be legible in greyscale; the accent tells you
-where to act, not where to look.
+Accent is a budget, not a palette. Because ink sits close to `--cd-fg`, an ink link is never
+identified by colour alone: links carry an underline (at rest or on hover, per component), selected
+controls carry a fill or a weight change. The accent tells you where to act, not where to look.
 
-### AI layer
+### AI layer — retired (R6)
 
-The AI tokens exist so the machine-authored layer reads as its own material without becoming a
-second brand.
-
-| Token | Use |
-| --- | --- |
-| `--cd-ai` | AI chip text, "why this appeared" affordance, key-point markers. |
-| `--cd-ai-bg` / `--cd-ai-bg-top` | The two stops of the AI callout's vertical gradient (top → bottom). |
-| `--cd-ai-border` | The callout hairline and its internal divider. |
-| `--cd-ai-chip` | Fill behind the AI badge. |
-| `--cd-ai-glow` | The single corner aura. Never used anywhere else. |
-| `--cd-ai-sheen` | 1px inset top highlight on the AI callout. |
+The `--cd-ai*` tokens are gone. Machine-authored content — a Cosmic brief, a digest, a ranking
+reason, the pipeline's staged progress, a suggested collection — is drawn in the same neutral
+material as everything else: a bordered `--cd-bg-panel` panel, `--cd-fg-secondary` labels, the
+accent for an active step. No sparkle icons, no tinted gradients, no glow, and no "AI filed" badge.
+Trust comes from provenance (rule 8 — every such surface still names its sources), not from a
+costume announcing that a machine made it.
 
 ### State
 
 | Token | Meaning |
 | --- | --- |
-| `--cd-like` `#CE2963` | Liked. The only place this hue appears. |
+| `--cd-like` `#C4255E` | Liked. The only place this hue appears. |
 | `--cd-success` | Completed pipeline phase, "Read" confirmation, saved toast. |
 | `--cd-warning` | Degraded processing, private-link notice, quota warning. |
 | `--cd-danger` | Failed processing, destructive confirmation, form error. |
-| `--cd-hl-bg` / `--cd-hl-line` | User highlights inside reader content. |
+| `--cd-hl-bg` / `--cd-hl-line` | User highlights inside reader content, and text selection. A soft ochre marker — the one warm hue on the reading surface. |
 | `--cd-focus` | Focus ring. Identical to accent by design — focus is an action affordance. |
 | `--cd-overlay` | The scrim behind a dialog or bottom sheet. Dark in both modes — it dims the page, it does not restate the theme. |
+
+### Identity
+
+| Token | Use |
+| --- | --- |
+| `--cd-id-1` … `--cd-id-5` | Initials on an avatar fallback, the letter on a favicon chip. |
+| `--cd-id-1-bg` … `--cd-id-5-bg` | The soft ground behind them. Always paired with its own number. |
+
+Five muted earth hues — clay, ochre, olive, green, teal — chosen to sit clear of the like's pink and
+of any blue or violet. `lib/identity.ts` hashes a seed (a person's name, a domain) to a
+slot, so a person or a source is the same colour on every row and every visit. Identity only:
+never a topic, a state or a rank, and never a fill for anything the user operates.
 
 ### Header capsule (retired on web)
 
@@ -116,7 +133,7 @@ Dark is a first-class translation, not an inversion. Three rules:
 
 1. Surfaces get *lighter* as they come forward (`--cd-bg` → `--cd-bg-panel` → `--cd-bg-inset`);
    borders stay visible rather than being replaced by elevation.
-2. The accent lightens to `#5CC2E8` so it clears 4.5:1 on the dark ground, and `--cd-accent-fg`
+2. The accent flips to warm off-white `#EAE7E4` so it clears 4.5:1 on the dark ground, and `--cd-accent-fg`
    flips to a near-black so filled buttons stay legible.
 3. Never carry a light-mode literal into a dark surface. Every colour on a surface comes from the
    same token set as that surface.

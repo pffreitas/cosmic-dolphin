@@ -39,6 +39,7 @@ why.
 | R2 | 11 | **A drawn brandmark replaces the 🐬 emoji.** Still a quiet metaphor and still no dolphin in the chrome — an arc over a point of light on an accent tile. The emoji could not take the accent, a size, or dark mode, and rendered differently on every platform. |
 | R3 | 13 (accent budget) | **Topic tags are hairline outlines, not accent fills.** With every tag, link, CTA and unread dot in the same blue, nothing stood out. The accent is spent on action, selection, links and unread state. |
 | R4 | 12 | **Sentence case replaces uppercase micro-labels**, and the type scale gains presence: a 44px detail title, an 18px reader, a 28px page title, Source Serif's optical sizes, Inter's character variants. Hierarchy from weight, size and colour rather than letter-spacing. |
+| R6 | 13, Foundations · Colour | **Ink on stone; the AI layer is retired.** Neutrals move from blue-tinted slate to warm stone greys, and the accent from blue-cyan to warm ink. The violet AI material, sparkle icons, glows and "AI filed" badges are removed: machine-made content should not announce itself as AI. Provenance (rule 8) still names every source. Colour is kept for identity (earth hues on initials and source letters) and state. |
 | R5 | Pages · Auth, `/` | **The signed-out surfaces are designed, not placeholders**: a four-beat landing page illustrated with the product's own components, and a split-screen auth layout. They are how the product is first met. |
 
 ## Inspiration set
