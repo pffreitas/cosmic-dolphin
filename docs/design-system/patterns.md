@@ -155,7 +155,7 @@ tree. Use a badge for unread.
 The compact, always-visible answer to "where did this come from". Every AI output and every feed
 item carries one.
 
-`favicon chip · source (500 weight, --cd-fg) · dot · attribution · dot · relative time`, at 12.5px
+`favicon chip · source (500 weight, --cd-fg) · dot · attribution · dot · relative time · dot · duration`, at 12.5px
 in `--cd-fg-secondary`, wrapping gracefully.
 
 Content by context:

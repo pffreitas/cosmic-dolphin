@@ -18,6 +18,7 @@ import {
 import { Bookmark, Highlight } from "@cosmic-dolphin/api-client";
 
 import { cn } from "@/lib/utils";
+import { Tag } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -27,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { focusRing } from "@/components/ui/focus-ring";
 import { useToast } from "@/components/ui/toast";
+import { AiCallout } from "@/components/ai/ai-callout";
 import { ProcessingSteps } from "@/components/ai/processing-steps";
 import { ProvenanceRow } from "@/components/provenance-row";
 import { ActionRow } from "@/components/social/action-row";
@@ -369,227 +371,248 @@ export function BookmarkDetail({
 
   const highlightCount = owner ? highlights.length : 0;
 
+  // The page is two acts — read, then discuss — and the spacing says so
+  // before any hairline does. Inside the first act the intervals widen as the
+  // reader moves away from the title: 12px holds the hero's facts to the
+  // title, 24px sets the actions apart from them, 32px opens the brief, 48px
+  // opens the article. The article's tail (images, tags) closes back in to
+  // 24px because it belongs to the text above it, and then 64px — the
+  // largest step on the page — marks the turn from reading to talking.
   return (
-    <article className="mx-auto flex w-full max-w-[680px] flex-col gap-10 pt-4 md:pt-6">
+    <article className="mx-auto flex w-full max-w-[680px] flex-col gap-16 pt-4">
       <ReadingProgress />
 
-      {/* 1 · Hero ------------------------------------------------------ */}
-      <header className="flex flex-col gap-4">
-        {owner ? <Breadcrumb model={model} /> : null}
+      <div className="flex flex-col gap-8">
+        {/* 1 · Hero ------------------------------------------------------ */}
+        <header className="flex flex-col gap-6">
+          <div className="flex flex-col gap-3">
+            {owner ? <Breadcrumb model={model} /> : null}
 
-        <h1 className="font-serif text-[32px] font-semibold leading-[1.1] tracking-[-0.022em] text-fg sm:text-[44px]">
-          {model.title}
-        </h1>
+            <h1 className="text-balance font-serif text-[32px] font-semibold leading-[1.1] tracking-[-0.022em] text-fg sm:text-[44px]">
+              {model.title}
+            </h1>
 
-        <ProvenanceRow
-          sources={
-            model.domain
-              ? [
-                  {
-                    domain: model.domain,
-                    faviconUrl: model.faviconUrl,
-                    href: model.sourceUrl,
-                  },
-                ]
-              : undefined
-          }
-          attribution={model.attribution}
-          actor={
-            model.sharedByName ? { name: model.sharedByName } : undefined
-          }
-          action={
-            model.sharedByName ? "shared" : owner ? "you saved this" : undefined
-          }
-          timestamp={
-            [model.savedAt, model.readingTime].filter(Boolean).join(" · ") ||
-            undefined
-          }
-        />
-
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          {owner ? (
-            <Button
-              type="button"
-              variant={isRead ? "secondary" : "primary"}
-              onClick={() => void setRead(!isRead, { announce: true })}
-              loading={readBusy}
-              icon={
-                isRead ? (
-                  <RotateCcw aria-hidden="true" />
-                ) : (
-                  <Check aria-hidden="true" />
-                )
+            <ProvenanceRow
+              sources={
+                model.domain
+                  ? [
+                      {
+                        domain: model.domain,
+                        faviconUrl: model.faviconUrl,
+                        href: model.sourceUrl,
+                      },
+                    ]
+                  : undefined
               }
-            >
-              {isRead ? "Mark as unread" : "Mark as read"}
-            </Button>
-          ) : (
-            // The shared route's one addition. It is the primary because it
-            // is the only thing this page asks a stranger to do — and it
-            // really saves, rather than dropping them on a sign-in page with
-            // the link they came for left behind.
-            <Button
-              type="button"
-              variant="primary"
-              onClick={() => void saveToLibrary()}
-              loading={saving}
-              icon={<BookmarkPlus aria-hidden="true" />}
-            >
-              {savedHere ? "Saved to your library" : "Save to your library"}
-            </Button>
-          )}
+              attribution={model.attribution}
+              actor={
+                model.sharedByName ? { name: model.sharedByName } : undefined
+              }
+              action={
+                model.sharedByName ? "shared" : owner ? "you saved this" : undefined
+              }
+              timestamp={model.savedAt || undefined}
+              duration={model.readingTime || undefined}
+            />
+          </div>
 
-          <Button asChild variant="secondary" icon={<ExternalLink aria-hidden="true" />}>
-            <a href={model.sourceUrl} target="_blank" rel="noopener noreferrer">
-              Open original
-            </a>
-          </Button>
+          {/* Two clusters: what you do with this save on the left, the
+              utilities on the right — on the same right edge the brief and
+              the prose end on. */}
+          <div className="flex flex-wrap items-center gap-2">
+            {owner ? (
+              <Button
+                type="button"
+                variant={isRead ? "secondary" : "primary"}
+                onClick={() => void setRead(!isRead, { announce: true })}
+                loading={readBusy}
+                icon={
+                  isRead ? (
+                    <RotateCcw aria-hidden="true" />
+                  ) : (
+                    <Check aria-hidden="true" />
+                  )
+                }
+              >
+                {isRead ? "Mark as unread" : "Mark as read"}
+              </Button>
+            ) : (
+              // The shared route's one addition. It is the primary because it
+              // is the only thing this page asks a stranger to do — and it
+              // really saves, rather than dropping them on a sign-in page with
+              // the link they came for left behind.
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => void saveToLibrary()}
+                loading={saving}
+                icon={<BookmarkPlus aria-hidden="true" />}
+              >
+                {savedHere ? "Saved to your library" : "Save to your library"}
+              </Button>
+            )}
 
-          {owner ? (
-            <>
+            <Button asChild variant="secondary" icon={<ExternalLink aria-hidden="true" />}>
+              <a href={model.sourceUrl} target="_blank" rel="noopener noreferrer">
+                Open original
+              </a>
+            </Button>
+
+            {owner ? (
+            // `-mr-2` hangs the ghost buttons' padding past the edge so the
+            // glyphs, not the hit areas, line up with it — the action row's
+            // `-ml-2` on the other side, for the same reason.
+            <div className="-mr-2 ml-auto flex items-center gap-0.5">
+              {/* Icon-only below 640px, where its label is what pushes the
+                  row onto a second line. The name stays for screen readers. */}
               <Button
                 type="button"
                 variant="ghost"
                 icon={<ShareIcon aria-hidden="true" />}
                 onClick={() => void share(model, toast)}
+                className="max-sm:w-[34px] max-sm:px-0"
               >
-                Share
+                <span className="max-sm:sr-only">Share</span>
               </Button>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label="More actions"
-                    icon={<MoreHorizontal aria-hidden="true" />}
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => void regenerate()}>
-                    <RotateCw aria-hidden="true" />
-                    Regenerate brief
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => void remove()}>
-                    <Trash2 aria-hidden="true" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label="More actions"
+                      icon={<MoreHorizontal aria-hidden="true" />}
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => void regenerate()}>
+                      <RotateCw aria-hidden="true" />
+                      Regenerate brief
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => void remove()}>
+                      <Trash2 aria-hidden="true" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+            ) : null}
+          </div>
+        </header>
+
+        {/* 2 · The brief's position, whatever is in it ------------------- */}
+        {model.state === "failed" ? (
+          <FailureCallout
+            reason={model.processingError}
+            sourceUrl={model.sourceUrl}
+            onRetry={owner ? () => void regenerate() : undefined}
+            retrying={regenerating}
+          />
+        ) : model.state === "private" ? (
+          <OwnSummary
+            bookmarkId={model.id}
+            initialSummary={ownSummary}
+            editable={owner && !offline}
+            onSaved={setOwnSummary}
+          />
+        ) : stillProcessing ? (
+          // The brief's own frame, so the finished brief replaces the steps
+          // without the box around them moving.
+          <AiCallout label="Reading the page">
+            <ProcessingSteps steps={steps} announceLabel={model.title} />
+          </AiCallout>
+        ) : (
+          <CosmicBrief
+            summary={model.briefSummary}
+            keyPoints={model.keyPoints}
+            domain={model.domain}
+            faviconUrl={model.faviconUrl}
+            sourceUrl={model.sourceUrl}
+            meta={model.readingTime ? `${model.readingTime} article` : undefined}
+            onRegenerate={owner ? () => void regenerate() : undefined}
+            regenerating={regenerating}
+          />
+        )}
+
+        {/* 3 · Reader ---------------------------------------------------- */}
+        <div className="mt-4 flex flex-col gap-6 empty:hidden">
+          <Reader
+            body={model.state === "private" ? ownSummary : model.readerBody}
+            loading={stillProcessing && !model.readerBody}
+            highlights={owner ? highlights : undefined}
+            onCreateHighlight={owner && !offline ? createHighlight : undefined}
+            onComment={() =>
+              commentsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }
+            onProgress={owner && !offline && progressReady ? onProgress : undefined}
+            restoreScrollOffset={restoreOffset}
+          />
+
+          {model.images.length > 0 ? <ReaderImages images={model.images} /> : null}
+
+          {model.tags.length > 0 ? (
+            <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0">
+              {model.tags.map((tag) => (
+                <li key={tag}>
+                  <Tag>{tag}</Tag>
+                </li>
+              ))}
+            </ul>
           ) : null}
         </div>
-      </header>
-
-      {/* 2 · The brief's position, whatever is in it ------------------- */}
-      {model.state === "failed" ? (
-        <FailureCallout
-          reason={model.processingError}
-          sourceUrl={model.sourceUrl}
-          onRetry={owner ? () => void regenerate() : undefined}
-          retrying={regenerating}
-        />
-      ) : model.state === "private" ? (
-        <OwnSummary
-          bookmarkId={model.id}
-          initialSummary={ownSummary}
-          editable={owner && !offline}
-          onSaved={setOwnSummary}
-        />
-      ) : stillProcessing ? (
-        <div className="rounded-md border border-line bg-bg-subtle px-4 py-3.5">
-          <p className="mb-2.5 font-sans text-[12.5px] font-medium text-fg">
-            Reading the page
-          </p>
-          <ProcessingSteps steps={steps} announceLabel={model.title} />
-        </div>
-      ) : (
-        <CosmicBrief
-          summary={model.briefSummary}
-          keyPoints={model.keyPoints}
-          domain={model.domain}
-          faviconUrl={model.faviconUrl}
-          sourceUrl={model.sourceUrl}
-          meta={model.readingTime ? `${model.readingTime} article` : undefined}
-          onRegenerate={owner ? () => void regenerate() : undefined}
-          regenerating={regenerating}
-        />
-      )}
-
-      {/* 3 · Reader ---------------------------------------------------- */}
-      <Reader
-        body={model.state === "private" ? ownSummary : model.readerBody}
-        loading={stillProcessing && !model.readerBody}
-        highlights={owner ? highlights : undefined}
-        onCreateHighlight={owner && !offline ? createHighlight : undefined}
-        onComment={() =>
-          commentsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-        }
-        onProgress={owner && !offline && progressReady ? onProgress : undefined}
-        restoreScrollOffset={restoreOffset}
-      />
-
-      {model.images.length > 0 ? <ReaderImages images={model.images} /> : null}
-
-      {model.tags.length > 0 ? (
-        <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0">
-          {model.tags.map((tag) => (
-            <li
-              key={tag}
-              className={cn(
-                "rounded-pill border border-line bg-bg-subtle px-2.5 py-1",
-                "font-sans text-[12px] leading-none text-fg-secondary",
-              )}
-            >
-              {tag}
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      </div>
 
       {/* 4 · Social row, with the highlight count ---------------------- */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-4">
-        <ActionRow
-          likeCount={likeState.count}
-          liked={likeState.liked}
-          onLikeChange={(next) => void like(next)}
-          commentCount={commentCount}
-          onComment={() =>
-            commentsRef.current?.scrollIntoView({ behavior: "smooth" })
-          }
-          saved={owner || savedHere}
-          onSaveChange={owner ? undefined : () => void saveToLibrary()}
-          saveLabel="Save"
-          savedLabel="Saved"
-          shareUrl={model.shareUrl}
-          itemTitle={model.title}
-        />
-        {highlightCount > 0 ? (
-          <span className="font-sans text-[12.5px] leading-[1.4] text-fg-secondary">
-            {highlightCount} {highlightCount === 1 ? "highlight" : "highlights"}
-          </span>
-        ) : null}
-      </div>
-
-      {/* 5 · Comments ------------------------------------------------- */}
-      {/* In full, not in a drawer. The drawer is the *feed's* answer to a
-          thread, where a conversation expanded in place would bury the next
-          four items; here the reader has reached the end of the thing they
-          came for, and the conversation is what comes next. */}
-      <div
-        ref={commentsRef}
-        id="comments"
-        data-detail-slot="comments"
-        className="scroll-mt-24"
+      <section
+        aria-label="Discussion"
+        className="flex flex-col gap-8 border-t border-line pt-4"
       >
-        <CommentThread
-          bookmarkId={model.id}
-          initialCount={commentCount}
-          onCountChange={setCommentCount}
-          offline={offline}
-        />
-      </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <ActionRow
+            likeCount={likeState.count}
+            liked={likeState.liked}
+            onLikeChange={(next) => void like(next)}
+            commentCount={commentCount}
+            onComment={() =>
+              commentsRef.current?.scrollIntoView({ behavior: "smooth" })
+            }
+            saved={owner || savedHere}
+            onSaveChange={owner ? undefined : () => void saveToLibrary()}
+            saveLabel="Save"
+            savedLabel="Saved"
+            shareUrl={model.shareUrl}
+            itemTitle={model.title}
+          />
+          {/* Private, unlike the counts beside it, so it keeps its
+              distance: the social actions on the left, what only you can
+              see on the right. */}
+          {highlightCount > 0 ? (
+            <span className="ml-auto font-sans text-[12.5px] leading-[1.4] text-fg-secondary">
+              {highlightCount} {highlightCount === 1 ? "highlight" : "highlights"}
+            </span>
+          ) : null}
+        </div>
+
+        {/* 5 · Comments ------------------------------------------------- */}
+        {/* In full, not in a drawer. The drawer is the *feed's* answer to a
+            thread, where a conversation expanded in place would bury the next
+            four items; here the reader has reached the end of the thing they
+            came for, and the conversation is what comes next. */}
+        <div
+          ref={commentsRef}
+          id="comments"
+          data-detail-slot="comments"
+          className="scroll-mt-24"
+        >
+          <CommentThread
+            bookmarkId={model.id}
+            initialCount={commentCount}
+            onCountChange={setCommentCount}
+            offline={offline}
+          />
+        </div>
+      </section>
     </article>
   );
 }
@@ -646,7 +669,7 @@ function FailureCallout({
     <div
       role="alert"
       className={cn(
-        "flex min-w-0 flex-wrap items-start gap-3 rounded-md",
+        "flex min-w-0 items-start gap-3 rounded-md",
         "border border-[color:var(--cd-danger)] bg-bg-subtle px-4 py-3.5",
       )}
     >
@@ -654,33 +677,38 @@ function FailureCallout({
         aria-hidden="true"
         className="mt-0.5 size-4 shrink-0 text-[color:var(--cd-danger)] [stroke-width:1.7]"
       />
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <p className="font-sans text-[13.5px] font-medium leading-[1.4] text-fg">
-          Cosmic couldn&apos;t finish reading this page.
-        </p>
-        <p className="font-sans text-[12.5px] leading-[1.5] text-fg-secondary">
-          {reason || "The run stopped before the brief was written."} Your save
-          is intact and the original still opens.
-        </p>
-      </div>
-      <div className="flex shrink-0 items-center gap-1.5">
-        {onRetry ? (
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={onRetry}
-            loading={retrying}
-            icon={<RotateCw aria-hidden="true" />}
-          >
-            Retry
+      {/* The message holds a 16rem floor, so on a narrow column the buttons
+          wrap beneath it — aligned with the text, not the icon — instead of
+          squeezing the sentence into a ribbon one word wide. */}
+      <div className="flex min-w-0 flex-1 flex-wrap items-start gap-x-4 gap-y-3">
+        <div className="flex min-w-[min(100%,16rem)] flex-1 flex-col gap-1">
+          <p className="font-sans text-[13.5px] font-medium leading-[1.4] text-fg">
+            Cosmic couldn&apos;t finish reading this page.
+          </p>
+          <p className="font-sans text-[12.5px] leading-[1.5] text-fg-secondary">
+            {reason || "The run stopped before the brief was written."} Your
+            save is intact and the original still opens.
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {onRetry ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={onRetry}
+              loading={retrying}
+              icon={<RotateCw aria-hidden="true" />}
+            >
+              Retry
+            </Button>
+          ) : null}
+          <Button asChild variant="ghost" size="sm" icon={<ExternalLink aria-hidden="true" />}>
+            <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
+              Open original
+            </a>
           </Button>
-        ) : null}
-        <Button asChild variant="ghost" size="sm" icon={<ExternalLink aria-hidden="true" />}>
-          <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
-            Open original
-          </a>
-        </Button>
+        </div>
       </div>
     </div>
   );
@@ -700,7 +728,9 @@ function ReaderImages({
             src={image.url}
             alt={image.title || ""}
             loading="lazy"
-            className="w-full rounded-md border border-line object-cover"
+            // A fixed frame, so the column does not jump as each image
+            // arrives; `object-cover` crops to it rather than letterboxing.
+            className="aspect-video w-full rounded-md border border-line bg-bg-subtle object-cover"
           />
           {image.title ? (
             <span className="font-sans text-[12px] leading-[1.4] text-fg-secondary">

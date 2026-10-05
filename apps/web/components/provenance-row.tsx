@@ -26,7 +26,7 @@ import { focusRing } from "@/components/ui/focus-ring";
  * Segment order is fixed:
  *
  *   lead · actor · (action, when there is an actor) · sources · +n more ·
- *   attribution · (action, when there is no actor) · timestamp
+ *   attribution · (action, when there is no actor) · timestamp · duration
  *
  * The action hugs the actor when there is one ("Maya · shared · every.to") and
  * otherwise trails the source ("every.to · you saved this"), which is what the
@@ -69,6 +69,12 @@ export interface ProvenanceRowProps
   action?: React.ReactNode;
   /** Already-formatted relative time: "2d", "just now", "saved 2d ago". */
   timestamp?: React.ReactNode;
+  /**
+   * Already-formatted reading or watch time: "9 min". Its own segment, so it
+   * takes the row's dot rather than a typed " · " that looks almost, but not
+   * quite, like one.
+   */
+  duration?: React.ReactNode;
   /** Right-aligned slot — the Cosmic brief's Regenerate ghost button. */
   trailing?: React.ReactNode;
 }
@@ -159,6 +165,7 @@ const ProvenanceRow = React.forwardRef<HTMLDivElement, ProvenanceRowProps>(
       attribution,
       action,
       timestamp,
+      duration,
       trailing,
       ...props
     },
@@ -184,6 +191,13 @@ const ProvenanceRow = React.forwardRef<HTMLDivElement, ProvenanceRowProps>(
       segments.push(
         <span key="timestamp" className="whitespace-nowrap">
           {timestamp}
+        </span>,
+      );
+    }
+    if (duration) {
+      segments.push(
+        <span key="duration" className="whitespace-nowrap">
+          {duration}
         </span>,
       );
     }
