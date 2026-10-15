@@ -28,7 +28,7 @@ import {
 import { CollectionRepository } from "../repositories/collection.repository";
 import { budgetText, ChunkingService, ChunkingServiceImpl } from "./chunking.service";
 import { EmbeddingService, EmbeddingServiceImpl } from "./embedding.service";
-import { BOOKMARK_MODEL_IDS } from "./bookmark.model-ids";
+import { BOOKMARK_MODEL_IDS, summaryProviderOptions } from "./bookmark.model-ids";
 import { BookmarkProcessingRepository } from "../repositories/bookmark-processing.repository";
 import {
   BookmarkProcessingPhaseName,
@@ -84,6 +84,7 @@ interface PhaseFailure {
 
 interface SummariseResult {
   summary?: string;
+  briefOnly?: boolean;
   briefSummary?: string;
   keyPoints: string[];
 }
@@ -233,9 +234,15 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
               this.summarise(session, bookmark, getProcessable(), phaseReporter)
           );
           if (summarised) {
-            // An unusable source or a brief-only retry should not keep a stale
-            // full summary from an earlier run.
-            bookmark.cosmicSummary = summarised.summary ?? "";
+            // A scoped retry that recovers only card data cannot replace the
+            // full brief. An unusable source explicitly returns "" and clears it.
+            if (
+              !summarised.briefOnly ||
+              options.phase !== "summarise" ||
+              !options.resume
+            ) {
+              bookmark.cosmicSummary = summarised.summary ?? "";
+            }
             if (summarised.briefSummary !== undefined) {
               bookmark.cosmicBriefSummary = summarised.briefSummary;
             }
@@ -569,14 +576,10 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       truncated: content.truncated,
       briefOnly,
     });
-    const providerOptions = {
-      openrouter: {
-        reasoning: { effort: "low" },
-        provider: { require_parameters: true },
-      },
-    };
+    const providerOptions = summaryProviderOptions(BOOKMARK_MODEL_IDS.large);
 
     const metadata = { truncated: content.truncated, originalChars: content.originalChars };
+    let briefOnly = false;
     let record;
     try {
       record = await phaseReporter.trackTurn(
@@ -602,6 +605,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       );
     } catch (error) {
       if (!NoObjectGeneratedError.isInstance(error)) throw error;
+      briefOnly = true;
 
       // A failed full object is recorded as a failed turn. A second, smaller
       // turn can still produce the card data without pretending it wrote prose.
@@ -615,7 +619,6 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
             prompt: prompt(true),
             schema: BRIEF_ONLY_SCHEMA,
             providerOptions,
-            maxOutputTokens: 2000,
           });
           return {
             value: { ...result.value, overview: "", sections: [] },
@@ -633,6 +636,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
 
     if (record.contentStatus === "unusable") {
       return {
+        summary: "",
         briefSummary: clampText(
           bookmark.metadata?.openGraph?.description || bookmark.cosmicBriefSummary || "",
           240
@@ -643,6 +647,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
 
     const keyPoints = normaliseKeyPoints(record.keyPoints);
     return {
+      briefOnly,
       summary: record.overview.trim() || record.sections.length > 0
         ? renderSummaryMarkdown(record, keyPoints)
         : undefined,

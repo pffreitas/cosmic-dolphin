@@ -4,3 +4,14 @@ export const BOOKMARK_MODEL_IDS = {
 };
 
 export type BookmarkModelCategory = keyof typeof BOOKMARK_MODEL_IDS;
+
+export function summaryProviderOptions(modelId: string) {
+  return {
+    openrouter: {
+      provider: { require_parameters: true },
+      ...(modelId === "openai/gpt-6-luna"
+        ? { reasoning: { effort: "low" } }
+        : {}),
+    },
+  };
+}

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import { BookmarkProcessorServiceImpl } from "../../services/bookmark.processor.service";
 import { clampText, normaliseKeyPoints, renderSummaryMarkdown } from "../../services/bookmark.summary";
-import { BOOKMARK_MODEL_IDS } from "../../services/bookmark.model-ids";
+import { BOOKMARK_MODEL_IDS, summaryProviderOptions } from "../../services/bookmark.model-ids";
 import { budgetText } from "../../services/chunking.service";
 import { NoObjectGeneratedError } from "ai";
 import { BookmarkService } from "../../services/bookmark.service";
@@ -15,6 +15,20 @@ import { Bookmark, ScrapedUrlContents } from "../../types";
 import { HttpClient } from "../../services/http-client";
 import { ChunkingService } from "../../services/chunking.service";
 import { EmbeddingService } from "../../services/embedding.service";
+
+describe("summaryProviderOptions", () => {
+  it("requests low reasoning only for Luna while requiring supported parameters", () => {
+    expect(summaryProviderOptions("openai/gpt-6-luna")).toEqual({
+      openrouter: {
+        provider: { require_parameters: true },
+        reasoning: { effort: "low" },
+      },
+    });
+    expect(summaryProviderOptions("vendor/non-reasoning-model")).toEqual({
+      openrouter: { provider: { require_parameters: true } },
+    });
+  });
+});
 
 describe("BookmarkProcessorService", () => {
   let service: BookmarkProcessorServiceImpl;
@@ -1106,8 +1120,109 @@ describe("BookmarkProcessorService", () => {
           openrouter: { reasoning: { effort: "low" }, provider: { require_parameters: true } },
         },
       }));
+      expect(summaryCalls[1].providerOptions).toEqual(summaryCalls[0].providerOptions);
       expect(summaryCalls[0].maxOutputTokens).toBeUndefined();
-      expect(summaryCalls[1].maxOutputTokens).toBe(2000);
+      expect(summaryCalls[1].maxOutputTokens).toBeUndefined();
+    });
+
+    it("does not request reasoning from an overridden non-Luna model on either turn", async () => {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(testScrapedContent);
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(testBookmark);
+      mockBookmarkService.update.mockResolvedValue(testBookmark);
+      mockAI.newSession.mockResolvedValue({ sessionID: "test-session-id", refID: testBookmark.id });
+      const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+      (mockAI.generateObjectWithUsage as jest.Mock<any>).mockImplementation(async (input: any) => {
+        if (input.schema.shape && "overview" in input.schema.shape) {
+          throw new NoObjectGeneratedError({
+            response: { id: "generation-1", timestamp: new Date(), modelId: input.modelId },
+            usage: { inputTokens: 10, outputTokens: 2, totalTokens: 12 },
+            finishReason: "length",
+          });
+        }
+        return original(input);
+      });
+
+      const originalModel = BOOKMARK_MODEL_IDS.large;
+      BOOKMARK_MODEL_IDS.large = "vendor/non-reasoning-model";
+      try {
+        await service.process(testBookmark.id, testBookmark.userId);
+      } finally {
+        BOOKMARK_MODEL_IDS.large = originalModel;
+      }
+
+      const calls = mockAI.generateObjectWithUsage.mock.calls
+        .map(([input]) => input as any)
+        .filter((input) => input.schema.shape && "contentStatus" in input.schema.shape);
+      expect(calls).toHaveLength(2);
+      for (const call of calls) {
+        expect(call.modelId).toBe("vendor/non-reasoning-model");
+        expect(call.providerOptions).toEqual({
+          openrouter: { provider: { require_parameters: true } },
+        });
+      }
+    });
+
+    it("keeps an existing full brief on a scoped brief-only recovery", async () => {
+      const existing: Bookmark = {
+        ...testBookmark,
+        cosmicSummary: "Existing full summary",
+        cosmicBriefSummary: "Existing card brief",
+        cosmicKeyPoints: ["Existing finding"],
+      };
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(existing);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(testScrapedContent);
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(existing);
+      mockBookmarkService.update.mockResolvedValue(existing);
+      mockAI.newSession.mockResolvedValue({ sessionID: "test-session-id", refID: existing.id });
+      const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+      (mockAI.generateObjectWithUsage as jest.Mock<any>).mockImplementation(async (input: any) => {
+        if (input.schema.shape && "overview" in input.schema.shape) {
+          throw new NoObjectGeneratedError({
+            response: { id: "generation-1", timestamp: new Date(), modelId: input.modelId },
+            usage: { inputTokens: 10, outputTokens: 2, totalTokens: 12 },
+            finishReason: "length",
+          });
+        }
+        return original(input);
+      });
+
+      await service.process(existing.id, existing.userId, { phase: "summarise", resume: true });
+
+      const updated = mockBookmarkService.update.mock.calls.at(-1)![1];
+      expect(updated.cosmicSummary).toBe("Existing full summary");
+      expect(updated.cosmicBriefSummary).toBe("A concise generated brief.");
+      expect(updated.cosmicKeyPoints).toEqual(["First finding", "Second finding"]);
+      expect(mockBookmarkService.updateProcessingStatus).toHaveBeenLastCalledWith(
+        existing.id, "completed"
+      );
+    });
+
+    it("clears old prose when a full reprocess recovers only a brief", async () => {
+      const existing: Bookmark = {
+        ...testBookmark,
+        cosmicSummary: "Existing full summary",
+      };
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(existing);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(testScrapedContent);
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(existing);
+      mockBookmarkService.update.mockResolvedValue(existing);
+      mockAI.newSession.mockResolvedValue({ sessionID: "test-session-id", refID: existing.id });
+      const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+      (mockAI.generateObjectWithUsage as jest.Mock<any>).mockImplementation(async (input: any) => {
+        if (input.schema.shape && "overview" in input.schema.shape) {
+          throw new NoObjectGeneratedError({
+            response: { id: "generation-1", timestamp: new Date(), modelId: input.modelId },
+            usage: { inputTokens: 10, outputTokens: 2, totalTokens: 12 },
+            finishReason: "length",
+          });
+        }
+        return original(input);
+      });
+
+      await service.process(existing.id, existing.userId, { resume: true });
+
+      expect(mockBookmarkService.update.mock.calls.at(-1)![1].cosmicSummary).toBe("");
     });
 
     it("does not summarise a paywall or retain stale prose", async () => {
@@ -1140,7 +1255,7 @@ describe("BookmarkProcessorService", () => {
         return original(input);
       });
 
-      await service.process(existing.id, existing.userId);
+      await service.process(existing.id, existing.userId, { phase: "summarise", resume: true });
       const updated = mockBookmarkService.update.mock.calls.at(-1)![1];
       expect(updated.cosmicSummary).toBe("");
       expect(updated.cosmicBriefSummary).toBe("Sign in to read this article.");
@@ -1156,6 +1271,45 @@ describe("BookmarkProcessorService", () => {
           status: "completed",
           metadata: expect.objectContaining({ contentStatus: "unusable", unusableReason: "paywall" }),
         })
+      );
+    });
+
+    it("clears old prose when brief-only recovery finds an unusable source", async () => {
+      const existing: Bookmark = {
+        ...testBookmark,
+        cosmicSummary: "Existing full summary",
+        cosmicKeyPoints: ["Existing finding"],
+      };
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(existing);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(testScrapedContent);
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(existing);
+      mockBookmarkService.update.mockResolvedValue(existing);
+      mockAI.newSession.mockResolvedValue({ sessionID: "test-session-id", refID: existing.id });
+      const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+      (mockAI.generateObjectWithUsage as jest.Mock<any>).mockImplementation(async (input: any) => {
+        if (input.schema.shape && "overview" in input.schema.shape) {
+          throw new NoObjectGeneratedError({
+            response: { id: "generation-1", timestamp: new Date(), modelId: input.modelId },
+            usage: { inputTokens: 10, outputTokens: 2, totalTokens: 12 },
+            finishReason: "length",
+          });
+        }
+        if (input.schema.shape && "contentStatus" in input.schema.shape) {
+          return {
+            value: { contentStatus: "unusable", unusableReason: "paywall", brief: "", keyPoints: [] },
+            usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          };
+        }
+        return original(input);
+      });
+
+      await service.process(existing.id, existing.userId, { phase: "summarise", resume: true });
+
+      const updated = mockBookmarkService.update.mock.calls.at(-1)![1];
+      expect(updated.cosmicSummary).toBe("");
+      expect(updated.cosmicKeyPoints).toEqual([]);
+      expect(mockBookmarkService.updateProcessingStatus).toHaveBeenLastCalledWith(
+        existing.id, "completed"
       );
     });
 
