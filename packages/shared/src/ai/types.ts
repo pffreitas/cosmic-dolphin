@@ -1,5 +1,5 @@
 import { Tool } from "./tool";
-import { ZodSchema } from "zod";
+import { FlexibleSchema } from "@ai-sdk/provider-utils";
 
 export interface Session {
   sessionID: string;
@@ -25,7 +25,12 @@ export interface Message {
   content: string;
 }
 
-export interface PromptInput {
+export interface AICallOptions {
+  maxOutputTokens?: number;
+  providerOptions?: Record<string, Record<string, any>>;
+}
+
+export interface PromptInput extends AICallOptions {
   sessionID: string;
   taskID: string;
   messageID: string;
@@ -35,11 +40,11 @@ export interface PromptInput {
   message: Message;
 }
 
-export interface GenerateObjectInput<T = any> {
+export interface GenerateObjectInput<T = any> extends AICallOptions {
   sessionID: string;
   modelId: string;
   prompt: string;
-  schema: ZodSchema<T>;
+  schema: FlexibleSchema<T>;
 }
 
 export interface LLMResponsePart {

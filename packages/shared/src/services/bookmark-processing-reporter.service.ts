@@ -1,3 +1,5 @@
+import { NoObjectGeneratedError } from "ai";
+import { toProcessingUsage } from "../ai/usage";
 import {
   BookmarkProcessingEvent,
   BookmarkProcessingPhase,
@@ -309,7 +311,20 @@ export class BookmarkProcessingReporter {
       });
       return result.value;
     } catch (error) {
-      await this.failEvent(event.id, startedAt, this.getErrorMessage(error));
+      if (NoObjectGeneratedError.isInstance(error)) {
+        const usage = toProcessingUsage(error.usage);
+        if (usage) this.addUsage(usage);
+        await this.failEvent(event.id, startedAt, this.getErrorMessage(error), {
+          modelId,
+          inputTokens: usage?.inputTokens,
+          outputTokens: usage?.outputTokens,
+          totalTokens: usage?.totalTokens,
+          reasoningTokens: usage?.reasoningTokens,
+          cachedInputTokens: usage?.cachedInputTokens,
+        });
+      } else {
+        await this.failEvent(event.id, startedAt, this.getErrorMessage(error));
+      }
       throw error;
     }
   }
@@ -366,10 +381,12 @@ export class BookmarkProcessingReporter {
   private async failEvent(
     eventId: string,
     startedAt: Date,
-    error: string
+    error: string,
+    data: Omit<UpdateBookmarkProcessingEventData, "status" | "endedAt" | "durationMs" | "error"> = {}
   ): Promise<void> {
     const endedAt = this.now();
     await this.repository.updateEvent(eventId, {
+      ...data,
       status: "failed",
       endedAt,
       durationMs: this.durationSince(startedAt, endedAt),

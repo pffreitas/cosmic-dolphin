@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
-import {
-  BookmarkProcessorServiceImpl,
-  extractKeyPoints,
-} from "../../services/bookmark.processor.service";
+import { BookmarkProcessorServiceImpl } from "../../services/bookmark.processor.service";
+import { clampText, normaliseKeyPoints, renderSummaryMarkdown } from "../../services/bookmark.summary";
+import { BOOKMARK_MODEL_IDS } from "../../services/bookmark.model-ids";
+import { budgetText } from "../../services/chunking.service";
+import { NoObjectGeneratedError } from "ai";
 import { BookmarkService } from "../../services/bookmark.service";
 import { ContentChunkRepository } from "../../repositories/content-chunk.repository";
 import { CollectionRepository } from "../../repositories/collection.repository";
@@ -76,41 +77,44 @@ describe("BookmarkProcessorService", () => {
     } as jest.Mocked<BookmarkService>;
 
     const generateObjectValue = async (input: any) => {
-      if (
-        input.prompt &&
-        input.prompt.includes("Your task is to generate a brief summary")
-      ) {
-        return "Generated brief summary";
-      } else if (
-        input.prompt &&
-        input.prompt.includes("Your task is to filter the images")
-      ) {
+      const fields = input.schema.shape
+        ? Object.keys(input.schema.shape).sort().join(",")
+        : Object.keys(input.schema.jsonSchema.properties).sort().join(",");
+      if (fields === "brief,contentStatus,keyPoints,overview,sections,unusableReason") {
         return {
-          images: [
-            {
-              url: "https://example.com/image.jpg",
-              title: "Test image",
-              description: "A test image",
-            },
-          ],
-        };
-      } else if (
-        input.prompt &&
-        input.prompt.includes("Your task is to generate the tags")
-      ) {
-        return {
-          tags: ["test", "bookmark"],
+          contentStatus: "ok",
+          unusableReason: "",
+          brief: "A concise generated brief.",
+          overview: "The article explains its central idea.",
+          keyPoints: ["First finding", "Second finding"],
+          sections: [],
         };
       }
-      // The filing phase's default answer: no good home, stay in the Inbox.
-      // The pipeline no longer has a "create something so the field is not
-      // empty" branch, so this is what most bookmarks get on an empty tree.
-      return {
-        existingCollectionId: null,
-        newCollection: null,
-        confidence: 0.4,
-        reasoning: "Nothing in the tree is close.",
-      };
+      if (fields === "brief,contentStatus,keyPoints,unusableReason") {
+        return {
+          contentStatus: "ok",
+          unusableReason: "",
+          brief: "A concise generated brief.",
+          keyPoints: ["First finding", "Second finding"],
+        };
+      }
+      if (fields === "images") {
+        return {
+          images: [
+            { url: "https://example.com/image.jpg", title: "Test image", description: "A test image" },
+          ],
+        };
+      }
+      if (fields === "tags") return { tags: ["test", "bookmark"] };
+      if (fields === "confidence,existingCollectionId,newCollection,reasoning") {
+        return {
+          existingCollectionId: null,
+          newCollection: null,
+          confidence: 0.4,
+          reasoning: "Nothing in the tree is close.",
+        };
+      }
+      throw new Error(`Unexpected schema: ${fields}`);
     };
 
     const mockUsage = {
@@ -681,19 +685,19 @@ describe("BookmarkProcessorService", () => {
 
       await service.process(testBookmark.id, testBookmark.userId);
 
-      expect(mockAI.generateText).toHaveBeenCalledWith(
-        expect.objectContaining({
-          modelId: "qwen/qwen3.7-plus",
-        })
-      );
+      expect(mockAI.generateText).not.toHaveBeenCalled();
       expect(
         mockAI.generateObjectWithUsage.mock.calls.map(([input]) => input.modelId)
       ).toEqual([
-        "deepseek/deepseek-v4-flash",
-        "deepseek/deepseek-v4-flash",
-        "deepseek/deepseek-v4-flash",
-        "deepseek/deepseek-v4-flash",
+        BOOKMARK_MODEL_IDS.small, // images
+        BOOKMARK_MODEL_IDS.large, // one structured summary
+        BOOKMARK_MODEL_IDS.small, // tags
+        BOOKMARK_MODEL_IDS.small, // filing
       ]);
+      expect(
+        mockBookmarkProcessingRepository.createEvent.mock.calls
+          .filter(([event]) => event.kind === "turn" && event.phase === "summarise")
+      ).toHaveLength(1);
     });
 
     it("keeps tags and filing when summarise fails", async () => {
@@ -723,9 +727,13 @@ describe("BookmarkProcessorService", () => {
         subTasks: {},
       });
       mockBookmarkService.update.mockResolvedValue(testBookmark);
-      mockAI.generateText.mockRejectedValueOnce(
-        new Error("AI service unavailable")
-      );
+      const generateObject = mockAI.generateObjectWithUsage.getMockImplementation()!;
+      mockAI.generateObjectWithUsage.mockImplementation(async (input: any) => {
+        if (input.schema.shape && "overview" in input.schema.shape) {
+          throw new Error("AI service unavailable");
+        }
+        return generateObject(input);
+      });
 
       // Partial failure does not poison the bookmark. A failed `summarise`
       // fails its own phase and its own run — and `tag`, `file` and `embed`
@@ -859,9 +867,7 @@ describe("BookmarkProcessorService", () => {
         );
         const tagPrompt = (mockAI.generateObjectWithUsage as jest.Mock).mock
           .calls.map(([input]: any[]) => input.prompt)
-          .find((prompt: string) =>
-            prompt.includes("Your task is to generate the tags")
-          );
+          .find((prompt: string) => prompt.includes("<existing_tags>"));
         expect(tagPrompt).toContain("machine-learning, rust");
       });
     });
@@ -1044,6 +1050,247 @@ describe("BookmarkProcessorService", () => {
       );
     });
 
+    it("recovers brief and key points when the full object is incomplete", async () => {
+      const mockSession: Session = { sessionID: "test-session-id", refID: testBookmark.id };
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(testScrapedContent);
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(testBookmark);
+      mockBookmarkService.update.mockResolvedValue(testBookmark);
+      mockAI.newSession.mockResolvedValue(mockSession);
+      const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+      (mockAI.generateObjectWithUsage as jest.Mock<any>).mockImplementation(async (input: any) => {
+        if (input.schema.shape && "overview" in input.schema.shape) {
+          throw new NoObjectGeneratedError({
+            response: { id: "generation-1", timestamp: new Date(), modelId: input.modelId },
+            usage: { inputTokens: 10, outputTokens: 2, totalTokens: 12 },
+            finishReason: "length",
+          });
+        }
+        return original(input);
+      });
+
+      await service.process(testBookmark.id, testBookmark.userId);
+
+      const updated = mockBookmarkService.update.mock.calls.at(-1)![1];
+      expect(updated.cosmicSummary).toBe("");
+      expect(updated.cosmicBriefSummary).toBe("A concise generated brief.");
+      expect(updated.cosmicKeyPoints).toEqual(["First finding", "Second finding"]);
+      expect(mockBookmarkService.updateProcessingStatus).toHaveBeenLastCalledWith(
+        testBookmark.id, "completed"
+      );
+      const turns = mockBookmarkProcessingRepository.createEvent.mock.calls
+        .filter(([event]) => event.kind === "turn" && event.phase === "summarise")
+        .map(([event]) => event);
+      expect(turns.map((turn) => turn.name)).toEqual([
+        "Generate summary",
+        "Recover brief summary",
+      ]);
+      expect(mockBookmarkProcessingRepository.updateEvent).toHaveBeenCalledWith(
+        `event-${turns[0].sequence}`,
+        expect.objectContaining({ status: "failed" })
+      );
+      expect(mockBookmarkProcessingRepository.updateEvent).toHaveBeenCalledWith(
+        `event-${turns[1].sequence}`,
+        expect.objectContaining({
+          status: "completed",
+          metadata: expect.objectContaining({ briefOnly: true, contentStatus: "ok" }),
+        })
+      );
+      const summaryCalls = mockAI.generateObjectWithUsage.mock.calls
+        .map(([input]) => input as any)
+        .filter((input) => input.schema.shape && "contentStatus" in input.schema.shape);
+      expect(summaryCalls).toHaveLength(2);
+      expect(summaryCalls[0]).toEqual(expect.objectContaining({
+        modelId: BOOKMARK_MODEL_IDS.large,
+        providerOptions: {
+          openrouter: { reasoning: { effort: "low" }, provider: { require_parameters: true } },
+        },
+      }));
+      expect(summaryCalls[0].maxOutputTokens).toBeUndefined();
+      expect(summaryCalls[1].maxOutputTokens).toBe(2000);
+    });
+
+    it("does not summarise a paywall or retain stale prose", async () => {
+      const existing: Bookmark = {
+        ...testBookmark,
+        cosmicSummary: "Old full summary",
+        cosmicBriefSummary: "Old brief",
+        cosmicKeyPoints: ["Old claim"],
+        metadata: {
+          ...testBookmark.metadata,
+          openGraph: { ...testBookmark.metadata!.openGraph!, description: "Sign in to read this article." },
+        },
+      };
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(existing);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(testScrapedContent);
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(existing);
+      mockBookmarkService.update.mockResolvedValue(existing);
+      mockAI.newSession.mockResolvedValue({ sessionID: "test-session-id", refID: existing.id });
+      const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+      (mockAI.generateObjectWithUsage as jest.Mock<any>).mockImplementation(async (input: any) => {
+        if (input.schema.shape && "overview" in input.schema.shape) {
+          return {
+            value: {
+              contentStatus: "unusable", unusableReason: "paywall",
+              brief: "", overview: "", keyPoints: [], sections: [],
+            },
+            usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          };
+        }
+        return original(input);
+      });
+
+      await service.process(existing.id, existing.userId);
+      const updated = mockBookmarkService.update.mock.calls.at(-1)![1];
+      expect(updated.cosmicSummary).toBe("");
+      expect(updated.cosmicBriefSummary).toBe("Sign in to read this article.");
+      expect(updated.cosmicKeyPoints).toEqual([]);
+      expect(mockBookmarkService.updateProcessingStatus).toHaveBeenLastCalledWith(
+        existing.id, "completed"
+      );
+      const summaryTurn = mockBookmarkProcessingRepository.createEvent.mock.calls
+        .find(([event]) => event.kind === "turn" && event.phase === "summarise")![0];
+      expect(mockBookmarkProcessingRepository.updateEvent).toHaveBeenCalledWith(
+        `event-${summaryTurn.sequence}`,
+        expect.objectContaining({
+          status: "completed",
+          metadata: expect.objectContaining({ contentStatus: "unusable", unusableReason: "paywall" }),
+        })
+      );
+    });
+
+    it("preserves an earlier card brief when an unusable page has no description", async () => {
+      const existing: Bookmark = {
+        ...testBookmark,
+        cosmicBriefSummary: "Previously useful card summary.",
+        metadata: { ...testBookmark.metadata, openGraph: { site_name: "Example" } },
+      };
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(existing);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(testScrapedContent);
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(existing);
+      mockBookmarkService.update.mockResolvedValue(existing);
+      mockAI.newSession.mockResolvedValue({ sessionID: "test-session-id", refID: existing.id });
+      const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+      (mockAI.generateObjectWithUsage as jest.Mock<any>).mockImplementation(async (input: any) => {
+        if (input.schema.shape && "overview" in input.schema.shape) {
+          return {
+            value: {
+              contentStatus: "unusable", unusableReason: "consent screen",
+              brief: "", overview: "", keyPoints: [], sections: [],
+            },
+            usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          };
+        }
+        return original(input);
+      });
+
+      await service.process(existing.id, existing.userId);
+      expect(mockBookmarkService.update.mock.calls.at(-1)![1].cosmicBriefSummary)
+        .toBe("Previously useful card summary.");
+    });
+
+    it("reuses one budgeted text for summaries and tags", async () => {
+      const longText = `Opening. ${"x".repeat(170_000)} Conclusion.`;
+      mockChunkingService.stripHtml.mockReturnValue(longText);
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(testScrapedContent);
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(testBookmark);
+      mockBookmarkService.update.mockResolvedValue(testBookmark);
+      mockAI.newSession.mockResolvedValue({ sessionID: "test-session-id", refID: testBookmark.id });
+
+      await service.process(testBookmark.id, testBookmark.userId);
+
+      expect(mockChunkingService.stripHtml).toHaveBeenCalledTimes(1);
+      const calls = mockAI.generateObjectWithUsage.mock.calls.map(([input]) => input as any);
+      const summary = calls.find((input) => input.schema.shape && "overview" in input.schema.shape)!;
+      const tags = calls.find((input) => input.schema.shape && "tags" in input.schema.shape)!;
+      const budgeted = budgetText(longText);
+      expect(budgeted.text.length).toBeLessThanOrEqual(160_000);
+      expect(summary.prompt).toContain(budgeted.text);
+      expect(tags.prompt).toContain(budgeted.text);
+      expect(summary.prompt).toContain("middle of this content was elided");
+      expect(tags.prompt).toContain("Conclusion.");
+      const turn = mockBookmarkProcessingRepository.createEvent.mock.calls
+        .find(([event]) => event.kind === "turn" && event.phase === "summarise")![0];
+      expect(mockBookmarkProcessingRepository.updateEvent).toHaveBeenCalledWith(
+        `event-${turn.sequence}`,
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            truncated: true,
+            originalChars: longText.length,
+            contentStatus: "ok",
+          }),
+        })
+      );
+    });
+
+    it.each([
+      ["YouTube", "youtube", "A transcript insight"],
+      ["X (formerly Twitter)", "tweet", "A post insight"],
+    ])("stores %s key points without parsing headings", async (siteName, kind, point) => {
+      const bookmark: Bookmark = {
+        ...testBookmark,
+        metadata: {
+          ...testBookmark.metadata,
+          openGraph: { ...testBookmark.metadata!.openGraph!, site_name: siteName },
+        },
+      };
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(bookmark);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(testScrapedContent);
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(bookmark);
+      mockBookmarkService.update.mockResolvedValue(bookmark);
+      mockAI.newSession.mockResolvedValue({ sessionID: "test-session-id", refID: bookmark.id });
+      const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+      (mockAI.generateObjectWithUsage as jest.Mock<any>).mockImplementation(async (input: any) => {
+        if (input.schema.shape && "overview" in input.schema.shape) {
+          return {
+            value: {
+              contentStatus: "ok", unusableReason: "", brief: "A source-grounded brief.",
+              overview: "The source makes a concrete claim.", keyPoints: [point], sections: [],
+            },
+            usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          };
+        }
+        return original(input);
+      });
+
+      await service.process(bookmark.id, bookmark.userId);
+
+      const updated = mockBookmarkService.update.mock.calls.at(-1)![1];
+      expect(updated.cosmicKeyPoints).toEqual([point]);
+      const summaryCall = mockAI.generateObjectWithUsage.mock.calls
+        .map(([input]) => input as any)
+        .find((input) => input.schema.shape && "overview" in input.schema.shape)!;
+      expect(summaryCall.prompt).toContain(`Kind: ${kind}`);
+      expect(mockChunkingService.stripHtml).not.toHaveBeenCalled();
+    });
+
+    it("persists sections when the model omits an overview", async () => {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(testScrapedContent);
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(testBookmark);
+      mockBookmarkService.update.mockResolvedValue(testBookmark);
+      mockAI.newSession.mockResolvedValue({ sessionID: "test-session-id", refID: testBookmark.id });
+      const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+      (mockAI.generateObjectWithUsage as jest.Mock<any>).mockImplementation(async (input: any) => {
+        if (input.schema.shape && "overview" in input.schema.shape) {
+          return {
+            value: {
+              contentStatus: "ok", unusableReason: "", brief: "A result in a section.",
+              overview: "", keyPoints: [],
+              sections: [{ heading: "The result", body: "A substantive finding." }],
+            },
+            usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          };
+        }
+        return original(input);
+      });
+
+      await service.process(testBookmark.id, testBookmark.userId);
+      expect(mockBookmarkService.update.mock.calls.at(-1)![1].cosmicSummary)
+        .toBe("## The result\n\nA substantive finding.");
+    });
+
     it("stores the brief's key points as an array", async () => {
       const mockSession: Session = {
         sessionID: "test-session-id",
@@ -1057,25 +1304,23 @@ describe("BookmarkProcessorService", () => {
       mockBookmarkService.updateProcessingStatus.mockResolvedValue(testBookmark);
       mockBookmarkService.update.mockResolvedValue(testBookmark);
       mockAI.newSession.mockResolvedValue(mockSession);
-      const brief = [
-        "## Memory beats context",
-        "",
-        "A paragraph of overview.",
-        "",
-        "## Key Points",
-        "",
-        "- **Recall** is cheaper than a longer window",
-        "- Eviction policy decides quality",
-        "",
-        "## Takeaways",
-        "",
-        "- Not a key point",
-      ].join("\n");
-      mockAI.generateText.mockResolvedValueOnce({
-        value: brief,
-        text: brief,
-        usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
-      } as any);
+      const generateObject = mockAI.generateObjectWithUsage.getMockImplementation()!;
+      (mockAI.generateObjectWithUsage as jest.Mock<any>).mockImplementation(async (input: any) => {
+        if (input.schema.shape && "overview" in input.schema.shape) {
+          return {
+            value: {
+              contentStatus: "ok",
+              unusableReason: "",
+              brief: "Memory beats context.",
+              overview: "A paragraph of overview.",
+              keyPoints: ["**Recall** is cheaper than a longer window", "Eviction policy decides quality"],
+              sections: [],
+            },
+            usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          };
+        }
+        return generateObject(input);
+      });
 
       await service.process(testBookmark.id, testBookmark.userId);
 
@@ -1087,57 +1332,67 @@ describe("BookmarkProcessorService", () => {
     });
   });
 
-  describe("extractKeyPoints", () => {
-    it("reads the bullets under the Key Points heading and stops at the next one", () => {
-      const summary = [
-        "## Title",
-        "",
-        "Overview.",
-        "",
-        "## Key Points",
-        "- First finding",
-        "- Second finding",
-        "",
-        "## Takeaways",
-        "- Not a key point",
-      ].join("\n");
-
-      expect(extractKeyPoints(summary)).toEqual([
-        "First finding",
-        "Second finding",
-      ]);
-    });
-
-    it("strips markdown and unwraps links, which are read and never followed", () => {
-      const summary = [
-        "## Key Points",
-        "- **Bold** and _italic_ and `code`",
-        "- See [the RFC](https://example.com/rfc) for detail",
-      ].join("\n");
-
-      expect(extractKeyPoints(summary)).toEqual([
+  describe("structured summary output", () => {
+    it("normalises findings rather than parsing markdown", () => {
+      const long = "word ".repeat(60).trim();
+      expect(normaliseKeyPoints([
+        "**Bold** and _italic_ and `code`",
+        "See [the RFC](https://example.com/rfc) for detail",
+        "  ",
+        "**Bold** and _italic_ and `code`",
+        long,
+        "Fifth finding",
+        "Sixth finding",
+      ])).toEqual([
         "Bold and italic and code",
         "See the RFC for detail",
+        expect.any(String),
+        "Fifth finding",
+        "Sixth finding",
       ]);
+      expect(normaliseKeyPoints([long])[0].length).toBeLessThanOrEqual(140);
+      expect(clampText("word ".repeat(70), 240).length).toBeLessThanOrEqual(240);
+      expect(clampText("C# 13 ships `__init__`", 240)).toBe("C# 13 ships __init__");
     });
 
-    it("caps at five findings and 140 characters apiece", () => {
-      const long = "word ".repeat(60).trim();
-      const summary = [
-        "## Key Points",
-        ...Array.from({ length: 8 }, (_, i) => `- Finding ${i}`),
-      ].join("\n");
-
-      expect(extractKeyPoints(summary)).toHaveLength(5);
-      expect(extractKeyPoints(`## Key Points\n- ${long}`)[0].length).toBeLessThanOrEqual(
-        140
-      );
+    it("renders sections even when the overview is empty", () => {
+      const summary = renderSummaryMarkdown({
+        contentStatus: "ok",
+        unusableReason: "",
+        brief: "Brief",
+        overview: "",
+        keyPoints: [],
+        sections: [{ heading: "The result", body: "A substantive finding." }],
+      }, []);
+      expect(summary).toBe("## The result\n\nA substantive finding.");
     });
 
-    it("returns nothing when there is no Key Points section", () => {
-      expect(extractKeyPoints("## Summary\n\nJust prose.")).toEqual([]);
-      expect(extractKeyPoints(undefined)).toEqual([]);
-      expect(extractKeyPoints("")).toEqual([]);
+    it("renders readable markdown without top-level headings or stray fences", () => {
+      const summary = renderSummaryMarkdown({
+        contentStatus: "ok",
+        unusableReason: "",
+        brief: "Short brief",
+        overview: "Overview.",
+        keyPoints: ["First finding"],
+        sections: [
+          { heading: "Details", body: "```markdown\n# A heading\n\nSome detail.\n```" },
+          { heading: "Very long", body: "word ".repeat(5000) },
+        ],
+      }, ["First finding"]);
+      expect(summary).toContain("## Key Points\n\n- First finding");
+      expect(summary).toContain("### A heading");
+      expect(summary).not.toMatch(/^# /m);
+      expect(summary).not.toContain("```");
+      expect(summary.length).toBeLessThanOrEqual(20_000);
+    });
+
+    it("keeps the beginning and the conclusion of long input", () => {
+      const result = budgetText(`Opening. ${"x".repeat(1000)} Conclusion.`, 120);
+      expect(result.truncated).toBe(true);
+      expect(result.text.length).toBeLessThanOrEqual(120);
+      expect(result.text).toContain("Opening.");
+      expect(result.text).toContain("Conclusion.");
+      expect(result.text).toContain("content elided");
     });
   });
 });

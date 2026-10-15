@@ -88,6 +88,8 @@ export class AI {
       model: this.getModel(input.modelId),
       schema: input.schema,
       prompt: input.prompt,
+      maxOutputTokens: input.maxOutputTokens,
+      providerOptions: input.providerOptions,
     });
 
     const usage = toProcessingUsage(
@@ -115,6 +117,8 @@ export class AI {
       tools: aiTools,
       maxRetries: 3,
       stopWhen: async ({ steps }) => steps.length >= 1000,
+      maxOutputTokens: input.maxOutputTokens,
+      providerOptions: input.providerOptions,
     });
 
     return this.processStream(input, result);

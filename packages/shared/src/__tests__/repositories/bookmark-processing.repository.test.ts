@@ -3,6 +3,7 @@ import { getTestDatabase } from "../../test-utils/database";
 import { TestDataFactory } from "../../test-utils/factories";
 import { BookmarkRepositoryImpl } from "../../repositories/bookmark.repository";
 import { BookmarkProcessingRepositoryImpl } from "../../repositories/bookmark-processing.repository";
+import { BOOKMARK_MODEL_IDS } from "../../services/bookmark.model-ids";
 
 describe("BookmarkProcessingRepository", () => {
   const db = getTestDatabase();
@@ -53,7 +54,7 @@ describe("BookmarkProcessingRepository", () => {
       startedAt: new Date("2026-06-21T10:00:02.000Z"),
       endedAt: new Date("2026-06-21T10:00:04.500Z"),
       durationMs: 2500,
-      modelId: "qwen/qwen3.7-plus",
+      modelId: BOOKMARK_MODEL_IDS.large,
       inputTokens: 11,
       outputTokens: 17,
       totalTokens: 28,
@@ -85,7 +86,7 @@ describe("BookmarkProcessingRepository", () => {
       expect.objectContaining({
         parentEventId: phase.id,
         kind: "turn",
-        modelId: "qwen/qwen3.7-plus",
+        modelId: BOOKMARK_MODEL_IDS.large,
         inputTokens: 11,
         outputTokens: 17,
         totalTokens: 28,

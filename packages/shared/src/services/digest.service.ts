@@ -51,7 +51,7 @@ export const DigestResponseSchema = z.object({
   summary: z.string(),
   keyPoints: z.array(
     z.object({
-      term: z.string().nullable().optional(),
+      term: z.string().nullable(),
       text: z.string(),
     })
   ),

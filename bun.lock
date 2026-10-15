@@ -243,6 +243,7 @@
       "name": "@cosmic-dolphin/shared",
       "version": "1.0.0",
       "dependencies": {
+        "@ai-sdk/provider-utils": "^3.0.20",
         "@supabase/supabase-js": "^2.38.0",
         "cheerio": "^1.0.0-rc.12",
         "got": "^14.4.9",

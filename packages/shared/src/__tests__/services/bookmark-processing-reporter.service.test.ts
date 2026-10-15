@@ -1,4 +1,5 @@
 import { describe, it, expect, jest } from "@jest/globals";
+import { NoObjectGeneratedError } from "ai";
 import {
   BookmarkProcessingReporter,
   mapBookmarkProcessingPhase,
@@ -179,6 +180,42 @@ describe("BookmarkProcessingReporter", () => {
         costUsd: "0.00037",
       })
     );
+  });
+
+  it("counts tokens from a failed structured turn before recovering", async () => {
+    const repository = createMockRepository();
+    const reporter = new BookmarkProcessingReporter(repository, () => new Date());
+    await reporter.startRun("bookmark-1", "user-1");
+
+    await reporter.trackPhase("summarise", "Summarise content", async (phase) => {
+      await expect(phase.trackTurn("Generate summary", "model-large", async () => {
+        throw new NoObjectGeneratedError({
+          response: { id: "generation-1", timestamp: new Date(), modelId: "model-large" },
+          finishReason: "length",
+          usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150, reasoningTokens: 10 },
+        });
+      })).rejects.toThrow(NoObjectGeneratedError);
+      await phase.trackTurn("Recover brief", "model-large", async () => ({
+        value: "brief",
+        usage: { inputTokens: 40, outputTokens: 20, totalTokens: 60 },
+      }));
+    });
+    await reporter.completeRun();
+
+    expect(repository.updateEvent).toHaveBeenCalledWith("event-3", expect.objectContaining({
+      status: "failed",
+      inputTokens: 100,
+      outputTokens: 50,
+      totalTokens: 150,
+      reasoningTokens: 10,
+    }));
+    expect(repository.updateRun).toHaveBeenLastCalledWith("run-1", expect.objectContaining({
+      status: "completed",
+      inputTokens: 140,
+      outputTokens: 70,
+      totalTokens: 210,
+      reasoningTokens: 10,
+    }));
   });
 
   it("marks the active phase and run failed when tracked work throws", async () => {

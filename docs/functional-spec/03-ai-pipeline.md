@@ -31,8 +31,11 @@ no hedging, no "This article discusses". Used in feed items and library rows.
 
 **Full brief** (`cosmic_summary`, exists) — a paragraph plus **key points**. Key points are 2–5
 findings, each ≤ 140 characters, and they are *findings, not a sequence* — the UI renders them with
-a dot marker, never numbered. Store as a JSON array (new column `cosmic_key_points`) rather than
-parsing markdown out of the summary at render time.
+a dot marker, never numbered. One structured summarisation turn returns the brief, key points,
+overview and any content-specific sections. Store the key points as a JSON array (`cosmic_key_points`)
+from that turn rather than parsing markdown; render `cosmic_summary` from the structured result.
+For an unusable source (paywall, consent page or error), leave the full brief empty rather than
+inventing content. A failed full structured response retries once with just the brief and key points.
 
 **Tags** (`cosmic_tags`, exists) — 2–5 lowercase topical tags. Reuse the user's existing tag
 vocabulary before inventing new ones: pass the user's top 50 tags as candidates so the library

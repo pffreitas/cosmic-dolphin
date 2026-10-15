@@ -1,20 +1,23 @@
 import { Bookmark, BookmarkImage, ScrapedUrlContents } from "../types";
 import { BookmarkService } from "./bookmark.service";
 import { AI } from "../ai";
+import { NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 import {
   buildTagsPrompt,
   TAG_CANDIDATE_LIMIT,
   FILTER_IMAGES_PROMPT,
-  SUMMARIZE_PROMPT,
-  BRIEF_SUMMARY_PROMPT,
-  SUMMARIZE_YOUTUBE_PROMPT,
-  BRIEF_SUMMARY_YOUTUBE_PROMPT,
-  SUMMARIZE_TWEET_PROMPT,
-  BRIEF_SUMMARY_TWEET_PROMPT,
+  buildSummarisePrompt,
+  SummariseContentKind,
 } from "../services/bookmark.processor.prompt";
 import { Session } from "../ai/types";
-import { Identifier } from "../ai/id";
+import {
+  SUMMARY_SCHEMA,
+  BRIEF_ONLY_SCHEMA,
+  clampText,
+  normaliseKeyPoints,
+  renderSummaryMarkdown,
+} from "./bookmark.summary";
 import { ContentChunkRepository } from "../repositories/content-chunk.repository";
 import { HttpClient, CosmicHttpClient } from "./http-client";
 import {
@@ -23,7 +26,7 @@ import {
   FilingResult,
 } from "./bookmark.filing.service";
 import { CollectionRepository } from "../repositories/collection.repository";
-import { ChunkingService, ChunkingServiceImpl } from "./chunking.service";
+import { budgetText, ChunkingService, ChunkingServiceImpl } from "./chunking.service";
 import { EmbeddingService, EmbeddingServiceImpl } from "./embedding.service";
 import { BOOKMARK_MODEL_IDS } from "./bookmark.model-ids";
 import { BookmarkProcessingRepository } from "../repositories/bookmark-processing.repository";
@@ -55,62 +58,6 @@ export interface BookmarkProcessorService {
   ): Promise<void>;
 }
 
-/**
- * Pulls the key points out of the full brief.
- *
- * The summariser writes markdown with a `## Key Points` section; the reader
- * needs an array. Doing the parse once, here, is the whole point of
- * `bookmarks.cosmic_key_points` — parsing markdown in a render pass means
- * every list row re-parses a document to draw three bullets, and any
- * formatting drift becomes a rendering bug rather than a pipeline one.
- *
- * Findings, not a sequence: 2–5 of them, each ≤ 140 characters
- * (docs/functional-spec/03-ai-pipeline.md § Outputs). The UI renders them with
- * a dot marker and never numbers them.
- */
-const MAX_KEY_POINTS = 5;
-const MAX_KEY_POINT_LENGTH = 140;
-
-export function extractKeyPoints(summary: string | undefined | null): string[] {
-  if (!summary) return [];
-
-  const lines = summary.split(/\r?\n/);
-  const headingIndex = lines.findIndex((line) =>
-    /^\s{0,3}#{1,6}\s*key\s+points\s*:?\s*$/i.test(line)
-  );
-  if (headingIndex === -1) return [];
-
-  const points: string[] = [];
-  for (const line of lines.slice(headingIndex + 1)) {
-    if (/^\s{0,3}#{1,6}\s/.test(line)) break;
-
-    const bullet = line.match(/^\s{0,3}(?:[-*+]|\d+[.)])\s+(.*)$/);
-    if (!bullet) continue;
-
-    const point = cleanKeyPoint(bullet[1]);
-    if (point) points.push(point);
-    if (points.length === MAX_KEY_POINTS) break;
-  }
-
-  return points;
-}
-
-function cleanKeyPoint(raw: string): string {
-  const text = raw
-    // `[label](href)` → `label`. A key point is read, never followed.
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-    .replace(/[*_`]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (text.length <= MAX_KEY_POINT_LENGTH) return text;
-
-  // Cut on a word boundary rather than mid-word, and say it was cut.
-  const clipped = text.slice(0, MAX_KEY_POINT_LENGTH - 1);
-  const lastSpace = clipped.lastIndexOf(" ");
-  return `${(lastSpace > 60 ? clipped.slice(0, lastSpace) : clipped).replace(/[,;:.\s]+$/, "")}…`;
-}
-
 const PRIVATE_LINK_ENRICHMENT_PROMPT = `You are creating a private link quick-access record.
 The page content is inaccessible, so do not summarize or claim facts from the page.
 Use only the URL, title, and user description to create locator metadata.
@@ -136,9 +83,15 @@ interface PhaseFailure {
 }
 
 interface SummariseResult {
-  summary: string;
-  briefSummary: string;
+  summary?: string;
+  briefSummary?: string;
   keyPoints: string[];
+}
+
+interface ProcessableContent {
+  text: string;
+  truncated: boolean;
+  originalChars: number;
 }
 
 export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
@@ -266,6 +219,10 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
           if (images) bookmark.cosmicImages = images;
         }
 
+        let processable: ProcessableContent | undefined;
+        const getProcessable = () =>
+          (processable ??= this.prepareContent(bookmark, scrapedContent));
+
         if (inScope("summarise")) {
           const summarised = await this.runPhase(
             reporter,
@@ -273,11 +230,15 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
             "Summarise content",
             failures,
             (phaseReporter) =>
-              this.summarise(session, bookmark, scrapedContent, phaseReporter)
+              this.summarise(session, bookmark, getProcessable(), phaseReporter)
           );
           if (summarised) {
-            bookmark.cosmicSummary = summarised.summary;
-            bookmark.cosmicBriefSummary = summarised.briefSummary;
+            // An unusable source or a brief-only retry should not keep a stale
+            // full summary from an earlier run.
+            bookmark.cosmicSummary = summarised.summary ?? "";
+            if (summarised.briefSummary !== undefined) {
+              bookmark.cosmicBriefSummary = summarised.briefSummary;
+            }
             bookmark.cosmicKeyPoints = summarised.keyPoints;
           }
         }
@@ -292,7 +253,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
               this.generateMetadata(
                 session,
                 bookmark,
-                scrapedContent,
+                getProcessable(),
                 phaseReporter
               )
           );
@@ -332,7 +293,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
 
         bookmark.searchDocument = this.buildSearchDocument(
           bookmark,
-          scrapedContent
+          scrapedContent,
+          processable?.text
         );
       }
 
@@ -587,89 +549,106 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     }));
   }
 
-  /**
-   * One phase, three outputs: the full brief, the 1–2 sentence brief summary,
-   * and the key points the brief is read through.
-   *
-   * The two model calls are independent, so they run together — but they are
-   * two `turn` events under a single `summarise` phase. The user is watching
-   * one line called *Summarising…*; how many calls it takes is accounting, not
-   * progress.
-   */
+  /** One structured turn produces the reader brief and its reusable card data. */
   private async summarise(
     session: Session,
     bookmark: Bookmark,
-    content: ScrapedUrlContents,
+    content: ProcessableContent,
     phaseReporter: BookmarkProcessingPhaseReporter
   ): Promise<SummariseResult> {
-    // `allSettled`, not `all`: with `all` a rejection from the slower call
-    // lands after the phase has already been failed by the faster one, and
-    // Node reports it as an unhandled rejection that kills the worker.
-    const [summary, briefSummary] = await Promise.allSettled([
-      this.generateSummary(session, bookmark, content, phaseReporter),
-      this.generateBriefSummary(session, bookmark, content, phaseReporter),
-    ]);
-
-    if (summary.status === "rejected") throw summary.reason;
-    if (briefSummary.status === "rejected") throw briefSummary.reason;
-
-    return {
-      summary: summary.value,
-      briefSummary: briefSummary.value,
-      keyPoints: extractKeyPoints(summary.value),
+    const kind: SummariseContentKind = this.isTwitterBookmark(bookmark)
+      ? "tweet"
+      : this.isYouTubeBookmark(bookmark)
+        ? "youtube"
+        : "article";
+    const prompt = (briefOnly: boolean) => buildSummarisePrompt({
+      content: content.text,
+      kind,
+      title: bookmark.title,
+      sourceUrl: bookmark.sourceUrl,
+      truncated: content.truncated,
+      briefOnly,
+    });
+    const providerOptions = {
+      openrouter: {
+        reasoning: { effort: "low" },
+        provider: { require_parameters: true },
+      },
     };
-  }
 
-  private async generateSummary(
-    session: Session,
-    bookmark: Bookmark,
-    content: ScrapedUrlContents,
-    phaseReporter: BookmarkProcessingPhaseReporter
-  ): Promise<string> {
-    const { summarizePrompt, textContent } =
-      this.getSummarizationContext(bookmark, content);
+    const metadata = { truncated: content.truncated, originalChars: content.originalChars };
+    let record;
+    try {
+      record = await phaseReporter.trackTurn(
+        "Generate summary",
+        BOOKMARK_MODEL_IDS.large,
+        async () => {
+          const result = await this.ai.generateObjectWithUsage({
+            sessionID: session.sessionID,
+            modelId: BOOKMARK_MODEL_IDS.large,
+            prompt: prompt(false),
+            schema: SUMMARY_SCHEMA,
+            providerOptions,
+          });
+          return {
+            ...result,
+            metadata: {
+              ...metadata,
+              contentStatus: result.value.contentStatus,
+              unusableReason: result.value.unusableReason,
+            },
+          };
+        }
+      );
+    } catch (error) {
+      if (!NoObjectGeneratedError.isInstance(error)) throw error;
 
-    return phaseReporter.trackTurn(
-      "Generate full summary",
-      BOOKMARK_MODEL_IDS.large,
-      async () =>
-        this.ai.generateText({
-          sessionID: session.sessionID,
-          taskID: Identifier.ascending("task"),
-          messageID: Identifier.ascending("message"),
-          modelId: BOOKMARK_MODEL_IDS.large,
-          context: [],
-          tools: [],
-          message: {
-            role: "user",
-            content: summarizePrompt.replace("{{CONTENT}}", textContent),
-          },
-        })
-    );
-  }
+      // A failed full object is recorded as a failed turn. A second, smaller
+      // turn can still produce the card data without pretending it wrote prose.
+      record = await phaseReporter.trackTurn(
+        "Recover brief summary",
+        BOOKMARK_MODEL_IDS.large,
+        async () => {
+          const result = await this.ai.generateObjectWithUsage({
+            sessionID: session.sessionID,
+            modelId: BOOKMARK_MODEL_IDS.large,
+            prompt: prompt(true),
+            schema: BRIEF_ONLY_SCHEMA,
+            providerOptions,
+            maxOutputTokens: 2000,
+          });
+          return {
+            value: { ...result.value, overview: "", sections: [] },
+            usage: result.usage,
+            metadata: {
+              ...metadata,
+              contentStatus: result.value.contentStatus,
+              unusableReason: result.value.unusableReason,
+              briefOnly: true,
+            },
+          };
+        }
+      );
+    }
 
-  private async generateBriefSummary(
-    session: Session,
-    bookmark: Bookmark,
-    content: ScrapedUrlContents,
-    phaseReporter: BookmarkProcessingPhaseReporter
-  ): Promise<string> {
-    const { briefPrompt, textContent } = this.getSummarizationContext(
-      bookmark,
-      content
-    );
+    if (record.contentStatus === "unusable") {
+      return {
+        briefSummary: clampText(
+          bookmark.metadata?.openGraph?.description || bookmark.cosmicBriefSummary || "",
+          240
+        ),
+        keyPoints: [],
+      };
+    }
 
-    return phaseReporter.trackTurn(
-      "Generate brief summary",
-      BOOKMARK_MODEL_IDS.small,
-      async () =>
-        this.ai.generateObjectWithUsage({
-          sessionID: session.sessionID,
-          modelId: BOOKMARK_MODEL_IDS.small,
-          prompt: briefPrompt.replace("{{CONTENT}}", textContent),
-          schema: z.string().describe("The summary of the content"),
-        })
-    );
+    const keyPoints = normaliseKeyPoints(record.keyPoints);
+    return {
+      summary: record.overview.trim() || record.sections.length > 0
+        ? renderSummaryMarkdown(record, keyPoints)
+        : undefined,
+      briefSummary: clampText(record.brief, 240),
+      keyPoints,
+    };
   }
 
   /**
@@ -688,7 +667,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
   private async generateMetadata(
     session: Session,
     bookmark: Bookmark,
-    content: ScrapedUrlContents,
+    content: ProcessableContent,
     phaseReporter: BookmarkProcessingPhaseReporter
   ): Promise<string[]> {
     const candidateTags = await this.getCandidateTags(bookmark.userId);
@@ -701,7 +680,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
           sessionID: session.sessionID,
           modelId: BOOKMARK_MODEL_IDS.small,
           prompt: buildTagsPrompt({
-            content: this.getProcessableText(bookmark, content),
+            content: content.text,
             candidateTags,
           }),
           schema: z.object({
@@ -722,48 +701,23 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     }
   }
 
-  private getSummarizationContext(
+  private prepareContent(
     bookmark: Bookmark,
     content: ScrapedUrlContents
-  ): { summarizePrompt: string; briefPrompt: string; textContent: string } {
-    const isYouTube = this.isYouTubeBookmark(bookmark);
-    const isTwitter = this.isTwitterBookmark(bookmark);
-
-    let summarizePrompt: string;
-    let briefPrompt: string;
-    if (isTwitter) {
-      summarizePrompt = SUMMARIZE_TWEET_PROMPT;
-      briefPrompt = BRIEF_SUMMARY_TWEET_PROMPT;
-    } else if (isYouTube) {
-      summarizePrompt = SUMMARIZE_YOUTUBE_PROMPT;
-      briefPrompt = BRIEF_SUMMARY_YOUTUBE_PROMPT;
-    } else {
-      summarizePrompt = SUMMARIZE_PROMPT;
-      briefPrompt = BRIEF_SUMMARY_PROMPT;
-    }
-
-    return {
-      summarizePrompt,
-      briefPrompt,
-      textContent: this.getProcessableText(bookmark, content),
-    };
-  }
-
-  private getProcessableText(
-    bookmark: Bookmark,
-    content: ScrapedUrlContents
-  ): string {
+  ): ProcessableContent {
     // Twitter content and YouTube transcripts are already plain text.
-    return this.isTwitterBookmark(bookmark) || this.isYouTubeBookmark(bookmark)
+    const text = this.isTwitterBookmark(bookmark) || this.isYouTubeBookmark(bookmark)
       ? (content.content ?? "")
       : this.chunkingService.stripHtml(content.content ?? "");
+    return { ...budgetText(text), originalChars: text.length };
   }
 
   private buildSearchDocument(
     bookmark: Bookmark,
-    content: ScrapedUrlContents
+    content: ScrapedUrlContents,
+    processableText?: string
   ): string {
-    const cleanedText = this.chunkingService.stripHtml(content.content ?? "");
+    const cleanedText = processableText ?? this.chunkingService.stripHtml(content.content ?? "");
     const truncated = cleanedText.slice(0, 5000);
 
     const parts = [

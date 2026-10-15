@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { jsonSchema, zodSchema } from "@ai-sdk/provider-utils";
 import { Bookmark, CollectionSuggestion } from "../types";
 import { CollectionRepository } from "../repositories/collection.repository";
 import { CollectionSuggestionRow } from "../database/schema";
@@ -50,6 +51,34 @@ export const FilingResponseSchema = z.object({
 });
 
 export type FilingResponse = z.infer<typeof FilingResponseSchema>;
+
+// AI SDK's Zod converter does not descend into `anyOf` when adding
+// additionalProperties: false. OpenAI strict output requires it on the nullable
+// newCollection branch too. Keep Zod validation after generation.
+const filingJsonSchema = zodSchema(FilingResponseSchema).jsonSchema;
+const confidence = filingJsonSchema.properties?.confidence;
+if (confidence && typeof confidence !== "boolean") {
+  // Strict JSON schema rejects numeric bounds; the validator below still enforces them.
+  delete confidence.minimum;
+  delete confidence.maximum;
+}
+const nullableCollection = filingJsonSchema.properties?.newCollection;
+if (nullableCollection && typeof nullableCollection !== "boolean") {
+  const objectBranch = nullableCollection.anyOf?.find(
+    (branch) => typeof branch !== "boolean" && branch.type === "object"
+  );
+  if (objectBranch && typeof objectBranch !== "boolean") {
+    objectBranch.additionalProperties = false;
+  }
+}
+const FilingGenerationSchema = jsonSchema<FilingResponse>(filingJsonSchema, {
+  validate: (value) => {
+    const parsed = FilingResponseSchema.safeParse(value);
+    return parsed.success
+      ? { success: true, value: parsed.data }
+      : { success: false, error: parsed.error };
+  },
+});
 
 /**
  * Why a bookmark ended up in the Inbox. All of these are ordinary outcomes;
@@ -175,14 +204,14 @@ export class BookmarkFilingServiceImpl implements BookmarkFilingService {
               sessionID: session.sessionID,
               modelId: BOOKMARK_MODEL_IDS.small,
               prompt,
-              schema: FilingResponseSchema,
+              schema: FilingGenerationSchema,
             })
         )
       : await this.ai.generateObject({
           sessionID: session.sessionID,
           modelId: BOOKMARK_MODEL_IDS.small,
           prompt,
-          schema: FilingResponseSchema,
+          schema: FilingGenerationSchema,
         });
 
     return this.applyDecision(bookmark, collections, response);

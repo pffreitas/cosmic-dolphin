@@ -16,6 +16,26 @@ export interface ChunkingOptions {
 const DEFAULT_MAX_CHUNK_SIZE = 800;
 const DEFAULT_CHUNK_OVERLAP = 50;
 
+// A safety valve for pathological pages, not the model's context limit.
+export const MAX_MODEL_CONTENT_CHARS = 160_000;
+const ELISION_MARKER = "\n\n[… content elided …]\n\n";
+
+export function budgetText(text: string, maxChars = MAX_MODEL_CONTENT_CHARS): {
+  text: string;
+  truncated: boolean;
+} {
+  if (text.length <= maxChars) return { text, truncated: false };
+
+  const available = maxChars - ELISION_MARKER.length;
+  if (available <= 0) return { text: text.slice(0, maxChars), truncated: true };
+  const head = Math.ceil(available * 0.75);
+  const tail = available - head;
+  return {
+    text: text.slice(0, head).trimEnd() + ELISION_MARKER + (tail ? text.slice(-tail).trimStart() : ""),
+    truncated: true,
+  };
+}
+
 const PARAGRAPH_SEPARATORS = ["\n\n", "\n"];
 const SENTENCE_ENDINGS = /(?<=[.!?])\s+/;
 const WORD_BOUNDARY = /\s+/;

@@ -63,43 +63,36 @@ describe("Bookmark Content Refactor Integration", () => {
     } as jest.Mocked<ContentChunkRepository>;
 
     const generateObjectValue = async (input: any) => {
-      if (
-        input.prompt &&
-        input.prompt.includes("Your task is to generate a brief summary")
-      ) {
-        return "Generated brief summary";
-      } else if (
-        input.prompt &&
-        input.prompt.includes("Your task is to filter the images")
-      ) {
+      const fields = input.schema.shape
+        ? Object.keys(input.schema.shape).sort().join(",")
+        : Object.keys(input.schema.jsonSchema.properties).sort().join(",");
+      if (fields === "brief,contentStatus,keyPoints,overview,sections,unusableReason") {
         return {
-          images: [
-            {
-              url: "https://example.com/image.jpg",
-              title: "Test image",
-              description: "A test image",
-            },
-          ],
-        };
-      } else if (
-        input.prompt &&
-        input.prompt.includes("Your task is to generate the tags")
-      ) {
-        return {
-          tags: ["ai", "processing"],
-        };
-      } else if (
-        input.prompt &&
-        input.prompt.includes("bookmark categorization assistant")
-      ) {
-        return {
-          existingCategoryId: null,
-          newCategoryPath: ["Test", "Category"],
-          confidence: 0.85,
-          reasoning: "Creating a new test category for this bookmark",
+          contentStatus: "ok",
+          unusableReason: "",
+          brief: "Generated brief summary",
+          overview: "Generated AI summary",
+          keyPoints: ["First finding", "Second finding"],
+          sections: [],
         };
       }
-      return "Default generated object";
+      if (fields === "images") {
+        return {
+          images: [
+            { url: "https://example.com/image.jpg", title: "Test image", description: "A test image" },
+          ],
+        };
+      }
+      if (fields === "tags") return { tags: ["ai", "processing"] };
+      if (fields === "confidence,existingCollectionId,newCollection,reasoning") {
+        return {
+          existingCollectionId: null,
+          newCollection: null,
+          confidence: 0.4,
+          reasoning: "No matching collection",
+        };
+      }
+      throw new Error(`Unexpected schema: ${fields}`);
     };
 
     mockAI = {
@@ -252,7 +245,10 @@ describe("Bookmark Content Refactor Integration", () => {
         bookmark.id,
         testUserId
       );
-      expect(updatedBookmark!.cosmicSummary).toBe("Generated AI summary");
+      expect(updatedBookmark!.cosmicSummary).toContain("Generated AI summary");
+      expect(updatedBookmark!.cosmicSummary).toContain("## Key Points");
+      expect(updatedBookmark!.cosmicBriefSummary).toBe("Generated brief summary");
+      expect(updatedBookmark!.cosmicKeyPoints).toEqual(["First finding", "Second finding"]);
       expect(updatedBookmark!.cosmicTags).toEqual(["ai", "processing"]);
 
       // Verify original scraped content remains unchanged

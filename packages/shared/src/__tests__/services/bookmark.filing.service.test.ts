@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import {
   BookmarkFilingServiceImpl,
+  FilingResponseSchema,
   MIN_SUGGESTION_SUPPORT,
 } from "../../services/bookmark.filing.service";
 import { CollectionRepository } from "../../repositories/collection.repository";
@@ -18,6 +19,17 @@ import { Bookmark } from "../../types";
  * nothing — none of which creates a collection.
  */
 describe("BookmarkFilingService", () => {
+  it("rejects confidence outside the filing probability range", () => {
+    const answer = {
+      existingCollectionId: "reading-id",
+      newCollection: null,
+      confidence: 85,
+      reasoning: "Overconfident response",
+    };
+    expect(FilingResponseSchema.safeParse(answer).success).toBe(false);
+    expect(FilingResponseSchema.safeParse({ ...answer, confidence: 0.85 }).success).toBe(true);
+  });
+
   const session: Session = {
     sessionID: "session-1",
     refID: "bookmark-1",
@@ -117,6 +129,31 @@ describe("BookmarkFilingService", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+  });
+
+  it("sends a strict-compatible schema but validates confidence after generation", async () => {
+    answer({
+      existingCollectionId: null,
+      newCollection: null,
+      confidence: 0.4,
+      reasoning: "No matching collection.",
+    });
+
+    await service.file(session, bookmark);
+
+    const schema = ((ai.generateObject as jest.Mock<any>).mock.calls[0][0] as any).schema;
+    expect(schema.jsonSchema.properties.confidence.minimum).toBeUndefined();
+    expect(schema.jsonSchema.properties.confidence.maximum).toBeUndefined();
+    const nestedObject = schema.jsonSchema.properties.newCollection.anyOf.find(
+      (branch: any) => branch.type === "object"
+    );
+    expect(nestedObject.additionalProperties).toBe(false);
+    expect((await schema.validate({
+      existingCollectionId: "reading-id",
+      newCollection: null,
+      confidence: 85,
+      reasoning: "Overconfident response",
+    })).success).toBe(false);
   });
 
   describe("the override rule", () => {
