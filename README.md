@@ -211,8 +211,11 @@ bun run apispec
 
 | Command | Description |
 |---------|-------------|
-| `bun run db:migrate` | Push migrations to the linked Supabase project |
-| `bun run db:migrate:test` | Push migrations to the test Supabase project |
+| `bun run db:migrate` | Push migrations to the linked production Supabase project |
+| `bun run db:test:up` | Start the disposable local test Postgres on port 5433 |
+| `bun run db:test:reset` | Reapply all migrations to the local test database |
+| `bun run db:test:down` | Stop and discard the local test database |
+| `bun run test:db` | Start, migrate, and run all backend tests |
 
 ### Build Commands
 
@@ -426,13 +429,23 @@ docker build -f apps/worker/Dockerfile -t cosmic-dolphin-worker .
 ## 🧪 Testing
 
 ```bash
-# Run all tests (requires DATABASE_URL in .env.test or environment)
-bun run test
+# Start the disposable local Postgres, apply all migrations, run backend tests.
+# No hosted Supabase project, account, or secret needed.
+bun run test:db
 
-# Run tests for specific app/package
-bun run test --filter=@cosmic-dolphin/api
-bun run test --filter=@cosmic-dolphin/shared
+# On subsequent runs, while the container is still running:
+bun run test:backend
+
+# Stop the container and discard the data:
+bun run db:test:down
 ```
+
+The test harness defaults to `postgres://postgres:postgres@127.0.0.1:5433/postgres`.
+Use `.env.test.example` only to override the local connection. The CI test job
+uses the same container flow; the Supabase CLI and production credentials are
+used only by the deployment migration job. See
+[`packages/shared/README.md`](packages/shared/README.md#testing) for single-suite
+commands and safety details.
 
 ---
 

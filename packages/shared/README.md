@@ -13,51 +13,45 @@ This package contains shared utilities, types, database schemas, repositories, a
 
 ### Prerequisites
 
-- Bun
-- A Supabase project for testing (with migrations applied via `supabase db push`)
-
-### Configuration
-
-Tests require a `DATABASE_URL` environment variable pointing to a Supabase database.
-
-Set it in the project root `.env.test`:
-```
-DATABASE_URL=postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-1-us-east-2.pooler.supabase.com:6543/postgres
-NODE_ENV=test
-```
-
-> **WARNING**: Tests truncate tables between runs. Never point this at a production database.
+- Bun and Docker
+- No Supabase project, CLI, account, or test database secret
 
 ### Running Tests
 
 ```bash
-# From the project root
-bun run test --filter=@cosmic-dolphin/shared
+# From the project root: start a disposable Postgres on port 5433, apply migrations,
+# then run the API, worker, and shared suites.
+bun run test:db
 
-# Or from the shared package directory
-cd packages/shared
-bun run test
+# On subsequent runs, while the container and schema are still in place:
+bun run test:backend
 
-# Run tests with coverage
-bun run test:coverage
+# Apply new migrations or rebuild the schema after changing migrations:
+bun run db:test:reset
 
-# Run tests in watch mode
-bun run test:watch
+# When finished:
+bun run db:test:down
 ```
 
-### Applying Migrations
+`docker-compose.test.yml` uses `supabase/postgres:15.19.0.004` because the migrations
+require pgvector, pgroonga, and the `auth` schema shipped in that image. This is
+one Postgres container, **not** the full Supabase CLI stack. The reset script
+applies `supabase/migrations/*.sql` directly, without linking a hosted project.
 
-Migrations live in `supabase/migrations/` and are applied to Supabase projects via the Supabase CLI:
+The test URL defaults to `postgres://postgres:postgres@127.0.0.1:5433/postgres`.
+You do not need `.env.test`; copy `.env.test.example` only if overriding the
+local connection. Tests truncate **all** tables in `public` before each test.
+The harness refuses a nonlocal host (unless explicitly overridden) and a
+database without the reset script's `__test_database_marker` table. Never point
+it at a database containing data you want to keep.
 
-```bash
-# Link to your Supabase project (one-time setup)
-supabase link --project-ref <your-project-ref>
+From `packages/shared`, run `bun run test` for the package suite, or
+`bun run test -- --testPathPatterns=<pattern>` for one Jest suite. The container
+must be running and migrated for the database-backed tests.
 
-# Push pending migrations
-supabase db push
-```
-
-In CI, this happens automatically before tests run.
+Production migrations remain separate: `bun run db:migrate` still uses the
+Supabase CLI against the linked production project. CI starts a disposable
+container for tests; only the deployment migration job needs a Supabase token.
 
 ### Test Structure
 

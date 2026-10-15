@@ -35,9 +35,18 @@ Run `bun run apispec` whenever `packages/apispec/*.tsp` files change.
 ### Database
 
 ```bash
-bun run db:migrate       # Apply migrations to linked Supabase project
-bun run db:migrate:test  # Apply migrations to test Supabase project
+bun run db:migrate       # Apply migrations to linked production Supabase project
+bun run db:test:up       # Start the local test Postgres container on port 5433
+bun run db:test:reset    # Reapply all migrations to the disposable test DB
+bun run db:test:down     # Stop and discard the test database
+bun run test:db          # Start, migrate, and run all backend tests
 ```
+
+Tests do **not** require a hosted Supabase project. The local container uses
+`supabase/postgres:15.19.0.004` (one Postgres service, not `supabase start`) so
+pgvector, pgroonga, and the `auth` schema are available to the unmodified
+migrations. The test harness defaults to `127.0.0.1:5433` and TRUNCATEs all
+`public` tables between tests; never point it at a database with data to keep.
 
 ### Single test (per app)
 

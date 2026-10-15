@@ -34,7 +34,10 @@
     "apispec": "bun run apispec:install && bun run apispec:compile && bun run apispec:generate && bun run apispec:build",
     "postinstall": "bun run apispec:build || echo 'API client build skipped - run bun run apispec to regenerate'",
     "db:migrate": "bunx supabase db push",
-    "db:migrate:test": "bunx supabase link --project-ref bckvyorfgbwngsahdonc && bunx supabase db push"
+    "db:test:up": "docker compose -f docker-compose.test.yml up -d --wait",
+    "db:test:down": "docker compose -f docker-compose.test.yml down -v",
+    "db:test:reset": "node scripts/db-test-reset.mjs",
+    "test:db": "bun run db:test:up && bun run db:test:reset && bun run test:backend"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

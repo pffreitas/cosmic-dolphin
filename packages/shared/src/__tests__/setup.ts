@@ -1,9 +1,16 @@
 import { config } from 'dotenv';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { getTestDatabase, DatabaseTestUtils, closeTestDatabase } from '../test-utils/database';
+import {
+  getTestDatabase,
+  getTestDatabaseUrl,
+  DatabaseTestUtils,
+  closeTestDatabase,
+} from '../test-utils/database';
 
-// Load .env.test for local development; in CI, env vars are injected by the workflow.
+// `.env.test` is optional: `getTestDatabaseUrl()` defaults to the local container
+// from docker-compose.test.yml. It exists for overriding the port or credentials,
+// not for holding a hosted connection string — see .env.test.example.
 [
   join(process.cwd(), '.env.test'),
   join(process.cwd(), '../../.env.test'),
@@ -16,20 +23,16 @@ import { getTestDatabase, DatabaseTestUtils, closeTestDatabase } from '../test-u
 let dbUtils: DatabaseTestUtils | null = null;
 
 beforeAll(async () => {
-  // Skip database setup when DATABASE_URL is not configured (e.g. pure unit tests)
-  if (!process.env.DATABASE_URL) {
-    return;
-  }
-
-  try {
-    const db = getTestDatabase();
-    dbUtils = new DatabaseTestUtils(db);
-    await dbUtils.waitForConnection();
-    console.log('Test database connected successfully');
-  } catch (error) {
-    console.warn('Test database unavailable — skipping DB setup. Integration tests will be skipped.');
-    dbUtils = null;
-  }
+  // No try/catch. An unreachable database used to be swallowed with a warning
+  // that integration tests "will be skipped" — but the suites call
+  // getTestDatabase() directly, so they errored anyway, and the per-test
+  // TRUNCATE was silently skipped so rows leaked between the tests that did
+  // run. A missing database is a broken environment, and it should say so once,
+  // clearly, instead of failing 50 assertions for reasons of its own.
+  const db = getTestDatabase();
+  dbUtils = new DatabaseTestUtils(db);
+  await dbUtils.waitForConnection();
+  console.log(`Test database connected: ${new URL(getTestDatabaseUrl()).host}`);
 });
 
 beforeEach(async () => {
@@ -42,7 +45,6 @@ beforeEach(async () => {
 afterAll(async () => {
   // Close database connection after all tests
   await closeTestDatabase();
-  console.log('Test database connection closed');
 });
 
 // Make dbUtils available globally for tests

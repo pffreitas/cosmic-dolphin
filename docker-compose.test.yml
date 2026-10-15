@@ -1,0 +1,41 @@
+# Local test database.
+#
+# `supabase/postgres` is the image Supabase itself runs, so the migration set in
+# `supabase/migrations/` applies to it unmodified: pgroonga, pgvector and pgmq are
+# all built in, and the image's own init scripts create the `auth` schema,
+# `auth.users`, `auth.uid()` and the anon/authenticated/service_role roles that the
+# RLS policies and the `profiles` foreign key reference. Nothing has to be shimmed.
+#
+# Start it with `bun run db:test:up`, then load the schema with
+# `bun run db:test:reset`.
+services:
+  postgres-test:
+    image: supabase/postgres:15.19.0.004
+    container_name: cosmic-dolphin-test-db
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports:
+      # 5433 so this never collides with a local Postgres on 5432 or with the
+      # Supabase CLI stack on 54322.
+      - "5433:5432"
+    # The contents are disposable: the reset script rebuilds the schema from the
+    # migrations, and every test truncates. Keeping the cluster in RAM with
+    # durability off is what makes the suite finish in seconds.
+    tmpfs:
+      - /var/lib/postgresql/data
+    command: >
+      postgres
+      -c listen_addresses=*
+      -c fsync=off
+      -c full_page_writes=off
+      -c synchronous_commit=off
+    healthcheck:
+      # The image ships `listen_addresses = 'localhost'`, which is why the command
+      # above overrides it — without that a published port is unreachable and `pg`
+      # reports "Connection terminated unexpectedly". Check over TCP so this
+      # healthcheck fails if that override is ever dropped, rather than passing on
+      # the unix socket while clients cannot connect.
+      test: ["CMD-SHELL", "pg_isready -U postgres -h 127.0.0.1"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
