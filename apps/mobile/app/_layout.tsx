@@ -1,17 +1,24 @@
-import { DarkTheme, DefaultTheme, ThemeProvider, type Theme } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack, useRouter, useSegments, usePathname } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef } from 'react';
-import 'react-native-reanimated';
-import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
-import { View, ActivityIndicator } from 'react-native';
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider,
+  type Theme,
+} from "@react-navigation/native";
+import { useFonts } from "expo-font";
+import { Stack, useRouter, useSegments, usePathname } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
+import { useEffect, useRef } from "react";
+import "react-native-reanimated";
+import { ShareIntentProvider, useShareIntentContext } from "expo-share-intent";
+import { View, ActivityIndicator } from "react-native";
 
-import { radius } from '@/constants/theme';
-import { useTheme } from '@/hooks/useTheme';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { buildShareRoute } from '@/lib/shareIntent';
+import { radius } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
+import { CaptureProvider } from "@/contexts/CaptureContext";
+import { PreferencesProvider } from "@/contexts/PreferencesContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { buildShareRoute } from "@/lib/shareIntent";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -23,27 +30,27 @@ function useProtectedRoute() {
 
   useEffect(() => {
     // Debug logging
-    console.log('🔐 Auth Check:', { 
-      isLoading, 
-      hasSession: !!session, 
+    console.log("🔐 Auth Check:", {
+      isLoading,
+      hasSession: !!session,
       segments,
-      userEmail: session?.user?.email 
+      userEmail: session?.user?.email,
     });
 
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
+    const inAuthGroup = segments[0] === "(auth)";
 
     if (!session && !inAuthGroup) {
       // Redirect to sign-in if not authenticated and not in auth group
-      console.log('🔐 Redirecting to sign-in (no session)');
-      router.replace('/(auth)/sign-in');
+      console.log("🔐 Redirecting to sign-in (no session)");
+      router.replace("/(auth)/sign-in");
     } else if (session && inAuthGroup) {
       // Redirect to home if authenticated and in auth group
-      console.log('🔐 Redirecting to home (has session)');
-      router.replace('/(tabs)');
+      console.log("🔐 Redirecting to home (has session)");
+      router.replace("/(tabs)");
     }
-  }, [session, segments, isLoading]);
+  }, [session, segments, isLoading, router]);
 }
 
 function RootLayoutNav() {
@@ -51,11 +58,11 @@ function RootLayoutNav() {
   const router = useRouter();
   const pathname = usePathname();
   const { session, isLoading } = useAuth();
-  const statusBarStyle = scheme === 'dark' ? 'light' : 'dark';
+  const statusBarStyle = scheme === "dark" ? "light" : "dark";
 
   // React Navigation's own theme, fed from Signal so screen transitions and
   // native chrome do not flash a colour the palette does not contain.
-  const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
+  const base = scheme === "dark" ? DarkTheme : DefaultTheme;
   const navigationTheme: Theme = {
     ...base,
     colors: {
@@ -68,7 +75,7 @@ function RootLayoutNav() {
       notification: colors.danger,
     },
   };
-  
+
   // Track if we've already initiated navigation to share screen for the current intent
   const hasNavigatedToShare = useRef(false);
   const navigationInProgress = useRef(false);
@@ -77,7 +84,8 @@ function RootLayoutNav() {
   useProtectedRoute();
 
   // Handle incoming share intents from other apps
-  const { hasShareIntent, shareIntent, error, resetShareIntent } = useShareIntentContext();
+  const { hasShareIntent, shareIntent, error, resetShareIntent } =
+    useShareIntentContext();
 
   // Reset navigation state when share intent is cleared
   useEffect(() => {
@@ -94,32 +102,40 @@ function RootLayoutNav() {
     // 2. We haven't already navigated to share screen for this intent
     // 3. We're not already on the share screen
     // 4. Navigation is not already in progress
-    const isOnShareScreen = pathname === '/share';
+    const isOnShareScreen = pathname === "/share";
     const shareRoute = buildShareRoute(shareIntent);
     const hasValidIntent = hasShareIntent && !!shareRoute;
-    
-    console.log('🔍 Share Intent Check:', { 
+
+    console.log("🔍 Share Intent Check:", {
       hasShareIntent,
       hasValidIntent,
       pathname,
       isOnShareScreen,
       hasNavigatedToShare: hasNavigatedToShare.current,
-      navigationInProgress: navigationInProgress.current
+      navigationInProgress: navigationInProgress.current,
     });
-    
+
     if (hasShareIntent && !shareRoute) {
-      console.log('Ignoring share intent without a URL');
+      console.log("Ignoring share intent without a URL");
       resetShareIntent();
       return;
     }
 
-    if (hasValidIntent && !hasNavigatedToShare.current && !isOnShareScreen && !navigationInProgress.current) {
+    if (
+      hasValidIntent &&
+      !hasNavigatedToShare.current &&
+      !isOnShareScreen &&
+      !navigationInProgress.current
+    ) {
       // If not authenticated, the protected route will handle redirecting to sign-in.
       // Once signed in, this effect will re-run and trigger navigation.
       if (!session) return;
 
-      console.log('🐬 Cosmic Dolphin received a shared link!');
-      console.log('📎 Share Intent Data:', JSON.stringify(shareIntent, null, 2));
+      console.log("🐬 Cosmic Dolphin received a shared link!");
+      console.log(
+        "📎 Share Intent Data:",
+        JSON.stringify(shareIntent, null, 2),
+      );
 
       // Mark that we've navigated
       hasNavigatedToShare.current = true;
@@ -129,12 +145,19 @@ function RootLayoutNav() {
       // share.tsx doesn't need to re-read (and race with) the share intent.
       router.replace(shareRoute as any);
     }
-  }, [hasShareIntent, shareIntent, pathname, resetShareIntent, router, session]);
+  }, [
+    hasShareIntent,
+    shareIntent,
+    pathname,
+    resetShareIntent,
+    router,
+    session,
+  ]);
 
   // Log any errors with share intent
   useEffect(() => {
     if (error) {
-      console.error('❌ Share Intent Error:', error);
+      console.error("❌ Share Intent Error:", error);
     }
   }, [error]);
 
@@ -142,8 +165,19 @@ function RootLayoutNav() {
   if (isLoading) {
     return (
       <>
-        <StatusBar style={statusBarStyle} backgroundColor={colors.bg} translucent={false} />
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg }}>
+        <StatusBar
+          style={statusBarStyle}
+          backgroundColor={colors.bg}
+          translucent={false}
+        />
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: colors.bg,
+          }}
+        >
           <ActivityIndicator size="large" color={colors.accent} />
         </View>
       </>
@@ -153,7 +187,11 @@ function RootLayoutNav() {
   return (
     <ThemeProvider value={navigationTheme}>
       <>
-        <StatusBar style={statusBarStyle} backgroundColor={colors.bg} translucent={false} />
+        <StatusBar
+          style={statusBarStyle}
+          backgroundColor={colors.bg}
+          translucent={false}
+        />
         <Stack>
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -161,26 +199,34 @@ function RootLayoutNav() {
             name="bookmark/[id]"
             options={{
               headerShown: false,
-              animation: 'slide_from_right',
+              animation: "slide_from_right",
             }}
           />
           <Stack.Screen
             name="search"
             options={{
               headerShown: false,
-              presentation: 'modal',
-              animation: 'slide_from_bottom',
+              presentation: "modal",
+              animation: "slide_from_bottom",
             }}
           />
           <Stack.Screen
             name="share"
             options={{
               headerShown: false,
-              presentation: 'modal',
-              animation: 'slide_from_bottom',
+              presentation: "modal",
+              animation: "slide_from_bottom",
               sheetCornerRadius: radius.lg,
             }}
           />
+          <Stack.Screen
+            name="save"
+            options={{ headerShown: false, presentation: "modal" }}
+          />
+          <Stack.Screen name="topic" options={{ headerShown: false }} />
+          <Stack.Screen name="collections" options={{ headerShown: false }} />
+          <Stack.Screen name="reader/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="settings" options={{ headerShown: false }} />
           <Stack.Screen name="+not-found" />
         </Stack>
       </>
@@ -190,7 +236,12 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
+    Inter: require("../assets/fonts/Inter-400.ttf"),
+    InterMedium: require("../assets/fonts/Inter-500.ttf"),
+    InterSemibold: require("../assets/fonts/Inter-600.ttf"),
+    SourceSerif: require("../assets/fonts/SourceSerif4-400.ttf"),
+    SourceSerifSemibold: require("../assets/fonts/SourceSerif4-600.ttf"),
   });
 
   useEffect(() => {
@@ -205,14 +256,18 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <ShareIntentProvider
-        options={{
-          debug: true,
-          resetOnBackground: true,
-        }}
-      >
-        <RootLayoutNav />
-      </ShareIntentProvider>
+      <PreferencesProvider>
+        <ShareIntentProvider
+          options={{
+            debug: true,
+            resetOnBackground: true,
+          }}
+        >
+          <CaptureProvider>
+            <RootLayoutNav />
+          </CaptureProvider>
+        </ShareIntentProvider>
+      </PreferencesProvider>
     </AuthProvider>
   );
 }

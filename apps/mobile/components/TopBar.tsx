@@ -1,10 +1,11 @@
-import React, { type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { type ReactNode } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
-import { textStyle } from '@/constants/fonts';
-import { radius, space } from '@/constants/theme';
-import { PRESSED_OPACITY, useTheme } from '@/hooks/useTheme';
+import { BrandMark } from "@/components/BrandMark";
+import { textStyle } from "@/constants/fonts";
+import { radius, space } from "@/constants/theme";
+import { PRESSED_OPACITY, useTheme } from "@/hooks/useTheme";
 
 export const TOP_BAR_HEIGHT = 52;
 
@@ -36,18 +37,19 @@ export function TopBar({
         styles.bar,
         {
           backgroundColor: colors.bg,
-          borderBottomColor: bordered ? colors.border : 'transparent',
+          borderBottomColor: bordered ? colors.border : "transparent",
           borderBottomWidth: bordered ? StyleSheet.hairlineWidth : 0,
         },
       ]}
     >
       <View style={styles.leading}>
+        {title === "Cosmic Dolphin" ? <BrandMark /> : null}
         {onBack ? (
           <TopBarAction icon="chevron-back" label="Go back" onPress={onBack} />
         ) : null}
         <View style={styles.titles}>
           <Text
-            style={[textStyle('body'), styles.title, { color: colors.fg }]}
+            style={[textStyle("body"), styles.title, { color: colors.fg }]}
             numberOfLines={1}
             accessibilityRole="header"
           >
@@ -55,7 +57,7 @@ export function TopBar({
           </Text>
           {subtitle ? (
             <Text
-              style={[textStyle('meta'), { color: colors.fgTertiary }]}
+              style={[textStyle("meta"), { color: colors.fgTertiary }]}
               numberOfLines={1}
             >
               {subtitle}
@@ -78,7 +80,7 @@ export function TopBarAction({
   onPress,
   tint,
 }: {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
+  icon: React.ComponentProps<typeof Ionicons>["name"];
   label: string;
   onPress: () => void;
   tint?: string;
@@ -93,7 +95,7 @@ export function TopBarAction({
       hitSlop={space.s2}
       style={({ pressed }) => [
         styles.action,
-        { backgroundColor: pressed ? colors.bgInset : 'transparent' },
+        { backgroundColor: pressed ? colors.bgInset : "transparent" },
       ]}
     >
       <Ionicons name={icon} size={20} color={tint ?? colors.fgSecondary} />
@@ -109,16 +111,16 @@ export function pressedOpacity(pressed: boolean) {
 const styles = StyleSheet.create({
   bar: {
     height: TOP_BAR_HEIGHT,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: space.s3,
     gap: space.s2,
   },
   leading: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: space.s1,
   },
   titles: {
@@ -126,18 +128,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.s1,
   },
   title: {
-    fontWeight: '600',
+    fontWeight: "600",
   },
   actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: space.s1,
   },
   action: {
     width: 44,
     height: 44,
     borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

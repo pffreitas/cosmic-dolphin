@@ -1,219 +1,229 @@
-import React from 'react';
+import React, { useCallback, useState } from "react";
+import { Image, ScrollView, Text, TextInput, View } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import type { Profile } from "@cosmic-dolphin/api-client";
+import { BookmarkCard } from "@/components/BookmarkCard";
+import { TopBarAction } from "@/components/TopBar";
 import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Image,
-  ScrollView,
-  Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-
-import { TopBar } from '@/components/TopBar';
-import { useAuth } from '@/contexts/AuthContext';
-import { textStyle } from '@/constants/fonts';
-import { radius, space, type ThemeColors } from '@/constants/theme';
-import { useTheme } from '@/hooks/useTheme';
-
+  Button,
+  EmptyState,
+  layout,
+  Notice,
+  PageHeading,
+  Screen,
+  Sheet,
+  SkeletonRows,
+} from "@/components/ui/Signal";
+import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/contexts/AuthContext";
+import { MobileAPI, nativeBookmark } from "@/lib/mobile-api";
+import type { Bookmark } from "@/lib/api";
+import { radius, space } from "@/constants/theme";
+import { textStyle } from "@/constants/fonts";
 export default function ProfileScreen() {
-  const { user, signOut } = useAuth();
+  const router = useRouter();
   const { colors } = useTheme();
-
-  const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', onPress: signOut, style: 'destructive' },
-      ]
-    );
-  };
-
-  // Get user info from different possible sources
-  const userEmail = user?.email;
-  const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || userEmail?.split('@')[0];
-  const userAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
-
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['top']}>
-      <TopBar title="Profile" />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Identity */}
-        <View
-          style={[
-            styles.profileCard,
-            { backgroundColor: colors.bgPanel, borderColor: colors.border },
-          ]}
-        >
-          {userAvatar ? (
-            <Image source={{ uri: userAvatar }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.bgInset }]}>
-              <Text style={[textStyle('title1'), { color: colors.fgSecondary }]}>
-                {userName?.charAt(0).toUpperCase() || 'U'}
-              </Text>
-            </View>
-          )}
-          <Text style={[textStyle('title2'), { color: colors.fg }]}>{userName || 'User'}</Text>
-          <Text style={[textStyle('meta'), { color: colors.fgTertiary }]}>{userEmail}</Text>
-        </View>
-
-        <Section title="Account" colors={colors}>
-          <MenuItem icon="person-outline" title="Edit Profile" colors={colors} onPress={() => {}} />
-          <MenuItem icon="notifications-outline" title="Notifications" colors={colors} onPress={() => {}} />
-          <MenuItem icon="shield-outline" title="Privacy & Security" colors={colors} onPress={() => {}} />
-        </Section>
-
-        <Section title="Preferences" colors={colors}>
-          <MenuItem icon="color-palette-outline" title="Appearance" colors={colors} onPress={() => {}} />
-          <MenuItem icon="language-outline" title="Language" colors={colors} onPress={() => {}} />
-        </Section>
-
-        <Section title="Support" colors={colors}>
-          <MenuItem icon="help-circle-outline" title="Help & FAQ" colors={colors} onPress={() => {}} />
-          <MenuItem icon="chatbubble-outline" title="Contact Us" colors={colors} onPress={() => {}} />
-          <MenuItem icon="document-text-outline" title="Terms & Privacy" colors={colors} onPress={() => {}} />
-        </Section>
-
-        <Pressable
-          accessibilityRole="button"
-          onPress={handleSignOut}
-          style={({ pressed }) => [
-            styles.signOutButton,
-            {
-              borderColor: colors.danger,
-              backgroundColor: pressed ? colors.bgInset : colors.bgPanel,
-            },
-          ]}
-        >
-          <Ionicons name="log-out-outline" size={20} color={colors.danger} />
-          <Text style={[textStyle('body'), styles.signOutText, { color: colors.danger }]}>
-            Sign Out
-          </Text>
-        </Pressable>
-
-        <Text style={[textStyle('meta'), styles.version, { color: colors.fgTertiary }]}>
-          Cosmic Dolphin v1.0.0
-        </Text>
-      </ScrollView>
-    </SafeAreaView>
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<Profile>();
+  const [saves, setSaves] = useState<Bookmark[]>([]);
+  const [cursor, setCursor] = useState<string>();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState("");
+  const [handle, setHandle] = useState("");
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(async () => {
+    setError("");
+    try {
+      const next = await MobileAPI.profile();
+      setProfile(next);
+      setName(next.name || "");
+      setHandle(next.handle || "");
+      if (next.handle) {
+        const page = await MobileAPI.publicSaves(next.handle);
+        setSaves(page.bookmarks.map(nativeBookmark));
+        setCursor(page.nextCursor);
+      }
+    } catch {
+      setError("Your profile could not be loaded.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
   );
-}
-
-function Section({
-  title,
-  colors,
-  children,
-}: {
-  title: string;
-  colors: ThemeColors;
-  children: React.ReactNode;
-}) {
+  const displayName =
+    profile?.name ||
+    user?.user_metadata?.full_name ||
+    user?.email?.split("@")[0] ||
+    "Your profile";
   return (
-    <View style={styles.menuSection}>
-      <Text style={[textStyle('label'), styles.sectionTitle, { color: colors.fgTertiary }]}>
-        {title}
-      </Text>
-      {children}
-    </View>
-  );
-}
-
-type MenuItemProps = {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  colors: ThemeColors;
-  onPress: () => void;
-};
-
-function MenuItem({ icon, title, colors, onPress }: MenuItemProps) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      style={({ pressed }) => [
-        styles.menuItem,
-        {
-          backgroundColor: pressed ? colors.bgSubtle : colors.bgPanel,
-          borderBottomColor: colors.border,
-        },
-      ]}
-      onPress={onPress}
+    <Screen
+      title="You"
+      actions={
+        <TopBarAction
+          icon="settings-outline"
+          label="Settings"
+          onPress={() => router.push("/settings")}
+        />
+      }
     >
-      <View style={styles.menuItemLeft}>
-        <Ionicons name={icon} size={20} color={colors.fgSecondary} />
-        <Text style={[textStyle('body'), { color: colors.fg }]}>{title}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={16} color={colors.fgTertiary} />
-    </Pressable>
+      <ScrollView contentContainerStyle={{ paddingBottom: space.s7 }}>
+        <View style={layout.content}>
+          {loading ? (
+            <SkeletonRows />
+          ) : (
+            <>
+              <View style={{ alignItems: "center", gap: space.s3 }}>
+                {profile?.pictureUrl ? (
+                  <Image
+                    source={{ uri: profile.pictureUrl }}
+                    style={{
+                      width: space.s8,
+                      height: space.s8,
+                      borderRadius: radius.pill,
+                    }}
+                  />
+                ) : (
+                  <View
+                    style={{
+                      width: space.s8,
+                      height: space.s8,
+                      borderRadius: radius.pill,
+                      backgroundColor: colors.id5Bg,
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text style={[textStyle("title1"), { color: colors.id5 }]}>
+                      {displayName.slice(0, 1).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+                <PageHeading
+                  title={displayName}
+                  subtitle={
+                    profile?.handle ? `@${profile.handle}` : user?.email
+                  }
+                />
+              </View>
+              <Button title="Edit profile" onPress={() => setEditing(true)} />
+              <Button
+                title="Your private library"
+                icon="lock-closed-outline"
+                onPress={() => router.push("/(tabs)/library")}
+              />
+              <Notice message="Only the saves you explicitly publish appear on your profile. Your library and highlights stay private." />
+              <Text
+                accessibilityRole="header"
+                style={[textStyle("title2"), { color: colors.fg }]}
+              >
+                Public saves
+              </Text>
+            </>
+          )}
+          {error ? (
+            <Notice message={error} error action="Retry" onAction={load} />
+          ) : null}
+        </View>
+        {saves.map((bookmark) => (
+          <BookmarkCard
+            key={bookmark.id}
+            bookmark={bookmark}
+            onPress={(value) => router.push(`/bookmark/${value.id}`)}
+          />
+        ))}
+        {!loading && !saves.length && !error ? (
+          <EmptyState
+            title="Share something worth reading"
+            description="Your public saves will appear here when you choose to share them."
+          />
+        ) : null}
+        {cursor && profile?.handle ? (
+          <Button
+            title="More public saves"
+            busy={busy}
+            onPress={async () => {
+              setBusy(true);
+              try {
+                const page = await MobileAPI.publicSaves(
+                  profile.handle!,
+                  cursor,
+                );
+                setSaves((previous) => [
+                  ...previous,
+                  ...page.bookmarks.map(nativeBookmark),
+                ]);
+                setCursor(page.nextCursor);
+              } catch {
+                setError("More saves could not be loaded.");
+              } finally {
+                setBusy(false);
+              }
+            }}
+          />
+        ) : null}
+      </ScrollView>
+      <Sheet
+        title="Edit profile"
+        visible={editing}
+        onClose={() => {
+          if (!busy) setEditing(false);
+        }}
+      >
+        <Text style={[textStyle("bodySm"), { color: colors.fg }]}>
+          Display name
+        </Text>
+        <TextInput
+          accessibilityLabel="Display name"
+          value={name}
+          onChangeText={setName}
+          style={[
+            layout.input,
+            { color: colors.fg, borderColor: colors.borderStrong },
+          ]}
+        />
+        <Text style={[textStyle("bodySm"), { color: colors.fg }]}>Handle</Text>
+        <TextInput
+          accessibilityLabel="Handle"
+          autoCapitalize="none"
+          autoCorrect={false}
+          value={handle}
+          onChangeText={setHandle}
+          style={[
+            layout.input,
+            { color: colors.fg, borderColor: colors.borderStrong },
+          ]}
+        />
+        {error ? <Notice message={error} error /> : null}
+        <Button
+          title="Save profile"
+          primary
+          busy={busy}
+          onPress={async () => {
+            setBusy(true);
+            try {
+              const next = await MobileAPI.updateProfile(
+                name.trim(),
+                handle.trim() !== profile?.handle ? handle.trim() : undefined,
+              );
+              setProfile(next);
+              setEditing(false);
+              await load();
+            } catch {
+              setError(
+                "Your profile could not be updated. Check the name and handle, then try again.",
+              );
+            } finally {
+              setBusy(false);
+            }
+          }}
+        />
+      </Sheet>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: space.s6,
-  },
-  profileCard: {
-    alignItems: 'center',
-    gap: space.s1,
-    paddingVertical: space.s5,
-    marginHorizontal: space.s4,
-    marginVertical: space.s5,
-    borderRadius: radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: radius.pill,
-    marginBottom: space.s3,
-  },
-  avatarPlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  menuSection: {
-    marginBottom: space.s5,
-  },
-  sectionTitle: {
-    marginHorizontal: space.s4,
-    marginBottom: space.s2,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 44,
-    paddingVertical: space.s3,
-    paddingHorizontal: space.s4,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.s3,
-  },
-  signOutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: space.s2,
-    minHeight: 44,
-    marginHorizontal: space.s4,
-    paddingVertical: space.s3,
-    borderRadius: radius.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  signOutText: {
-    fontWeight: '600',
-  },
-  version: {
-    textAlign: 'center',
-    marginTop: space.s5,
-  },
-});

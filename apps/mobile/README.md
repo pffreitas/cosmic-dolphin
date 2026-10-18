@@ -1,90 +1,48 @@
-# Welcome to your Expo app 👋
+# Cosmic Dolphin mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Expo 54 / React Native client using the shared Signal design system and Supabase authentication. The approved mobile prototype is in [`docs/design-system/prototypes/mobile`](../../docs/design-system/prototypes/mobile/); [IMPLEMENTATION.md](./IMPLEMENTATION.md) describes the connected behavior and its limits.
 
-## Get started
+## Development
 
-1. Install dependencies
+Use Bun from the monorepo root:
 
-   ```bash
-   npm install
-   ```
+```bash
+bun install
+bun run apispec:build
+bun run dev:mobile
+```
 
-2. Start the app
+Set these public runtime values in `apps/mobile/.env`:
 
-   ```bash
-    npx expo start
-   ```
+- `EXPO_PUBLIC_API_URL` — API origin, without `/api/v1`; native devices need a reachable host rather than the computer's loopback address.
+- `EXPO_PUBLIC_SUPABASE_URL`
+- `EXPO_PUBLIC_SUPABASE_ANON_KEY`
 
-## Test, lint, build, and publish commands
+From `apps/mobile`, `bun run ios`, `bun run android`, or `bun run web` launches the relevant client. The native share extension requires a development build; Expo Go does not include the app's custom share extension.
+
+## Quality checks
 
 From `apps/mobile`:
 
-- Run tests: `npm run test`
-- Run lint: `npm run lint`
-- Build internal Android dev client: `npm run build:dev:android`
-- Build internal iOS dev client: `npm run build:dev:ios`
-- Trigger internal preview build manually (Android): `eas build --platform android --profile preview --non-interactive`
-- Trigger internal preview build manually (iOS): `eas build --platform ios --profile preview --non-interactive`
-
-This app currently uses EAS Build for continuous delivery of internal binaries. Store submission (`eas submit`) is not part of the default push pipeline.
-
-## CI/CD (push to main)
-
-GitHub Actions workflow: `.github/workflows/deploy-mobile.yml`
-
-Behavior:
-
-- Triggers on pushes to `main` when mobile-relevant paths change.
-- Runs quality checks first (`lint` + `test`).
-- If checks pass, triggers EAS internal preview builds for both Android and iOS.
-- Adds generated build IDs and links to the GitHub workflow job summary.
-
-Required GitHub secret:
-
-- `EXPO_TOKEN`: used by `expo/expo-github-action` to authenticate EAS CLI in CI.
-
-One-time EAS prerequisites:
-
-- Configure iOS and Android signing credentials for non-interactive internal builds.
-- Ensure required mobile runtime variables are available in EAS for the build profile/environment:
-  - `EXPO_PUBLIC_API_URL`
-  - `EXPO_PUBLIC_SUPABASE_URL`
-  - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-
-Manual rerun:
-
-- Open GitHub Actions and run the **Deploy Mobile (Internal Builds)** workflow via `workflow_dispatch`.
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
 ```bash
-npm run reset-project
+bun x tsc --noEmit
+bun run lint
+bun run test -- --runInBand
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Both clients consume `docs/design-system/tokens.json`. Run `bun run tokens` from the root after changing canonical tokens, and `bun run tokens:check` to verify generated files.
 
-## Learn more
+The mobile UI uses the generated `@cosmic-dolphin/api-client` for feed/discovery, digest, collection, reading, profile and conversation services. Existing bookmark/auth adapters remain compatible with offline caching and incoming share intents. API changes start in TypeSpec; generated client files are never hand edited.
 
-To learn more about developing your project with Expo, look at the following resources:
+Home combines discovery with tag-grouped topics and server-authored digests; Library remains private. Capture retry is held in memory for the session. The reader displays the full Cosmic brief, with the original article opened separately; highlights require the user to paste a passage. Appearance, reading size and topic preferences persist per account on the device. See [IMPLEMENTATION.md](./IMPLEMENTATION.md) for validation results and remaining native-device checks; UI flows were verified with API fixtures rather than a live backend.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Internal builds
 
-## Join the community
+- `bun run build:dev:android`
+- `bun run build:dev:ios`
+- `eas build --platform android --profile preview --non-interactive`
+- `eas build --platform ios --profile preview --non-interactive`
 
-Join our community of developers creating universal apps.
+`.github/workflows/deploy-mobile.yml` runs mobile lint/tests before requesting EAS preview builds on pushes to `main`. To build for TestFlight, manually run **Deploy Mobile** on `main` with `destination: testflight`. This schedules an iOS production build with an incremented build number and automatic App Store Connect submission after build success; Apple processing follows upload.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+The workflow requires `EXPO_TOKEN`, configured EAS signing credentials and the runtime variables above in the build environment. TestFlight submission uses the App Store Connect API key stored in EAS credentials, rather than a local `.p8` file. App Store release remains a separate action.

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,22 +9,24 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-} from 'react-native';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+} from "react-native";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
-import { textStyle } from '@/constants/fonts';
-import { radius, space } from '@/constants/theme';
-import { useTheme } from '@/hooks/useTheme';
+import { textStyle } from "@/constants/fonts";
+import { radius, space } from "@/constants/theme";
+import { BrandMark } from "@/components/BrandMark";
+import { useTheme } from "@/hooks/useTheme";
 
 export default function SignIn() {
-  const { signInWithGoogle, signInWithEmail, isLoading } = useAuth();
+  const { signInWithGoogle, signInWithEmail, sendMagicLink, isLoading } =
+    useAuth();
   const router = useRouter();
   const { colors } = useTheme();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isEmailLoading, setIsEmailLoading] = useState(false);
 
@@ -36,7 +38,7 @@ export default function SignIn() {
     setIsEmailLoading(true);
     try {
       await signInWithEmail(email, password);
-    } catch (error) {
+    } catch {
       // Error is handled in the context
     } finally {
       setIsEmailLoading(false);
@@ -49,7 +51,7 @@ export default function SignIn() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={[styles.container, { backgroundColor: colors.bg }]}
     >
       <ScrollView
@@ -59,21 +61,41 @@ export default function SignIn() {
         <View style={styles.content}>
           {/* Logo */}
           <View style={styles.logoContainer}>
-            <Text style={styles.logoEmoji}>🐬</Text>
-            <Text style={[textStyle('body'), { color: colors.fgSecondary }]}>Cosmic Dolphin</Text>
+            <BrandMark />
+            <Text style={[textStyle("body"), { color: colors.fgSecondary }]}>
+              Cosmic Dolphin
+            </Text>
           </View>
 
           {/* Header */}
-          <Text style={[textStyle('title1'), styles.title, { color: colors.fg }]}>Welcome back!</Text>
-          <Text style={[textStyle('bodySm'), styles.subtitle, { color: colors.fgSecondary }]}>
-            Simplify your workflow and boost your productivity with{' '}
-            <Text style={styles.brandText}>Cosmic Dolphin</Text>.
+          <Text
+            style={[textStyle("title1"), styles.title, { color: colors.fg }]}
+          >
+            Welcome back.
+          </Text>
+          <Text
+            style={[
+              textStyle("bodySm"),
+              styles.subtitle,
+              { color: colors.fgSecondary },
+            ]}
+          >
+            Your next good read is waiting.
           </Text>
 
           {/* Email Input */}
           <View style={styles.inputContainer}>
             <TextInput
-              style={[textStyle('body'), styles.input, { color: colors.fg, borderColor: colors.borderStrong, backgroundColor: colors.bg }]}
+              style={[
+                textStyle("body"),
+                styles.input,
+                {
+                  color: colors.fg,
+                  borderColor: colors.borderStrong,
+                  backgroundColor: colors.bg,
+                },
+              ]}
+              accessibilityLabel="Email"
               placeholder="Email"
               placeholderTextColor={colors.fgTertiary}
               value={email}
@@ -87,7 +109,17 @@ export default function SignIn() {
           {/* Password Input */}
           <View style={styles.inputContainer}>
             <TextInput
-              style={[textStyle('body'), styles.input, styles.passwordInput, { color: colors.fg, borderColor: colors.borderStrong, backgroundColor: colors.bg }]}
+              style={[
+                textStyle("body"),
+                styles.input,
+                styles.passwordInput,
+                {
+                  color: colors.fg,
+                  borderColor: colors.borderStrong,
+                  backgroundColor: colors.bg,
+                },
+              ]}
+              accessibilityLabel="Password"
               placeholder="Password"
               placeholderTextColor={colors.fgTertiary}
               value={password}
@@ -97,10 +129,14 @@ export default function SignIn() {
             />
             <TouchableOpacity
               style={styles.eyeButton}
+              accessibilityRole="button"
+              accessibilityLabel={
+                showPassword ? "Hide password" : "Show password"
+              }
               onPress={() => setShowPassword(!showPassword)}
             >
               <Ionicons
-                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                name={showPassword ? "eye-off-outline" : "eye-outline"}
                 size={20}
                 color={colors.fgTertiary}
               />
@@ -108,8 +144,17 @@ export default function SignIn() {
           </View>
 
           {/* Forgot Password */}
-          <TouchableOpacity style={styles.forgotPassword}>
-            <Text style={[textStyle('meta'), { color: colors.fgSecondary }]}>Forgot Password?</Text>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Email me a sign-in link"
+            style={[styles.forgotPassword, { minHeight: 44 }]}
+            onPress={() => {
+              if (email.trim()) void sendMagicLink(email.trim());
+            }}
+          >
+            <Text style={[textStyle("meta"), { color: colors.fgSecondary }]}>
+              Email me a sign-in link
+            </Text>
           </TouchableOpacity>
 
           {/* Login Button */}
@@ -121,17 +166,35 @@ export default function SignIn() {
             {isEmailLoading ? (
               <ActivityIndicator color={colors.accentFg} />
             ) : (
-              <Text style={[textStyle('body'), styles.loginButtonText, { color: colors.accentFg }]}>Login</Text>
+              <Text
+                style={[
+                  textStyle("body"),
+                  styles.loginButtonText,
+                  { color: colors.accentFg },
+                ]}
+              >
+                Login
+              </Text>
             )}
           </TouchableOpacity>
 
           {/* Divider */}
           <View style={styles.divider}>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-            <Text style={[textStyle('meta'), styles.dividerText, { color: colors.fgTertiary }]}>
+            <View
+              style={[styles.dividerLine, { backgroundColor: colors.border }]}
+            />
+            <Text
+              style={[
+                textStyle("meta"),
+                styles.dividerText,
+                { color: colors.fgTertiary },
+              ]}
+            >
               or continue with
             </Text>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            <View
+              style={[styles.dividerLine, { backgroundColor: colors.border }]}
+            />
           </View>
 
           {/* Social Login Buttons */}
@@ -148,7 +211,11 @@ export default function SignIn() {
 
             {/* Apple Sign In (disabled for now) */}
             <TouchableOpacity
-              style={[styles.socialButton, styles.disabledButton, { backgroundColor: colors.accent }]}
+              style={[
+                styles.socialButton,
+                styles.disabledButton,
+                { backgroundColor: colors.accent },
+              ]}
               disabled
               accessibilityLabel="Continue with Apple"
             >
@@ -157,19 +224,35 @@ export default function SignIn() {
 
             {/* Facebook Sign In (disabled for now) */}
             <TouchableOpacity
-              style={[styles.socialButton, styles.disabledButton, { backgroundColor: colors.accent }]}
+              style={[
+                styles.socialButton,
+                styles.disabledButton,
+                { backgroundColor: colors.accent },
+              ]}
               disabled
               accessibilityLabel="Continue with Facebook"
             >
-              <Ionicons name="logo-facebook" size={20} color={colors.accentFg} />
+              <Ionicons
+                name="logo-facebook"
+                size={20}
+                color={colors.accentFg}
+              />
             </TouchableOpacity>
           </View>
 
           {/* Sign Up Link */}
           <View style={styles.signUpContainer}>
-            <Text style={[textStyle('bodySm'), { color: colors.fgSecondary }]}>Not a member? </Text>
-            <TouchableOpacity onPress={() => router.push('/(auth)/sign-up')}>
-              <Text style={[textStyle('bodySm'), styles.signUpLink, { color: colors.accent }]}>
+            <Text style={[textStyle("bodySm"), { color: colors.fgSecondary }]}>
+              Not a member?{" "}
+            </Text>
+            <TouchableOpacity onPress={() => router.push("/(auth)/sign-up")}>
+              <Text
+                style={[
+                  textStyle("bodySm"),
+                  styles.signUpLink,
+                  { color: colors.accent },
+                ]}
+              >
                 Register now
               </Text>
             </TouchableOpacity>
@@ -186,14 +269,14 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   content: {
     padding: space.s5,
   },
   logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: space.s5,
   },
   logoEmoji: {
@@ -207,11 +290,11 @@ const styles = StyleSheet.create({
     marginBottom: space.s5,
   },
   brandText: {
-    fontWeight: '600',
+    fontWeight: "600",
   },
   inputContainer: {
     marginBottom: space.s3,
-    position: 'relative',
+    position: "relative",
   },
   input: {
     height: 48,
@@ -223,33 +306,33 @@ const styles = StyleSheet.create({
     paddingRight: space.s7,
   },
   eyeButton: {
-    position: 'absolute',
+    position: "absolute",
     right: space.s1,
     top: 0,
     bottom: 0,
     width: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   forgotPassword: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     minHeight: 44,
-    justifyContent: 'center',
+    justifyContent: "center",
     marginBottom: space.s3,
   },
   loginButton: {
     height: 48,
     borderRadius: radius.pill,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: space.s5,
   },
   loginButtonText: {
-    fontWeight: '600',
+    fontWeight: "600",
   },
   divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: space.s5,
   },
   dividerLine: {
@@ -260,8 +343,8 @@ const styles = StyleSheet.create({
     marginHorizontal: space.s3,
   },
   socialButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     gap: space.s3,
     marginBottom: space.s5,
   },
@@ -269,18 +352,18 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: radius.pill,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   disabledButton: {
     opacity: 0.5,
   },
   signUpContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
   },
   signUpLink: {
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

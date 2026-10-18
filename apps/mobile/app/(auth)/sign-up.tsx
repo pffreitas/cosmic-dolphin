@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,43 +9,44 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-} from 'react-native';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+} from "react-native";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
-import { textStyle } from '@/constants/fonts';
-import { radius, space } from '@/constants/theme';
-import { useTheme } from '@/hooks/useTheme';
+import { textStyle } from "@/constants/fonts";
+import { radius, space } from "@/constants/theme";
+import { BrandMark } from "@/components/BrandMark";
+import { useTheme } from "@/hooks/useTheme";
 
 export default function SignUp() {
   const { signUpWithEmail, signInWithGoogle, isLoading } = useAuth();
   const router = useRouter();
   const { colors } = useTheme();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSigningUp, setIsSigningUp] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleSignUp = async () => {
-    setError('');
+    setError("");
 
     if (!email || !password || !confirmPassword) {
-      setError('Please fill in all fields');
+      setError("Please fill in all fields");
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError("Password must be at least 6 characters");
       return;
     }
 
@@ -53,8 +54,8 @@ export default function SignUp() {
     try {
       await signUpWithEmail(email, password);
       // Navigate back to sign-in after successful signup
-      router.replace('/(auth)/sign-in');
-    } catch (err) {
+      router.replace("/(auth)/sign-in");
+    } catch {
       // Error is handled in the context
     } finally {
       setIsSigningUp(false);
@@ -67,7 +68,7 @@ export default function SignUp() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={[styles.container, { backgroundColor: colors.bg }]}
     >
       <ScrollView
@@ -77,31 +78,57 @@ export default function SignUp() {
         <View style={styles.content}>
           {/* Logo */}
           <View style={styles.logoContainer}>
-            <Text style={styles.logoEmoji}>🐬</Text>
-            <Text style={[textStyle('body'), { color: colors.fgSecondary }]}>Cosmic Dolphin</Text>
+            <BrandMark />
+            <Text style={[textStyle("body"), { color: colors.fgSecondary }]}>
+              Cosmic Dolphin
+            </Text>
           </View>
 
           {/* Header */}
-          <Text style={[textStyle('title1'), styles.title, { color: colors.fg }]}>Create Account</Text>
-          <Text style={[textStyle('bodySm'), styles.subtitle, { color: colors.fgSecondary }]}>
-            Join <Text style={styles.brandText}>Cosmic Dolphin</Text> and start
-            organizing your digital life.
+          <Text
+            style={[textStyle("title1"), styles.title, { color: colors.fg }]}
+          >
+            Start your library
+          </Text>
+          <Text
+            style={[
+              textStyle("bodySm"),
+              styles.subtitle,
+              { color: colors.fgSecondary },
+            ]}
+          >
+            Save what catches your eye. Come back to a brief and a clear place
+            to start.
           </Text>
 
           {/* Error Message */}
           {error ? (
             <View
               accessibilityLiveRegion="polite"
-              style={[styles.errorContainer, { backgroundColor: colors.bgInset, borderColor: colors.danger }]}
+              style={[
+                styles.errorContainer,
+                { backgroundColor: colors.bgInset, borderColor: colors.danger },
+              ]}
             >
-              <Text style={[textStyle('bodySm'), { color: colors.danger }]}>{error}</Text>
+              <Text style={[textStyle("bodySm"), { color: colors.danger }]}>
+                {error}
+              </Text>
             </View>
           ) : null}
 
           {/* Email Input */}
           <View style={styles.inputContainer}>
             <TextInput
-              style={[textStyle('body'), styles.input, { color: colors.fg, borderColor: colors.borderStrong, backgroundColor: colors.bg }]}
+              style={[
+                textStyle("body"),
+                styles.input,
+                {
+                  color: colors.fg,
+                  borderColor: colors.borderStrong,
+                  backgroundColor: colors.bg,
+                },
+              ]}
+              accessibilityLabel="Email"
               placeholder="Email"
               placeholderTextColor={colors.fgTertiary}
               value={email}
@@ -115,7 +142,17 @@ export default function SignUp() {
           {/* Password Input */}
           <View style={styles.inputContainer}>
             <TextInput
-              style={[textStyle('body'), styles.input, styles.passwordInput, { color: colors.fg, borderColor: colors.borderStrong, backgroundColor: colors.bg }]}
+              style={[
+                textStyle("body"),
+                styles.input,
+                styles.passwordInput,
+                {
+                  color: colors.fg,
+                  borderColor: colors.borderStrong,
+                  backgroundColor: colors.bg,
+                },
+              ]}
+              accessibilityLabel="Password"
               placeholder="Password"
               placeholderTextColor={colors.fgTertiary}
               value={password}
@@ -128,7 +165,7 @@ export default function SignUp() {
               onPress={() => setShowPassword(!showPassword)}
             >
               <Ionicons
-                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                name={showPassword ? "eye-off-outline" : "eye-outline"}
                 size={20}
                 color={colors.fgTertiary}
               />
@@ -138,7 +175,17 @@ export default function SignUp() {
           {/* Confirm Password Input */}
           <View style={styles.inputContainer}>
             <TextInput
-              style={[textStyle('body'), styles.input, styles.passwordInput, { color: colors.fg, borderColor: colors.borderStrong, backgroundColor: colors.bg }]}
+              style={[
+                textStyle("body"),
+                styles.input,
+                styles.passwordInput,
+                {
+                  color: colors.fg,
+                  borderColor: colors.borderStrong,
+                  backgroundColor: colors.bg,
+                },
+              ]}
+              accessibilityLabel="Confirm password"
               placeholder="Confirm Password"
               placeholderTextColor={colors.fgTertiary}
               value={confirmPassword}
@@ -151,7 +198,7 @@ export default function SignUp() {
               onPress={() => setShowConfirmPassword(!showConfirmPassword)}
             >
               <Ionicons
-                name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
                 size={20}
                 color={colors.fgTertiary}
               />
@@ -167,19 +214,35 @@ export default function SignUp() {
             {isSigningUp ? (
               <ActivityIndicator color={colors.accentFg} />
             ) : (
-              <Text style={[textStyle('body'), styles.signUpButtonText, { color: colors.accentFg }]}>
-                Create Account
+              <Text
+                style={[
+                  textStyle("body"),
+                  styles.signUpButtonText,
+                  { color: colors.accentFg },
+                ]}
+              >
+                Start your library
               </Text>
             )}
           </TouchableOpacity>
 
           {/* Divider */}
           <View style={styles.divider}>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-            <Text style={[textStyle('meta'), styles.dividerText, { color: colors.fgTertiary }]}>
+            <View
+              style={[styles.dividerLine, { backgroundColor: colors.border }]}
+            />
+            <Text
+              style={[
+                textStyle("meta"),
+                styles.dividerText,
+                { color: colors.fgTertiary },
+              ]}
+            >
               or continue with
             </Text>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            <View
+              style={[styles.dividerLine, { backgroundColor: colors.border }]}
+            />
           </View>
 
           {/* Social Login Buttons */}
@@ -196,7 +259,11 @@ export default function SignUp() {
 
             {/* Apple Sign In (disabled for now) */}
             <TouchableOpacity
-              style={[styles.socialButton, styles.disabledButton, { backgroundColor: colors.accent }]}
+              style={[
+                styles.socialButton,
+                styles.disabledButton,
+                { backgroundColor: colors.accent },
+              ]}
               disabled
               accessibilityLabel="Continue with Apple"
             >
@@ -205,21 +272,35 @@ export default function SignUp() {
 
             {/* Facebook Sign In (disabled for now) */}
             <TouchableOpacity
-              style={[styles.socialButton, styles.disabledButton, { backgroundColor: colors.accent }]}
+              style={[
+                styles.socialButton,
+                styles.disabledButton,
+                { backgroundColor: colors.accent },
+              ]}
               disabled
               accessibilityLabel="Continue with Facebook"
             >
-              <Ionicons name="logo-facebook" size={20} color={colors.accentFg} />
+              <Ionicons
+                name="logo-facebook"
+                size={20}
+                color={colors.accentFg}
+              />
             </TouchableOpacity>
           </View>
 
           {/* Sign In Link */}
           <View style={styles.signInContainer}>
-            <Text style={[textStyle('bodySm'), { color: colors.fgSecondary }]}>
-              Already have an account?{' '}
+            <Text style={[textStyle("bodySm"), { color: colors.fgSecondary }]}>
+              Already have an account?{" "}
             </Text>
-            <TouchableOpacity onPress={() => router.replace('/(auth)/sign-in')}>
-              <Text style={[textStyle('bodySm'), styles.signInLink, { color: colors.accent }]}>
+            <TouchableOpacity onPress={() => router.replace("/(auth)/sign-in")}>
+              <Text
+                style={[
+                  textStyle("bodySm"),
+                  styles.signInLink,
+                  { color: colors.accent },
+                ]}
+              >
                 Sign in
               </Text>
             </TouchableOpacity>
@@ -236,14 +317,14 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   content: {
     padding: space.s5,
   },
   logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: space.s5,
   },
   logoEmoji: {
@@ -257,7 +338,7 @@ const styles = StyleSheet.create({
     marginBottom: space.s5,
   },
   brandText: {
-    fontWeight: '600',
+    fontWeight: "600",
   },
   errorContainer: {
     padding: space.s3,
@@ -267,7 +348,7 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginBottom: space.s3,
-    position: 'relative',
+    position: "relative",
   },
   input: {
     height: 48,
@@ -279,28 +360,28 @@ const styles = StyleSheet.create({
     paddingRight: space.s7,
   },
   eyeButton: {
-    position: 'absolute',
+    position: "absolute",
     right: space.s1,
     top: 0,
     bottom: 0,
     width: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   signUpButton: {
     height: 48,
     borderRadius: radius.pill,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: space.s5,
     marginTop: space.s2,
   },
   signUpButtonText: {
-    fontWeight: '600',
+    fontWeight: "600",
   },
   divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: space.s5,
   },
   dividerLine: {
@@ -311,8 +392,8 @@ const styles = StyleSheet.create({
     marginHorizontal: space.s3,
   },
   socialButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     gap: space.s3,
     marginBottom: space.s5,
   },
@@ -320,18 +401,18 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: radius.pill,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   disabledButton: {
     opacity: 0.5,
   },
   signInContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
   },
   signInLink: {
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
