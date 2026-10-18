@@ -46,3 +46,5 @@ Home combines discovery with tag-grouped topics and server-authored digests; Lib
 `.github/workflows/deploy-mobile.yml` runs mobile lint/tests before requesting EAS preview builds on pushes to `main`. To build for TestFlight, manually run **Deploy Mobile** on `main` with `destination: testflight`. This schedules an iOS production build with an incremented build number and automatic App Store Connect submission after build success; Apple processing follows upload.
 
 The workflow requires `EXPO_TOKEN`, configured EAS signing credentials and the runtime variables above in the build environment. TestFlight submission uses the App Store Connect API key stored in EAS credentials, rather than a local `.p8` file. App Store release remains a separate action.
+
+If a build was created but automatic submission failed, configure the missing submission credential in EAS, then rerun the workflow with `destination: testflight` and that build's UUID in `ios_build_id`. This retries submission without creating another build.

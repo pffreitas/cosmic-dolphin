@@ -20,6 +20,10 @@ on:
         options:
           - internal
           - testflight
+      ios_build_id:
+        description: Optional existing EAS iOS build ID to submit without rebuilding (TestFlight only)
+        type: string
+        required: false
 
 concurrency:
   group: deploy-mobile-${{ github.ref }}
@@ -157,7 +161,20 @@ jobs:
 
       - name: Schedule production build and automatic TestFlight submission
         working-directory: apps/mobile
+        env:
+          IOS_BUILD_ID: ${{ inputs.ios_build_id }}
         run: |
+          if [ -n "$IOS_BUILD_ID" ]; then
+            if ! [[ "$IOS_BUILD_ID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then
+              echo "ios_build_id must be a valid EAS build UUID."
+              exit 1
+            fi
+            eas submit --platform ios --profile production \
+              --id "$IOS_BUILD_ID" --non-interactive --no-wait
+            echo "### Existing iOS build submitted to EAS Submit" >> "$GITHUB_STEP_SUMMARY"
+            echo "Build: $IOS_BUILD_ID. Apple processing follows a successful upload." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           eas build --platform ios --profile production \
             --auto-submit --non-interactive --no-wait
           echo "### TestFlight build and submission scheduled" >> "$GITHUB_STEP_SUMMARY"
