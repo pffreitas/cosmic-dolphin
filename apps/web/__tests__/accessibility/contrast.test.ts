@@ -81,6 +81,9 @@ type Pairs = Record<string, string[]>;
  * names where, so a pair can be removed when its surface is.
  */
 const TEXT: Pairs = {
+  // Permanent Plum shadow capsule: live wordmark over every gradient stop,
+  // including when the surrounding application uses its light palette.
+  "brand-fg": ["brand-plum", "brand-mid", "brand-black"],
   // Titles and primary body. `hl-bg` is reader highlight and text selection.
   fg: ["bg", "bg-subtle", "bg-panel", "bg-inset", "accent-soft", "hl-bg"],
   // Summaries, comment bodies, inactive nav, neutral Tag label (`bg-inset`),
@@ -156,11 +159,13 @@ const NOT_CONTRAST_BEARING: Record<string, string> = {
     "Every control it outlines is identified by its own label or glyph at 4.5:1.",
   "accent-border": "decorative hairline on accent-soft, pull-quote rule",
   "hl-line": "decorative rule under a reader highlight",
+  "brand-edge": "decorative capsule edge — the brand link has its own text label and focus ring",
 
   // Not solid colours at all: gradients, shadows and translucent washes. There
   // is no single pair to measure, and none of them carries information.
   overlay: "translucent scrim — dims the page, states nothing",
   "nav-glass": "gradient",
+  "brand-gradient": "gradient — its three opaque stops are measured under brand-fg",
   "nav-edge": "translucent capsule edge",
   "nav-sheen": "translucent capsule highlight",
   "nav-pill": "translucent nav-pill fill",
