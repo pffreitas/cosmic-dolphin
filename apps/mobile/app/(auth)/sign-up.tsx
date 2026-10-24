@@ -16,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { textStyle } from "@/constants/fonts";
 import { radius, space } from "@/constants/theme";
-import { BrandMark } from "@/components/BrandMark";
+import { BrandSignature } from "@/components/BrandMark";
 import { useTheme } from "@/hooks/useTheme";
 
 export default function SignUp() {
@@ -78,10 +78,7 @@ export default function SignUp() {
         <View style={styles.content}>
           {/* Logo */}
           <View style={styles.logoContainer}>
-            <BrandMark />
-            <Text style={[textStyle("body"), { color: colors.fgSecondary }]}>
-              Cosmic Dolphin
-            </Text>
+            <BrandSignature />
           </View>
 
           {/* Header */}

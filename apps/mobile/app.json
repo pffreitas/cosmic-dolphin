@@ -8,27 +8,35 @@
     "scheme": "cosmicdolphin",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#00021f"
+      "image": "./assets/images/splash-brand-light.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF",
+      "dark": {
+        "image": "./assets/images/splash-brand-dark.png",
+        "backgroundColor": "#12100E"
+      }
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.cosmicdolphin.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false,
-        "UIStatusBarStyle": "UIStatusBarStyleLightContent"
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "icon": {
+        "light": "./assets/images/icon-light.png",
+        "dark": "./assets/images/icon-dark.png"
       }
     },
     "androidStatusBar": {
-      "backgroundColor": "#00021f",
-      "barStyle": "light-content",
+      "backgroundColor": "#FFFFFF",
+      "barStyle": "dark-content",
       "translucent": false
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#00021f"
+        "backgroundColor": "#050509",
+        "backgroundImage": "./assets/images/adaptive-icon-background.png"
       },
       "package": "com.cosmicdolphin.app"
     },
@@ -42,19 +50,13 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash.png",
-          "resizeMode": "cover",
-          "backgroundColor": "#00021f",
-          "enableFullScreenImage_legacy": true,
-          "ios": {
-            "image": "./assets/images/splash.png",
-            "resizeMode": "cover",
-            "backgroundColor": "#00021f"
-          },
-          "android": {
-            "image": "./assets/images/splash.png",
-            "resizeMode": "cover",
-            "backgroundColor": "#00021f"
+          "image": "./assets/images/splash-brand-light.png",
+          "imageWidth": 260,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF",
+          "dark": {
+            "image": "./assets/images/splash-brand-dark.png",
+            "backgroundColor": "#12100E"
           }
         }
       ],

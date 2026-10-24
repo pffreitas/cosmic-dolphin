@@ -1,73 +1,77 @@
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 import { cn } from "@/lib/utils";
 import { focusRing } from "@/components/ui/focus-ring";
+import styles from "./logo.module.css";
 
-/**
- * The Cosmic Dolphin mark — docs/design-system/foundations.md § Brand.
- *
- * A leaping arc over a single point of light, on an accent tile. It is the
- * "quiet metaphor for depth and connection" of decision 11, drawn rather than
- * borrowed: the emoji it replaces rendered differently on every platform and
- * could not take the accent, a size, or a dark mode.
- *
- * Colours come from the accent tokens through `fill-*` / `stroke-*`, so the mark
- * translates to dark mode with everything else. `app/icon.svg` is the favicon
- * copy of the same geometry, with literals, because a favicon cannot read CSS.
- */
+/** The approved artwork stays luminous on a permanent Plum shadow surface. */
+function LogoArt({ className }: { className?: string }) {
+  return (
+    <Image
+      src="/brand/mark-128.webp"
+      width={128}
+      height={128}
+      alt=""
+      aria-hidden="true"
+      className={cn("shrink-0 object-contain", className)}
+    />
+  );
+}
+
+/** Compact placements use a gradient tile instead of squeezing the wordmark. */
 export function LogoMark({
   className,
   title,
 }: {
   className?: string;
-  /** Omit for a decorative mark beside a wordmark or inside a named link. */
   title?: string;
 }) {
   return (
-    <svg
-      viewBox="0 0 32 32"
+    <span
       role={title ? "img" : undefined}
-      aria-hidden={title ? undefined : true}
       aria-label={title}
-      className={cn("size-6 shrink-0", className)}
+      aria-hidden={title ? undefined : true}
+      className={cn(
+        styles.surface,
+        styles.tile,
+        "inline-flex size-10 shrink-0 items-center justify-center",
+        className,
+      )}
     >
-      <rect width="32" height="32" rx="9" className="fill-accent" />
-      <path
-        d="M7.5 22.5C10 13.5 17.5 9 25 11.5"
-        fill="none"
-        strokeWidth="2.75"
-        strokeLinecap="round"
-        className="stroke-accent-fg"
-      />
-      <circle cx="21.75" cy="20.25" r="2.25" className="fill-accent-fg" />
-    </svg>
+      <LogoArt className="h-[92%] w-[92%]" />
+    </span>
   );
 }
 
-/** Mark plus wordmark, linking home. The one brand lockup in the product. */
+/** Full wordmark capsule, shared by headers, sidebar, auth pages and footer. */
 export function Brandmark({
   className,
   href = "/",
   compact = false,
+  compactOnMobile = false,
 }: {
   className?: string;
   href?: string;
-  /** Mark only, still named for assistive tech. */
   compact?: boolean;
+  /** Keep account actions reachable in the narrow public header. */
+  compactOnMobile?: boolean;
 }) {
   return (
     <Link
       href={href}
       aria-label="Cosmic Dolphin home"
       className={cn(
-        "inline-flex items-center gap-2.5 whitespace-nowrap rounded-sm",
-        "font-sans text-[15px] font-semibold leading-none tracking-[-.015em] text-fg",
+        styles.surface,
+        compact ? cn(styles.tile, "size-11") : styles.capsule,
+        compactOnMobile && !compact && styles.responsive,
+        "inline-flex w-fit max-w-full shrink-0 items-center whitespace-nowrap font-sans text-[15px] font-semibold leading-none tracking-[-.015em]",
         focusRing,
         className,
       )}
     >
-      <LogoMark />
+      <LogoArt className={compact ? "h-[92%] w-[92%]" : "size-10"} />
       {compact ? null : <span>Cosmic Dolphin</span>}
     </Link>
   );

@@ -8,13 +8,19 @@
  *   bun run tokens          regenerate
  *   bun run tokens:check    fail if this file is stale
  *
- * Left out on purpose: nav-glass, nav-shadow and the elevation tokens are CSS
+ * Left out on purpose: brand-gradient, nav-glass, nav-shadow and the elevation tokens are CSS
  * gradients and box-shadows, which React Native has no equivalent for. Signal
  * frames with borders rather than elevation, so mobile does not need them.
  */
 
 export const colors = {
   light: {
+    /* Plum shadow brand */
+    brandPlum: '#34162F',
+    brandMid: '#160D1B',
+    brandBlack: '#050509',
+    brandEdge: '#49273E',
+    brandFg: '#F4F3FC',
     /* Surfaces */
     bg: '#FFFFFF',
     bgSubtle: '#F8F6F3',
@@ -59,6 +65,12 @@ export const colors = {
     navPill: 'rgba(255,255,255,.96)',
   },
   dark: {
+    /* Plum shadow brand */
+    brandPlum: '#34162F',
+    brandMid: '#160D1B',
+    brandBlack: '#050509',
+    brandEdge: '#49273E',
+    brandFg: '#F4F3FC',
     /* Surfaces */
     bg: '#12100E',
     bgSubtle: '#171513',

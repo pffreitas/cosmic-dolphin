@@ -40,6 +40,14 @@
   --cd-duration: 220ms;
 
   /* -------- Colour · light -------- */
+  /* Plum shadow brand */
+  --cd-brand-plum: #34162F;
+  --cd-brand-mid: #160D1B;
+  --cd-brand-black: #050509;
+  --cd-brand-edge: #49273E;
+  --cd-brand-fg: #F4F3FC;
+  --cd-brand-gradient: linear-gradient(125deg,var(--cd-brand-plum) 0%,var(--cd-brand-mid) 48%,var(--cd-brand-black) 100%);
+
   /* Surfaces */
   --cd-bg: #FFFFFF;
   --cd-bg-subtle: #F8F6F3;
@@ -99,6 +107,14 @@
 
 .dark {
   /* -------- Colour · dark -------- */
+  /* Plum shadow brand */
+  --cd-brand-plum: #34162F;
+  --cd-brand-mid: #160D1B;
+  --cd-brand-black: #050509;
+  --cd-brand-edge: #49273E;
+  --cd-brand-fg: #F4F3FC;
+  --cd-brand-gradient: linear-gradient(125deg,var(--cd-brand-plum) 0%,var(--cd-brand-mid) 48%,var(--cd-brand-black) 100%);
+
   /* Surfaces */
   --cd-bg: #12100E;
   --cd-bg-subtle: #171513;

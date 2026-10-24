@@ -2,7 +2,7 @@ import React, { type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { BrandMark } from "@/components/BrandMark";
+import { BrandSignature } from "@/components/BrandMark";
 import { textStyle } from "@/constants/fonts";
 import { radius, space } from "@/constants/theme";
 import { PRESSED_OPACITY, useTheme } from "@/hooks/useTheme";
@@ -37,33 +37,50 @@ export function TopBar({
         styles.bar,
         {
           backgroundColor: colors.bg,
+          height:
+            title === "Cosmic Dolphin" && subtitle
+              ? TOP_BAR_HEIGHT + space.s5
+              : TOP_BAR_HEIGHT,
           borderBottomColor: bordered ? colors.border : "transparent",
           borderBottomWidth: bordered ? StyleSheet.hairlineWidth : 0,
         },
       ]}
     >
       <View style={styles.leading}>
-        {title === "Cosmic Dolphin" ? <BrandMark /> : null}
         {onBack ? (
           <TopBarAction icon="chevron-back" label="Go back" onPress={onBack} />
         ) : null}
-        <View style={styles.titles}>
-          <Text
-            style={[textStyle("body"), styles.title, { color: colors.fg }]}
-            numberOfLines={1}
-            accessibilityRole="header"
-          >
-            {title}
-          </Text>
-          {subtitle ? (
+        {title === "Cosmic Dolphin" ? (
+          <View style={styles.brandTitles}>
+            <BrandSignature size={32} heading />
+            {subtitle ? (
+              <Text
+                style={[textStyle("meta"), { color: colors.fgTertiary }]}
+                numberOfLines={1}
+              >
+                {subtitle}
+              </Text>
+            ) : null}
+          </View>
+        ) : (
+          <View style={styles.titles}>
             <Text
-              style={[textStyle("meta"), { color: colors.fgTertiary }]}
+              style={[textStyle("body"), styles.title, { color: colors.fg }]}
               numberOfLines={1}
+              accessibilityRole="header"
             >
-              {subtitle}
+              {title}
             </Text>
-          ) : null}
-        </View>
+            {subtitle ? (
+              <Text
+                style={[textStyle("meta"), { color: colors.fgTertiary }]}
+                numberOfLines={1}
+              >
+                {subtitle}
+              </Text>
+            ) : null}
+          </View>
+        )}
       </View>
       {actions ? <View style={styles.actions}>{actions}</View> : null}
     </View>
@@ -126,6 +143,10 @@ const styles = StyleSheet.create({
   titles: {
     flex: 1,
     paddingHorizontal: space.s1,
+  },
+  brandTitles: {
+    flex: 1,
+    gap: space.s1,
   },
   title: {
     fontWeight: "600",

@@ -1,0 +1,16 @@
+{
+  "name": "Plum shadow",
+  "angle": 125,
+  "locations": [
+    0,
+    0.48,
+    1
+  ],
+  "colors": [
+    "#34162F",
+    "#160D1B",
+    "#050509"
+  ],
+  "edge": "#49273E",
+  "foreground": "#F4F3FC"
+}

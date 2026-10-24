@@ -37,6 +37,7 @@ export const MOBILE_OUT = resolve(REPO_ROOT, "apps/mobile/constants/theme.ts");
  * token added to the JSON cannot silently miss both clients.
  */
 const COLOR_SECTIONS = [
+  ["Plum shadow brand", ["brand-plum", "brand-mid", "brand-black", "brand-edge", "brand-fg", "brand-gradient"]],
   ["Surfaces", ["bg", "bg-subtle", "bg-panel", "bg-inset"]],
   ["Text", ["fg", "fg-secondary", "fg-tertiary"]],
   ["Lines", ["border", "border-strong"]],

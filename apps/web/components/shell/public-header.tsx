@@ -26,7 +26,7 @@ export function PublicHeader({
       )}
     >
       <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center justify-between gap-4 px-4 sm:px-6">
-        <Brandmark />
+        <Brandmark compactOnMobile />
         <nav aria-label="Account" className="flex items-center gap-2">
           {action ?? (
             <>
