@@ -5,22 +5,32 @@ import {
   PreviewMetadata,
 } from "../types";
 import * as cheerio from "cheerio";
-import { HttpClient, CosmicHttpClient } from "./http-client";
+import { HttpClient, CosmicHttpClient, HttpRequestError } from "./http-client";
 import { YouTubeService, YouTubeServiceImpl } from "./youtube.service";
 import { TwitterService, TwitterServiceImpl } from "./twitter.service";
+import {
+  ContentExtractionError,
+  ExtractionContext,
+  ExtractedContent,
+} from "./content-extraction";
+import {
+  FirecrawlPageProvider,
+  PageExtractionProvider,
+} from "./extraction-providers";
 
 type LoadedCheerio = ReturnType<typeof cheerio.load>;
 
 export interface WebScrapingService {
   isValidUrl(url: string): boolean;
   scrape(
-    url: string
+    url: string,
+    context?: ExtractionContext,
   ): Promise<
     Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
   >;
   scrapeContent(
     url: string,
-    content: string
+    content: string,
   ): Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">;
   extractMetadataFromUrl(url: string): PreviewMetadata;
 }
@@ -32,7 +42,11 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   constructor(
     private httpClient: HttpClient = new CosmicHttpClient(),
     youtubeService?: YouTubeService,
-    twitterService?: TwitterService
+    twitterService?: TwitterService,
+    private pageProvider: PageExtractionProvider | undefined = process.env
+      .FIRECRAWL_API_KEY
+      ? new FirecrawlPageProvider()
+      : undefined,
   ) {
     this.youtubeService = youtubeService ?? new YouTubeServiceImpl(httpClient);
     this.twitterService = twitterService ?? new TwitterServiceImpl(httpClient);
@@ -48,15 +62,26 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   }
 
   async scrape(
-    url: string
+    url: string,
+    context?: ExtractionContext,
   ): Promise<
     Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
   > {
     console.log("Scraping URL:", url);
 
+    if (!this.isValidUrl(url)) {
+      throw new ContentExtractionError(
+        "Invalid HTTP URL",
+        "unsupported",
+        false,
+      );
+    }
+
     if (this.youtubeService.isYouTubeUrl(url)) {
       console.log("Detected YouTube URL, using YouTube-specific scraping");
-      return this.youtubeService.scrape(url);
+      return context
+        ? this.youtubeService.scrape(url, context)
+        : this.youtubeService.scrape(url);
     }
 
     if (this.twitterService.isTwitterUrl(url)) {
@@ -65,7 +90,16 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     }
 
     try {
-      const response = await this.httpClient.fetch(url);
+      const response = context?.metadataOnly
+        ? await this.httpClient.fetch(url, { timeoutMs: 8_000, retryLimit: 0 })
+        : await this.httpClient.fetch(url);
+
+      if (!response.ok) {
+        throw new HttpRequestError(
+          `HTTP ${response.status}: ${response.statusText}`,
+          response.status,
+        );
+      }
 
       if (response.redirectUrl) {
         this.detectAuthRedirect(url, response.redirectUrl);
@@ -77,15 +111,80 @@ export class WebScrapingServiceImpl implements WebScrapingService {
         !contentType.includes("text/html") &&
         !contentType.includes("application/xhtml+xml")
       ) {
-        throw new Error(`Unsupported content type: ${contentType}`);
+        throw new ContentExtractionError(
+          `Unsupported content type: ${contentType}`,
+          "unsupported",
+          false,
+        );
       }
 
-      const scrapedUrlContents = this.scrapeContent(url, response.body);
+      const scrapedUrlContents = this.scrapeContent(
+        response.redirectUrl || url,
+        response.body,
+      );
       this.assertScrapedContentUsable(scrapedUrlContents);
-      return scrapedUrlContents;
+      return this.withProvenance(scrapedUrlContents, "direct");
     } catch (error) {
-      throw error;
+      // Authentication, missing pages and unsupported files cannot be fixed by
+      // rendering. Blocks, empty JS shells and transient transport errors can.
+      if (error instanceof ContentExtractionError && !error.shouldRetry)
+        throw error;
+      if (
+        error instanceof HttpRequestError &&
+        error.status &&
+        [400, 401, 404, 410].includes(error.status)
+      ) {
+        throw new ContentExtractionError(
+          error.message,
+          error.status === 401 ? "auth" : "unavailable",
+          false,
+        );
+      }
+      if (!this.pageProvider || context?.metadataOnly) {
+        if (error instanceof ContentExtractionError) throw error;
+        throw new ContentExtractionError(
+          error instanceof Error ? error.message : "Page fetch failed",
+          "blocked",
+          true,
+        );
+      }
+      let rendered;
+      try {
+        rendered = await this.pageProvider.extract(url);
+      } catch (providerError) {
+        if (providerError instanceof ContentExtractionError)
+          throw providerError;
+        throw new ContentExtractionError(
+          "Rendered page extraction failed",
+          "provider",
+          true,
+        );
+      }
+      if (rendered.finalUrl) this.detectAuthRedirect(url, rendered.finalUrl);
+      const result = this.scrapeContent(
+        rendered.finalUrl || url,
+        rendered.html,
+      );
+      // Cleaned provider HTML may omit <head>; preserve the provider's metadata.
+      result.title ||= rendered.title || "";
+      result.metadata.openGraph!.title ||= rendered.title;
+      result.metadata.openGraph!.description ||= rendered.description;
+      result.metadata.openGraph!.image ||= rendered.image;
+      this.assertScrapedContentUsable(result);
+      return this.withProvenance(result, "firecrawl");
     }
+  }
+
+  private withProvenance(
+    content: ExtractedContent,
+    provider: string,
+  ): ExtractedContent {
+    content.metadata.extraction = {
+      status: "complete",
+      provider,
+      fetchedAt: new Date().toISOString(),
+    };
+    return content;
   }
 
   private detectAuthRedirect(originalUrl: string, finalUrl: string): void {
@@ -94,54 +193,109 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     const finalPath = new URL(finalUrl).pathname.toLowerCase();
 
     const authPathPatterns = [
-      "/login", "/signin", "/sign-in", "/sign_in",
-      "/auth", "/oauth", "/sso",
-      "/accounts/login", "/session/new",
-      "/cas/login", "/saml",
+      "/login",
+      "/signin",
+      "/sign-in",
+      "/sign_in",
+      "/auth",
+      "/oauth",
+      "/sso",
+      "/accounts/login",
+      "/session/new",
+      "/cas/login",
+      "/saml",
     ];
 
     const ssoProviders = [
-      "login.microsoftonline.com", "accounts.google.com",
-      "auth0.com", "okta.com", "onelogin.com",
-      "login.salesforce.com", "idp.",
+      "login.microsoftonline.com",
+      "accounts.google.com",
+      "auth0.com",
+      "okta.com",
+      "onelogin.com",
+      "login.salesforce.com",
+      "idp.",
     ];
 
     if (originalHost !== finalHost) {
-      const isSsoRedirect = ssoProviders.some(
-        (provider) => finalHost.includes(provider)
+      const isSsoRedirect = ssoProviders.some((provider) =>
+        provider.endsWith(".")
+          ? finalHost.startsWith(provider)
+          : finalHost === provider || finalHost.endsWith(`.${provider}`),
       );
       if (isSsoRedirect) {
-        throw new Error(
-          `Auth redirect detected: redirected to SSO provider ${finalHost}`
+        throw new ContentExtractionError(
+          `Auth redirect detected: redirected to SSO provider ${finalHost}`,
+          "auth",
+          false,
         );
       }
     }
 
-    const isAuthPath = authPathPatterns.some((pattern) =>
-      finalPath.startsWith(pattern)
+    const isAuthPath = authPathPatterns.some(
+      (pattern) => finalPath === pattern || finalPath.startsWith(`${pattern}/`),
     );
     if (isAuthPath) {
-      throw new Error(
-        `Auth redirect detected: redirected to login page ${finalUrl}`
+      throw new ContentExtractionError(
+        `Auth redirect detected: redirected to login page ${finalUrl}`,
+        "auth",
+        false,
       );
     }
   }
 
-
   scrapeContent(
     url: string,
-    content: string
+    content: string,
   ): Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId"> {
     const $ = cheerio.load(content);
     $("script").remove();
     $("style").remove();
-
-    const body = $("body").html() ?? content;
-
+    $(
+      "noscript, template, iframe, object, embed, [hidden], [aria-hidden='true']",
+    ).remove();
+    $("*").each((_, element) => {
+      const node = $(element);
+      for (const [name, value] of Object.entries(node.attr() || {})) {
+        if (
+          /^on/i.test(name) ||
+          (/(?:href|src|action)$/i.test(name) && /^\s*javascript:/i.test(value))
+        )
+          node.removeAttr(name);
+      }
+    });
+    $("a[href], img[src], img[data-src]").each((_, element) => {
+      const node = $(element);
+      const attribute = element.tagName === "a" ? "href" : "src";
+      const resolved = this.resolveResourceUrl(
+        node.attr(attribute) || node.attr("data-src"),
+        url,
+      );
+      if (resolved) node.attr(attribute, resolved);
+      else node.removeAttr(attribute);
+    });
     const metadata = this.extractMetadata(url, $);
     const title = metadata.openGraph?.title || this.extractTitle($);
-    const images = this.extractImages($);
-    const links = this.extractLinks($);
+    // Preserve article headers/figures, but remove site chrome from the reader
+    // and from the material used for summaries and embeddings.
+    $("nav, footer, [role='navigation'], [role='banner']").remove();
+    const candidates = ["article", "main", "[role='main']"].map((selector) =>
+      $(selector)
+        .filter((_, element) => $(element).text().trim().length >= 80)
+        .first(),
+    );
+    const main = candidates.find((candidate) => candidate.length) || $("body");
+    const body = (main.length ? main.html() : $("body").html()) ?? "";
+    const wordCount = cheerio
+      .load(body)
+      .root()
+      .text()
+      .split(/\s+/)
+      .filter(Boolean).length;
+    metadata.wordCount = wordCount;
+    metadata.readingTime = Math.ceil(wordCount / 200);
+    const readable = cheerio.load(body);
+    const images = this.extractImages(readable);
+    const links = this.extractLinks(readable);
     return { title, content: body, metadata, images, links };
   }
 
@@ -149,35 +303,80 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     scrapedContent: Omit<
       ScrapedUrlContents,
       "id" | "createdAt" | "updatedAt" | "bookmarkId"
-    >
+    >,
   ): void {
-    const bodyText = cheerio
-      .load(scrapedContent.content)
-      .root()
-      .text()
-      .replace(/\s+/g, " ")
-      .trim();
+    const $ = cheerio.load(scrapedContent.content);
+    const bodyText = $.root().text().replace(/\s+/g, " ").trim();
     const bodyWordCount = bodyText
       .split(/\s+/)
       .filter((word) => word.length > 0).length;
-    const hasDescription = Boolean(
-      scrapedContent.metadata.openGraph?.description?.trim()
-    );
-    const authWallPattern =
-      /\b(log in|login|sign in|signin|single sign-on|sso|authentication required|access denied|permission denied)\b/i;
-
+    const heading =
+      $("h1").first().text().trim() || scrapedContent.title.trim();
+    const challenge =
+      /^(just a moment|attention required|access denied|verify (?:you are|you're) human|security check|checking your browser)[.!…\s]*$/i;
     if (
-      (!hasDescription && bodyWordCount <= 1) ||
-      authWallPattern.test(bodyText)
+      challenge.test(heading) ||
+      (bodyWordCount < 150 &&
+        (/^(?:verify (?:that )?you(?:'re| are) (?:a )?human|enable javascript and cookies to continue|checking your browser)/i.test(
+          bodyText,
+        ) ||
+          /(?:id|class)=["'][^"']*cf-chl-/i.test(scrapedContent.content)))
     ) {
-      throw new Error(
-        "Scraped content is not usable: page appears empty or behind authentication"
+      throw new ContentExtractionError(
+        "Page returned a bot challenge instead of readable content",
+        "blocked",
+        true,
+      );
+    }
+    if (
+      bodyWordCount < 100 &&
+      (/^(log[ -]?in|sign[ -]?in|authentication required|permission denied)(?:\b|$)/i.test(
+        heading,
+      ) ||
+        $("input[type='password']").length > 0)
+    ) {
+      throw new ContentExtractionError(
+        "Scraped content is not usable: page requires authentication",
+        "auth",
+        false,
+      );
+    }
+    if (bodyWordCount <= 1) {
+      throw new ContentExtractionError(
+        "Scraped content is not usable: page appears empty",
+        "empty",
+        true,
+      );
+    }
+    if (
+      bodyWordCount < 50 &&
+      /(?:enable|requires?|need(?:s)?).{0,30}javascript/i.test(bodyText)
+    ) {
+      throw new ContentExtractionError(
+        "Page requires JavaScript rendering to read its content",
+        "empty",
+        true,
       );
     }
   }
 
   private extractTitle($: LoadedCheerio): ScrapedUrlContents["title"] {
     return $("h1").text() ?? "";
+  }
+
+  private resolveResourceUrl(
+    value: string | undefined,
+    base: string,
+  ): string | undefined {
+    if (!value?.trim()) return undefined;
+    try {
+      const resolved = new URL(value, base);
+      return ["http:", "https:"].includes(resolved.protocol)
+        ? resolved.href
+        : undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   private extractImages($: LoadedCheerio): ScrapedUrlContents["images"] {
@@ -203,7 +402,10 @@ export class WebScrapingServiceImpl implements WebScrapingService {
       .get();
   }
 
-  private extractMetadata(sourceUrl: string, $: LoadedCheerio): BookmarkMetadata {
+  private extractMetadata(
+    sourceUrl: string,
+    $: LoadedCheerio,
+  ): BookmarkMetadata {
     const ogData = this.extractOpenGraphMetadata(sourceUrl, $);
 
     const textContent = $.root().text();
@@ -218,8 +420,7 @@ export class WebScrapingServiceImpl implements WebScrapingService {
       $('link[rel="apple-touch-icon"]').attr("href");
 
     if (favicon && !favicon.startsWith("http")) {
-      const url = new URL(ogData.url || sourceUrl);
-      favicon = new URL(favicon, url.origin).href;
+      favicon = this.resolveResourceUrl(favicon, sourceUrl);
     }
 
     ogData.favicon = favicon;
@@ -234,16 +435,16 @@ export class WebScrapingServiceImpl implements WebScrapingService {
   extractMetadataFromUrl(url: string): PreviewMetadata {
     const urlObj = new URL(url);
     const hostname = urlObj.hostname.replace(/^www\./, "");
-    const siteName = hostname.split(".")[0].charAt(0).toUpperCase() + hostname.split(".")[0].slice(1);
+    const siteName =
+      hostname.split(".")[0].charAt(0).toUpperCase() +
+      hostname.split(".")[0].slice(1);
 
     const pathSegments = urlObj.pathname.split("/").filter(Boolean);
     let title: string | undefined;
     if (pathSegments.length > 0) {
       title = pathSegments
         .map((seg) =>
-          seg
-            .replace(/[-_]/g, " ")
-            .replace(/\b\w/g, (c) => c.toUpperCase())
+          seg.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
         )
         .join(" / ");
     }
@@ -258,7 +459,7 @@ export class WebScrapingServiceImpl implements WebScrapingService {
 
   private extractOpenGraphMetadata(
     sourceUrl: string,
-    $: LoadedCheerio
+    $: LoadedCheerio,
   ): OpenGraphMetadata {
     const ogData: OpenGraphMetadata = {};
 

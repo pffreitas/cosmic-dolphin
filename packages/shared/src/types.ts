@@ -325,7 +325,18 @@ export interface ScrapedUrlContents extends BaseEntity {
   bookmarkId: string;
   title: string;
   content: string;
-  metadata: BookmarkMetadata;
+  metadata: BookmarkMetadata & {
+    /** Internal extraction provenance, stored on the content row only. */
+    extraction?: {
+      status: "complete" | "unavailable" | "pending";
+      provider: string;
+      fetchedAt: string;
+      language?: string;
+      jobId?: string;
+      error?: string;
+      retryable?: boolean;
+    };
+  };
   images?: {
     url: string;
     alt: string;

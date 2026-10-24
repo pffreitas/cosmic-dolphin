@@ -34,7 +34,7 @@ export interface PreviewResponse {
      */
     metadata: PreviewMetadata;
     /**
-     * 
+     * Whether the link is eligible for background content processing. Temporary blocks or rendering requirements remain eligible; confirmed authentication and permanent extraction failures return false. A preview does not start paid extraction or transcription jobs.
      * @type {boolean}
      * @memberof PreviewResponse
      */

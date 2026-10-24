@@ -532,6 +532,7 @@ model PreviewRequest {
 
 model PreviewResponse {
     metadata: PreviewMetadata;
+    @doc("Whether the link is eligible for background content processing. Temporary blocks or rendering requirements remain eligible; confirmed authentication and permanent extraction failures return false. A preview does not start paid extraction or transcription jobs.")
     scrapable: boolean;
 }
 

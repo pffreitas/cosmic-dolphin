@@ -1,5 +1,6 @@
 import { Bookmark, BookmarkImage, ScrapedUrlContents } from "../types";
 import { BookmarkService } from "./bookmark.service";
+import { ContentExtractionError } from "./content-extraction";
 import { AI } from "../ai";
 import { NoObjectGeneratedError } from "ai";
 import { z } from "zod";
@@ -341,12 +342,13 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       if (reporter.hasStarted()) {
         await reporter.failRun(errorMessage);
       }
-      // The bookmark and its run are now durably terminal. pgmq must archive
-      // this delivery instead of making the same job processing again after
-      // its visibility timeout. A user can still explicitly retry a phase.
+      // Explicitly classified transient extraction failures can recover on
+      // pgmq redelivery. Unknown/terminal failures still require manual retry.
       const terminalError =
         error instanceof Error ? error : new Error(errorMessage);
-      Object.assign(terminalError, { shouldRetry: false });
+      Object.assign(terminalError, {
+        shouldRetry: error instanceof ContentExtractionError && error.shouldRetry,
+      });
       throw terminalError;
     }
   }

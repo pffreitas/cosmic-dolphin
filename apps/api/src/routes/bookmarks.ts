@@ -20,6 +20,8 @@ import {
   normalizeUrl,
   BOOKMARK_PROCESSING_PHASES,
   type BookmarkProcessingPhase,
+  type WebScrapingService,
+  ContentExtractionError,
 } from "@cosmic-dolphin/shared";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -447,6 +449,35 @@ export async function reshareBookmarkForUser(
   };
 }
 
+export async function buildBookmarkPreviewResponse(
+  webScraping: WebScrapingService,
+  url: string,
+): Promise<PreviewResponse> {
+  try {
+    const content = await webScraping.scrape(url, { metadataOnly: true });
+    const openGraph = content.metadata?.openGraph;
+    return {
+      metadata: {
+        title: openGraph?.title || content.title,
+        description: openGraph?.description,
+        image: openGraph?.image,
+        favicon: openGraph?.favicon,
+        siteName: openGraph?.site_name,
+        url: openGraph?.url || url,
+      },
+      scrapable: true,
+    };
+  } catch (error) {
+    return {
+      metadata: webScraping.extractMetadataFromUrl(url),
+      // A public page blocked at preview time still gets the normal worker
+      // pipeline, where rendered extraction can recover it. Only a confirmed
+      // permanent failure should direct capture into the private-link flow.
+      scrapable: error instanceof ContentExtractionError && error.shouldRetry,
+    };
+  }
+}
+
 export default async function bookmarkRoutes(fastify: FastifyInstance) {
   const supabase = createClient(
     config.SUPABASE_URL,
@@ -784,31 +815,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: "Invalid URL format" });
       }
 
-      try {
-        const scrapedContent = await services.webScraping.scrape(url);
-        const openGraph = scrapedContent.metadata?.openGraph;
-
-        return reply.send({
-          metadata: {
-            title: openGraph?.title || scrapedContent.title,
-            description: openGraph?.description,
-            image: openGraph?.image,
-            favicon: openGraph?.favicon,
-            siteName: openGraph?.site_name,
-            url: openGraph?.url || url,
-          },
-          scrapable: true,
-        });
-      } catch (error) {
-        fastify.log.info({ error, url }, "URL not scrapable, extracting metadata from URL structure");
-
-        const partialMetadata = services.webScraping.extractMetadataFromUrl(url);
-
-        return reply.send({
-          metadata: partialMetadata,
-          scrapable: false,
-        });
-      }
+      return reply.send(await buildBookmarkPreviewResponse(services.webScraping, url));
     }
   );
 

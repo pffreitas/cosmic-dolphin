@@ -108,6 +108,10 @@ export interface BookmarkRepository {
     >
   ): Promise<void>;
   getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
+  updateScrapedUrlContents(
+    id: string,
+    contents: Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
+  ): Promise<void>;
   deleteScrapedUrlContents(bookmarkId: string): Promise<void>;
   findByUser(userId: string, options?: FindByUserOptions): Promise<Bookmark[]>;
   countLibrary(userId: string): Promise<BookmarkLibraryCounts>;
@@ -361,6 +365,22 @@ export class BookmarkRepositoryImpl
         links: result.links,
       };
     }, "getScrapedUrlContent");
+  }
+
+  async updateScrapedUrlContents(
+    id: string,
+    contents: Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
+  ): Promise<void> {
+    // Keep the content id stable: highlights and chunks reference this row.
+    return this.executeQuery(async () => {
+      await this.db.updateTable("scraped_url_contents").set({
+        title: contents.title,
+        content: contents.content,
+        metadata: contents.metadata,
+        images: contents.images ? JSON.stringify(contents.images) : null,
+        links: contents.links ? JSON.stringify(contents.links) : null,
+      }).where("id", "=", id).execute();
+    }, "updateScrapedUrlContents");
   }
 
   async deleteScrapedUrlContents(bookmarkId: string): Promise<void> {

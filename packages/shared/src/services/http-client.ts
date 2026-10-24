@@ -7,14 +7,15 @@ function errorName(error: unknown): string | undefined {
     : undefined;
 }
 
-function errorResponse(error: unknown):
-  | { statusCode?: number; statusMessage?: string }
-  | undefined {
+function errorResponse(
+  error: unknown,
+): { statusCode?: number; statusMessage?: string } | undefined {
   if (typeof error !== "object" || error === null || !("response" in error)) {
     return undefined;
   }
-  return (error as { response?: { statusCode?: number; statusMessage?: string } })
-    .response;
+  return (
+    error as { response?: { statusCode?: number; statusMessage?: string } }
+  ).response;
 }
 
 export function calculateHttpRetryDelay({
@@ -32,7 +33,14 @@ export function calculateHttpRetryDelay({
   const baseDelay = 1000;
   const exponentialDelay = baseDelay * Math.pow(2, attemptCount - 1);
   const jitter = Math.random() * 1000;
-  return Math.min(exponentialDelay + jitter, 10000);
+  // Preserve a server's Retry-After delay when it exceeds our local backoff.
+  return Math.max(computedValue, Math.min(exponentialDelay + jitter, 10000));
+}
+
+export interface HttpFetchOptions {
+  timeoutMs?: number;
+  retryLimit?: number;
+  signal?: AbortSignal;
 }
 
 export interface HttpClient {
@@ -41,7 +49,7 @@ export interface HttpClient {
    * @param url The URL to fetch
    * @returns Promise that resolves to an HttpResponse
    */
-  fetch(url: string): Promise<HttpResponse>;
+  fetch(url: string, options?: HttpFetchOptions): Promise<HttpResponse>;
 }
 
 export interface HttpResponse {
@@ -58,18 +66,29 @@ export interface HttpHeaders {
   get(name: string): string | null;
 }
 
+export class HttpRequestError extends Error {
+  constructor(
+    message: string,
+    public readonly status?: number,
+  ) {
+    super(message);
+    this.name = "HttpRequestError";
+  }
+}
+
 /**
  * Robust HTTP client implementation using Got with retry logic and proper error handling
  */
 export class CosmicHttpClient implements HttpClient {
   private readonly requestTimeout = 15000; // bounded even for unreachable hosts
 
-  async fetch(url: string): Promise<HttpResponse> {
+  async fetch(url: string, options?: HttpFetchOptions): Promise<HttpResponse> {
     try {
       const response = await got(url, {
-        timeout: { request: this.requestTimeout },
+        timeout: { request: options?.timeoutMs ?? this.requestTimeout },
+        signal: options?.signal,
         retry: {
-          limit: 2,
+          limit: options?.retryLimit ?? 2,
           methods: ["GET"],
           statusCodes: [408, 413, 429, 500, 502, 503, 504, 521, 522, 524],
           calculateDelay: calculateHttpRetryDelay,
@@ -101,14 +120,14 @@ export class CosmicHttpClient implements HttpClient {
           beforeRequest: [
             (options: any) => {
               console.log(
-                `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`
+                `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`,
               );
             },
           ],
           afterResponse: [
             (response: any) => {
               console.log(
-                `✅ Response: ${response.statusCode} ${response.statusMessage}`
+                `✅ Response: ${response.statusCode} ${response.statusMessage}`,
               );
               return response;
             },
@@ -116,7 +135,7 @@ export class CosmicHttpClient implements HttpClient {
           beforeRetry: [
             (error: any, retryCount: number) => {
               console.log(
-                `🔄 Retry ${retryCount} for ${error.options?.url}: ${error.message}`
+                `🔄 Retry ${retryCount} for ${error.options?.url}: ${error.message}`,
               );
             },
           ],
@@ -140,12 +159,15 @@ export class CosmicHttpClient implements HttpClient {
       // on its default request function. Shape checks also work across CJS/ESM
       // boundaries and avoid instanceof undefined on Bun.
       if (errorName(error) === "TimeoutError") {
-        throw new Error("Request timeout: URL took too long to respond");
+        throw new HttpRequestError(
+          "Request timeout: URL took too long to respond",
+        );
       }
       const response = errorResponse(error);
       if (errorName(error) === "HTTPError" && response) {
-        throw new Error(
-          `HTTP ${response.statusCode}: ${response.statusMessage || "Request denied"}`
+        throw new HttpRequestError(
+          `HTTP ${response.statusCode}: ${response.statusMessage || "Request denied"}`,
+          response.statusCode,
         );
       }
       throw error;

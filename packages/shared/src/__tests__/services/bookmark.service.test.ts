@@ -19,6 +19,7 @@ describe("BookmarkService", () => {
       findByIdAndUser: jest.fn(),
       findByIdAndUserWithLikeStatus: jest.fn(),
       insertScrapedUrlContents: jest.fn(),
+      updateScrapedUrlContents: jest.fn(),
       getScrapedUrlContent: jest.fn(),
       findByUser: jest.fn(),
       searchByQuickAccess: jest.fn(),
@@ -234,6 +235,56 @@ describe("BookmarkService", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     } as any;
+
+    it("recovers a legacy YouTube placeholder in place", async () => {
+      const existing = {
+        id: "scraped-1", title: "Video", content: "YouTube Video: Video\nNo transcript available for this video.",
+        metadata: { openGraph: { site_name: "YouTube" }, wordCount: 0 },
+      } as any;
+      const recovered = {
+        title: "Video", content: "Transcript: Actual useful content",
+        metadata: { openGraph: { site_name: "YouTube" }, wordCount: 4, extraction: { status: "complete", provider: "youtube-library", fetchedAt: new Date().toISOString() } },
+      } as any;
+      mockRepository.getScrapedUrlContent.mockResolvedValueOnce(existing).mockResolvedValueOnce({ ...existing, ...recovered });
+      mockWebScrapingService.scrape.mockResolvedValue(recovered);
+      const result = await service.ensureScrapedContent({ ...bookmark });
+      expect(mockRepository.updateScrapedUrlContents).toHaveBeenCalledWith(existing.id, recovered);
+      expect(mockRepository.insertScrapedUrlContents).not.toHaveBeenCalled();
+      expect(result?.id).toBe(existing.id);
+      expect(result?.content).toContain("Actual useful content");
+    });
+
+    it("keeps metadata and a pending job durable before failing the fetch phase", async () => {
+      const pending = {
+        title: "Saved video", content: "",
+        metadata: { openGraph: { site_name: "YouTube", title: "Saved video" }, wordCount: 0,
+          extraction: { status: "pending", provider: "supadata", jobId: "job-1", retryable: true, error: "Transcription is processing" } },
+      } as any;
+      mockRepository.getScrapedUrlContent.mockResolvedValue(null);
+      mockWebScrapingService.scrape.mockResolvedValue(pending);
+      await expect(service.ensureScrapedContent({ ...bookmark })).rejects.toMatchObject({ code: "pending", shouldRetry: true });
+      expect(mockRepository.insertScrapedUrlContents).toHaveBeenCalledWith(bookmark.id, pending);
+      expect(mockRepository.update).toHaveBeenCalledWith(bookmark.id, expect.objectContaining({ title: "Saved video" }));
+      const metadata = mockRepository.update.mock.calls[0][1].metadata;
+      expect(metadata).not.toHaveProperty("extraction");
+    });
+
+    it("resumes an existing transcript job instead of submitting another", async () => {
+      const existing = { id: "scraped-1", content: "", metadata: { extraction: { status: "pending", jobId: "job-1" } } } as any;
+      const complete = { title: "Video", content: "Transcript content", metadata: { extraction: { status: "complete" } } } as any;
+      mockRepository.getScrapedUrlContent.mockResolvedValueOnce(existing).mockResolvedValueOnce({ ...existing, ...complete });
+      mockWebScrapingService.scrape.mockResolvedValue(complete);
+      await service.ensureScrapedContent({ ...bookmark });
+      expect(mockWebScrapingService.scrape).toHaveBeenCalledWith(bookmark.sourceUrl, { transcriptJobId: "job-1" });
+    });
+
+    it("retains the previous partial extraction if recovery fails", async () => {
+      mockRepository.getScrapedUrlContent.mockResolvedValue({ id: "scraped-1", content: "", metadata: { extraction: { status: "pending", jobId: "job-1" } } } as any);
+      mockWebScrapingService.scrape.mockRejectedValue(new Error("Network failure"));
+      await expect(service.ensureScrapedContent({ ...bookmark })).rejects.toThrow("Network failure");
+      expect(mockRepository.updateScrapedUrlContents).not.toHaveBeenCalled();
+      expect(mockRepository.deleteScrapedUrlContents).not.toHaveBeenCalled();
+    });
 
     it("reuses content already on disk rather than hitting the origin again", async () => {
       const existing = { id: "scraped-1" } as any;

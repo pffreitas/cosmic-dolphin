@@ -147,6 +147,39 @@ describe("Bookmark Content Refactor Integration", () => {
   });
 
   describe("content separation and retrieval", () => {
+    it("recovers a pending video in place across separate processing attempts", async () => {
+      const row = await repository.create(TestDataFactory.createBookmark({
+        user_id: testUserId, source_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      }));
+      const bookmark = (await service.findByIdAndUser(row.id, testUserId))!;
+      mockWebScrapingService.scrape.mockResolvedValueOnce({
+        title: "Saved video", content: "", metadata: {
+          openGraph: { site_name: "YouTube" }, wordCount: 0,
+          extraction: { status: "pending", provider: "supadata", jobId: "job-1", fetchedAt: new Date().toISOString(), retryable: true },
+        },
+      });
+      await expect(service.ensureScrapedContent(bookmark)).rejects.toMatchObject({ code: "pending", shouldRetry: true });
+      const pending = (await repository.getScrapedUrlContent(bookmark.id))!;
+      expect(pending.metadata.extraction?.jobId).toBe("job-1");
+      expect((await service.findByIdAndUser(row.id, testUserId))?.title).toBe("Saved video");
+
+      mockWebScrapingService.scrape.mockResolvedValueOnce({
+        title: "Saved video", content: "Transcript: Actual video content.", metadata: {
+          openGraph: { site_name: "YouTube" }, wordCount: 4,
+          extraction: { status: "complete", provider: "supadata", fetchedAt: new Date().toISOString() },
+        },
+      });
+      // A new service instance models a restarted worker, without any local cache.
+      const restarted = new BookmarkServiceImpl(repository, mockWebScrapingService);
+      const recovered = await restarted.ensureScrapedContent(bookmark);
+      expect(mockWebScrapingService.scrape).toHaveBeenLastCalledWith(bookmark.sourceUrl, { transcriptJobId: "job-1" });
+      expect(recovered?.id).toBe(pending.id);
+      expect(recovered?.metadata.extraction?.status).toBe("complete");
+      expect(recovered?.content).toContain("Actual video content");
+      const rows = await getTestDatabase().selectFrom("scraped_url_contents").select("id").where("bookmark_id", "=", bookmark.id).execute();
+      expect(rows).toHaveLength(1);
+    });
+
     it("should properly separate bookmark metadata from scraped content", async () => {
       // Create a bookmark without content field
       const bookmarkData = TestDataFactory.createBookmark({

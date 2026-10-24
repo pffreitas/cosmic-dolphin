@@ -15,6 +15,7 @@ import { Bookmark, ScrapedUrlContents } from "../../types";
 import { HttpClient } from "../../services/http-client";
 import { ChunkingService } from "../../services/chunking.service";
 import { EmbeddingService } from "../../services/embedding.service";
+import { ContentExtractionError } from "../../services/content-extraction";
 
 describe("summaryProviderOptions", () => {
   it("requests low reasoning only for Luna while requiring supported parameters", () => {
@@ -513,6 +514,16 @@ describe("BookmarkProcessorService", () => {
           error: `Scraped url content not found: ${testBookmark.id}`,
         })
       );
+    });
+
+    it.each([true, false])("preserves extraction retryability (%s) and stops AI processing on missing content", async (retryable) => {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(testBookmark);
+      mockAI.newSession.mockResolvedValue({ sessionID: "test", refID: testBookmark.id });
+      mockBookmarkService.ensureScrapedContent.mockRejectedValue(new ContentExtractionError("Transcript not retrieved", "unavailable", retryable));
+      await expect(service.process(testBookmark.id, testBookmark.userId)).rejects.toMatchObject({ shouldRetry: retryable });
+      expect(mockAI.generateObjectWithUsage).not.toHaveBeenCalled();
+      expect(mockBookmarkService.updateProcessingStatus).toHaveBeenLastCalledWith(testBookmark.id, "failed", "Transcript not retrieved");
     });
 
     it("should enrich private links without scraped content or chunks", async () => {

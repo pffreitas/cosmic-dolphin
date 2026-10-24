@@ -17,6 +17,7 @@ import {
 } from "../repositories";
 import { WebScrapingService } from "./web-scraping.service";
 import { NewBookmark, BookmarkUpdate } from "../database/schema";
+import { ContentExtractionError, isIncompleteExtraction } from "./content-extraction";
 
 export interface PrivateLinkMetadata {
   title?: string;
@@ -246,8 +247,9 @@ export class BookmarkServiceImpl implements BookmarkService {
    * into the bookmark.
    *
    * Called by the pipeline, never by the create path. Idempotent: a reprocess
-   * or a redelivered queue message reuses the content already on disk rather
-   * than hitting the origin again.
+   * or a redelivered queue message reuses complete content already on disk.
+   * Partial extractions and legacy transcript placeholders are recovered in
+   * place; a pending managed transcript resumes its persisted job.
    */
   async ensureScrapedContent(
     bookmark: Bookmark
@@ -255,19 +257,24 @@ export class BookmarkServiceImpl implements BookmarkService {
     const existing = await this.bookmarkRepository.getScrapedUrlContent(
       bookmark.id
     );
-    if (existing) return existing;
+    if (existing && !isIncompleteExtraction(existing)) return existing;
 
-    const scraped = await this.webScrapingService.scrape(bookmark.sourceUrl);
-    await this.bookmarkRepository.insertScrapedUrlContents(
-      bookmark.id,
-      scraped
-    );
+    const jobId = existing?.metadata?.extraction?.jobId;
+    const scraped = jobId
+      ? await this.webScrapingService.scrape(bookmark.sourceUrl, { transcriptJobId: jobId })
+      : await this.webScrapingService.scrape(bookmark.sourceUrl);
+    if (existing) {
+      await this.bookmarkRepository.updateScrapedUrlContents(existing.id, scraped);
+    } else {
+      await this.bookmarkRepository.insertScrapedUrlContents(bookmark.id, scraped);
+    }
 
     // The provisional title and the URL-derived favicon were placeholders.
     // Now that the real page has been read, replace them — but keep
     // `originalUrl`, which the scrape knows nothing about.
+    const { extraction, ...publicMetadata } = scraped.metadata;
     const metadata: BookmarkMetadata = {
-      ...scraped.metadata,
+      ...publicMetadata,
       originalUrl: bookmark.metadata?.originalUrl,
     };
     const title = scraped.title || bookmark.title || bookmark.sourceUrl;
@@ -280,6 +287,14 @@ export class BookmarkServiceImpl implements BookmarkService {
 
     bookmark.title = title;
     bookmark.metadata = metadata;
+
+    if (isIncompleteExtraction(scraped)) {
+      throw new ContentExtractionError(
+        extraction?.error || "Video transcript could not be retrieved yet",
+        extraction?.status === "pending" ? "pending" : "unavailable",
+        extraction?.retryable !== false,
+      );
+    }
 
     return this.bookmarkRepository.getScrapedUrlContent(bookmark.id);
   }

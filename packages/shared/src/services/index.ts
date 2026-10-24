@@ -23,6 +23,7 @@ export * from "./digest.service";
 export * from "./feed-ranking.config";
 export * from "./feed-ranking.service";
 export * from "./http-client";
+export * from "./content-extraction";
 
 import {
   WebScrapingService,
