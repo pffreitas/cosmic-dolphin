@@ -141,6 +141,13 @@ try {
   );
   assert.equal(requests, before);
   console.log("PASS: production browser blocks private-network requests");
+  const publicPage = await new LightpandaPageProvider(binary).extract(
+    "https://example.com",
+  );
+  assert.ok(publicPage.html.includes("Example Domain"));
+  console.log(
+    "PASS: public HTTPS extraction with the production certificate trust store",
+  );
 } finally {
   server.stop(true);
   rmSync(directory, { recursive: true, force: true });

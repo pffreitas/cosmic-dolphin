@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 # Lightpanda requires glibc; Alpine uses musl.
 FROM oven/bun:1.3.11
 COPY --from=browser /usr/local/bin/lightpanda /usr/local/bin/lightpanda
+COPY --from=browser /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 RUN lightpanda version
 
 # Set working directory
