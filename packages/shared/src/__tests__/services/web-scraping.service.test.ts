@@ -32,7 +32,8 @@ describe("WebScrapingService", () => {
     webScrapingService = new WebScrapingServiceImpl(
       mockHttpClient,
       mockYouTubeService,
-      mockTwitterService
+      mockTwitterService,
+      []
     );
   });
 
@@ -72,7 +73,7 @@ describe("WebScrapingService", () => {
     describe("rendered fallback", () => {
       let provider: jest.Mocked<PageExtractionProvider>;
       beforeEach(() => {
-        provider = { extract: jest.fn().mockResolvedValue({ html: '<h1>Recovered public page</h1><p>Readable recovered page content.</p>', title: "Recovered title" }) };
+        provider = { extract: jest.fn().mockResolvedValue({ html: '<h1>Recovered public page</h1><p>Readable recovered page content.</p>', title: "Recovered title", provider: "firecrawl" }) };
         webScrapingService = new WebScrapingServiceImpl(mockHttpClient, mockYouTubeService, mockTwitterService, provider);
       });
 
@@ -86,12 +87,39 @@ describe("WebScrapingService", () => {
 
       it.each([
         '<title>Just a moment...</title><p>Checking your browser before continuing</p>',
+        '<title>Public SPA</title><div id="app">Loading your article...</div>',
         '<title>Public SPA</title><meta name="description" content="Metadata is not page content"><div id="root"></div>',
         '<title>Public SPA</title><p>You need to enable JavaScript to run this app.</p>',
       ])("recovers challenge pages and client-rendered shells", async (html) => {
         mockHttpClient.fetch.mockResolvedValue(htmlResponse(html));
         await webScrapingService.scrape("https://example.com/public");
         expect(provider.extract).toHaveBeenCalledTimes(1);
+      });
+
+      it("validates each rendered result before advancing to the next provider", async () => {
+        mockHttpClient.fetch.mockRejectedValue(new HttpRequestError("HTTP 403", 403));
+        const browser = { extract: jest.fn().mockResolvedValue({ html: '<h1>Just a moment</h1>', provider: "lightpanda" }) };
+        webScrapingService = new WebScrapingServiceImpl(mockHttpClient, mockYouTubeService, mockTwitterService, [browser, provider]);
+        const result = await webScrapingService.scrape("https://example.com/public");
+        expect(browser.extract).toHaveBeenCalledTimes(1);
+        expect(provider.extract).toHaveBeenCalledTimes(1);
+        expect(result.metadata.extraction?.provider).toBe("firecrawl");
+      });
+
+      it("records browser provenance and stops before paid extraction when recovered", async () => {
+        mockHttpClient.fetch.mockRejectedValue(new HttpRequestError("HTTP 403", 403));
+        const browser = { extract: jest.fn().mockResolvedValue({ html: '<article>Recovered actual article content.</article>', provider: "lightpanda" }) };
+        webScrapingService = new WebScrapingServiceImpl(mockHttpClient, mockYouTubeService, mockTwitterService, [browser, provider]);
+        expect((await webScrapingService.scrape("https://example.com/public")).metadata.extraction?.provider).toBe("lightpanda");
+        expect(provider.extract).not.toHaveBeenCalled();
+      });
+
+      it("does not advance past a terminal browser authentication result", async () => {
+        mockHttpClient.fetch.mockRejectedValue(new HttpRequestError("HTTP 403", 403));
+        const browser = { extract: jest.fn().mockResolvedValue({ html: '<h1>Sign in</h1>', finalUrl: "https://example.com/login" }) };
+        webScrapingService = new WebScrapingServiceImpl(mockHttpClient, mockYouTubeService, mockTwitterService, [browser, provider]);
+        await expect(webScrapingService.scrape("https://example.com/public")).rejects.toMatchObject({ code: "auth", shouldRetry: false });
+        expect(provider.extract).not.toHaveBeenCalled();
       });
 
       it.each([401, 404, 410])("does not spend a fallback request on terminal HTTP %s", async (status) => {

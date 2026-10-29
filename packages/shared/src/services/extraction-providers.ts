@@ -4,6 +4,7 @@ import {
 } from "./content-extraction";
 
 export interface RenderedPage {
+  provider?: string;
   html: string;
   finalUrl?: string;
   title?: string;
@@ -13,6 +14,21 @@ export interface RenderedPage {
 
 export interface PageExtractionProvider {
   extract(url: string): Promise<RenderedPage>;
+}
+
+export interface BrowserVideoPage {
+  title?: string;
+  author?: string;
+  channelUrl?: string;
+  thumbnail?: string;
+  captions: Array<{ body: string; language?: string }>;
+}
+
+export interface BrowserExtractionProvider extends PageExtractionProvider {
+  extractTweet(
+    url: string,
+  ): Promise<import("./content-extraction").ExtractedContent>;
+  extractYouTube(url: string): Promise<BrowserVideoPage>;
 }
 
 /** Optional: the ordinary fetch path never incurs a provider request. */
@@ -79,6 +95,7 @@ export class FirecrawlPageProvider implements PageExtractionProvider {
         );
       }
       return {
+        provider: "firecrawl",
         html: result.data.html,
         finalUrl: metadata?.url || metadata?.sourceURL,
         title: metadata?.title,

@@ -18,6 +18,8 @@ import {
   PageExtractionProvider,
 } from "./extraction-providers";
 
+import { LightpandaPageProvider } from "./lightpanda.service";
+
 type LoadedCheerio = ReturnType<typeof cheerio.load>;
 
 export interface WebScrapingService {
@@ -43,10 +45,13 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     private httpClient: HttpClient = new CosmicHttpClient(),
     youtubeService?: YouTubeService,
     twitterService?: TwitterService,
-    private pageProvider: PageExtractionProvider | undefined = process.env
-      .FIRECRAWL_API_KEY
-      ? new FirecrawlPageProvider()
-      : undefined,
+    private pageProvider:
+      | PageExtractionProvider
+      | PageExtractionProvider[]
+      | undefined = [
+      new LightpandaPageProvider(),
+      ...(process.env.FIRECRAWL_API_KEY ? [new FirecrawlPageProvider()] : []),
+    ],
   ) {
     this.youtubeService = youtubeService ?? new YouTubeServiceImpl(httpClient);
     this.twitterService = twitterService ?? new TwitterServiceImpl(httpClient);
@@ -86,7 +91,9 @@ export class WebScrapingServiceImpl implements WebScrapingService {
 
     if (this.twitterService.isTwitterUrl(url)) {
       console.log("Detected Twitter/X URL, using Twitter-specific scraping");
-      return this.twitterService.scrape(url);
+      return context
+        ? this.twitterService.scrape(url, context)
+        : this.twitterService.scrape(url);
     }
 
     try {
@@ -148,30 +155,40 @@ export class WebScrapingServiceImpl implements WebScrapingService {
           true,
         );
       }
-      let rendered;
-      try {
-        rendered = await this.pageProvider.extract(url);
-      } catch (providerError) {
-        if (providerError instanceof ContentExtractionError)
-          throw providerError;
-        throw new ContentExtractionError(
-          "Rendered page extraction failed",
-          "provider",
-          true,
-        );
+      const providers = Array.isArray(this.pageProvider)
+        ? this.pageProvider
+        : [this.pageProvider];
+      let failure: unknown = error;
+      for (const provider of providers) {
+        try {
+          const rendered = await provider.extract(url);
+          if (rendered.finalUrl)
+            this.detectAuthRedirect(url, rendered.finalUrl);
+          const result = this.scrapeContent(
+            rendered.finalUrl || url,
+            rendered.html,
+          );
+          result.title ||= rendered.title || "";
+          result.metadata.openGraph!.title ||= rendered.title;
+          result.metadata.openGraph!.description ||= rendered.description;
+          result.metadata.openGraph!.image ||= rendered.image;
+          this.assertScrapedContentUsable(result);
+          return this.withProvenance(result, rendered.provider || "rendered");
+        } catch (providerError) {
+          if (
+            providerError instanceof ContentExtractionError &&
+            !providerError.shouldRetry
+          )
+            throw providerError;
+          failure = providerError;
+        }
       }
-      if (rendered.finalUrl) this.detectAuthRedirect(url, rendered.finalUrl);
-      const result = this.scrapeContent(
-        rendered.finalUrl || url,
-        rendered.html,
+      if (failure instanceof ContentExtractionError) throw failure;
+      throw new ContentExtractionError(
+        "Rendered page extraction failed",
+        "provider",
+        true,
       );
-      // Cleaned provider HTML may omit <head>; preserve the provider's metadata.
-      result.title ||= rendered.title || "";
-      result.metadata.openGraph!.title ||= rendered.title;
-      result.metadata.openGraph!.description ||= rendered.description;
-      result.metadata.openGraph!.image ||= rendered.image;
-      this.assertScrapedContentUsable(result);
-      return this.withProvenance(result, "firecrawl");
     }
   }
 
@@ -341,7 +358,13 @@ export class WebScrapingServiceImpl implements WebScrapingService {
         false,
       );
     }
-    if (bodyWordCount <= 1) {
+    if (
+      bodyWordCount <= 1 ||
+      (bodyWordCount < 30 &&
+        /^(?:loading(?:\s+(?:your|the|this))?(?:\s+(?:article|page|content|post|application))?|please wait|initializing|something went wrong|enable javascript)[.\s…!]*(?:please wait[.\s…!]*)?$/i.test(
+          bodyText,
+        ))
+    ) {
       throw new ContentExtractionError(
         "Scraped content is not usable: page appears empty",
         "empty",

@@ -1,7 +1,7 @@
 import { YouTubeServiceImpl } from "../../services/youtube.service";
 import { HttpClient } from "../../services/http-client";
 import { YoutubeTranscript, YoutubeTranscriptNotAvailableLanguageError } from "youtube-transcript";
-import { TranscriptProvider } from "../../services/extraction-providers";
+import { BrowserExtractionProvider, TranscriptProvider } from "../../services/extraction-providers";
 import { ContentExtractionError } from "../../services/content-extraction";
 
 jest.mock("youtube-transcript");
@@ -154,6 +154,45 @@ describe("YouTubeServiceImpl", () => {
         }));
         expect((await service.scrape(URL)).content).toContain("Hello world");
       }
+    });
+
+    it("recovers browser captions and metadata before managed transcription", async () => {
+      const browser = { extractYouTube: jest.fn().mockResolvedValue({ title: "Recovered video", author: "Recovered channel", channelUrl: "https://www.youtube.com/channel/recovered", captions: [
+        { body: '<html>Blocked English caption track</html>', language: "en" },
+        { body: '<transcript><text start="0">Olá browser captions</text></transcript>', language: "pt" },
+      ] }) } as unknown as BrowserExtractionProvider;
+      const managed = { fetchTranscript: jest.fn() };
+      service = new YouTubeServiceImpl(mockHttpClient, managed, browser);
+      mockHttpClient.fetch.mockRejectedValue(new Error("oEmbed unavailable"));
+      MockedYoutubeTranscript.fetchTranscript.mockRejectedValue(new Error("Blocked"));
+      mockFetch.mockResolvedValue({ ok: false, status: 403 });
+      const result = await service.scrape(URL);
+      expect(result.content).toContain("Olá browser captions");
+      expect(result.title).toBe("Recovered video");
+      expect(result.metadata.extraction).toMatchObject({ status: "complete", provider: "lightpanda", language: "pt" });
+      expect(browser.extractYouTube).toHaveBeenCalledTimes(1);
+      expect(managed.fetchTranscript).not.toHaveBeenCalled();
+    });
+
+    it("falls through empty browser captions to managed transcription", async () => {
+      const browser = { extractYouTube: jest.fn().mockResolvedValue({ captions: [] }) } as unknown as BrowserExtractionProvider;
+      const managed = { fetchTranscript: jest.fn().mockResolvedValue({ status: "complete", text: "Managed speech", provider: "supadata" }) };
+      service = new YouTubeServiceImpl(mockHttpClient, managed, browser);
+      MockedYoutubeTranscript.fetchTranscript.mockRejectedValue(new Error("Blocked"));
+      mockFetch.mockResolvedValue({ ok: false, status: 403 });
+      expect((await service.scrape(URL)).content).toContain("Managed speech");
+      expect(browser.extractYouTube).toHaveBeenCalledTimes(1);
+    });
+
+    it("never opens a browser for previews, native captions, or persisted jobs", async () => {
+      const browser = { extractYouTube: jest.fn() } as unknown as BrowserExtractionProvider;
+      const managed = { fetchTranscript: jest.fn().mockResolvedValue({ status: "pending", jobId: "job-1", provider: "supadata" }) };
+      service = new YouTubeServiceImpl(mockHttpClient, managed, browser);
+      await service.scrape(URL, { metadataOnly: true });
+      MockedYoutubeTranscript.fetchTranscript.mockResolvedValue(MOCK_TRANSCRIPT_SEGMENTS);
+      await service.scrape(URL);
+      await service.scrape(URL, { transcriptJobId: "job-1" });
+      expect(browser.extractYouTube).not.toHaveBeenCalled();
     });
 
     it("uses the managed provider only after native methods fail", async () => {

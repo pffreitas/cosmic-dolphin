@@ -12,10 +12,14 @@ import {
   withFetchDeadline,
 } from "./content-extraction";
 import {
+  BrowserExtractionProvider,
+  BrowserVideoPage,
   SupadataTranscriptProvider,
   TranscriptProvider,
   TranscriptResult,
 } from "./extraction-providers";
+
+import { LightpandaPageProvider } from "./lightpanda.service";
 
 export interface YouTubeOEmbedResponse {
   title: string;
@@ -45,6 +49,7 @@ export class YouTubeServiceImpl implements YouTubeService {
       .SUPADATA_API_KEY
       ? new SupadataTranscriptProvider()
       : undefined,
+    private browserProvider: BrowserExtractionProvider = new LightpandaPageProvider(),
   ) {}
 
   isYouTubeUrl(url: string): boolean {
@@ -92,14 +97,40 @@ export class YouTubeServiceImpl implements YouTubeService {
         false,
       );
     const canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    let browserRequest: Promise<BrowserVideoPage> | undefined;
+    const loadBrowser = () =>
+      (browserRequest ??= this.browserProvider.extractYouTube(canonicalUrl));
     const [metadataResult, transcriptResult] = await Promise.allSettled([
       this.fetchOEmbed(canonicalUrl),
       context?.metadataOnly
         ? Promise.resolve(null)
-        : this.fetchTranscript(videoId, canonicalUrl, context?.transcriptJobId),
+        : this.fetchTranscript(
+            videoId,
+            canonicalUrl,
+            loadBrowser,
+            context?.transcriptJobId,
+          ),
     ]);
-    const oembed =
+    let oembed =
       metadataResult.status === "fulfilled" ? metadataResult.value : null;
+    // Reuse the browser already opened for captions; metadata-only previews
+    // and resumable managed jobs never start another browser.
+    if (!oembed && !context?.metadataOnly && !context?.transcriptJobId) {
+      try {
+        const page = await loadBrowser();
+        if (page.title)
+          oembed = {
+            title: page.title,
+            author_name: page.author || "",
+            author_url: page.channelUrl || "",
+            thumbnail_url: page.thumbnail || "",
+            thumbnail_width: 0,
+            thumbnail_height: 0,
+          };
+      } catch {
+        /* Keep any recovered transcript even if metadata is unavailable. */
+      }
+    }
     const transcript =
       transcriptResult.status === "fulfilled" ? transcriptResult.value : null;
     const text =
@@ -196,6 +227,7 @@ export class YouTubeServiceImpl implements YouTubeService {
   private async fetchTranscript(
     videoId: string,
     url: string,
+    loadBrowser: () => Promise<BrowserVideoPage>,
     jobId?: string,
   ): Promise<TranscriptResult> {
     // A persisted job is resumed after a restart/redelivery, never submitted
@@ -206,6 +238,26 @@ export class YouTubeServiceImpl implements YouTubeService {
     if (library) return library;
     const innerTube = await this.tryFetchTranscriptViaInnerTube(videoId);
     if (innerTube) return innerTube;
+    try {
+      const page = await loadBrowser();
+      for (const caption of page.captions) {
+        try {
+          const text = this.parseTranscript(caption.body);
+          if (text)
+            return {
+              status: "complete",
+              text,
+              language: caption.language,
+              provider: "lightpanda",
+            };
+        } catch {
+          /* An invalid track must not hide another caption language. */
+        }
+      }
+    } catch (error) {
+      if (error instanceof ContentExtractionError && !error.shouldRetry)
+        throw error;
+    }
     if (this.transcriptProvider)
       return this.transcriptProvider.fetchTranscript(url);
     throw new ContentExtractionError(

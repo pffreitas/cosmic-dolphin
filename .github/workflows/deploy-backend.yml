@@ -9,6 +9,10 @@ on:
       - "packages/shared/**"
       - "supabase/migrations/**"
       - ".do/api-app.yml"
+      - ".do/worker-app.yml"
+      - "bun.lock"
+      - "scripts/install-lightpanda.sh"
+      - "scripts/test-lightpanda.mjs"
       - "package.json"
       - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
@@ -47,6 +51,13 @@ jobs:
 
       - name: Build Worker
         run: bun run --cwd apps/worker build
+
+      - name: Verify real Lightpanda extraction and isolation
+        env:
+          LIGHTPANDA_BINARY_PATH: ${{ runner.temp }}/lightpanda
+        run: |
+          sh scripts/install-lightpanda.sh "$LIGHTPANDA_BINARY_PATH"
+          bun scripts/test-lightpanda.mjs
 
       # Tests run against a throwaway supabase/postgres container, not a hosted
       # project. This job therefore needs no secrets at all: schema changes are
@@ -139,6 +150,12 @@ jobs:
 
       - name: Build Worker Docker image
         run: docker build -t $IMAGE_NAME_WORKER -f apps/worker/Dockerfile .
+
+      - name: Verify packaged browser extraction within worker memory limit
+        run: |
+          docker run --rm --memory=512m --cpus=1 \
+            -v "$GITHUB_WORKSPACE/scripts/test-lightpanda.mjs:/app/scripts/test-lightpanda.mjs:ro" \
+            $IMAGE_NAME_WORKER bun /app/scripts/test-lightpanda.mjs
 
       - name: Tag Worker Docker image
         run: |

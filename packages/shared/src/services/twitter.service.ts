@@ -1,5 +1,8 @@
 import * as cheerio from "cheerio";
 import { HttpClient } from "./http-client";
+import { BrowserExtractionProvider } from "./extraction-providers";
+import { ExtractionContext, ContentExtractionError } from "./content-extraction";
+import { LightpandaPageProvider } from "./lightpanda.service";
 import { ScrapedUrlContents } from "../types";
 
 export class TwitterScrapingError extends Error {
@@ -67,12 +70,12 @@ interface OEmbedResponse {
 export interface TwitterService {
   isTwitterUrl(url: string): boolean;
   scrape(
-    url: string
+    url: string, context?: ExtractionContext
   ): Promise<Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">>;
 }
 
 export class TwitterServiceImpl implements TwitterService {
-  constructor(private httpClient: HttpClient) {}
+  constructor(private httpClient: HttpClient, private browserProvider: BrowserExtractionProvider = new LightpandaPageProvider()) {}
 
   isTwitterUrl(url: string): boolean {
     try {
@@ -89,7 +92,7 @@ export class TwitterServiceImpl implements TwitterService {
   }
 
   async scrape(
-    url: string
+    url: string, context?: ExtractionContext
   ): Promise<Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">> {
     try {
       return await this.scrapeViaFxTwitter(url);
@@ -106,10 +109,18 @@ export class TwitterServiceImpl implements TwitterService {
           secondaryError instanceof Error ? secondaryError.message : secondaryError
         );
         try {
+          if (!context?.metadataOnly && this.extractStatusId(url)) {
+            try {
+              return await this.browserProvider.extractTweet(url);
+            } catch (browserError) {
+              if (browserError instanceof ContentExtractionError && !browserError.shouldRetry) throw browserError;
+            }
+          }
           return await this.scrapeViaOgFallback(url);
         } catch (fallbackError) {
+          if (fallbackError instanceof ContentExtractionError) throw fallbackError;
           throw new TwitterScrapingError(
-            `Unable to scrape tweet — fxTwitter API, oEmbed, and OG fallback all failed. The tweet may be private or deleted.`,
+            `Unable to scrape tweet — fxTwitter API, oEmbed, browser, and OG fallback all failed. The tweet may be private or deleted.`,
             url,
             fallbackError
           );
@@ -145,6 +156,8 @@ export class TwitterServiceImpl implements TwitterService {
     }
 
     const status = data.status;
+    if (!status.text?.trim() && !status.media?.photos?.length && !status.media?.videos?.length)
+      throw new Error("fxTwitter returned no post content");
     const title = `Tweet by ${status.author!.name ?? status.author!.screen_name} (@${status.author!.screen_name})`;
     const content = this.buildStructuredContent(url, data);
     const images = this.extractMedia(status);
@@ -278,6 +291,7 @@ export class TwitterServiceImpl implements TwitterService {
     const $ = cheerio.load(data.html ?? "");
     const tweetText = $("blockquote p").first().text().trim();
     const dateText = $("blockquote a").last().text().trim();
+    if (!tweetText) throw new Error("oEmbed returned no post text");
 
     const title = `Tweet by ${data.author_name}`;
     const content = [
@@ -324,6 +338,8 @@ export class TwitterServiceImpl implements TwitterService {
     const ogDescription =
       $('meta[property="og:description"]').attr("content") ?? "";
     const ogImage = $('meta[property="og:image"]').attr("content");
+    if (!ogDescription.trim() || /^(?:x|twitter|log in|sign in|just a moment)$/i.test(ogTitle.trim()))
+      throw new Error("X metadata did not contain readable post content");
 
     const images = ogImage ? [{ url: ogImage, alt: "Tweet preview" }] : [];
 

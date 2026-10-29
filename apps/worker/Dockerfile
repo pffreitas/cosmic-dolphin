@@ -1,5 +1,13 @@
-# Use Bun Alpine image
-FROM oven/bun:1.2-alpine
+# Pin the browser and verify release checksums before it reaches production.
+FROM debian:bookworm-slim AS browser
+COPY scripts/install-lightpanda.sh /tmp/install-lightpanda.sh
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
+    && sh /tmp/install-lightpanda.sh /usr/local/bin/lightpanda
+
+# Lightpanda requires glibc; Alpine uses musl.
+FROM oven/bun:1.3.11
+COPY --from=browser /usr/local/bin/lightpanda /usr/local/bin/lightpanda
+RUN lightpanda version
 
 # Set working directory
 WORKDIR /app
