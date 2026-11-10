@@ -449,7 +449,7 @@ bun run --cwd apps/mobile lint
 
 **Notes**
 
-Implemented and coordinator-verified 2026-11-10 on `feature/save-and-todays-5`; checkpoint SHA is recorded in the next coordinator metadata checkpoint. Fresh developer task node:delegated-task:command%3Amcp%3A44e93c94-ffbb-4f6d-ae4f-4a59ab199c23%3Adelegate-task%3A9cea8afb-b067-4e50-992e-7d20a5aed0da completed durable Save/provider/generated API wiring, account-bound serialized capture replay, atomic owner confirmation, private note/timing/capture fields, duplicate precedence and public stripping, native metadata-only copied-link detection, local timing helpers and the guarded fixture seeder. Real Fastify/loopback Postgres concurrency proves one bookmark/job; RNTL lifetime abort/unmount and storage replay prove the T-1 interruption checkpoint. Native process-kill/EAS, LTE, accessibility and later FR-6 placement/failure/iOS attribution remain with their owning tasks.
+Implemented and coordinator-verified 2026-11-10 on `feature/save-and-todays-5`; checkpoint `b8c2401891146234ce03fa505e2aaa2bf88e294d` (`Task: T-1`). Fresh developer task node:delegated-task:command%3Amcp%3A44e93c94-ffbb-4f6d-ae4f-4a59ab199c23%3Adelegate-task%3A9cea8afb-b067-4e50-992e-7d20a5aed0da completed durable Save/provider/generated API wiring, account-bound serialized capture replay, atomic owner confirmation, private note/timing/capture fields, duplicate precedence and public stripping, native metadata-only copied-link detection, local timing helpers and the guarded fixture seeder. Real Fastify/loopback Postgres concurrency proves one bookmark/job; RNTL lifetime abort/unmount and storage replay prove the T-1 interruption checkpoint. Native process-kill/EAS, LTE, accessibility and later FR-6 placement/failure/iOS attribution remain with their owning tasks.
 
 Coordinator independently ran every T-1 Verify command plus Verify all and API lint: apispec and shared build; disposable DB up/reset; API340 tests; focused shared2; focused mobile27; root typecheck with `--env-mode=loose` and explicit shared/API/worker/mobile tsc; serial test:db shared393/API340/worker10; full mobile73 with one existing skip; web335; mobile/web/API lint and tokens checks all PASS. Mobile/web lint retain5/112 baseline warnings; API lint has60 warnings including4 new HTTP-fixture any warnings. All backend processes explicitly used loopback5433, NODE_ENV=test and COMPOSE_PROJECT_NAME=cosmic-dolphin, Turbo loose env and serial DB suites. The disposable container's developer-set max_wal_size=128MB avoids tmpfs exhaustion; no hosted migration/configuration ran. Client nullable serializers were fixed in generator source templates and regenerated; no generated file was manually edited. Non-generated diff whitespace check passes; two generator-produced blank-comment whitespace warnings remain. Source-doc attempts did not correct nullable-enum generator comments and were reverted; final generated output matches the tested candidate.
 
@@ -459,7 +459,7 @@ Test-first assessment: developer reported observed behavior-red→green for core
 
 | | |
 |---|---|
-| Status | Todo |
+| Status | In progress |
 | Depends on | T-1 |
 | Traces | FR-1 key prerequisite · NFR-9 · NFR-10 · S-15 · §8.4 Share key/iOS shared storage · §8.7 share security · §8.8 Share key logs · A-2 |
 | Ships as | User-visible: issue and revoke a save-only share key in the complete package |
@@ -512,7 +512,7 @@ bun run --cwd apps/mobile lint
 
 **Notes**
 
-Not started. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here.
+Started 2026-11-10 after coordinator-verified T-1 checkpoint `b8c2401891146234ce03fa505e2aaa2bf88e294d`. Fresh background developer assignment follows this coordinator metadata commit; delegate id will be recorded on launch. Native keychain capability/probe is required before this task can be marked Done. One behavior-red→green before adding the next acceptance behavior is required; no per-task Sol round or partial package delivery.
 
 ### T-3 · Save and close from the native iOS share extension
 
