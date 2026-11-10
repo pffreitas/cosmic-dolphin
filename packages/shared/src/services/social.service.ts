@@ -12,7 +12,7 @@ import {
   SocialKeyset,
   SocialRepository,
 } from "../repositories/social.repository";
-import { mapDatabaseRowToBookmark } from "./bookmark.service";
+import { mapDatabaseRowToBookmark, stripPrivateCaptureFields } from "./bookmark.service";
 import { normaliseHandle } from "./profile.service";
 
 /**
@@ -175,7 +175,7 @@ export class SocialServiceImpl implements SocialService {
     const page = takePage(rows, limit);
 
     return {
-      bookmarks: page.items.map((item) => mapDatabaseRowToBookmark(item)),
+      bookmarks: page.items.map((item) => stripPrivateCaptureFields(mapDatabaseRowToBookmark(item))),
       lastRow: page.last
         ? { createdAt: new Date(page.last.created_at), id: page.last.id }
         : null,
@@ -248,7 +248,7 @@ export class SocialServiceImpl implements SocialService {
     const page = takePage(rows, limit);
 
     return {
-      bookmarks: page.items.map((item) => mapDatabaseRowToBookmark(item)),
+      bookmarks: page.items.map((item) => stripPrivateCaptureFields(mapDatabaseRowToBookmark(item))),
       // The cursor is the *like's* position, not the bookmark's — the ordering
       // it has to resume is the one the query used.
       lastRow: page.last

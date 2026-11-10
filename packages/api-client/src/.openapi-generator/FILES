@@ -19,6 +19,8 @@ src/index.ts
 src/models/AcceptCollectionSuggestionResponse.ts
 src/models/BlockResponse.ts
 src/models/Bookmark.ts
+src/models/BookmarkCapturePlatform.ts
+src/models/BookmarkCaptureSource.ts
 src/models/BookmarkCollectionCount.ts
 src/models/BookmarkError.ts
 src/models/BookmarkImage.ts
@@ -34,6 +36,8 @@ src/models/BookmarkProcessingTimelineStatus.ts
 src/models/BookmarkReadStatus.ts
 src/models/BookmarkScope.ts
 src/models/BookmarkSort.ts
+src/models/CapturePlatform.ts
+src/models/CaptureSource.ts
 src/models/Collection.ts
 src/models/CollectionPathItem.ts
 src/models/CollectionSuggestion.ts
@@ -102,6 +106,7 @@ src/models/PreviewRequest.ts
 src/models/PreviewResponse.ts
 src/models/ProcessingStatus.ts
 src/models/Profile.ts
+src/models/PublicBookmark.ts
 src/models/PublicCollection.ts
 src/models/PublicCollectionListResponse.ts
 src/models/PublicProfile.ts

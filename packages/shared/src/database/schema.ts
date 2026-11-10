@@ -44,6 +44,11 @@ export type CollectionSuggestionStatus = "pending" | "accepted" | "dismissed";
 
 // Bookmarks table
 export interface BookmarksTable extends BaseTable {
+  user_note: string | null;
+  later_until: Date | null;
+  capture_source: import("../types").CaptureSource | null;
+  capture_platform: import("../types").CapturePlatform | null;
+  capture_queued_at: Date | null;
   source_url: string;
   title: string | null;
   metadata: any | null; // JSONB

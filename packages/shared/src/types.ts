@@ -216,7 +216,16 @@ export interface BookmarkProcessingTimeline {
   pollAfterMs: number;
 }
 
-export interface Bookmark extends BaseEntity {
+export type CaptureSource = "ios_share_extension" | "android_share" | "save_sheet" | "clipboard";
+export type CapturePlatform = "ios" | "android" | "web" | "unknown";
+export interface CaptureFields {
+  userNote?: string | null;
+  laterUntil?: Date | null;
+  captureSource?: CaptureSource | null;
+  capturePlatform?: CapturePlatform | null;
+  captureQueuedAt?: Date | null;
+}
+export interface Bookmark extends BaseEntity, CaptureFields {
   sourceUrl: string;
   collectionId?: string;
   collectionPath?: CollectionPathItem[];
@@ -400,6 +409,11 @@ export type BookmarkProcessingPhase =
   | "embed";
 
 export interface CreateBookmarkRequest {
+  user_note?: string;
+  later_until?: string | null;
+  capture_source?: CaptureSource;
+  capture_platform?: CapturePlatform;
+  queued_at?: string;
   source_url: string;
   collection_id?: string;
   title?: string;
@@ -703,8 +717,10 @@ export interface BlockResponse {
   blocked: boolean;
 }
 
+export type PublicBookmark = Omit<Bookmark, keyof CaptureFields>;
+
 export interface PublicSavesResponse {
-  bookmarks: Bookmark[];
+  bookmarks: PublicBookmark[];
   /** Absent when this page is the last one. */
   nextCursor?: string;
 }

@@ -15,14 +15,14 @@
 
 import * as runtime from '../runtime';
 import type {
-  Bookmark,
   BookmarkError,
+  PublicBookmark,
 } from '../models/index';
 import {
-    BookmarkFromJSON,
-    BookmarkToJSON,
     BookmarkErrorFromJSON,
     BookmarkErrorToJSON,
+    PublicBookmarkFromJSON,
+    PublicBookmarkToJSON,
 } from '../models/index';
 
 export interface SharedBookmarksFindBySlugRequest {
@@ -37,7 +37,7 @@ export class SharedBookmarksApi extends runtime.BaseAPI {
     /**
      * Get a publicly shared bookmark by its share slug
      */
-    async sharedBookmarksFindBySlugRaw(requestParameters: SharedBookmarksFindBySlugRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Bookmark>> {
+    async sharedBookmarksFindBySlugRaw(requestParameters: SharedBookmarksFindBySlugRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PublicBookmark>> {
         if (requestParameters['slug'] == null) {
             throw new runtime.RequiredError(
                 'slug',
@@ -56,13 +56,13 @@ export class SharedBookmarksApi extends runtime.BaseAPI {
             query: queryParameters,
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => BookmarkFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => PublicBookmarkFromJSON(jsonValue));
     }
 
     /**
      * Get a publicly shared bookmark by its share slug
      */
-    async sharedBookmarksFindBySlug(requestParameters: SharedBookmarksFindBySlugRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Bookmark> {
+    async sharedBookmarksFindBySlug(requestParameters: SharedBookmarksFindBySlugRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicBookmark> {
         const response = await this.sharedBookmarksFindBySlugRaw(requestParameters, initOverrides);
         return await response.value();
     }

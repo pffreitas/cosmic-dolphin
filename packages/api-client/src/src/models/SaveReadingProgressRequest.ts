@@ -52,7 +52,7 @@ export function SaveReadingProgressRequestFromJSONTyped(json: any, ignoreDiscrim
     return {
         
         'percent': json['percent'],
-        'scrollOffset': json['scrollOffset'] == null ? undefined : json['scrollOffset'],
+        'scrollOffset': json['scrollOffset'] == null ? json['scrollOffset'] : json['scrollOffset'],
     };
 }
 

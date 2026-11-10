@@ -9,6 +9,8 @@ import {
   SocialApi,
   CommentsApi,
   type Bookmark as ContractBookmark,
+  type CreateBookmarkRequest,
+  type UpdateBookmarkRequest,
   type BookmarkScope,
   type BookmarkSort,
   type FeedScope,
@@ -16,14 +18,16 @@ import {
   type FeedResponse,
   type ExploreResponse,
 } from "@cosmic-dolphin/api-client";
+import { saveRequest } from "./save-request";
 import { supabase } from "./supabase";
 import { cacheBookmarksInBackground } from "./bookmark-cache";
 import type { Bookmark } from "./api";
 
-export async function configuration() {
+export async function configuration(expectedUserId?: string) {
   const {
     data: { session },
   } = await supabase.auth.getSession();
+  if (expectedUserId && session?.user.id !== expectedUserId) throw { response: new Response(null, { status: 401 }) };
   return new Configuration({
     basePath: `${(process.env.EXPO_PUBLIC_API_URL || "").replace(/\/$/, "")}/api/v1`,
     accessToken: session?.access_token || "",
@@ -35,6 +39,8 @@ export function nativeBookmark(bookmark: ContractBookmark): Bookmark {
     createdAt: bookmark.createdAt.toISOString(),
     updatedAt: bookmark.updatedAt.toISOString(),
     readAt: bookmark.readAt?.toISOString(),
+    laterUntil: bookmark.laterUntil == null ? bookmark.laterUntil : bookmark.laterUntil.toISOString(),
+    captureQueuedAt: bookmark.captureQueuedAt == null ? bookmark.captureQueuedAt : bookmark.captureQueuedAt.toISOString(),
   };
 }
 function rememberBookmark(bookmark: ContractBookmark) {
@@ -42,7 +48,24 @@ function rememberBookmark(bookmark: ContractBookmark) {
   cacheBookmarksInBackground(result.userId, [result]);
   return result;
 }
+function rememberOwnedBookmark(bookmark: ContractBookmark, userId?: string) {
+  if (userId && bookmark.userId !== userId) throw { response: new Response(null, { status: 401 }) };
+  return rememberBookmark(bookmark);
+}
 export const MobileAPI = {
+  async create(params: CreateBookmarkRequest, signal?: AbortSignal, userId?: string) {
+    const result = await new BookmarksApi(await configuration(userId)).bookmarksCreate({ createBookmarkRequest: params }, { signal });
+    if (!result.bookmark?.id) throw new Error("Expected owner bookmark response");
+    return { ...result, bookmark: rememberOwnedBookmark(result.bookmark, userId) };
+  },
+  async update(id: string, params: UpdateBookmarkRequest, signal?: AbortSignal, userId?: string) {
+    const client = new BookmarksApi(await configuration(userId));
+    return rememberOwnedBookmark(await saveRequest(requestSignal => client.bookmarksUpdate({ id, updateBookmarkRequest: params }, { signal: requestSignal }), signal), userId);
+  },
+  async processingTimeline(id: string, signal?: AbortSignal, userId?: string) {
+    const result = await new BookmarksApi(await configuration(userId)).bookmarksGetProcessingTimeline({ id }, { signal });
+    return { ...result, bookmark: rememberOwnedBookmark(result.bookmark, userId) };
+  },
   async comments(id: string) {
     return new CommentsApi(await configuration()).bookmarkCommentsList({ id });
   },

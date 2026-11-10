@@ -1,3 +1,4 @@
+import type { CaptureFields, PublicBookmark } from "../types";
 import {
   Bookmark,
   BookmarkMetadata,
@@ -19,7 +20,7 @@ import { WebScrapingService } from "./web-scraping.service";
 import { NewBookmark, BookmarkUpdate } from "../database/schema";
 import { ContentExtractionError, isIncompleteExtraction } from "./content-extraction";
 
-export interface PrivateLinkMetadata {
+export interface PrivateLinkMetadata extends CaptureFields {
   title?: string;
   description?: string;
   tags?: string[];
@@ -28,7 +29,7 @@ export interface PrivateLinkMetadata {
   originalUrl?: string;
 }
 
-export interface CreateBookmarkOptions {
+export interface CreateBookmarkOptions extends CaptureFields {
   /**
    * The URL exactly as the user pasted it. Stored in `metadata.originalUrl`;
    * defaults to the normalised URL when the paste was already normal.
@@ -55,8 +56,12 @@ export interface CreateBookmarkOptions {
   title?: string;
 }
 
+export type OwnerBookmarkUpdate = Pick<Partial<Bookmark>, "title" | "isArchived" | "cosmicTags" | "cosmicSummary" | "userNote" | "laterUntil">;
+
 export interface BookmarkService {
   findByUserAndUrl(userId: string, sourceUrl: string): Promise<Bookmark | null>;
+  updateByOwner(id: string, userId: string, data: OwnerBookmarkUpdate): Promise<Bookmark>;
+  mergeCapture(id: string, userId: string, note?: string, laterUntil?: Date | null): Promise<Bookmark>;
   findByIdAndUser(id: string, userId: string): Promise<Bookmark | null>;
   /**
    * A bookmark someone else may own, if the viewer is allowed to see it at
@@ -145,6 +150,23 @@ export class BookmarkServiceImpl implements BookmarkService {
     private collectionRepository?: CollectionRepository
   ) {}
 
+  async updateByOwner(id: string, userId: string, data: OwnerBookmarkUpdate): Promise<Bookmark> {
+    const row = await this.bookmarkRepository.updateOwned(id, userId, {
+      ...(data.title === undefined ? {} : { title: data.title }),
+      ...(data.isArchived === undefined ? {} : { is_archived: data.isArchived }),
+      ...(data.cosmicTags === undefined ? {} : { cosmic_tags: data.cosmicTags }),
+      ...(data.cosmicSummary === undefined ? {} : { cosmic_summary: data.cosmicSummary }),
+      ...(data.userNote === undefined ? {} : { user_note: data.userNote }),
+      ...(data.laterUntil === undefined ? {} : { later_until: data.laterUntil }),
+    });
+    return this.enrichWithCollectionPath(this.mapDatabaseToBookmark(row));
+  }
+
+  async mergeCapture(id: string, userId: string, note?: string, laterUntil?: Date | null): Promise<Bookmark> {
+    const row = await this.bookmarkRepository.mergeCapture(id, userId, note, laterUntil);
+    return this.enrichWithCollectionPath(this.mapDatabaseToBookmark(row));
+  }
+
   async findByUserAndUrl(
     userId: string,
     sourceUrl: string
@@ -223,6 +245,11 @@ export class BookmarkServiceImpl implements BookmarkService {
 
     const newBookmark: NewBookmark = {
       source_url: url,
+      user_note: options.userNote ?? null,
+      later_until: options.laterUntil ?? null,
+      capture_source: options.captureSource ?? null,
+      capture_platform: options.capturePlatform ?? "unknown",
+      capture_queued_at: options.captureQueuedAt ?? null,
       title: provisionalTitle,
       metadata,
       user_id: userId,
@@ -310,6 +337,11 @@ export class BookmarkServiceImpl implements BookmarkService {
       metadata
     );
 
+    Object.assign(newBookmark, {
+      user_note: metadata.userNote ?? null, later_until: metadata.laterUntil ?? null,
+      capture_source: metadata.captureSource ?? null, capture_platform: metadata.capturePlatform ?? "unknown",
+      capture_queued_at: metadata.captureQueuedAt ?? null,
+    });
     const bookmark = await this.bookmarkRepository.create(newBookmark);
     return this.mapDatabaseToBookmark(bookmark);
   }
@@ -707,6 +739,11 @@ export function mapDatabaseRowToBookmark(data: any): Bookmark {
   return {
     id: data.id,
     sourceUrl: data.source_url,
+    userNote: data.user_note ?? null,
+    laterUntil: data.later_until ? new Date(data.later_until) : null,
+    captureSource: data.capture_source ?? null,
+    capturePlatform: data.capture_platform ?? null,
+    captureQueuedAt: data.capture_queued_at ? new Date(data.capture_queued_at) : null,
     title: data.title,
     metadata: data.metadata,
     collectionId: data.collection_id,
@@ -741,4 +778,10 @@ export function mapDatabaseRowToBookmark(data: any): Bookmark {
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
   };
+}
+
+/** Private capture intent never travels with a public, followed or reshare DTO. */
+export function stripPrivateCaptureFields(bookmark: Bookmark): PublicBookmark {
+  const { userNote, laterUntil, captureSource, capturePlatform, captureQueuedAt, ...visible } = bookmark;
+  return visible;
 }

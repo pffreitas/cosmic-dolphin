@@ -74,6 +74,16 @@ enum BookmarkProcessingPhase {
 }
 
 model Bookmark {
+    @doc("Owner-only private note, omitted from public and followed serializers.")
+    userNote?: string | null;
+    @doc("Owner-only snooze expiry; null means No rush.")
+    laterUntil?: utcDateTime | null;
+    @doc("Original capture entry; null for previous clients.")
+    captureSource?: CaptureSource | null;
+    @doc("Original capture platform.")
+    capturePlatform?: CapturePlatform | null;
+    @doc("Time the capture was saved durably on its device.")
+    captureQueuedAt?: utcDateTime | null;
     id: string;
     sourceUrl: string;
     createdAt: utcDateTime;
@@ -121,6 +131,9 @@ model Bookmark {
     processingError?: string;
 }
 
+@doc("Public bookmark view. Private capture intent is never part of this contract.")
+model PublicBookmark is OmitProperties<Bookmark, "userNote" | "laterUntil" | "captureSource" | "capturePlatform" | "captureQueuedAt">;
+
 model BookmarkImage {
     url: string;
     title: string;
@@ -157,7 +170,21 @@ model BookmarkMetadata {
     originalUrl?: string;
 }
 
+enum CaptureSource { ios_share_extension, android_share, save_sheet, clipboard }
+enum CapturePlatform { ios, android, web, `unknown` }
+
 model CreateBookmarkRequest {
+    @doc("Optional private note, independent of the private-link description.")
+    @maxLength(500)
+    user_note?: string;
+    @doc("Future snooze expiry within 60 days; null means No rush.")
+    later_until?: utcDateTime | null;
+    @doc("Capture entry used by this save; omission remains NULL for previous clients.")
+    capture_source?: CaptureSource;
+    @doc("Capture platform; omission is stored as unknown.")
+    capture_platform?: CapturePlatform;
+    @doc("Original device queue timestamp, preserved on replay.")
+    queued_at?: utcDateTime;
     @doc("The source URL to bookmark")
     source_url: string;
 
@@ -400,6 +427,11 @@ model BookmarkLibraryCounts {
     statement as the move.
     """)
 model UpdateBookmarkRequest {
+    @doc("Private note. Omit to preserve; null clears.")
+    @maxLength(500)
+    userNote?: string | null;
+    @doc("Future snooze expiry within 60 days. Omit to preserve; null clears.")
+    laterUntil?: utcDateTime | null;
     title?: string;
 
     @doc("Archive or restore. Archiving keeps the bookmark searchable and is reversible; it is never a delete.")
@@ -922,7 +954,7 @@ interface Bookmarks {
 interface SharedBookmarks {
     @doc("Get a publicly shared bookmark by its share slug")
     @get
-    findBySlug(@path slug: string): Bookmark | {
+    findBySlug(@path slug: string): PublicBookmark | {
         @statusCode statusCode: 404;
         @body body: BookmarkError;
     } | {

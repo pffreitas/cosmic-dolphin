@@ -87,3 +87,14 @@ describe("API contract", () => {
     expect(reading).toContain('@route("/{id}/highlights")');
   });
 });
+
+it("public bookmark schemas omit every private capture field and public saves use that schema", async () => {
+  const openApi = await Bun.file(repoPath("packages/apispec/tsp-output/@typespec/openapi3/openapi.yaml")).text();
+  const publicSchema = openApi.match(/ {4}PublicBookmark:\n([\s\S]*?)(?=\n {4}[A-Za-z]|\n {2}[A-Za-z]|$)/)?.[1];
+  expect(publicSchema).toBeDefined();
+  for (const field of ["userNote", "laterUntil", "captureSource", "capturePlatform", "captureQueuedAt"]) {
+    expect(publicSchema).not.toMatch(new RegExp(`^\\s+${field}:`, "m"));
+  }
+  const publicSaves = openApi.match(/ {4}PublicSavesResponse:\n([\s\S]*?)(?=\n {4}[A-Za-z]|$)/)?.[1];
+  expect(publicSaves).toContain("#/components/schemas/PublicBookmark");
+});

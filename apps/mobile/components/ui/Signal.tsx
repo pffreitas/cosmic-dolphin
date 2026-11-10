@@ -87,6 +87,15 @@ export function Button({
   style?: ViewStyle;
 }) {
   const { colors } = useTheme();
+  const [reduceMotion, setReduceMotion] = useState(true);
+  useEffect(() => {
+    let mounted = true;
+    void AccessibilityInfo.isReduceMotionEnabled().then(value => {
+      if (mounted) setReduceMotion(value);
+    });
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+    return () => { mounted = false; subscription.remove(); };
+  }, []);
   const foreground = primary ? colors.accentFg : colors.fg;
   return (
     <Pressable
@@ -108,7 +117,7 @@ export function Button({
       ]}
     >
       {busy ? (
-        <ActivityIndicator color={foreground} size="small" />
+        <ActivityIndicator color={foreground} size="small" animating={!reduceMotion} />
       ) : icon ? (
         <Ionicons name={icon} size={18} color={foreground} />
       ) : null}

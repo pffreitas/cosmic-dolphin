@@ -121,8 +121,23 @@ export function decodeBookmarkCursor(
  * Title, tags, archived. Not `collectionId` — moving a bookmark has its own
  * endpoint because it has to write `filing_source` in the same statement.
  */
+const laterUntilSchema = z.string().datetime().refine(value => {
+  const timestamp = Date.parse(value);
+  const now = Date.now();
+  return timestamp > now && timestamp <= now + 60 * 86400000;
+}, "Read when must be in the future and within 60 days").nullable().optional();
+const captureBodySchema = z.object({
+  user_note: z.string().max(500).optional(),
+  later_until: laterUntilSchema,
+  capture_source: z.enum(["ios_share_extension", "android_share", "save_sheet", "clipboard"]).optional(),
+  capture_platform: z.enum(["ios", "android", "web", "unknown"]).optional(),
+  queued_at: z.string().datetime().optional(),
+  is_private_link: z.boolean().optional(), title: z.string().optional(), description: z.string().optional(),
+});
 export const updateBookmarkSchema = z
   .object({
+    userNote: z.string().max(500).nullable().optional(),
+    laterUntil: laterUntilSchema,
     title: z.string().trim().min(1, "title cannot be blank").optional(),
     isArchived: z.boolean().optional(),
     tags: z
@@ -136,6 +151,8 @@ export const updateBookmarkSchema = z
   })
   .refine(
     (body) =>
+      body.userNote !== undefined ||
+      body.laterUntil !== undefined ||
       body.title !== undefined ||
       body.isArchived !== undefined ||
       body.tags !== undefined ||
@@ -155,11 +172,11 @@ export function validateCreateBookmarkBody(
     return { ok: false, status: 400, error: "source_url is required" };
   }
 
-  if (!isValidUrl(body.source_url)) {
+  if (typeof body.source_url !== "string" || !isValidUrl(body.source_url)) {
     return { ok: false, status: 400, error: "Invalid URL format" };
   }
 
-  if (body.is_private_link && !body.description?.trim()) {
+  if (body.is_private_link && (typeof body.description !== "string" || !body.description.trim())) {
     return {
       ok: false,
       status: 400,
@@ -167,6 +184,9 @@ export function validateCreateBookmarkBody(
     };
   }
 
+  if (body.is_private_link && (typeof body.title !== "string" || !body.title.trim())) return { ok: false, status: 400, error: "title is required for private links" };
+  const capture = captureBodySchema.safeParse(body);
+  if (!capture.success) return { ok: false, status: 400, error: firstZodMessage(capture.error) };
   return { ok: true };
 }
 
@@ -487,13 +507,25 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
   const db = createDatabase(config.DATABASE_URL);
   const services: ServiceContainer = createServiceContainer(supabase, db);
 
+  await registerBookmarkRoutes(fastify, services);
+  fastify.addHook("onClose", async () => db.destroy());
+}
+
+export async function registerBookmarkRoutes(fastify: FastifyInstance, services: ServiceContainer, authenticate = authMiddleware) {
+  const logCapture = (bookmark: Bookmark, alreadySaved: boolean) => fastify.log.info({
+    bookmark_id: bookmark.id, user_id: bookmark.userId,
+    capture_source: bookmark.captureSource ?? null, capture_platform: bookmark.capturePlatform ?? "unknown",
+    queued: !!bookmark.captureQueuedAt,
+    queue_age_s: bookmark.captureQueuedAt ? Math.max(0, Math.floor((bookmark.createdAt.getTime() - bookmark.captureQueuedAt.getTime()) / 1000)) : 0,
+    already_saved: alreadySaved,
+  }, "Bookmark created");
   fastify.post<{
     Body: Omit<CreateBookmarkRequest, "user_id">;
     Reply: CreateBookmarkResponse | { error: string };
   }>(
     "/bookmarks",
     {
-      preHandler: authMiddleware,
+      preHandler: authenticate,
       // 100 saves a day, per user. 429 with `Retry-After` — the client keeps
       // the URL in the field and shows the wait.
       config: rateLimited(RATE_LIMITS.saves),
@@ -539,39 +571,10 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           normalizedUrl
         );
         if (existingBookmark) {
-          if (is_private_link) {
-            const bookmark = await services.bookmark.convertToPrivateLink(
-              existingBookmark,
-              {
-                title,
-                description,
-                tags,
-                collectionId: collection_id,
-                originalUrl,
-              }
-            );
-            const queued = await queueBookmarkForProcessing(
-              services,
-              bookmark,
-              user_id,
-              (queueError) => {
-                fastify.log.error({ queueError }, "Queue post error");
-              }
-            );
-            return reply.status(201).send({
-              bookmark: queued.bookmark,
-              message: queued.message ?? "Private link saved successfully",
-            });
-          }
-
-          // Pasting the same link twice is not an error. Hand back the row the
-          // user already has and let the client toast "Already in your
-          // library" with a link to it — no 409, and nothing re-queued.
-          return reply.status(200).send({
-            bookmark: existingBookmark,
-            alreadySaved: true,
-            message: "Already in your library",
-          });
+          const bookmark = await services.bookmark.mergeCapture(existingBookmark.id, user_id,
+            request.body.user_note, request.body.later_until == null ? request.body.later_until : new Date(request.body.later_until));
+          logCapture(bookmark, true);
+          return reply.status(200).send({ bookmark, alreadySaved: true, message: "Already in your Library" });
         }
 
         if (is_private_link) {
@@ -584,6 +587,10 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
               tags,
               collectionId: collection_id,
               originalUrl,
+              userNote: request.body.user_note,
+              laterUntil: request.body.later_until == null ? request.body.later_until : new Date(request.body.later_until),
+              captureSource: request.body.capture_source, capturePlatform: request.body.capture_platform,
+              captureQueuedAt: request.body.queued_at ? new Date(request.body.queued_at) : undefined,
             }
           );
           const queued = await queueBookmarkForProcessing(
@@ -594,6 +601,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
               fastify.log.error({ queueError }, "Queue post error");
             }
           );
+          logCapture(queued.bookmark, false);
           return reply.status(201).send({
             bookmark: queued.bookmark,
             message: queued.message ?? "Private link saved successfully",
@@ -606,6 +614,11 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         const bookmark = await services.bookmark.create(normalizedUrl, user_id, {
           originalUrl,
           collectionId: collection_id,
+          userNote: request.body.user_note,
+          laterUntil: request.body.later_until == null ? request.body.later_until : new Date(request.body.later_until),
+          captureSource: request.body.capture_source,
+          capturePlatform: request.body.capture_platform,
+          captureQueuedAt: request.body.queued_at ? new Date(request.body.queued_at) : undefined,
         });
 
         const queued = await queueBookmarkForProcessing(
@@ -617,6 +630,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           }
         );
 
+        logCapture(queued.bookmark, false);
         return reply.status(201).send({
           bookmark: queued.bookmark,
           message: queued.message ?? "Bookmark created successfully",
@@ -636,8 +650,11 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
               { bookmarkId: existingBookmark.id, userId: userIdForRaceRecovery },
               "Concurrent duplicate bookmark save recovered"
             );
+            const bookmark = await services.bookmark.mergeCapture(existingBookmark.id, userIdForRaceRecovery,
+                request.body.user_note, request.body.later_until == null ? request.body.later_until : new Date(request.body.later_until));
+            logCapture(bookmark, true);
             return reply.status(200).send({
-              bookmark: existingBookmark,
+              bookmark,
               alreadySaved: true,
               message: "Already in your library",
             });
@@ -659,7 +676,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
   fastify.get<{
     Querystring: Omit<GetBookmarksQuery, "user_id">;
     Reply: GetBookmarksResponse | { error: string };
-  }>("/bookmarks", { preHandler: authMiddleware }, async (request, reply) => {
+  }>("/bookmarks", { preHandler: authenticate }, async (request, reply) => {
     try {
       const {
         collection_id,
@@ -736,7 +753,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
   // anyway for the next person reading the file.
   fastify.get<{
     Reply: BookmarkLibraryCounts | { error: string };
-  }>("/bookmarks/counts", { preHandler: authMiddleware }, async (request, reply) => {
+  }>("/bookmarks/counts", { preHandler: authenticate }, async (request, reply) => {
     try {
       const counts = await services.bookmark.countLibrary(request.userId!);
       return reply.send(counts);
@@ -755,7 +772,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     Reply: SearchBookmarksResponse | { error: string };
   }>(
     "/bookmarks/search",
-    { preHandler: authMiddleware },
+    { preHandler: authenticate },
     async (request, reply) => {
       try {
         const {
@@ -801,7 +818,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     Reply: PreviewResponse | { error: string };
   }>(
     "/bookmarks/preview",
-    { preHandler: authMiddleware },
+    { preHandler: authenticate },
     async (request, reply) => {
       const { url } = request.body;
 
@@ -824,7 +841,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     Reply: BookmarkProcessingTimeline | { error: string };
   }>(
     "/bookmarks/:id/processing-timeline",
-    { preHandler: authMiddleware },
+    { preHandler: authenticate },
     async (request, reply) => {
       try {
         const { id } = request.params;
@@ -858,7 +875,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
   }>(
     "/bookmarks/:id/reprocess",
     {
-      preHandler: authMiddleware,
+      preHandler: authenticate,
       config: rateLimited(RATE_LIMITS.reprocess),
     },
     async (request, reply) => {
@@ -925,7 +942,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
   }>(
     "/bookmarks/:id/reshare",
     {
-      preHandler: authMiddleware,
+      preHandler: authenticate,
       config: rateLimited(RATE_LIMITS.saves),
     },
     async (request, reply) => {
@@ -955,7 +972,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     Reply: Bookmark | { error: string };
   }>(
     "/bookmarks/:id",
-    { preHandler: authMiddleware },
+    { preHandler: authenticate },
     async (request, reply) => {
       try {
         const { id } = request.params;
@@ -990,7 +1007,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     Params: { id: string };
     Body: unknown;
     Reply: Bookmark | { error: string };
-  }>("/bookmarks/:id", { preHandler: authMiddleware }, async (request, reply) => {
+  }>("/bookmarks/:id", { preHandler: authenticate }, async (request, reply) => {
     try {
       const { id } = request.params;
       const user_id = request.userId!;
@@ -1008,8 +1025,10 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: "Bookmark not found" });
       }
 
-      const { title, isArchived, tags, cosmicSummary } = parsed.data;
-      const bookmark = await services.bookmark.update(id, {
+      const { title, isArchived, tags, cosmicSummary, userNote, laterUntil } = parsed.data;
+      const bookmark = await services.bookmark.updateByOwner(id, user_id, {
+        ...(userNote !== undefined ? { userNote } : {}),
+        ...(laterUntil !== undefined ? { laterUntil: laterUntil ? new Date(laterUntil) : null } : {}),
         ...(title !== undefined ? { title } : {}),
         ...(isArchived !== undefined ? { isArchived } : {}),
         ...(tags !== undefined ? { cosmicTags: tags } : {}),
@@ -1028,7 +1047,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     Reply: { message: string } | { error: string };
   }>(
     "/bookmarks/:id",
-    { preHandler: authMiddleware },
+    { preHandler: authenticate },
     async (request, reply) => {
       try {
         const { id } = request.params;
@@ -1052,7 +1071,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     Reply: Bookmark | { error: string };
   }>(
     "/bookmarks/:id/read",
-    { preHandler: authMiddleware },
+    { preHandler: authenticate },
     async (request, reply) => {
       try {
         const { id } = request.params;
@@ -1082,7 +1101,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     Reply: Bookmark | { error: string };
   }>(
     "/bookmarks/:id/read",
-    { preHandler: authMiddleware },
+    { preHandler: authenticate },
     async (request, reply) => {
       try {
         const { id } = request.params;
@@ -1106,7 +1125,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     Reply: { likeCount: number; isLikedByCurrentUser: boolean } | { error: string };
   }>(
     "/bookmarks/:id/like",
-    { preHandler: authMiddleware },
+    { preHandler: authenticate },
     async (request, reply) => {
       try {
         const { id } = request.params;
@@ -1127,7 +1146,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     Reply: { likeCount: number; isLikedByCurrentUser: boolean } | { error: string };
   }>(
     "/bookmarks/:id/like",
-    { preHandler: authMiddleware },
+    { preHandler: authenticate },
     async (request, reply) => {
       try {
         const { id } = request.params;
@@ -1148,7 +1167,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     Reply: ShareBookmarkResponse | { error: string };
   }>(
     "/bookmarks/:id/share",
-    { preHandler: authMiddleware },
+    { preHandler: authenticate },
     async (request, reply) => {
       try {
         const { id } = request.params;
@@ -1172,7 +1191,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     Reply: ShareBookmarkResponse | { error: string };
   }>(
     "/bookmarks/:id/share",
-    { preHandler: authMiddleware },
+    { preHandler: authenticate },
     async (request, reply) => {
       try {
         const { id } = request.params;
@@ -1199,7 +1218,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
     Reply: Bookmark | { error: string };
   }>(
     "/bookmarks/:id/collection",
-    { preHandler: authMiddleware },
+    { preHandler: authenticate },
     async (request, reply) => {
       try {
         const { id } = request.params;
@@ -1245,7 +1264,7 @@ export default async function bookmarkRoutes(fastify: FastifyInstance) {
           return reply.status(404).send({ error: "Bookmark not found" });
         }
 
-        const { quickAccess, searchDocument, userId, processingStatus, processingStartedAt, processingCompletedAt, processingError, ...publicBookmark } = bookmark;
+        const { userNote, laterUntil, captureSource, capturePlatform, captureQueuedAt, quickAccess, searchDocument, userId, processingStatus, processingStartedAt, processingCompletedAt, processingError, ...publicBookmark } = bookmark;
 
         let sharedByUserName: string | undefined;
         try {

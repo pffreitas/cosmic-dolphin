@@ -62,6 +62,8 @@ describe("BookmarkProcessorService", () => {
     });
 
     mockBookmarkService = {
+      updateByOwner: jest.fn(),
+      mergeCapture: jest.fn(),
       findByIdAndUser: jest.fn(),
       findVisibleById: jest.fn(),
       findByIdAndUserWithLikeStatus: jest.fn(),

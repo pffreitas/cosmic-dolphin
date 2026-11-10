@@ -100,6 +100,8 @@ export interface BookmarkRepository {
     userId: string
   ): Promise<{ bookmark: Bookmark; isLikedByCurrentUser: boolean } | null>;
   create(data: NewBookmark): Promise<Bookmark>;
+  updateOwned(id: string, userId: string, data: BookmarkUpdate): Promise<Bookmark>;
+  mergeCapture(id: string, userId: string, note?: string, laterUntil?: Date | null): Promise<Bookmark>;
   insertScrapedUrlContents(
     bookmarkId: string,
     contents: Omit<
@@ -303,6 +305,18 @@ export class BookmarkRepositoryImpl
       const { like_id, ...bookmark } = result;
       return { bookmark, isLikedByCurrentUser: like_id !== null };
     }, "findByIdAndUserWithLikeStatus");
+  }
+
+  async updateOwned(id: string, userId: string, data: BookmarkUpdate): Promise<Bookmark> {
+    return this.db.updateTable("bookmarks").set({ ...data, updated_at: new Date() }).where("id", "=", id).where("user_id", "=", userId).returningAll().executeTakeFirstOrThrow();
+  }
+
+  async mergeCapture(id: string, userId: string, note?: string, laterUntil?: Date | null): Promise<Bookmark> {
+    return this.db.updateTable("bookmarks").set({
+      ...(note === undefined ? {} : { user_note: sql<string>`coalesce(user_note, ${note})` }),
+      ...(laterUntil === undefined ? {} : { later_until: laterUntil }),
+      updated_at: new Date(),
+    }).where("id", "=", id).where("user_id", "=", userId).returningAll().executeTakeFirstOrThrow();
   }
 
   async create(data: NewBookmark): Promise<Bookmark> {

@@ -76,10 +76,10 @@ export function UpdateCollectionRequestFromJSONTyped(json: any, ignoreDiscrimina
     return {
         
         'name': json['name'] == null ? undefined : json['name'],
-        'description': json['description'] == null ? undefined : json['description'],
-        'color': json['color'] == null ? undefined : json['color'],
-        'icon': json['icon'] == null ? undefined : json['icon'],
-        'parentId': json['parentId'] == null ? undefined : json['parentId'],
+        'description': json['description'] == null ? json['description'] : json['description'],
+        'color': json['color'] == null ? json['color'] : json['color'],
+        'icon': json['icon'] == null ? json['icon'] : json['icon'],
+        'parentId': json['parentId'] == null ? json['parentId'] : json['parentId'],
         'isPublic': json['isPublic'] == null ? undefined : json['isPublic'],
     };
 }

@@ -380,7 +380,7 @@ graph LR
 
 | | |
 |---|---|
-| Status | In progress |
+| Status | Done |
 | Depends on | none |
 | Traces | FR-4 · FR-5 · FR-6 · FR-26 · FR-27 · NFR-4 · NFR-5 · FR-19 at capture · S-5 · S-23 · §8.4 Writes/App save queue · §8.6 Duplicate URL/Save request failed/Private save · §8.8 Bookmark created |
 | Ships as | User-visible: save a link durably from the real in-app entry in the complete package |
@@ -407,23 +407,23 @@ graph LR
 
 **Acceptance criteria**
 
-- [ ] A cold-started signed-in user can Save → Home pending using actual provider/API wiring; killing before server acceptance preserves the entry and later `alreadySaved` counts as success (FR-27).
-- [ ] Two concurrent creates yield one bookmark; note is filled only if stored NULL, explicit snooze replaces/clears, omission preserves, no duplicate queue job (§8.4, NFR-5).
-- [ ] 400 retains a failed row with Remove; network/5xx retains Retry/Remove; 401/wrong account waits;429 obeys notBefore. Private replay retains title/description, never fetches the page (§8.6).
-- [ ] Notes and snoozes are owner-only, all listed public/followed/reshare serializers strip private fields; validation allows future ≤60days, not elapsed values (§8.4, FR-16).
+- [x] A cold-started signed-in user can Save → Home pending using actual provider/API wiring; killing before server acceptance preserves the entry and later `alreadySaved` counts as success (FR-27).
+- [x] Two concurrent creates yield one bookmark; note is filled only if stored NULL, explicit snooze replaces/clears, omission preserves, no duplicate queue job (§8.4, NFR-5).
+- [x] 400 retains a failed row with Remove; network/5xx retains Retry/Remove; 401/wrong account waits;429 obeys notBefore. Private replay retains title/description, never fetches the page (§8.6).
+- [x] Notes and snoozes are owner-only, all listed public/followed/reshare serializers strip private fields; validation allows future ≤60days, not elapsed values (§8.4, FR-16).
 
 The following §5 wording is authoritative and copied verbatim; each original criterion is covered by the tests above/below:
 
-- [ ] **FR-4:** The save sheet shall offer a link field and, when the clipboard holds a URL, the copied-link row (D-10).
-- [ ] **FR-4 AC1:** Opening the sheet shows no paste prompt and no title before the tap.
-- [ ] **FR-5:** The save sheet shall write the bookmark on Save, then offer an optional note and Read when: Tonight, This weekend, No rush (FR-11).
-- [ ] **FR-5 AC1:** No rush sets no snooze.
-- [ ] **FR-6 capture checkpoint:** A new save appears above the existing Home feed with pipeline phases and its available filing path. Completed-after-compute placement is T-6; classified failure replacement is T-9. The full FR-6 package requirement is covered across those checkpoints.
+- [x] **FR-4:** The save sheet shall offer a link field and, when the clipboard holds a URL, the copied-link row (D-10).
+- [x] **FR-4 AC1:** Opening the sheet shows no paste prompt and no title before the tap.
+- [x] **FR-5:** The save sheet shall write the bookmark on Save, then offer an optional note and Read when: Tonight, This weekend, No rush (FR-11).
+- [x] **FR-5 AC1:** No rush sets no snooze.
+- [x] **FR-6 capture checkpoint:** A new save appears above the existing Home feed with pipeline phases and its available filing path. Completed-after-compute placement is T-6; classified failure replacement is T-9. The full FR-6 package requirement is covered across those checkpoints.
 FR-6 AC1 (failure replaces the card in place) is owned by T-9, not a T-1 completion condition.
-- [ ] **FR-26:** Every save shall record `capture_platform`, `capture_source` and, if queued, `capture_queued_at`.
+- [x] **FR-26:** Every save shall record `capture_platform`, `capture_source` and, if queued, `capture_queued_at`.
 FR-26 AC1 (queued iOS attribution) is owned by T-3, not a T-1 completion condition. T-1 proves save_sheet/clipboard capture; T-4 proves Android.
-- [ ] **FR-27:** Unsent saves shall persist on the phone until the server accepts them, one bookmark per URL.
-- [ ] **FR-27 AC1:** App kill preserves an unsent save; relaunch accepts `alreadySaved` as success.
+- [x] **FR-27:** Unsent saves shall persist on the phone until the server accepts them, one bookmark per URL.
+- [x] **FR-27 AC1:** App kill preserves an unsent save; relaunch accepts `alreadySaved` as success.
 
 **Tests** (write in this order; fixtures within one task are not separate handoffs)
 
@@ -449,7 +449,11 @@ bun run --cwd apps/mobile lint
 
 **Notes**
 
-Started 2026-11-10 after green baseline. First developer builds T-1 test-first; coordinator verification/checkpoint pending. All later-owned FR-6 placement/failure and iOS attribution remain with their listed tasks.
+Implemented and coordinator-verified 2026-11-10 on `feature/save-and-todays-5`; checkpoint SHA is recorded in the next coordinator metadata checkpoint. Fresh developer task node:delegated-task:command%3Amcp%3A44e93c94-ffbb-4f6d-ae4f-4a59ab199c23%3Adelegate-task%3A9cea8afb-b067-4e50-992e-7d20a5aed0da completed durable Save/provider/generated API wiring, account-bound serialized capture replay, atomic owner confirmation, private note/timing/capture fields, duplicate precedence and public stripping, native metadata-only copied-link detection, local timing helpers and the guarded fixture seeder. Real Fastify/loopback Postgres concurrency proves one bookmark/job; RNTL lifetime abort/unmount and storage replay prove the T-1 interruption checkpoint. Native process-kill/EAS, LTE, accessibility and later FR-6 placement/failure/iOS attribution remain with their owning tasks.
+
+Coordinator independently ran every T-1 Verify command plus Verify all and API lint: apispec and shared build; disposable DB up/reset; API340 tests; focused shared2; focused mobile27; root typecheck with `--env-mode=loose` and explicit shared/API/worker/mobile tsc; serial test:db shared393/API340/worker10; full mobile73 with one existing skip; web335; mobile/web/API lint and tokens checks all PASS. Mobile/web lint retain5/112 baseline warnings; API lint has60 warnings including4 new HTTP-fixture any warnings. All backend processes explicitly used loopback5433, NODE_ENV=test and COMPOSE_PROJECT_NAME=cosmic-dolphin, Turbo loose env and serial DB suites. The disposable container's developer-set max_wal_size=128MB avoids tmpfs exhaustion; no hosted migration/configuration ran. Client nullable serializers were fixed in generator source templates and regenerated; no generated file was manually edited. Non-generated diff whitespace check passes; two generator-produced blank-comment whitespace warnings remain. Source-doc attempts did not correct nullable-enum generator comments and were reverted; final generated output matches the tested candidate.
+
+Test-first assessment: developer reported observed behavior-red→green for core Save interruption/confirmation/replay, API ownership/privacy/validation/concurrency, queue status/account/timeouts, clipboard, fixture guards and generated null serialization. Supplemental regression cases first ran green (serialized storage interruption, existing pipeline/path display, form fallbacks/local times and shared metadata/legacy NULL); the during-create confirmation test was added before the preceding PATCH case was fully green. These are recorded process deviations, not a claim of perfect red-green sequencing. Coordinator accepted the implemented checkpoint after independently verifying its behavior; T-2 must follow one failing behavior→green before the next behavior. Whole-feature Sol review remains Pending, rounds0; T-1 is not reviewed, integrated or shipped.
 
 ### T-2 · Issue and revoke a save-only share key
 

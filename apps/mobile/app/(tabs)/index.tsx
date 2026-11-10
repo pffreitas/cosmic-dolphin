@@ -29,6 +29,8 @@ import { textStyle } from "@/constants/fonts";
 import { radius, space } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { usePreferences } from "@/contexts/PreferencesContext";
+import { CaptureFailureToast } from "@/components/CaptureFailureToast";
+import { useCaptures } from "@/contexts/CaptureContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHomeFeed } from "@/hooks/useHomeFeed";
 import { buildEditions, type Edition } from "@/lib/home-editions";
@@ -41,6 +43,7 @@ export default function HomeScreen() {
   const preferences = usePreferences();
   const [scope, setScope] = useState<FeedScope>("for_you");
   const feed = useHomeFeed(scope);
+  const { drain, changeError } = useCaptures();
   const [topic, setTopic] = useState("All topics");
   const [interestsOpen, setInterestsOpen] = useState(false);
   const [options, setOptions] = useState<Edition>();
@@ -100,7 +103,7 @@ export default function HomeScreen() {
         refreshControl={
           <RefreshControl
             refreshing={feed.refreshing && !feed.loading}
-            onRefresh={feed.refresh}
+            onRefresh={() => { void drain().catch(() => {}).then(feed.refresh); }}
             tintColor={colors.accent}
           />
         }
@@ -393,6 +396,7 @@ export default function HomeScreen() {
           }}
         />
       </Sheet>
+      <CaptureFailureToast message={changeError} />
     </Screen>
   );
 }

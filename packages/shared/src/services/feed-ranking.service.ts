@@ -25,7 +25,7 @@ import {
 import { toDigestWithSources } from "./digest.service";
 import { PublicProfileRow } from "../repositories/social.repository";
 import { SocialService } from "./social.service";
-import { mapDatabaseRowToBookmark } from "./bookmark.service";
+import { mapDatabaseRowToBookmark, stripPrivateCaptureFields } from "./bookmark.service";
 import {
   DEFAULT_FEED_RANKING_CONFIG,
   FEED_SIGNAL_NAMES,
@@ -1733,7 +1733,7 @@ export class FeedRankingServiceImpl implements FeedRankingService {
   ): SessionEntry {
     const item: FeedItem = {
       type,
-      bookmark: mapDatabaseRowToBookmark(row),
+      bookmark: type === "followed_save" || type === "reshare" ? stripPrivateCaptureFields(mapDatabaseRowToBookmark(row)) : mapDatabaseRowToBookmark(row),
     };
 
     if (author) item.actor = toFeedActor(author);
