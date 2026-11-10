@@ -380,7 +380,7 @@ graph LR
 
 | | |
 |---|---|
-| Status | Todo |
+| Status | In progress |
 | Depends on | none |
 | Traces | FR-4 · FR-5 · FR-6 · FR-26 · FR-27 · NFR-4 · NFR-5 · FR-19 at capture · S-5 · S-23 · §8.4 Writes/App save queue · §8.6 Duplicate URL/Save request failed/Private save · §8.8 Bookmark created |
 | Ships as | User-visible: save a link durably from the real in-app entry in the complete package |
@@ -449,7 +449,7 @@ bun run --cwd apps/mobile lint
 
 **Notes**
 
-Not started. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here.
+Started 2026-11-10 after green baseline. First developer builds T-1 test-first; coordinator verification/checkpoint pending. All later-owned FR-6 placement/failure and iOS attribution remain with their listed tasks.
 
 ### T-2 · Issue and revoke a save-only share key
 
@@ -1054,7 +1054,7 @@ One ledger;0 of5 rounds used. Record current fetched full Base SHA and reviewed 
 
 | Repo | Feature branch | Base SHA | Reviewed SHA | Tasks | Rounds | Verdict | Checks | Findings / follow-ups |
 |---|---|---|---|---|---|---|---|---|
-| cosmic-dolphin | feature/save-and-todays-5 | b7045a4c56f896d085e2e1aef79b12ea1cfa6407 | | T-1…T-10 | 0 | Pending | Preflight started | |
+| cosmic-dolphin | feature/save-and-todays-5 | b7045a4c56f896d085e2e1aef79b12ea1cfa6407 | | T-1…T-10 | 0 | Pending | Starting target verified locally; feature review not started | |
 
 ## Delivery
 
@@ -1263,3 +1263,5 @@ No unanswered implementation decision; all accepted deferred checks retain chose
 **Cleanup verification (2026-11-10).** Reconciled and removed owned session scratch files, screenshots/assets/review notes/downloaded test runner and the superseded generated mobile-redesign.html. Retained only the authoritative spec, this task plan and approved standalone prototype, plus explicitly user-requested durable BACKLOG.md. Pre-existing hooks/source references untouched. Prototype hash unchanged;10 post-deletion assertions reached successful completion: scratch/source absent, hash, Home, embedded offline assets, bookmark, Save, iOS15 Paste fallback, failure recovery, zero runtime errors. The runner failed during browser shutdown after its package was removed; subsequent inspection confirmed no spawned browser or new temporary directories remained. Final structural checker:10tasks,0errors,0warnings; retained links resolve. These are planning/prototype checks, not native/backend implementation proof.
 
 **Execution setup (2026-11-10).** `feature/save-and-todays-5` starts from fetched origin/main b7045a4c56f896d085e2e1aef79b12ea1cfa6407 in this thread’s existing isolated worktree. The two pre-existing untracked hook files remain excluded. Supporting sol-loop/file-pr/babysit-pr/leaving-pr-comments resolved; authenticated GitHub and latest catalog Sol gpt-6.1-sol confirmed. Starting checks pending normal Bun installation/generation; no product task started.
+
+**Starting-baseline results (2026-11-10, product tree b7045a4c56f896d085e2e1aef79b12ea1cfa6407).** Bun frozen install and apispec pipeline passed with no tracked generation/lock drift. Shared build, root web typecheck and explicit API/worker/shared/mobile tsc passed. Backend test:db passed (shared391, worker10; API suite green). Web335 tests passed. Mobile48 passed/1existing skip after the initial concurrent cold-run bookmark waitFor timeout; isolated bookmark9tests and full mobile rerun passed without code/test changes. Mobile/web lint pass with existing5/112 warnings, both token checks pass. No existing check was weakened or skipped. Expo CLI whoami authenticated; local iOS/Android device tools available. Restored ignored environment files from main checkout via repo's documented worktree setup convention; never log secrets or point tests at hosted data. Existing stopped repository disposable DB was restarted under COMPOSE_PROJECT_NAME=cosmic-dolphin; unused network from initial worktree-name collision removed. All future backend verify commands set DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/postgres NODE_ENV=test and COMPOSE_PROJECT_NAME=cosmic-dolphin explicitly now that .env is restored. Execute DB suites serially. Physical-phone LTE proof remains required later; current listed devices are simulators.
