@@ -669,11 +669,13 @@ Proof limitations: combined offline/signed-out/TalkBack criterion remains unchec
 
 Process qualifications retained for whole-feature review: no-link/effect/queue characterizations first ran green; Kotlin boundary implementation first compiled green; supplementary RNTL integration followed URL/queue phase. The real no-link lifecycle regression remained red across superseded previews; initial receiver diagnosis was incomplete, and actual delayed-router assertion established auth-navigation overwrite. Pending-share navigation guard passed that red and final signed emulator regression. No later failing behavior started before the unresolved case was green. Three superseded previews, harness fixes, ABI/environment/compiler setup retries and imprecise original text-size float capture are disclosed in the handback. No tests were weakened/skipped to pass. Own device session/services/fixture state cleaned, restored EAS bytes/hooks preserved. Complete-package review rounds remain0.
 
+Checkpoint commit: `188f8a916819ff28bd6b220a383c77d4b43d7335` (`Task: T-4`).
+
 ### T-5 · Apply the plum mobile shell and three destinations
 
 | | |
 |---|---|
-| Status | Todo |
+| Status | In progress |
 | Depends on | T-4 |
 | Traces | FR-17 · FR-28 · NFR-7 · S-15 entry · §7 Navigation/Accessibility/Components · §8.4 Tokens · §8.3 Mobile routing |
 | Ships as | User-visible: apply the plum mobile shell and three destinations in the complete package |
@@ -728,7 +730,7 @@ bun run --cwd apps/mobile lint
 
 **Notes**
 
-Not started. T-3 introduced a native canonical-token/font consumer; coordinator inspection found that its mobile override merge, title-1 weight600 and Close label1.3x cap must be completed with this task’s §7/mobile token styling. This is covered mobile styling/integration work, not a new feature; preserve native capture/queue behavior. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here.
+Started2026-11-10 from coordinator-verified T-4 checkpoint `188f8a916819ff28bd6b220a383c77d4b43d7335`; fresh background developer owns T-5 only. Available native targets: local iPhone17Pro/iOS26.5 simulator F3CF81FA-5972-40A4-83EF-0D077C02B571 and local Pixel_7_API_34/Android14 emulator. Own bound device sessions only, restore settings/services at handback. No real test login or physical iPhone is available; fixture/simulator proofs stay labelled and unavailable outcomes stay with T-10 under the execution clarification. T-3 introduced a native canonical-token/font consumer; coordinator inspection found that its mobile override merge, title-1 weight600 and Close label1.3x cap must be completed with this task’s §7/mobile token styling. This is covered mobile styling/integration work, not a new feature; preserve native capture/queue behavior. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here.
 
 ### T-6 · Show immutable daily picks in a finite Home
 
