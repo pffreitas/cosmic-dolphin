@@ -742,11 +742,13 @@ Native styling proof is explicitly isolated: UIKit fixture compiles actual share
 
 Observed test-first qualifications retained for whole-feature review: old-profile redirect was introduced during profile move before its case; its actual infinite-loop red then root-stack replacement green are recorded. Several existing/generator/contrast behaviors first characterized green; supplemental navigation/chrome cases followed primitive/native groups. A reduced-motion refactor syntax failure and native trait-context fixture failure were corrected and rerun; no named failed log is silently called green. Initial full mobile regression failures were fixture/router/profile-import/control-cap mismatches, corrected while preserving persistence/auth assertions;132 then pass. Worker cwd/pattern, SDK/resolver/tool setup retries and async act warnings remain disclosed in the handback. No product auth bypass or skipped/weakened behavior test. Both developer sessions/fixtures/Metro cleaned, precise captured settings restored, existing product app/auth/queue and hooks preserved. Complete-package review rounds remain0. Implementation checkpoint only, not shipped.
 
+Checkpoint commit: `23d9aa285c4b59c577a80759526b760d24646ac2` (`Task: T-5`).
+
 ### T-6 · Show immutable daily picks in a finite Home
 
 | | |
 |---|---|
-| Status | Todo |
+| Status | In progress |
 | Depends on | T-5 |
 | Traces | FR-7 · FR-8 · FR-9 · FR-14 · FR-15 · FR-16 · FR-25 · FR-29 · FR-30 · FR-6 final placement · NFR-2 · NFR-10 · S-1 · S-2 · §8.4 Picks · §8.6 picks/time-zone/snooze visibility · §8.8 Picks logs · A-3 |
 | Ships as | User-visible: show immutable daily picks in a finite Home in the complete package |
@@ -822,7 +824,7 @@ bun run --cwd apps/mobile lint
 
 **Notes**
 
-Not started. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here.
+Started2026-11-11 from coordinator-verified T-5 checkpoint `23d9aa285c4b59c577a80759526b760d24646ac2`; fresh background developer owns T-6 only. Complete TypeSpec/DB/server snapshot and finite Home behavior test-first. Available native timezone probe targets: local iPhone17Pro simulator F3CF81FA-5972-40A4-83EF-0D077C02B571 and local Android14 emulator-5554. Own device sessions only. Simulator/fixture outcomes stay labelled; unavailable real-session/physical proof remains T-10 under the execution clarification. Record500-candidate p95 compute/reread results and source/host/clock fixtures before checkpointing.
 
 ### T-7 · Complete, snooze or reject an own save with Undo
 
