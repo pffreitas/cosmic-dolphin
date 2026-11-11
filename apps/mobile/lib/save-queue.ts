@@ -1,3 +1,4 @@
+import { pendingShares, type PendingShare, type ShareQueueReader } from "../modules/share-queue";
 import { saveRequest } from "./save-request";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { randomUUID } from "expo-crypto";
@@ -36,6 +37,7 @@ type QueueClient = {
   update?: (id: string, params: { userNote?: string; laterUntil?: Date | null }, signal?: AbortSignal, userId?: string) => Promise<Bookmark>;
   create: (params: CreateBookmarkRequest, signal?: AbortSignal, userId?: string) => Promise<{ bookmark: Bookmark; alreadySaved?: boolean }> };
 export type QueueDrainOptions = {
+  onlyUnattempted?: boolean;
   signal?: AbortSignal;
   onStatus?: (entry: SaveEntry, status: "saving" | "queued" | "failed" | "saved", bookmark?: Bookmark, alreadySaved?: boolean) => void;
   onAccepting?: (entry: SaveEntry, bookmark: Bookmark) => void;
@@ -43,12 +45,28 @@ export type QueueDrainOptions = {
 };
 let drains: Promise<unknown> = Promise.resolve();
 export const saveQueue = {
+  importShares(bridge: ShareQueueReader | null = pendingShares()): Promise<string[]> {
+    return serialized(async () => {
+      if (!bridge) return [];
+      const snapshot: PendingShare[] = JSON.parse(await bridge.readPendingShares());
+      const entries = await read();
+      for (const entry of snapshot) {
+        if (!entries.some(existing => existing.id === entry.id)) entries.push({ id: entry.id, url: entry.url, userId: entry.userId, queuedAt: entry.queuedAt, notBefore: entry.notBefore,
+          captureSource: "ios_share_extension", capturePlatform: "ios", attempts: 0 });
+      }
+      if (!snapshot.length) return [];
+      await AsyncStorage.setItem(KEY, JSON.stringify(entries));
+      const ids = snapshot.map(entry => entry.id);
+      await bridge.removePendingShares(ids);
+      return ids;
+    });
+  },
   drain(userId: string, client: QueueClient, options: QueueDrainOptions = {}) {
     const result = drains.then(async () => {
       for (const queued of await saveQueue.list()) {
         let entry: SaveEntry | undefined = queued;
         if (options.signal?.aborted) break;
-        if ((entry.userId && entry.userId !== userId) || entry.failure === "rejected" || (entry.notBefore && Date.parse(entry.notBefore) > Date.now())) continue;
+        if ((options.onlyUnattempted && entry.attempts > 0) || (entry.userId && entry.userId !== userId) || entry.failure === "rejected" || (entry.notBefore && Date.parse(entry.notBefore) > Date.now())) continue;
         entry = await serialized(async () => {
           const entries = await read();
           const current = entries.find(value => value.id === queued.id);

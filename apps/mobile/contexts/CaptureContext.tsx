@@ -23,28 +23,49 @@ export function CaptureProvider({ children }: { children: React.ReactNode }) {
   owner.current = user?.id;
   const accepted = useRef(new Map<string, Bookmark>());
   const lifetime = useRef(new AbortController());
-  const drain = useCallback(async () => {
-    const userId = owner.current;
-    const signal = lifetime.current.signal;
-    if (!userId || signal.aborted) return;
-    const entries = await saveQueue.list();
-    if (signal.aborted) return;
-    setCaptures(previous => {
-      const saved = previous.filter(capture => capture.status === "saved");
-      return [...entries.filter(entry => !entry.userId || entry.userId === userId).reverse().map(entry => ({ id: entry.id, entry, status: entry.failure === "retry" || entry.failure === "rejected" ? "failed" as const : "queued" as const })), ...saved];
-    });
-    if (!entries.some(entry => !entry.userId || entry.userId === userId)) return;
-    await saveQueue.drain(userId, MobileAPI, {
-      signal,
-      onAccepting: (entry, bookmark) => { if (!signal.aborted) accepted.current.set(entry.id, bookmark); },
-      onConfirmationFailure: () => { if (!signal.aborted) setChangeError("Change was not saved. Check your connection."); },
-      onStatus: (entry, status, bookmark, alreadySaved) => {
-        if (signal.aborted || owner.current !== userId) return;
-        if (bookmark) accepted.current.set(entry.id, bookmark);
-        setCaptures(previous => previous.map(value => value.id === entry.id ? { id: entry.id, entry, status, bookmark, alreadySaved } : value));
-        if (status === "saved") setRevision(value => value + 1);
-      },
-    });
+  const draining = useRef<{ signal: AbortSignal; done: Promise<void> } | null>(null);
+  const drain = useCallback((onlyUnattempted = false): Promise<void> => {
+    const active = draining.current;
+    if (active?.signal === lifetime.current.signal) {
+      return active.done.then(async () => {
+        if (active.signal.aborted) return;
+        await saveQueue.importShares().catch(() => {});
+        if (!owner.current) return;
+        const fresh = await saveQueue.list();
+        if (fresh.some(entry => entry.attempts === 0 && (!entry.userId || entry.userId === owner.current)
+          && (!entry.notBefore || Date.parse(entry.notBefore) <= Date.now()))) await drain(true);
+      });
+    }
+    const done = (async () => {
+      const userId = owner.current;
+      const signal = lifetime.current.signal;
+      if (signal.aborted) return;
+      // Failed imports leave their group IDs intact. Existing app entries can still replay.
+      await saveQueue.importShares().catch(() => {});
+      if (!userId || signal.aborted || owner.current !== userId) return;
+      const entries = await saveQueue.list();
+      if (signal.aborted) return;
+      setCaptures(previous => {
+        const saved = previous.filter(capture => capture.status === "saved");
+        return [...entries.filter(entry => !entry.userId || entry.userId === userId).reverse().map(entry => ({ id: entry.id, entry, status: entry.failure === "retry" || entry.failure === "rejected" ? "failed" as const : "queued" as const })), ...saved];
+      });
+      if (!entries.some(entry => !entry.userId || entry.userId === userId)) return;
+      await saveQueue.drain(userId, MobileAPI, {
+        signal, onlyUnattempted,
+        onAccepting: (entry, bookmark) => { if (!signal.aborted) accepted.current.set(entry.id, bookmark); },
+        onConfirmationFailure: () => { if (!signal.aborted) setChangeError("Change was not saved. Check your connection."); },
+        onStatus: (entry, status, bookmark, alreadySaved) => {
+          if (signal.aborted || owner.current !== userId) return;
+          if (bookmark) accepted.current.set(entry.id, bookmark);
+          setCaptures(previous => previous.map(value => value.id === entry.id ? { id: entry.id, entry, status, bookmark, alreadySaved } : value));
+          if (status === "saved") setRevision(value => value + 1);
+        },
+      });
+    })();
+    const current = { signal: lifetime.current.signal, done };
+    draining.current = current;
+    void done.finally(() => { if (draining.current === current) draining.current = null; }).catch(() => {});
+    return done;
   }, []);
   useEffect(() => {
     const controller = new AbortController();

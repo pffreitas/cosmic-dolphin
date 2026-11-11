@@ -1,5 +1,11 @@
+import { Platform } from "react-native";
 import { requireOptionalNativeModule } from "expo-modules-core";
-export interface ShareQueueNative {
+export type PendingShare = { id: string; url: string; userId?: string; queuedAt: string; notBefore?: string };
+export interface ShareQueueReader {
+  readPendingShares(): Promise<string>;
+  removePendingShares(ids: string[]): Promise<void>;
+}
+export interface ShareQueueNative extends ShareQueueReader {
   readShareKey(): Promise<string | null>;
   writeShareKey(payload: string): Promise<void>;
   removeShareKey(): Promise<void>;
@@ -9,4 +15,8 @@ const nativeModule = requireOptionalNativeModule<ShareQueueNative>("ShareQueue")
 export function sharedKeychain(): ShareQueueNative {
   if (!nativeModule) throw new Error("Shared keychain requires the native app build");
   return nativeModule;
+}
+
+export function pendingShares(): ShareQueueReader | null {
+  return Platform.OS === "ios" ? nativeModule : null;
 }

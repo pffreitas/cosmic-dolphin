@@ -369,7 +369,7 @@ graph LR
 | T-2 | Issue and revoke a save-only share key | T-1 | A | `apps/api/src/middleware/share-key.ts` · `apps/api/src/middleware/auth.ts` · `apps/api/src/routes/share-keys.ts` · `apps/api/src/routes/bookmarks.ts` · `apps/api/src/index.ts` · `packages/shared/src/` · `packages/apispec/` · `packages/api-client/` · `supabase/migrations/` · `apps/mobile/contexts/AuthContext.tsx` · `apps/mobile/lib/mobile-api.ts` · `apps/mobile/lib/share-key.ts` · `apps/mobile/lib/supabase.ts` · `apps/mobile/app/(tabs)/profile.tsx` · `apps/mobile/ios/` · `apps/mobile/modules/share-queue/` | M | User-visible: complete-package capability |
 | T-3 | Save and close from the native iOS share extension | T-2 | A | `apps/mobile/ios/ShareExtension/` · `apps/mobile/ios/CosmicDolphin.xcodeproj/` · `apps/mobile/ios/` · `apps/mobile/modules/share-queue/` · `apps/mobile/app.json` · `apps/mobile/app/_layout.tsx` · `apps/mobile/lib/save-queue.ts` · `apps/mobile/IMPLEMENTATION.md` | M | User-visible: complete-package capability |
 | T-4 | Save and return from Android sharing without a tap | T-3 | A | `apps/mobile/app/_layout.tsx` · `apps/mobile/app/share.tsx` · `apps/mobile/lib/shareIntent.ts` · `apps/mobile/lib/save-queue.ts` · `apps/mobile/modules/share-queue/` · `apps/mobile/app/__tests__/share-logic.test.ts` | M | User-visible: complete-package capability |
-| T-5 | Apply the plum mobile shell and three destinations | T-4 | A | `docs/design-system/tokens.json` · `docs/design-system/foundations.md` · `scripts/generate-tokens.mjs` · `apps/mobile/constants/theme.ts` · `apps/mobile/components/ui/Signal.tsx` · `apps/mobile/app/(tabs)/_layout.tsx` · `apps/mobile/app/(tabs)/profile.tsx` · `apps/mobile/app/profile.tsx` · `apps/mobile/app/(tabs)/index.tsx` · `apps/mobile/app/_layout.tsx` | M | User-visible: complete-package capability |
+| T-5 | Apply the plum mobile shell and three destinations | T-4 | A | `docs/design-system/tokens.json` · `docs/design-system/foundations.md` · `scripts/generate-tokens.mjs` · `apps/mobile/constants/theme.ts` · `apps/mobile/components/ui/Signal.tsx` · `apps/mobile/app/(tabs)/_layout.tsx` · `apps/mobile/app/(tabs)/profile.tsx` · `apps/mobile/app/profile.tsx` · `apps/mobile/app/(tabs)/index.tsx` · `apps/mobile/app/_layout.tsx` · `apps/mobile/ios/ShareExtension/ShareTheme.swift` · `apps/mobile/ios/ShareExtension/ShareViewController.swift` · native font-resource memberships as needed | M | User-visible: complete-package capability |
 | T-6 | Show immutable daily picks in a finite Home | T-5 | A | `packages/shared/src/services/feed-ranking.service.ts` · `packages/shared/src/repositories/feed.repository.ts` · `packages/shared/src/services/picks.service.ts` · `packages/shared/src/repositories/picks.repository.ts` · `packages/shared/src/services/index.ts` · `packages/shared/src/repositories/index.ts` · `packages/shared/src/database/schema.ts` · `packages/shared/src/types.ts` · `apps/api/src/routes/picks.ts` · `apps/api/src/index.ts` · `packages/apispec/` · `packages/api-client/` · `supabase/migrations/` · `apps/mobile/lib/mobile-api.ts` · `apps/mobile/hooks/useHomeFeed.ts` · `apps/mobile/components/FeedCard.tsx` · `apps/mobile/components/TodayProgress.tsx` · `apps/mobile/app/(tabs)/index.tsx` | M | User-visible: complete-package capability |
 | T-7 | Complete, snooze or reject an own save with Undo | T-6 | A | `apps/mobile/components/FeedCard.tsx` · `apps/mobile/components/SwipeableCard.tsx` · `apps/mobile/components/TodayProgress.tsx` · `apps/mobile/components/Toast.tsx` · `apps/mobile/lib/read-when.ts` · `apps/mobile/lib/bookmark-actions.ts` · `apps/mobile/lib/mobile-api.ts` · `apps/mobile/app/(tabs)/index.tsx` · `apps/api/src/routes/bookmarks.ts` | M | User-visible: complete-package capability |
 | T-8 | Read a bookmark and continue to the next pick | T-7 | A | `packages/shared/src/services/bookmark.service.ts` · `packages/shared/src/repositories/bookmark.repository.ts` · `packages/shared/src/services/bookmark-content-blocks.ts` · `packages/apispec/bookmarks.tsp` · `packages/api-client/` · `apps/api/src/routes/bookmarks.ts` · `apps/mobile/lib/mobile-api.ts` · `apps/mobile/app/bookmark/[id].tsx` · `apps/mobile/app/reader/[id].tsx` · `apps/mobile/lib/bookmark-actions.ts` · `apps/mobile/components/Toast.tsx` | M | User-visible: complete-package capability |
@@ -528,7 +528,7 @@ Remaining prerequisites: real configured internal test-account login for normal-
 
 | | |
 |---|---|
-| Status | In progress |
+| Status | Done |
 | Depends on | T-2 |
 | Traces | FR-1 · FR-2 · FR-26 iOS attribution · FR-27 bridge import · NFR-1 · NFR-4 · NFR-9 · S-7 · §8.4 iOS shared storage · §8.6 share failures · §9 prebuild risk · A-2 |
 | Ships as | User-visible: save and close from the native iOS share extension in the complete package |
@@ -554,17 +554,17 @@ Remaining prerequisites: real configured internal test-account login for normal-
 
 **Acceptance criteria**
 
-- [ ] Safari valid-key share creates one bookmark with ios/ios_share_extension; normal extension completion closes without host launch (FR-1).
-- [ ] Offline/revoked/missing key/429/5xx/timeout shows phone-saved only after durable write; relaunch drains exactly once with attribution and original queuedAt/notBefore (FR-2/26).
-- [ ] Crash after app persistence but before group removal replays safely; another account does not drain; concurrent writes/imports lose no entries; full200/no URL has specified copy and no request.
+- [x] Safari valid-key share creates one bookmark with ios/ios_share_extension; normal extension completion closes without host launch (FR-1).
+- [x] Offline/revoked/missing key/429/5xx/timeout shows phone-saved only after durable write; relaunch drains exactly once with attribution and original queuedAt/notBefore (FR-2/26).
+- [x] Crash after app persistence but before group removal replays safely; another account does not drain; concurrent writes/imports lose no entries; full200/no URL has specified copy and no request.
 - [ ] VoiceOver leaves result and Close available;20 Wi-Fi and20 LTE trials meet NFR-1, recorded using os_log and signed device build, not Expo Web.
 
 The following §5 wording is authoritative and copied verbatim; each original criterion is covered by the tests above/below:
 
-- [ ] **FR-1:** The iOS share extension shall save on open with the share key (D-21), show the result and close without opening the app.
-- [ ] **FR-1 AC1:** A valid-key Safari share creates exactly one bookmark; screen-reader behavior follows §7 Accessibility.
-- [ ] **FR-2:** On any request failure the extension shall queue the URL on the phone and say so; the app sends it on next launch or foreground.
-- [ ] **FR-2 AC1:** Exactly one bookmark after next app open for §8.6 "Share token missing or revoked", "Share offline" and "Rate limited (429)".
+- [x] **FR-1:** The iOS share extension shall save on open with the share key (D-21), show the result and close without opening the app.
+- [x] **FR-1 AC1:** A valid-key Safari share creates exactly one bookmark; screen-reader behavior follows §7 Accessibility.
+- [x] **FR-2:** On any request failure the extension shall queue the URL on the phone and say so; the app sends it on next launch or foreground.
+- [x] **FR-2 AC1:** Exactly one bookmark after next app open for §8.6 "Share token missing or revoked", "Share offline" and "Rate limited (429)".
 
 **Tests** (write in this order; fixtures within one task are not separate handoffs)
 
@@ -585,7 +585,17 @@ eas build --profile preview --platform ios
 
 **Notes**
 
-Started2026-11-10 from coordinator-verified T-2 checkpoint `c48128057fa944da6869bf8f13295be50ccd60d6` under Paulo’s simulator execution clarification. Fresh developer assignment follows this metadata checkpoint. Use real native simulator/XCTest fixtures and local branch transport; record unavailable physical Wi-Fi/LTE and real-session outcomes in the pending package proof, never as passed. Root requested T-2’s completed developer to release its own stale device session; that owner reported Closed, and root resumed its own bound simulator command. No other session was reused or closed.
+Started2026-11-10 from coordinator-verified T-2 checkpoint `c48128057fa944da6869bf8f13295be50ccd60d6` under Paulo’s simulator execution clarification. Fresh background developer node:delegated-task:command%3Amcp%3A44e93c94-ffbb-4f6d-ae4f-4a59ab199c23%3Adelegate-task%3A3dc8212b-a2a3-406d-a3af-4ed2098d7211 assigned from f50457f00576f6d09655a5bfd6334ef328e5216e. Use real native simulator/XCTest fixtures and local branch transport; record unavailable physical Wi-Fi/LTE and real-session outcomes in the pending package proof, never as passed. Root requested T-2’s completed developer to release its own stale device session; that owner reported Closed, and root resumed its own bound simulator command. No other session was reused or closed.
+
+Coordinator verification2026-11-10: implemented and accepted as an available implementation checkpoint under the execution clarification, not shipped or fully device-proved. Reviewed all17 changed/new files and the handback `/tmp/T-3-handback.md`; the signed archive's17 source hashes independently match the current product files. Native protected/locked recovery-before-request and durable-app-import-before-group-remove preserve stable IDs, owners, original timing and attribution; imports/drains coalesce without immediately retrying old failures. No product auth bypass, clean prebuild or generated-client hand edit was introduced.
+
+Coordinator checks independently PASS: apispec, shared build, root typecheck with `--env-mode=loose`, individual shared/API/worker/mobile tsc, disposable DB up/reset and serial backend suites (shared397/API347/worker10), focused mobile18, full mobile92 with one existing skip, web335, mobile/web lint with baseline warnings only, tokens:check and diff checks. Native ShareQueueTests scheme compiled and ran26 tests on local iPhone17Pro simulator F3CF81FA-5972-40A4-83EF-0D077C02B571/iOS26.5 with the real local Fastify/Postgres restricted-key fixture; no truncating suite ran while that fixture was active. Own fixture stopped cleanly. Logs: `/tmp/t3-coordinator-checks/`.
+
+Developer ran signed EAS preview3fb9fb09-7ec9-4499-a4cc-7c121beafbfa; coordinator corroborated FINISHED from mobile cwd, strict deep signature verification, both exact signed app-group/keychain entitlements, all17 source hashes and actual bundle's original public auth binding/token/preprocessor resources. This corroborates the existing changed-source upload, not a claimed new coordinator upload. Source manifest SHA25600f90ef81e459d8131184e04ed20ec8b166f9a0ccaedd234c53a3a6c9573792d; fingerprint279decf21e989f6ed04e67e3177d877854985679. Preview's real temporary API tunnel is now stopped. T-10 must build final package source.
+
+Available UI proof: actual simulator Safari restricted-key save made one local bookmark without host launch; refused transport persisted and actual signed-out host imported the same ID/owner/time across relaunch. Actual dark/large-text/Reduce Motion recording showed readable status/Close and stationary progress. These use explicitly fictional/test-auth fixtures, not a normal-issuer real mobile session. Native policy fixtures prove retained result/Close/announcement for VoiceOver; live spoken VoiceOver and40 signed physical Wi-Fi/LTE trials remain unproved. The combined criterion above stays unchecked and is carried to T-10; implementation checkmarks do not imply those pending outcomes passed. Native mobile token merge/title weight/Close label cap align with T-5 styling scope.
+
+Test-first qualifications are accepted and retained for whole-feature review: several supplementary/existing behavior characterizations first ran green; step23 build characterization preceded closure of step22's floating-point tolerance failure; actual Safari/local-API supplemental integration came after queue/Jest phases. Initial parallel/truncating backend invocation failed from test setup, then correct serial suites passed. Two excluded EAS attempts had remote public auth-variable mismatches; final build's actual auth bytes match. Coordinator's first EAS read from root failed and created an owned empty root app.json; it was removed, mobile app.json unchanged. No feature behavior or check was weakened. Developer's own device session/services and root fixture are closed; existing hooks remain untouched. Complete-package review rounds remain0.
 
 ### T-4 · Save and return from Android sharing without a tap
 
@@ -654,7 +664,7 @@ Not started. Coordinator records candidate SHA, exact checks/results, native evi
 | Traces | FR-17 · FR-28 · NFR-7 · S-15 entry · §7 Navigation/Accessibility/Components · §8.4 Tokens · §8.3 Mobile routing |
 | Ships as | User-visible: apply the plum mobile shell and three destinations in the complete package |
 | Size | M |
-| Touches | `docs/design-system/tokens.json` · `docs/design-system/foundations.md` · `scripts/generate-tokens.mjs` · `apps/mobile/constants/theme.ts` · `apps/mobile/components/ui/Signal.tsx` · `apps/mobile/app/(tabs)/_layout.tsx` · `apps/mobile/app/(tabs)/profile.tsx` · `apps/mobile/app/profile.tsx` · `apps/mobile/app/(tabs)/index.tsx` · `apps/mobile/app/_layout.tsx` |
+| Touches | `docs/design-system/tokens.json` · `docs/design-system/foundations.md` · `scripts/generate-tokens.mjs` · `apps/mobile/constants/theme.ts` · `apps/mobile/components/ui/Signal.tsx` · `apps/mobile/app/(tabs)/_layout.tsx` · `apps/mobile/app/(tabs)/profile.tsx` · `apps/mobile/app/profile.tsx` · `apps/mobile/app/(tabs)/index.tsx` · `apps/mobile/app/_layout.tsx` · `apps/mobile/ios/ShareExtension/ShareTheme.swift` · `apps/mobile/ios/ShareExtension/ShareViewController.swift` · native font-resource memberships as needed |
 
 **Goal.** Mobile uses approved plum in both modes and Home/Save/Library with avatar entry to existing profile/settings. Web generated tokens remain byte-identical.
 
@@ -665,7 +675,7 @@ Not started. Coordinator records candidate SHA, exact checks/results, native evi
 **Scope**
 
 - Add color.mobile light/dark override map and generator canonical-key validation/alias resolution after mobile merge; preserve all nonaccent Signal values and unchanged web tokens.css. Document mobile-only override in foundations.
-- Reuse Signal primitives, add Button trailing detail support for later choices, preserve touch/focus/contrast. No accent/density/layout experiments ship.
+- Reuse Signal primitives, add Button trailing detail support for later choices, preserve touch/focus/contrast. Apply the effective mobile token merge to the T-3 native ShareTheme consumer as well; align title-1 weight600/font resources and the native Close label1.3x cap while content stays uncapped. No accent/density/layout experiments ship.
 - Remove profile as destination; retain its real account/settings content outside tabs (app/profile.tsx), avatar enters it and old profile-tab route redirects there. Save opens the existing modal; Library keeps existing private chronological collections/Inbox/archive/filter behavior. Mobile copy says Topics; no schema or web rename.
 - Content uncapped, tab labels≤1.3x, rows grow; honor reduced motion. Cover auth/cold-start/navigation/deep-link/signed-out and S-15 lifecycle already built in T-2.
 
@@ -704,7 +714,7 @@ bun run --cwd apps/mobile lint
 
 **Notes**
 
-Not started. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here.
+Not started. T-3 introduced a native canonical-token/font consumer; coordinator inspection found that its mobile override merge, title-1 weight600 and Close label1.3x cap must be completed with this task’s §7/mobile token styling. This is covered mobile styling/integration work, not a new feature; preserve native capture/queue behavior. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here.
 
 ### T-6 · Show immutable daily picks in a finite Home
 
@@ -1060,7 +1070,7 @@ eas build --profile preview --platform all
 
 **Notes**
 
-Not started. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here. Pending package proof from T-2: actual normal-issuer native JWT/share-key issuance/save/revocation/offline Retry; final-source-bound EAS build; live signed-device/keychain behavior. User has no physical iPhone and directed simulator implementation; retain physical Wi-Fi/LTE/device-only outcomes as unavailable, never as passed. Preserve all simulator/XCTest/signed-profile evidence separately, and keep missing credentials or physical proof explicit at the package gate.
+Not started. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here. Pending package proof from T-2: actual normal-issuer native JWT/share-key issuance/save/revocation/offline Retry; final-source-bound EAS build; live signed-device/keychain behavior. User has no physical iPhone and directed simulator implementation; retain physical Wi-Fi/LTE/device-only outcomes as unavailable, never as passed. Preserve all simulator/XCTest/signed-profile evidence separately, and keep missing credentials or physical proof explicit at the package gate. Pending T-3 proof: normal-issuer host sign-in/key repair/revoked/offline Retry and signed app/extension interoperability; live spoken VoiceOver; all20 Wi-Fi plus20 LTE physical-radio latency trials; final package source-bound native previews. Simulator Safari/local-API capture, refused-transport persistence, signed-out bridge/relaunch, large-text/Reduce Motion and native26 fixtures passed and remain separately labelled. T-5 completes native mobile override/font-weight/Close-label integration.
 
 ## Implementation review
 

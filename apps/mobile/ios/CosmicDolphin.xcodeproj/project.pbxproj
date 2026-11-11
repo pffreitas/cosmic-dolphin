@@ -9,24 +9,38 @@
 /* Begin PBXBuildFile section */
 		0DF53B37DF72597BBB90543D /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A222FA9DF6E6DCCF8AA4443D /* Foundation.framework */; };
 		0E333D29FD9D2F7DBD69FAF4 /* TestHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8549BBCE3E915914261281E2 /* TestHost.swift */; };
+		11F3164A25CA4637BAD1EFCF /* tokens.json in Resources */ = {isa = PBXBuildFile; fileRef = 2A8D1A69F246445CAAB582E2 /* tokens.json */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		170A27CBCC514512B76A407F /* MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B32108FAC0C94D8B90405ED6 /* MainInterface.storyboard */; };
 		189D110077514013A67AEFC3 /* ShareExtensionPreprocessor.js in Resources */ = {isa = PBXBuildFile; fileRef = 0C614BA9ACAF4163BBAF8CA4 /* ShareExtensionPreprocessor.js */; };
 		2FB1EB61E4534D1FB369A595 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A32B326DD7424E618B6A6FA6 /* PrivacyInfo.xcprivacy */; };
+		3506A32D2C424BA5882E7AEB /* SourceSerif4-400.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 275265D9315B4A2A9DD8AB4A /* SourceSerif4-400.ttf */; };
 		359C40AF284C227950E4A22A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A32B326DD7424E618B6A6FA6 /* PrivacyInfo.xcprivacy */; };
+		35D79AD3ED1F44D3925BF56E /* PendingShares.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51C82F7990B248E995412DE1 /* PendingShares.swift */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
+		41E1899BBBD7401FA0D0B73F /* ShareCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFADA73D1A024043B5D1CB4E /* ShareCapture.swift */; };
+		4A4FA5DC7689498695AE4785 /* ShareTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A88D1CD2E25045D893DAFE31 /* ShareTheme.swift */; };
 		61BB0394D07A038338396437 /* ShareKeychainTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE43A3C06DEC42B8AE61CE8 /* ShareKeychainTests.swift */; };
 		637BB715D95B458FA6D3CC15 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0733BFEA3FC341FB8C361C47 /* ShareViewController.swift */; };
 		70B0E8FF3DC879C2775914C3 /* libPods-CosmicDolphin.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 03542B94353DDD4C7A0D0E44 /* libPods-CosmicDolphin.a */; };
+		78A760BE67934DFE86ED94CB /* ShareTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A88D1CD2E25045D893DAFE31 /* ShareTheme.swift */; };
 		7BF1E693FCA600A8C5C0846C /* SharedShareKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E34D34F09DEE73492FEE8E2 /* SharedShareKey.swift */; };
+		7C5BF934F6F34E8AA33E97E7 /* Inter-400.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A919085575DC48E597DEE932 /* Inter-400.ttf */; };
 		7D9955F364CD996611BC68BF /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A32B326DD7424E618B6A6FA6 /* PrivacyInfo.xcprivacy */; };
 		8541A5606AD41E45FAA01773 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A222FA9DF6E6DCCF8AA4443D /* Foundation.framework */; };
+		8AA5F868E0C6492A96C633CD /* tokens.json in Resources */ = {isa = PBXBuildFile; fileRef = 2A8D1A69F246445CAAB582E2 /* tokens.json */; };
+		9962588542DB417CBA3B0A35 /* SourceSerif4-400.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 275265D9315B4A2A9DD8AB4A /* SourceSerif4-400.ttf */; };
+		AC0000000000000000000001 /* ShareCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFADA73D1A024043B5D1CB4E /* ShareCapture.swift */; };
+		AC0000000000000000000002 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0733BFEA3FC341FB8C361C47 /* ShareViewController.swift */; };
 		B66DE3D5F7FE7C677B933EAE /* SharedShareKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E34D34F09DEE73492FEE8E2 /* SharedShareKey.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		BE462EB6228F4CE390679FC7 /* ShareExtension.appex in Copy Files */ = {isa = PBXBuildFile; fileRef = 50CEBC6FC31D461AAEBC874F /* ShareExtension.appex */; };
+		C0525D9281CA4AB4A2D1D449 /* NativeShareTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B26BCEA21804130A4DE0867 /* NativeShareTests.swift */; };
+		E0D0F7724D8A44C096C5F11B /* PendingShares.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51C82F7990B248E995412DE1 /* PendingShares.swift */; };
 		E1406F2B9E98FDF2D5560ECF /* SharedShareKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E34D34F09DEE73492FEE8E2 /* SharedShareKey.swift */; };
 		EA1DF828A22D2907B64DC8EE /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6F84F5AA7436E487C31A92D /* ExpoModulesProvider.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
+		F48FD3A311904684B312D4AA /* Inter-400.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A919085575DC48E597DEE932 /* Inter-400.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -68,14 +82,20 @@
 		13B07F961A680F5B00A75B9A /* CosmicDolphin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CosmicDolphin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = CosmicDolphin/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = CosmicDolphin/Info.plist; sourceTree = "<group>"; };
+		275265D9315B4A2A9DD8AB4A /* SourceSerif4-400.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "SourceSerif4-400.ttf"; path = "../assets/fonts/SourceSerif4-400.ttf"; sourceTree = "<group>"; };
+		2A8D1A69F246445CAAB582E2 /* tokens.json */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = tokens.json; path = "../../../docs/design-system/tokens.json"; sourceTree = "<group>"; };
 		2E34D34F09DEE73492FEE8E2 /* SharedShareKey.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SharedShareKey.swift; path = "../modules/share-queue/ios/SharedShareKey.swift"; sourceTree = "<group>"; };
 		367CF268C45B48D3B8B4CCE5 /* ShareExtension-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "ShareExtension-Info.plist"; path = "ShareExtension-Info.plist"; sourceTree = "<group>"; };
 		50CEBC6FC31D461AAEBC874F /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = undefined; name = ShareExtension.appex; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		51C82F7990B248E995412DE1 /* PendingShares.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = PendingShares.swift; path = "../modules/share-queue/ios/PendingShares.swift"; sourceTree = "<group>"; };
+		6B26BCEA21804130A4DE0867 /* NativeShareTests.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = NativeShareTests.swift; path = NativeShareTests.swift; sourceTree = "<group>"; };
 		8549BBCE3E915914261281E2 /* TestHost.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TestHost.swift; sourceTree = "<group>"; };
 		97B6EEE085E2F91BFC27526A /* Pods-CosmicDolphin.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-CosmicDolphin.debug.xcconfig"; path = "Target Support Files/Pods-CosmicDolphin/Pods-CosmicDolphin.debug.xcconfig"; sourceTree = "<group>"; };
 		A222FA9DF6E6DCCF8AA4443D /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		A28C8EB6F35842F28BD70A5A /* ShareExtension.entitlements */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = ShareExtension.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
 		A32B326DD7424E618B6A6FA6 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = PrivacyInfo.xcprivacy; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		A88D1CD2E25045D893DAFE31 /* ShareTheme.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = ShareTheme.swift; path = ShareExtension/ShareTheme.swift; sourceTree = "<group>"; };
+		A919085575DC48E597DEE932 /* Inter-400.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Inter-400.ttf"; path = "../assets/fonts/Inter-400.ttf"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = CosmicDolphin/SplashScreen.storyboard; sourceTree = "<group>"; };
 		B32108FAC0C94D8B90405ED6 /* MainInterface.storyboard */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = MainInterface.storyboard; path = MainInterface.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
@@ -86,6 +106,7 @@
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = CosmicDolphin/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* CosmicDolphin-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "CosmicDolphin-Bridging-Header.h"; path = "CosmicDolphin/CosmicDolphin-Bridging-Header.h"; sourceTree = "<group>"; };
 		F7F7BE73845B5A1FAC9031D0 /* ShareQueueTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ShareQueueTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		FFADA73D1A024043B5D1CB4E /* ShareCapture.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = ShareCapture.swift; path = "../modules/share-queue/ios/ShareCapture.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -128,6 +149,7 @@
 			children = (
 				0EE43A3C06DEC42B8AE61CE8 /* ShareKeychainTests.swift */,
 				8549BBCE3E915914261281E2 /* TestHost.swift */,
+				6B26BCEA21804130A4DE0867 /* NativeShareTests.swift */,
 			);
 			name = ShareQueueTests;
 			path = ShareQueueTests;
@@ -220,6 +242,12 @@
 			isa = PBXGroup;
 			children = (
 				2E34D34F09DEE73492FEE8E2 /* SharedShareKey.swift */,
+				FFADA73D1A024043B5D1CB4E /* ShareCapture.swift */,
+				51C82F7990B248E995412DE1 /* PendingShares.swift */,
+				A88D1CD2E25045D893DAFE31 /* ShareTheme.swift */,
+				2A8D1A69F246445CAAB582E2 /* tokens.json */,
+				A919085575DC48E597DEE932 /* Inter-400.ttf */,
+				275265D9315B4A2A9DD8AB4A /* SourceSerif4-400.ttf */,
 			);
 			name = SharedShareKey;
 			sourceTree = "<group>";
@@ -403,6 +431,9 @@
 				170A27CBCC514512B76A407F /* MainInterface.storyboard in Resources */,
 				189D110077514013A67AEFC3 /* ShareExtensionPreprocessor.js in Resources */,
 				2FB1EB61E4534D1FB369A595 /* PrivacyInfo.xcprivacy in Resources */,
+				11F3164A25CA4637BAD1EFCF /* tokens.json in Resources */,
+				F48FD3A311904684B312D4AA /* Inter-400.ttf in Resources */,
+				3506A32D2C424BA5882E7AEB /* SourceSerif4-400.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -410,6 +441,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8AA5F868E0C6492A96C633CD /* tokens.json in Resources */,
+				7C5BF934F6F34E8AA33E97E7 /* Inter-400.ttf in Resources */,
+				9962588542DB417CBA3B0A35 /* SourceSerif4-400.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -560,6 +594,9 @@
 			files = (
 				637BB715D95B458FA6D3CC15 /* ShareViewController.swift in Sources */,
 				E1406F2B9E98FDF2D5560ECF /* SharedShareKey.swift in Sources */,
+				41E1899BBBD7401FA0D0B73F /* ShareCapture.swift in Sources */,
+				35D79AD3ED1F44D3925BF56E /* PendingShares.swift in Sources */,
+				4A4FA5DC7689498695AE4785 /* ShareTheme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -568,7 +605,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				61BB0394D07A038338396437 /* ShareKeychainTests.swift in Sources */,
+				AC0000000000000000000001 /* ShareCapture.swift in Sources */,
+				AC0000000000000000000002 /* ShareViewController.swift in Sources */,
 				7BF1E693FCA600A8C5C0846C /* SharedShareKey.swift in Sources */,
+				C0525D9281CA4AB4A2D1D449 /* NativeShareTests.swift in Sources */,
+				E0D0F7724D8A44C096C5F11B /* PendingShares.swift in Sources */,
+				78A760BE67934DFE86ED94CB /* ShareTheme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -7,7 +7,7 @@ The Expo app now implements the approved mobile direction in `docs/design-system
 - Home uses the existing ranked feed, public discovery and continue-reading endpoints through the generated API client. AI-generated digests retain their complete server-authored source sets. Pipeline-generated tags form topic sections, including normalized AI and self-improvement topics. Topic headings and generic descriptions are UI copy; the client does not invent an AI thesis. Topic detail opens the complete available list. Reading preferences can prioritize interests or hide a topic with Undo.
 - Public recommendations are saved through the reshare API; they are never silently added to Library. Owned saves and recommendations share a source-first reading entry point.
 - Library remains private and chronological, with read filters, oldest/newest ordering, collections, Inbox, Archive, manual filing and archive/restore. Offline fallback retains the existing account-specific bookmark cache. Paging ignores stale filter/account responses and prevents concurrent duplicate loads.
-- In-app capture creates a pending row immediately, continues the request while the user browses, and offers retry without losing private-link fields. Captures are held in memory for the session, not an offline queue. A completed capture invalidates the visible feed/library. The existing OS share-intent route remains available.
+- In-app capture creates a pending row immediately, continues the request while the user browses, and offers retry without losing private-link fields. Captures are durably serialized in the app save queue before transport and replay only for their owning account. A completed capture invalidates the visible feed/library. The existing OS share-intent route remains available.
 - Detail shows real summaries/key points and source attribution, processing/retry, explicit read controls, public conversation and an explicit publishing confirmation. Merely opening Share never publishes a private save.
 - The reading view shows the full saved Cosmic brief exposed by the current API. It does **not** claim to show the original article body. The original source remains a separate browser action. Reading size is stored in device preferences; scroll progress and private highlights use existing services. The reader exposes selectable text; users copy and paste a passage into the highlight sheet with an optional note. The app does not automatically read the clipboard.
 - Profile uses real account/public-save APIs and provides profile editing. Settings persist appearance, reading size and topic preferences per account on the device. Placeholder account/support actions were removed.
@@ -34,6 +34,51 @@ access group comes from their Info.plist. Installation IDs use private, device-o
 
 Never run `expo prebuild --clean`. The committed iOS project and extension are maintained in
 place; `expo-share-intent` has `disableIOS: true`. Run the test-only `ShareQueueTests` scheme
-with `DEVICE_TEST_ID`. Its small entitled host runs Security fixtures without starting the
-React Native app or contacting any API. XCTest is simulator evidence; it does not establish
+with `DEVICE_TEST_ID`. Its small entitled host runs Security and capture fixtures without starting the
+React Native app. Capture transport tests use the local API harness described below. XCTest is
+simulator evidence; it does not establish
 signed-device provisioning capability. Native signed preview proof remains a separate gate.
+
+
+## Native iOS share capture and import
+
+The maintained Swift extension saves on open with the restricted shared key and sends only
+URL/capture fields to the bookmark POST. It completes its extension context after the result;
+it never opens the host or reads/refreshes a Supabase session. VoiceOver retains the result and
+Close. Reduce Motion replaces rotation with a stationary ring. Titles use the app's bundled
+serif and the panel loads canonical Signal tokens directly from the bundled tokens.json resource.
+
+The app group is `group.com.cosmicdolphin.app`. `pending-shares-v1.json` is a JSON array of at
+most 200 `{ id, url, userId?, queuedAt, notBefore? }` entries. The independent
+`pending-shares-v1.lock` inode carries an exclusive flock through each mutation. Writes use a
+private, protected temporary file, flush it, rename atomically, then flush the directory.
+Capture persists a stable recovery row before transport while holding the lease. Success removes
+only that ID; any unacknowledged request leaves it recoverable. A hard eight-second deadline
+cancels transport. 429 stores Retry-After; 401 retains the owning user durably before clearing the
+rejected credential. Credential publishing/clearing also takes the queue lease, preventing a
+rejected in-flight save from deleting a newly published key.
+
+The local Expo bridge snapshots and removes IDs under the same lock. CaptureProvider imports on
+launch/foreground even while signed out, then the serialized AsyncStorage queue preserves the ID,
+original queuedAt/notBefore and ios_share_extension/ios attribution before removing imported group
+IDs. Concurrent arrivals remain in the group. Overlapping drains coalesce; newly arrived entries
+still send while already attempted failures wait for a later trigger or Retry. Interrupted cleanup
+may replay an accepted URL, which the API deduplicates.
+
+The native scheme now includes a real local API fixture. Start its separate loopback-only harness
+from the repository root before the XCTest command:
+
+```bash
+DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/postgres NODE_ENV=test COMPOSE_PROJECT_NAME=cosmic-dolphin bun apps/mobile/ios/ShareQueueTests/local-api-fixture.mjs
+xcodebuild -project apps/mobile/ios/CosmicDolphin.xcodeproj -scheme ShareQueueTests -destination "platform=iOS Simulator,id=$DEVICE_TEST_ID" test
+```
+
+The harness requires the disposable database marker and owns one fictional account, removed on
+SIGTERM. Its explicitly injected test auth boundary is isolated from the normal API; it never
+changes JWT middleware or forwards hosted business writes. Processing enqueues are counted in
+this harness. Normal branch API/worker proof uses the separately guarded local pgmq infrastructure.
+Never run truncating backend suites while this native fixture or device proof is active.
+Native fixture publication tests support Safari/bridge probes; run the existing Z keychain cleanup
+and remove only the probe's own queue IDs afterwards. Simulator and XCTest results are checkpoint
+evidence. Normal-issuer signed-in replay, signed physical-device interoperability and the 20 Wi-Fi
+plus 20 LTE latency trials remain package proof requirements.
