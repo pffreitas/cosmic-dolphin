@@ -43,6 +43,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Compile API contract
+        run: bun run apispec:compile
+
       - name: Build shared package
         run: bun run --cwd packages/shared build
 
