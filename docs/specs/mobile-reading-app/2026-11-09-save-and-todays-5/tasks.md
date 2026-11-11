@@ -922,11 +922,13 @@ Native proof stays accurately bounded: developer used own bound local iOS/Androi
 
 Both child device sessions and owned ExpoGo installs/Metro8086/receiver8098/forwards were cleaned; socket receipts confirm ports closed, iOS text/motion and Android text/motion/OS-added font Quick Settings tile restored, pre-existing app inventory preserved. Root created no native session or device service; test HTTP fixtures stopped, named disposable DB retained. Approved spec/prototype/tasks-before-update and both hook bytes independently matched preserved hashes. Final handwritten/staged diff check passes; no generated/package/native/environment drift, commits/pushes/PR by the developer, or per-task review. Whole-feature Sol ledger remains0/max5. Implementation checkpoint only, not shipped.
 
+Checkpoint commit: `42ec686f935b127747f49cbafe503442faa8946b` (`Task: T-7`).
+
 ### T-8 · Read a bookmark and continue to the next pick
 
 | | |
 |---|---|
-| Status | Todo |
+| Status | In progress |
 | Depends on | T-7 |
 | Traces | FR-18 · FR-19 · FR-20 · FR-21 · NFR-3 · NFR-6 · S-11 · S-12 · S-22 · §8.4 Content GET · §8.6 Content404/old-reader progress · §7 Deep links |
 | Ships as | User-visible: read a bookmark and continue to the next pick in the complete package |
@@ -990,7 +992,7 @@ bun run --cwd apps/mobile lint
 
 **Notes**
 
-Not started. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here.
+Started2026-11-11 from coordinator-verified T-7 checkpoint `42ec686f935b127747f49cbafe503442faa8946b`; fresh background developer owns T-8 only. Extend existing owner content/filing/reading/highlight services and implement S-11 Brief/Read/Original, notes/Move and immutable Next pick test-first in prescribed order. T-7 controller/read-sequence freshness and explicit Done semantics must remain intact; no note/offline action queue. NFR-3 needs100owner HTTP GET timings after10warmups over20,000words, response bytes≤500KB and p95≤400ms on final source, never concurrent with truncating suites. Native AX3/200% wrapping and text-selection checks use own bound sessions on local iOS F3CF81FA-5972-40A4-83EF-0D077C02B571/Android emulator-5554, restore settings/installs/services. Normal-issuer login/physical iPhone remain unavailable, isolated fictional view fixtures are labelled and package-only proof remains T-10 under execution clarification. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here.
 
 ### T-9 · Explain extraction failures and recover with pasted text
 
