@@ -597,11 +597,13 @@ Available UI proof: actual simulator Safari restricted-key save made one local b
 
 Test-first qualifications are accepted and retained for whole-feature review: several supplementary/existing behavior characterizations first ran green; step23 build characterization preceded closure of step22's floating-point tolerance failure; actual Safari/local-API supplemental integration came after queue/Jest phases. Initial parallel/truncating backend invocation failed from test setup, then correct serial suites passed. Two excluded EAS attempts had remote public auth-variable mismatches; final build's actual auth bytes match. Coordinator's first EAS read from root failed and created an owned empty root app.json; it was removed, mobile app.json unchanged. No feature behavior or check was weakened. Developer's own device session/services and root fixture are closed; existing hooks remain untouched. Complete-package review rounds remain0.
 
+Checkpoint commit: `72ae8f28b3ed408527f272b417137d70302e4056` (`Task: T-3`).
+
 ### T-4 · Save and return from Android sharing without a tap
 
 | | |
 |---|---|
-| Status | Todo |
+| Status | In progress |
 | Depends on | T-3 |
 | Traces | FR-3 · FR-26 Android attribution · FR-27 · S-20 · NFR-4 · §8.4 Android · §8.6 Android share signed out · A-4 |
 | Ships as | User-visible: save and return from Android sharing without a tap in the complete package |
@@ -653,7 +655,7 @@ eas build --profile preview --platform android
 
 **Notes**
 
-Not started. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here.
+Started2026-11-10 from coordinator-verified T-3 checkpoint `72ae8f28b3ed408527f272b417137d70302e4056`; a fresh background developer owns T-4 only. Available Android target: host local, Pixel_7_API_34 emulator/Android14. Use device_open and its own bound agent-device command, close only its own session/services on handback. Follow the simulator execution clarification: unavailable normal-issuer real-session and physical device outcomes remain explicit T-10 proof gaps; do not fabricate credentials or pause implementation solely for them. Coordinator records exact checks, honest test-first ledger and build/native source evidence before checkpointing.
 
 ### T-5 · Apply the plum mobile shell and three destinations
 
