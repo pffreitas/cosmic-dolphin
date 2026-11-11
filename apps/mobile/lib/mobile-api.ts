@@ -1,5 +1,6 @@
 /** Native adapters around the generated contract. Never manufacture feed content. */
 import {
+  PicksApi,
   ShareKeysApi,
   BookmarksApi,
   CollectionsApi,
@@ -96,11 +97,20 @@ export const MobileAPI = {
       cursor,
     });
   },
+  async picks() {
+    const client = new PicksApi(await configuration());
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    try { return await client.picksToday({ tz }); }
+    catch (error) {
+      if ((error as { response?: { status: number } }).response?.status === 400) return client.picksToday({ tz: "UTC" });
+      throw error;
+    }
+  },
   async feed(scope: FeedScope, cursor?: string): Promise<FeedResponse> {
     return new BookmarksApi(await configuration()).bookmarksFeed({
       scope,
       cursor,
-      limit: 30,
+      limit: scope === "for_you" ? 15 : 30,
     });
   },
   async explore(cursor?: string): Promise<ExploreResponse> {

@@ -9,6 +9,7 @@ src/apis/DigestsApi.ts
 src/apis/ExploreApi.ts
 src/apis/FeedApi.ts
 src/apis/NotesApi.ts
+src/apis/PicksApi.ts
 src/apis/PipelinesApi.ts
 src/apis/ReadingApi.ts
 src/apis/SearchApi.ts
@@ -60,6 +61,7 @@ src/models/CreateHighlightRequest.ts
 src/models/CreateNoteRequest.ts
 src/models/CreateReportRequest.ts
 src/models/CreateReportResponse.ts
+src/models/DailyPick.ts
 src/models/DeleteBookmarkResponse.ts
 src/models/DeleteCollectionResponse.ts
 src/models/DeleteCommentResponse.ts
@@ -138,6 +140,7 @@ src/models/ShareBookmarkResponse.ts
 src/models/ShareDigestResponse.ts
 src/models/ShareSaveResponse.ts
 src/models/SocialError.ts
+src/models/TodayPicksResponse.ts
 src/models/TrendingCollection.ts
 src/models/TrendingPerson.ts
 src/models/UpdateBookmarkRequest.ts

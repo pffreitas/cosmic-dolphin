@@ -881,3 +881,10 @@ export interface CreateReportResult {
 export type assertCommentAuthorHasNoEmail = Assert<
   "email" extends keyof CommentAuthor ? false : true
 >;
+export interface TodayPicksResponse {
+  localDate: string;
+  refreshesAt: Date;
+  computedAt?: Date;
+  revealsAt?: Date;
+  items: { position: number; bookmark: Bookmark; reason: string }[];
+}

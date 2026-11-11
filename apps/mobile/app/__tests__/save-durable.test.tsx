@@ -92,6 +92,8 @@ beforeEach(async () => {
       const body = JSON.parse(init.body as string);
       return response({ ...bookmarks.values().next().value, ...body });
     }
+    if (String(url).includes("/picks/today")) return response({ localDate: "2026-11-11", refreshesAt: "2026-11-12T11:00:00Z", items: [] });
+    if (String(url).includes("/bookmarks/counts")) return response({ all: bookmarks.size, unread: bookmarks.size, archived: 0, inbox: bookmarks.size, collections: [] });
     if (String(url).includes("/feed")) return response({ items: [], topics: [], computedAt: new Date().toISOString() });
     if (String(url).includes("/explore")) return response({ items: [], topics: [], computedAt: new Date().toISOString() });
     if (String(url).includes("/continue-reading")) return response({ items: [], topics: [], computedAt: new Date().toISOString() });

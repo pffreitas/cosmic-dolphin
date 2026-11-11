@@ -26,6 +26,7 @@ export * from "./digest.prompt";
 export * from "./digest.service";
 export * from "./feed-ranking.config";
 export * from "./feed-ranking.service";
+export * from "./picks.service";
 export * from "./http-client";
 export * from "./content-extraction";
 
@@ -75,7 +76,11 @@ import {
 } from "../repositories";
 import { AI } from "../ai";
 
+import { PicksServiceImpl } from "./picks.service";
+import { PicksRepositoryImpl } from "../repositories/picks.repository";
+
 export interface ServiceContainer {
+  picks: PicksServiceImpl;
   shareKey: ShareKeyServiceImpl;
   webScraping: WebScrapingService;
   queue: QueueService;
@@ -128,7 +133,9 @@ export function createServiceContainer(
     collectionRepository
   );
 
+  const feed = new FeedRankingServiceImpl(feedRepository, socialService, environment);
   return {
+    picks: new PicksServiceImpl(new PicksRepositoryImpl(db), feed),
     shareKey: new ShareKeyServiceImpl(new ShareKeyRepositoryImpl(db)),
     webScraping: webScrapingService,
     queue: new QueueServiceImpl(supabaseClient),
@@ -157,11 +164,7 @@ export function createServiceContainer(
     // The ranker asks the social graph about each distinct author it got back,
     // once per author rather than once per item — so it takes the service, not
     // a second copy of the repository.
-    feed: new FeedRankingServiceImpl(
-      feedRepository,
-      socialService,
-      environment
-    ),
+    feed,
     // The generation half of this service runs in the worker; the API only
     // ever reaches its read, like and share paths. Same object either way —
     // the AI call lives in `packages/shared`, never in an app.

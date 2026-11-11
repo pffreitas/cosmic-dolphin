@@ -828,6 +828,27 @@ export class FeedRankingServiceImpl implements FeedRankingService {
     private environment: string
   ) {}
 
+  /** Scores a daily snapshot without reading or writing feed sessions. */
+  async rankOwn(userId: string, rows: BookmarkRow[], now: Date) {
+    const config = await this.loadConfig();
+    const { parameters } = config;
+    const ids = rows.map(row => row.id);
+    const since = new Date(now.getTime() - parameters.interestWindowDays * DAY_MS);
+    const [similarity, finishedReads, saveOutcomes, socialProof, impressions, recentlyServed, feedbackRows] = await Promise.all([
+      this.feedRepository.similarityToInterestVector(userId, ids, since),
+      this.feedRepository.findFinishedReads(userId, since, parameters.candidateCap),
+      this.feedRepository.findSaveOutcomes(userId, parameters.candidateCap),
+      this.feedRepository.findSocialProof(userId, ids),
+      this.feedRepository.findImpressions(userId, ids.map(itemId => ({ itemType: "bookmark" as const, itemId }))),
+      this.feedRepository.findRecentlyServed(userId, parameters.noveltyWindowItems),
+      this.feedRepository.findFeedback(userId, parameters.feedbackCap),
+    ]);
+    return this.score({ candidates: rows.map(row => toCandidate("own_save", row, null)), config, now,
+      similarity, finishedReads, saveOutcomes, socialProof, impressions, recentlyServed,
+      feedback: buildFeedbackFilter(feedbackRows),
+    }).map(entry => ({ bookmarkId: entry.candidate.bookmark.id, domain: entry.candidate.domain, score: entry.score, reason: entry.reason }));
+  }
+
   async getFeed(userId: string, options: GetFeedOptions = {}): Promise<FeedPage> {
     const now = options.now ?? new Date();
     const scope = options.scope ?? "for_you";
@@ -848,7 +869,7 @@ export class FeedRankingServiceImpl implements FeedRankingService {
           candidateCount: session.entries.length,
           interestVectorMs: 0,
           totalMs: 0,
-        });
+        }, now);
       }
 
       // The session is gone — an expiry, a redeploy, a different container.
@@ -864,7 +885,7 @@ export class FeedRankingServiceImpl implements FeedRankingService {
       const rebuilt = await this.buildSession(userId, scope, config, now, {
         exclude: new Set(served),
       });
-      return this.pageFrom(userId, rebuilt.session, 0, limit, scope, rebuilt.metrics);
+      return this.pageFrom(userId, rebuilt.session, 0, limit, scope, rebuilt.metrics, now);
     }
 
     const current = this.currentSession(userId, scope, now);
@@ -878,11 +899,11 @@ export class FeedRankingServiceImpl implements FeedRankingService {
         candidateCount: current.entries.length,
         interestVectorMs: 0,
         totalMs: 0,
-      });
+      }, now);
     }
 
     const built = await this.buildSession(userId, scope, config, now, {});
-    return this.pageFrom(userId, built.session, 0, limit, scope, built.metrics);
+    return this.pageFrom(userId, built.session, 0, limit, scope, built.metrics, now);
   }
 
   async getRail(
@@ -1044,11 +1065,12 @@ export class FeedRankingServiceImpl implements FeedRankingService {
     if (scope === "following") return 0;
 
     const [pending, fresh] = await Promise.all([
-      this.feedRepository.findPending(userId, config.parameters.pageSize),
+      this.feedRepository.findPending(userId, config.parameters.pageSize, now),
       this.feedRepository.findOwnUnread(
         userId,
         session.computedAt,
-        config.parameters.pageSize
+        config.parameters.pageSize,
+        now
       ),
     ]);
 
@@ -1057,6 +1079,7 @@ export class FeedRankingServiceImpl implements FeedRankingService {
 
     for (const row of [...pending, ...fresh]) {
       if (known.has(row.id)) continue;
+      if (row.later_until && row.later_until > now) continue;
       // The prepend path is the one place a dismissed item could sneak back:
       // `findPending` is not windowed, so a save the reader dismissed while it
       // was still processing would be re-pinned on every warm hit. The session
@@ -1084,6 +1107,12 @@ export class FeedRankingServiceImpl implements FeedRankingService {
 
     if (additions.length > 0) {
       session.entries = [...additions, ...session.entries];
+      if (scope === "unread") {
+        session.entries.sort((a, b) =>
+          (b.item.bookmark?.createdAt.getTime() ?? 0) - (a.item.bookmark?.createdAt.getTime() ?? 0)
+          || b.itemId.localeCompare(a.itemId)
+        );
+      }
     }
 
     return additions.length;
@@ -1131,7 +1160,7 @@ export class FeedRankingServiceImpl implements FeedRankingService {
         .findFeedback(userId, parameters.feedbackCap)
         .catch(() => [] as FeedFeedbackRow[]),
       wantsOwn
-        ? this.feedRepository.findPending(userId, parameters.pageSize)
+        ? this.feedRepository.findPending(userId, parameters.pageSize, now)
         : Promise.resolve([]),
       wantsOwn
         ? this.feedRepository.findOwnUnread(
@@ -1139,7 +1168,8 @@ export class FeedRankingServiceImpl implements FeedRankingService {
             // Unread does not rank, and it is where a decayed item stays
             // reachable — so it is not bounded by the ranking window.
             scope === "unread" ? new Date(0) : ownSince,
-            parameters.candidateCap
+            parameters.candidateCap,
+            now
           )
         : Promise.resolve([]),
       wantsFollowed
@@ -1750,11 +1780,28 @@ export class FeedRankingServiceImpl implements FeedRankingService {
     position: number,
     limit: number,
     scope: FeedScope,
-    metrics: FeedRankingMetrics
+    metrics: FeedRankingMetrics,
+    now: Date
   ): Promise<FeedPage> {
     const start = Math.max(0, position);
-    const slice = session.entries.slice(start, start + limit);
-    const end = start + slice.length;
+    // Cached ordering is stable; mutable owner state is read independently.
+    // Keep original cursor positions even when a slot is temporarily hidden.
+    const ownIds = session.entries.filter(entry => entry.item.type === "own_save" || entry.item.type === "pending").map(entry => entry.itemId);
+    const liveRows = this.feedRepository.findOwnState
+      ? await this.feedRepository.findOwnState(userId, ownIds) : undefined;
+    const live = liveRows ? new Map(liveRows.map(row => [row.id, row])) : undefined;
+    const slice: SessionEntry[] = [];
+    let end = start;
+    while (end < session.entries.length && slice.length < limit) {
+      let entry = session.entries[end++];
+      if (live && (entry.item.type === "own_save" || entry.item.type === "pending")) {
+        const row = live.get(entry.itemId);
+        if (!row || row.is_archived || row.read_at || row.later_until && row.later_until > now) continue;
+        entry = this.toSessionEntry(row.processing_status === "processing" ? "pending" : "own_save", row, null,
+          entry.item.rankingReason ?? `You saved this and haven't opened it yet.`);
+      }
+      slice.push(entry);
+    }
 
     if (slice.length > 0) {
       // Recorded before the response is written, and never awaited into the

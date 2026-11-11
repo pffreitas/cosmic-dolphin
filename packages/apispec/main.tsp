@@ -13,6 +13,7 @@ import "./social.tsp";
 import "./comments.tsp";
 import "./digests.tsp";
 import "./feed.tsp";
+import "./picks.tsp";
 import "./explore.tsp";
 
 using TypeSpec.Http;

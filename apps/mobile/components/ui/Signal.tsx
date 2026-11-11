@@ -301,7 +301,7 @@ export function EmptyState({
 export function SkeletonRows() {
   const { colors } = useTheme();
   return (
-    <View accessibilityLabel="Loading content" accessibilityRole="progressbar">
+    <View accessible accessibilityLabel="Loading content" accessibilityRole="progressbar">
       {[0, 1, 2].map((i) => (
         <View
           key={i}

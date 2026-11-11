@@ -7,6 +7,7 @@ export * from './DigestsApi';
 export * from './ExploreApi';
 export * from './FeedApi';
 export * from './NotesApi';
+export * from './PicksApi';
 export * from './PipelinesApi';
 export * from './ReadingApi';
 export * from './SearchApi';

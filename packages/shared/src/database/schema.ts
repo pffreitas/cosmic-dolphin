@@ -1,6 +1,16 @@
 import { Generated, Insertable, Selectable, Updateable } from "kysely";
 
 // Base table interface
+export interface DailyPicksTable {
+  user_id: string;
+  local_date: string;
+  bookmark_ids: string[];
+  reasons: string[];
+  time_zone: string;
+  computed_at: Generated<Date>;
+}
+export type DailyPicksRow = Selectable<DailyPicksTable>;
+
 export interface BaseTable {
   id: Generated<string>;
   created_at: Generated<Date>;
@@ -430,6 +440,7 @@ export interface Database {
   feed_feedback: FeedFeedbackTable;
   feed_ranking_config: FeedRankingConfigTable;
   feed_digests: FeedDigestsTable;
+  daily_picks: DailyPicksTable;
   feed_digest_likes: FeedDigestLikesTable;
 }
 

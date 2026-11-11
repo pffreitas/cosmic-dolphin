@@ -748,7 +748,7 @@ Checkpoint commit: `23d9aa285c4b59c577a80759526b760d24646ac2` (`Task: T-5`).
 
 | | |
 |---|---|
-| Status | In progress |
+| Status | Done |
 | Depends on | T-5 |
 | Traces | FR-7 · FR-8 · FR-9 · FR-14 · FR-15 · FR-16 · FR-25 · FR-29 · FR-30 · FR-6 final placement · NFR-2 · NFR-10 · S-1 · S-2 · §8.4 Picks · §8.6 picks/time-zone/snooze visibility · §8.8 Picks logs · A-3 |
 | Ships as | User-visible: show immutable daily picks in a finite Home in the complete package |
@@ -775,31 +775,31 @@ Checkpoint commit: `23d9aa285c4b59c577a80759526b760d24646ac2` (`Task: T-5`).
 
 **Acceptance criteria**
 
-- [ ] Two concurrent requests with3 eligible across≥2domains give one3-slot snapshot with immutable reasons;0 eligible stores nothing and later completion allows first same-day compute.
-- [ ]05:59/DST/time-zone changes obey §8.4/6; snoozed original slot hides/returns after revealsAt without backfill, archive/deletion/rejection drop N, read slot remains.
-- [ ] First run/no eligible/computed-empty are distinct; refresh/new completed save never regenerates existing set. Partial picks error leaves the feed usable.
-- [ ] Feed order, all3 scopes,≤10 tail, reason omission/privacy, Continue hide-if-none and unread count exactly match FR-6/8/14/16/29/30. NFR-2 API compute/reread budgets pass with500 candidates.
+- [x] Two concurrent requests with3 eligible across≥2domains give one3-slot snapshot with immutable reasons;0 eligible stores nothing and later completion allows first same-day compute.
+- [x]05:59/DST/time-zone changes obey §8.4/6; snoozed original slot hides/returns after revealsAt without backfill, archive/deletion/rejection drop N, read slot remains.
+- [x] First run/no eligible/computed-empty are distinct; refresh/new completed save never regenerates existing set. Partial picks error leaves the feed usable.
+- [x] Feed order, all3 scopes,≤10 tail, reason omission/privacy, Continue hide-if-none and unread count exactly match FR-6/8/14/16/29/30. NFR-2 API compute/reread budgets pass with500 candidates.
 
 The following §5 wording is authoritative and copied verbatim; each original criterion is covered by the tests above/below:
 
-- [ ] **FR-7:** The system shall fix one set per user per pick day (06:00–06:00 local): up to 5 eligible own saves from the feed ranker, identical across devices and refreshes.
-- [ ] **FR-7 AC1:** 3 eligible across ≥ 2 domains give 3 picks (≤ 2 per domain). At 05:59 local and with 0 eligible, apply §8.6 "0 eligible, or before 06:00".
-- [ ] **FR-8:** Each pick shall show the server's reason verbatim; the client never composes one.
-- [ ] **FR-8 AC1:** A For-you item without `rankingReason` shows no reason line.
-- [ ] **FR-9:** Home shall show done of N and minutes left; N excludes archived, deleted, Not for me’d picks and unexpired `later_until` snoozes.
-- [ ] **FR-9 AC1:** 5 picks, one done, one snoozed Tonight at 10:00: "1 of 4", then "1 of 5" at the first Home load or focus after 20:00 (`revealsAt`, D-14).
-- [ ] **FR-14:** For you shall show the picks, Continue (FR-30), up to 10 more unsnoozed For-you items, then the caught-up end with the unread count (D-11).
-- [ ] **FR-14 AC1:** Fewer than 10 items end early.
-- [ ] **FR-15:** Pull to refresh shall re-read picks and feed without changing the set.
-- [ ] **FR-15 AC1:** A save eligible after the set appears below it.
-- [ ] **FR-16:** Followed items shall show actor and server reason, never a note (D-3).
-- [ ] **FR-16 AC1:** Public models strip `userNote` (§8.4 "Bookmark additions").
-- [ ] **FR-25:** A user with no saves shall see first run: the copied-link row and how to share.
-- [ ] **FR-25 AC1:** Existing saves with no set today show no-picks, not first run (§7).
-- [ ] **FR-29:** Home shall offer For you · Following · Unread; Following and Unread keep their paged lists, with no picks, Continue or end (D-20).
-- [ ] **FR-29 AC1:** Unread lists own unread saves newest first.
-- [ ] **FR-30:** For you shall show a Continue reading row after the picks (D-19).
-- [ ] **FR-30 AC1:** No save in progress hides it.
+- [x] **FR-7:** The system shall fix one set per user per pick day (06:00–06:00 local): up to 5 eligible own saves from the feed ranker, identical across devices and refreshes.
+- [x] **FR-7 AC1:** 3 eligible across ≥ 2 domains give 3 picks (≤ 2 per domain). At 05:59 local and with 0 eligible, apply §8.6 "0 eligible, or before 06:00".
+- [x] **FR-8:** Each pick shall show the server's reason verbatim; the client never composes one.
+- [x] **FR-8 AC1:** A For-you item without `rankingReason` shows no reason line.
+- [x] **FR-9:** Home shall show done of N and minutes left; N excludes archived, deleted, Not for me’d picks and unexpired `later_until` snoozes.
+- [x] **FR-9 AC1:** 5 picks, one done, one snoozed Tonight at 10:00: "1 of 4", then "1 of 5" at the first Home load or focus after 20:00 (`revealsAt`, D-14).
+- [x] **FR-14:** For you shall show the picks, Continue (FR-30), up to 10 more unsnoozed For-you items, then the caught-up end with the unread count (D-11).
+- [x] **FR-14 AC1:** Fewer than 10 items end early.
+- [x] **FR-15:** Pull to refresh shall re-read picks and feed without changing the set.
+- [x] **FR-15 AC1:** A save eligible after the set appears below it.
+- [x] **FR-16:** Followed items shall show actor and server reason, never a note (D-3).
+- [x] **FR-16 AC1:** Public models strip `userNote` (§8.4 "Bookmark additions").
+- [x] **FR-25:** A user with no saves shall see first run: the copied-link row and how to share.
+- [x] **FR-25 AC1:** Existing saves with no set today show no-picks, not first run (§7).
+- [x] **FR-29:** Home shall offer For you · Following · Unread; Following and Unread keep their paged lists, with no picks, Continue or end (D-20).
+- [x] **FR-29 AC1:** Unread lists own unread saves newest first.
+- [x] **FR-30:** For you shall show a Continue reading row after the picks (D-19).
+- [x] **FR-30 AC1:** No save in progress hides it.
 
 **Tests** (write in this order; fixtures within one task are not separate handoffs)
 
@@ -825,6 +825,18 @@ bun run --cwd apps/mobile lint
 **Notes**
 
 Started2026-11-11 from coordinator-verified T-5 checkpoint `23d9aa285c4b59c577a80759526b760d24646ac2`; fresh background developer owns T-6 only. Complete TypeSpec/DB/server snapshot and finite Home behavior test-first. Available native timezone probe targets: local iPhone17Pro simulator F3CF81FA-5972-40A4-83EF-0D077C02B571 and local Android14 emulator-5554. Own device sessions only. Simulator/fixture outcomes stay labelled; unavailable real-session/physical proof remains T-10 under the execution clarification. Record500-candidate p95 compute/reread results and source/host/clock fixtures before checkpointing.
+
+Coordinator verification2026-11-11: fresh developer node:delegated-task:command%3Amcp%3A44e93c94-ffbb-4f6d-ae4f-4a59ab199c23%3Adelegate-task%3Afe10e157-cef5-448d-803f-25c7f7636b30 delivered36 changed/new product files. Handback `/tmp/T-6-handback.md`, chronological test ledger `/tmp/T-6/tdd-ledger.md` and receipts `/tmp/T-6/`. Reviewed immutable owner/date persistence, SQL calendar/DST/eligibility/visibility/reasons, live real-feed snooze hydration, TypeSpec/generated client and finite3-scope Home. All criteria above have API/shared/public-component coverage; Done/Later mutations remain correctly assigned to T-7. No product auth bypass, worker transport change, private-note public exposure or client calendar authority.
+
+Coordinator found and fixed two small defects itself under the higher-priority instruction to fix small review findings directly. A delayed old-account disk read could overwrite the new account cache before the generation check; the check now precedes assignment. Public useHomeFeed/RNTL delayed-storage regression actually failed by displaying reader A's private item to reader B, then passed. HTTP500 after a successful load incorrectly selected the offline Notice and hid the required picks-error Notice; public Home pull-refresh regression actually failed at the missing picks-error copy, then passed after distinguishing HTTP responses from connection failures. Final changes37 product files; only useHomeFeed and today-feed.test differ from the developer's36-file final manifest, plus the new account-cache regression. This is local verification correction, not a Sol review round.
+
+Coordinator independently PASS: apispec/shared build, disposable DB up/reset, API352 including requested routes/contract, shared focused9, final mobile focused39 across5suites, root loose typecheck and all4 explicit tsc checks, serial backend shared406/API352/worker10, mobile lint/full157 with one pre-existing skip, web lint/335tests, tokens:check. All final required checks passed. Logs `/tmp/t6-coordinator-checks/`; the initial runner stopped at a type error in the new renderHook test and resumed only remaining checks after fixing its explicit props generic. The first account regression attempt failed Babel mock hoisting setup, corrected before the observed behavior red; both setup/type failures remain named in their logs. Child initial-error tests preceded resolution of two loading failures (receipts50–52); existing first-green characterizations and Save fixture/setup corrections are explicitly disclosed in its ledger. No failed log is relabelled green, no behavior assertion weakened or skip added.
+
+Final-source NFR-2 independently rerun after both corrections:10warmups,100compute and100rereads,500eligible over20domains, monotonic loopback HTTP+JSON. Compute p95=19.820834ms (budget800), reread p95=12.262250ms (budget200), DB127.0.0.1:5433/APIhttp://127.0.0.1:57731, Asia/Tokyo selected from actual PostgreSQL wall time. Candidate HEAD920927c4a290e0b2012f5391dc14e72a4a2c5e98 plus37-file source manifest SHA256ec76898b927cca40421c5fb7648958e72232d792801348344dc4b1a0038960c7; candidate fixture SHA256aa778b3d986d48c7e4fd3140e7009ca6075c63803ea0a4dbd157f1b9eecdbc68. Source hashes all independently match. Performance JSON retains all200samples,110computed/210served events; exact log fields and no private-note sentinel verified. Own fixture user/profile removed and HTTP server stopped; no truncating suite ran concurrently. Controlled SQL fixtures separately prove05:59/06:00,23/25hour DST days, same/different dates across zones, IANA rejection, RLS/cascade and Tonight revealsAt, not a client clock simulation.
+
+A-3 native receipts report hermes=true, timeZone=America/New_York, ok=true on both available devices, with IANA and UTC formatting; no expo-localization fallback needed. Developer mounted actual card/progress/Signal/theme/fonts in an isolated ExpoGo fixture with fictional preference boundary, not a normal-issuer whole-Home session. Native-probe code/components are unchanged by the coordinator cache/error fixes; receipts and source manifest inspected. Both owned sessions/ExpoGo installations/Metro/receiver/forwards cleaned, no device settings changed. Final whole-package signed builds, normal-issuer real-session, live spoken screen reader and physical-only Wi-Fi/LTE outcomes remain explicitly pending T-10, as agreed when no physical iPhone was available.
+
+Approved spec/prototype hashes and both existing hook bytes preserved. Tracked diff check passes. The three newly generated files retain14 generator-produced blank-comment whitespace lines (PicksApi2/DailyPick6/TodayPicksResponse6); generated sources were not hand-edited. No new handwritten whitespace warnings. No staging of hooks/environment files, pushes, PR or per-task review. Whole-feature Sol rounds remain0. Implementation checkpoint only, not shipped.
 
 ### T-7 · Complete, snooze or reject an own save with Undo
 

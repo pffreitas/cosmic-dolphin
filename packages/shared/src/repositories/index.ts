@@ -103,3 +103,4 @@ export type {
 } from "./feed.repository";
 
 export { ShareKeyRepositoryImpl } from "./share-key.repository";
+export * from "./picks.repository";

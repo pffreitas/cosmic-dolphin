@@ -133,8 +133,12 @@ export interface FeedRepository {
   findOwnUnread(
     userId: string,
     since: Date,
-    limit: number
+    limit: number,
+    now?: Date
   ): Promise<BookmarkRow[]>;
+
+  /** Live owner state for cached entries; deleted rows are absent. */
+  findOwnState?(userId: string, ids: string[]): Promise<BookmarkRow[]>;
 
   /**
    * Public saves from the people the viewer follows, newest first, capped.
@@ -152,7 +156,7 @@ export interface FeedRepository {
   ): Promise<FollowedSaveRow[]>;
 
   /** The user's saves that are still being processed. Pinned, never ranked. */
-  findPending(userId: string, limit: number): Promise<BookmarkRow[]>;
+  findPending(userId: string, limit: number, now?: Date): Promise<BookmarkRow[]>;
 
   /**
    * Digests eligible for this user's feed, newest first.
@@ -296,7 +300,8 @@ export class FeedRepositoryImpl
   async findOwnUnread(
     userId: string,
     since: Date,
-    limit: number
+    limit: number,
+    now: Date = new Date()
   ): Promise<BookmarkRow[]> {
     return this.executeQuery(async () => {
       return await this.db
@@ -304,8 +309,13 @@ export class FeedRepositoryImpl
         .selectAll()
         .where("user_id", "=", userId)
         .where("read_at", "is", null)
+        .where(eb => eb.or([eb("later_until", "is", null), eb("later_until", "<=", now)]))
         .where("is_archived", "=", false)
-        .where("created_at", ">=", since)
+        .where(eb => eb.or([
+          eb("created_at", ">=", since), eb("updated_at", ">=", since),
+          eb("processing_completed_at", ">=", since),
+          eb.and([eb("later_until", ">=", since), eb("later_until", "<=", now)]),
+        ]))
         // A save still in the pipeline is a `pending` item, which is pinned
         // rather than ranked — `findPending` owns it, and having it in both
         // sets would put the same bookmark on the page twice.
@@ -315,6 +325,11 @@ export class FeedRepositoryImpl
         .limit(limit)
         .execute();
     }, "findOwnUnread");
+  }
+
+  async findOwnState(userId: string, ids: string[]): Promise<BookmarkRow[]> {
+    if (!ids.length) return [];
+    return this.db.selectFrom("bookmarks").selectAll().where("user_id", "=", userId).where("id", "in", ids).execute();
   }
 
   async findFollowedSaves(
@@ -370,7 +385,7 @@ export class FeedRepositoryImpl
     }, "findFollowedSaves");
   }
 
-  async findPending(userId: string, limit: number): Promise<BookmarkRow[]> {
+  async findPending(userId: string, limit: number, now: Date = new Date()): Promise<BookmarkRow[]> {
     return this.executeQuery(async () => {
       return await this.db
         .selectFrom("bookmarks")
@@ -378,6 +393,7 @@ export class FeedRepositoryImpl
         .where("user_id", "=", userId)
         .where("is_archived", "=", false)
         .where("processing_status", "=", "processing")
+        .where(eb => eb.or([eb("later_until", "is", null), eb("later_until", "<=", now)]))
         .orderBy("created_at", "desc")
         .orderBy("id", "desc")
         .limit(limit)
