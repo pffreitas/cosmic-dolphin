@@ -10,5 +10,6 @@ export * from './NotesApi';
 export * from './PipelinesApi';
 export * from './ReadingApi';
 export * from './SearchApi';
+export * from './ShareKeysApi';
 export * from './SharedBookmarksApi';
 export * from './SocialApi';

@@ -101,3 +101,5 @@ export type {
   SocialProofRow,
   TopicCountRow,
 } from "./feed.repository";
+
+export { ShareKeyRepositoryImpl } from "./share-key.repository";

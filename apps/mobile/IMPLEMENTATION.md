@@ -22,3 +22,18 @@ Implementation validation passed TypeScript checking and the full mobile test su
 UI verification exercised actual Expo React Native Web flows at phone dimensions, with screenshots inspected, an isolated fake session and intercepted API fixtures. These checks do not authenticate against a hosted project or mutate real user data. iOS/Android device testing, system text scaling, keyboard behavior, native text selection and OS share-extension round trips still require a simulator or physical device; none is attached in this environment.
 
 No API contract changes or migrations are required for these client surfaces. Wider web discovery, ingestion and AI digest generation continue to follow the existing server/worker behavior; this change adds no external-news crawler or new recommendation-generation service.
+
+## Save-only share credentials
+
+The app serializes issuance, foreground repair and acknowledged revocation before sign-out.
+The extension never receives the Supabase JWT. `modules/share-queue` writes the exact shared
+keychain JSON using the native bridge: SecureStore 15 appends `:no-auth` to its service,
+which differs from the approved `com.cosmicdolphin.share` service. Both native targets compile
+`SharedShareKey.swift` and carry `$(AppIdentifierPrefix)com.cosmicdolphin.shared`; the expanded
+access group comes from their Info.plist. Installation IDs use private, device-only SecureStore.
+
+Never run `expo prebuild --clean`. The committed iOS project and extension are maintained in
+place; `expo-share-intent` has `disableIOS: true`. Run the test-only `ShareQueueTests` scheme
+with `DEVICE_TEST_ID`. Its small entitled host runs Security fixtures without starting the
+React Native app or contacting any API. XCTest is simulator evidence; it does not establish
+signed-device provisioning capability. Native signed preview proof remains a separate gate.

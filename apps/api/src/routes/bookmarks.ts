@@ -26,6 +26,7 @@ import {
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { config } from "../config/environment";
+import { bookmarkCreateAuthentication } from "../middleware/share-key";
 import { authMiddleware } from "../middleware/auth";
 import { RATE_LIMITS, rateLimited } from "../plugins/rate-limit";
 import { firstZodMessage, refileBookmarkSchema } from "./collections";
@@ -525,7 +526,7 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
   }>(
     "/bookmarks",
     {
-      preHandler: authenticate,
+      preHandler: bookmarkCreateAuthentication(services, authenticate),
       // 100 saves a day, per user. 429 with `Retry-After` — the client keeps
       // the URL in the field and shows the wait.
       config: rateLimited(RATE_LIMITS.saves),
@@ -537,6 +538,15 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
       let normalizedUrlForRaceRecovery: string | undefined;
       const userIdForRaceRecovery = request.userId!;
       try {
+        if (request.shareKeyId) {
+          const allowed = z.object({
+            source_url: z.string(),
+            capture_source: captureBodySchema.shape.capture_source,
+            capture_platform: captureBodySchema.shape.capture_platform,
+            queued_at: captureBodySchema.shape.queued_at,
+          }).strict().safeParse(request.body);
+          if (!allowed.success) return reply.status(400).send({ error: "Share saves accept URL and capture fields only" });
+        }
         const {
           source_url,
           is_private_link,
@@ -574,7 +584,7 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
           const bookmark = await services.bookmark.mergeCapture(existingBookmark.id, user_id,
             request.body.user_note, request.body.later_until == null ? request.body.later_until : new Date(request.body.later_until));
           logCapture(bookmark, true);
-          return reply.status(200).send({ bookmark, alreadySaved: true, message: "Already in your Library" });
+          return reply.status(200).send(request.shareKeyId ? { id: bookmark.id, alreadySaved: true, message: "Already in your Library" } : { bookmark, alreadySaved: true, message: "Already in your Library" });
         }
 
         if (is_private_link) {
@@ -631,7 +641,7 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
         );
 
         logCapture(queued.bookmark, false);
-        return reply.status(201).send({
+        return reply.status(201).send(request.shareKeyId ? { id: queued.bookmark.id, message: queued.message ?? "Bookmark created successfully", alreadySaved: false } : {
           bookmark: queued.bookmark,
           message: queued.message ?? "Bookmark created successfully",
         });
@@ -653,7 +663,7 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
             const bookmark = await services.bookmark.mergeCapture(existingBookmark.id, userIdForRaceRecovery,
                 request.body.user_note, request.body.later_until == null ? request.body.later_until : new Date(request.body.later_until));
             logCapture(bookmark, true);
-            return reply.status(200).send({
+            return reply.status(200).send(request.shareKeyId ? { id: bookmark.id, message: "Already in your library", alreadySaved: true } : {
               bookmark,
               alreadySaved: true,
               message: "Already in your library",

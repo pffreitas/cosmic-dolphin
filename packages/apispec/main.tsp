@@ -2,6 +2,7 @@ import "@typespec/http";
 import "@typespec/rest";
 import "@typespec/openapi3";
 
+import "./share-keys.tsp";
 import "./notes.tsp";
 import "./pipeline.tsp";
 import "./bookmarks.tsp";

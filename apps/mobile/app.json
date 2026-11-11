@@ -25,6 +25,14 @@
       "icon": {
         "light": "./assets/images/icon-light.png",
         "dark": "./assets/images/icon-dark.png"
+      },
+      "entitlements": {
+        "keychain-access-groups": [
+          "$(AppIdentifierPrefix)com.cosmicdolphin.shared"
+        ],
+        "com.apple.security.application-groups": [
+          "group.com.cosmicdolphin.app"
+        ]
       }
     },
     "androidStatusBar": {
@@ -73,7 +81,8 @@
           "androidMultiIntentFilters": [
             "text/*"
           ],
-          "customScheme": "cosmicdolphin"
+          "customScheme": "cosmicdolphin",
+          "disableIOS": true
         }
       ],
       "expo-secure-store",

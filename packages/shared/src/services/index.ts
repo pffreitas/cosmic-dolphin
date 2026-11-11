@@ -1,3 +1,6 @@
+export * from "./share-key.service";
+import { ShareKeyServiceImpl } from "./share-key.service";
+import { ShareKeyRepositoryImpl } from "../repositories/share-key.repository";
 export * from "./lightpanda.service";
 export * from "./web-scraping.service";
 export * from "./youtube.service";
@@ -73,6 +76,7 @@ import {
 import { AI } from "../ai";
 
 export interface ServiceContainer {
+  shareKey: ShareKeyServiceImpl;
   webScraping: WebScrapingService;
   queue: QueueService;
   bookmark: BookmarkService;
@@ -125,6 +129,7 @@ export function createServiceContainer(
   );
 
   return {
+    shareKey: new ShareKeyServiceImpl(new ShareKeyRepositoryImpl(db)),
     webScraping: webScrapingService,
     queue: new QueueServiceImpl(supabaseClient),
     bookmark: bookmarkService,

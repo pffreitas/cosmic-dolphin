@@ -12,6 +12,7 @@ src/apis/NotesApi.ts
 src/apis/PipelinesApi.ts
 src/apis/ReadingApi.ts
 src/apis/SearchApi.ts
+src/apis/ShareKeysApi.ts
 src/apis/SharedBookmarksApi.ts
 src/apis/SocialApi.ts
 src/apis/index.ts
@@ -22,6 +23,7 @@ src/models/Bookmark.ts
 src/models/BookmarkCapturePlatform.ts
 src/models/BookmarkCaptureSource.ts
 src/models/BookmarkCollectionCount.ts
+src/models/BookmarkCreateResponse.ts
 src/models/BookmarkError.ts
 src/models/BookmarkImage.ts
 src/models/BookmarkLibraryCounts.ts
@@ -91,6 +93,8 @@ src/models/GetReadingProgressResponse.ts
 src/models/Highlight.ts
 src/models/HybridSearchResponse.ts
 src/models/HybridSearchResultItem.ts
+src/models/IssueShareKeyRequest.ts
+src/models/IssueShareKeyResponse.ts
 src/models/LikeResponse.ts
 src/models/Note.ts
 src/models/NoteSection.ts
@@ -132,6 +136,7 @@ src/models/SearchMatchKind.ts
 src/models/SearchReadStatus.ts
 src/models/ShareBookmarkResponse.ts
 src/models/ShareDigestResponse.ts
+src/models/ShareSaveResponse.ts
 src/models/SocialError.ts
 src/models/TrendingCollection.ts
 src/models/TrendingPerson.ts

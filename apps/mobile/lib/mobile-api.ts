@@ -1,5 +1,6 @@
 /** Native adapters around the generated contract. Never manufacture feed content. */
 import {
+  ShareKeysApi,
   BookmarksApi,
   CollectionsApi,
   Configuration,
@@ -53,9 +54,15 @@ function rememberOwnedBookmark(bookmark: ContractBookmark, userId?: string) {
   return rememberBookmark(bookmark);
 }
 export const MobileAPI = {
+  async issueShareKey(deviceId: string, userId: string) {
+    return new ShareKeysApi(await configuration(userId)).shareKeysIssue({ issueShareKeyRequest: { deviceId } });
+  },
+  async revokeShareKey(id: string, userId: string) {
+    await new ShareKeysApi(await configuration(userId)).shareKeysRevoke({ id });
+  },
   async create(params: CreateBookmarkRequest, signal?: AbortSignal, userId?: string) {
     const result = await new BookmarksApi(await configuration(userId)).bookmarksCreate({ createBookmarkRequest: params }, { signal });
-    if (!result.bookmark?.id) throw new Error("Expected owner bookmark response");
+    if (!("bookmark" in result) || !result.bookmark?.id) throw new Error("Expected owner bookmark response");
     return { ...result, bookmark: rememberOwnedBookmark(result.bookmark, userId) };
   },
   async update(id: string, params: UpdateBookmarkRequest, signal?: AbortSignal, userId?: string) {

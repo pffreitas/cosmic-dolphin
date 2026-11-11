@@ -398,7 +398,17 @@ export interface BookmarkProcessingEventsTable extends BaseTable {
 }
 
 // Database schema interface
+export interface ShareKeysTable {
+  id: Generated<string>;
+  user_id: string;
+  device_id: string;
+  key_hash: string;
+  created_at: Generated<Date>;
+  revoked_at: Generated<Date | null>;
+}
+
 export interface Database {
+  share_keys: ShareKeysTable;
   collections: CollectionsTable;
   collection_suggestions: CollectionSuggestionsTable;
   bookmarks: BookmarksTable;

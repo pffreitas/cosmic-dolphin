@@ -2,6 +2,7 @@ import React, { useCallback, useState } from "react";
 import { Image, ScrollView, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import type { Profile } from "@cosmic-dolphin/api-client";
+import { SignOutControl } from "@/components/SignOutControl";
 import { BookmarkCard } from "@/components/BookmarkCard";
 import { TopBarAction } from "@/components/TopBar";
 import {
@@ -111,6 +112,7 @@ export default function ProfileScreen() {
                   }
                 />
               </View>
+              <SignOutControl />
               <Button title="Edit profile" onPress={() => setEditing(true)} />
               <Button
                 title="Your private library"

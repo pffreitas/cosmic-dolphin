@@ -16,6 +16,7 @@
 import * as runtime from '../runtime';
 import type {
   Bookmark,
+  BookmarkCreateResponse,
   BookmarkError,
   BookmarkLibraryCounts,
   BookmarkProcessingTimelineResponse,
@@ -41,6 +42,8 @@ import type {
 import {
     BookmarkFromJSON,
     BookmarkToJSON,
+    BookmarkCreateResponseFromJSON,
+    BookmarkCreateResponseToJSON,
     BookmarkErrorFromJSON,
     BookmarkErrorToJSON,
     BookmarkLibraryCountsFromJSON,
@@ -212,7 +215,7 @@ export class BookmarksApi extends runtime.BaseAPI {
     /**
      * Create a new bookmark.  The URL is normalised before anything else (lowercased scheme and host, trailing slash stripped, `utm_*`/`fbclid`/`gclid`/`ref`/`mc_cid` dropped); the normalised form is stored in `sourceUrl` and the paste is preserved in `metadata.originalUrl`.  If the caller already has that normalised URL, this returns 200 with `alreadySaved: true` and the existing bookmark — a duplicate paste is not an error and never a 409.  The handler writes the row and enqueues; fetching, extraction, summarising, tagging and filing all happen in the worker. Nothing is awaited that touches the network or a model.
      */
-    async bookmarksCreateRaw(requestParameters: BookmarksCreateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreateBookmarkResponse>> {
+    async bookmarksCreateRaw(requestParameters: BookmarksCreateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BookmarkCreateResponse>> {
         if (requestParameters['createBookmarkRequest'] == null) {
             throw new runtime.RequiredError(
                 'createBookmarkRequest',
@@ -242,13 +245,13 @@ export class BookmarksApi extends runtime.BaseAPI {
             body: CreateBookmarkRequestToJSON(requestParameters['createBookmarkRequest']),
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => CreateBookmarkResponseFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => BookmarkCreateResponseFromJSON(jsonValue));
     }
 
     /**
      * Create a new bookmark.  The URL is normalised before anything else (lowercased scheme and host, trailing slash stripped, `utm_*`/`fbclid`/`gclid`/`ref`/`mc_cid` dropped); the normalised form is stored in `sourceUrl` and the paste is preserved in `metadata.originalUrl`.  If the caller already has that normalised URL, this returns 200 with `alreadySaved: true` and the existing bookmark — a duplicate paste is not an error and never a 409.  The handler writes the row and enqueues; fetching, extraction, summarising, tagging and filing all happen in the worker. Nothing is awaited that touches the network or a model.
      */
-    async bookmarksCreate(requestParameters: BookmarksCreateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateBookmarkResponse> {
+    async bookmarksCreate(requestParameters: BookmarksCreateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BookmarkCreateResponse> {
         const response = await this.bookmarksCreateRaw(requestParameters, initOverrides);
         return await response.value();
     }

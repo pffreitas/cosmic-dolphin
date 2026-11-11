@@ -7,16 +7,24 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0DF53B37DF72597BBB90543D /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A222FA9DF6E6DCCF8AA4443D /* Foundation.framework */; };
+		0E333D29FD9D2F7DBD69FAF4 /* TestHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8549BBCE3E915914261281E2 /* TestHost.swift */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		170A27CBCC514512B76A407F /* MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B32108FAC0C94D8B90405ED6 /* MainInterface.storyboard */; };
 		189D110077514013A67AEFC3 /* ShareExtensionPreprocessor.js in Resources */ = {isa = PBXBuildFile; fileRef = 0C614BA9ACAF4163BBAF8CA4 /* ShareExtensionPreprocessor.js */; };
 		2FB1EB61E4534D1FB369A595 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A32B326DD7424E618B6A6FA6 /* PrivacyInfo.xcprivacy */; };
 		359C40AF284C227950E4A22A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A32B326DD7424E618B6A6FA6 /* PrivacyInfo.xcprivacy */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
+		61BB0394D07A038338396437 /* ShareKeychainTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE43A3C06DEC42B8AE61CE8 /* ShareKeychainTests.swift */; };
 		637BB715D95B458FA6D3CC15 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0733BFEA3FC341FB8C361C47 /* ShareViewController.swift */; };
 		70B0E8FF3DC879C2775914C3 /* libPods-CosmicDolphin.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 03542B94353DDD4C7A0D0E44 /* libPods-CosmicDolphin.a */; };
+		7BF1E693FCA600A8C5C0846C /* SharedShareKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E34D34F09DEE73492FEE8E2 /* SharedShareKey.swift */; };
+		7D9955F364CD996611BC68BF /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A32B326DD7424E618B6A6FA6 /* PrivacyInfo.xcprivacy */; };
+		8541A5606AD41E45FAA01773 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A222FA9DF6E6DCCF8AA4443D /* Foundation.framework */; };
+		B66DE3D5F7FE7C677B933EAE /* SharedShareKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E34D34F09DEE73492FEE8E2 /* SharedShareKey.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		BE462EB6228F4CE390679FC7 /* ShareExtension.appex in Copy Files */ = {isa = PBXBuildFile; fileRef = 50CEBC6FC31D461AAEBC874F /* ShareExtension.appex */; };
+		E1406F2B9E98FDF2D5560ECF /* SharedShareKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E34D34F09DEE73492FEE8E2 /* SharedShareKey.swift */; };
 		EA1DF828A22D2907B64DC8EE /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6F84F5AA7436E487C31A92D /* ExpoModulesProvider.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
@@ -28,6 +36,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 417D5F657D874C378BC1F563;
 			remoteInfo = ShareExtension;
+		};
+		936D1D424270CB9EF6521378 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BA8C761F81892A1ACA644CA2;
+			remoteInfo = ShareQueueTestHost;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -49,12 +64,16 @@
 		03542B94353DDD4C7A0D0E44 /* libPods-CosmicDolphin.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-CosmicDolphin.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		0733BFEA3FC341FB8C361C47 /* ShareViewController.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = ShareViewController.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		0C614BA9ACAF4163BBAF8CA4 /* ShareExtensionPreprocessor.js */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = ShareExtensionPreprocessor.js; path = ShareExtensionPreprocessor.js; sourceTree = "<group>"; };
+		0EE43A3C06DEC42B8AE61CE8 /* ShareKeychainTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShareKeychainTests.swift; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* CosmicDolphin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CosmicDolphin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = CosmicDolphin/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = CosmicDolphin/Info.plist; sourceTree = "<group>"; };
+		2E34D34F09DEE73492FEE8E2 /* SharedShareKey.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SharedShareKey.swift; path = "../modules/share-queue/ios/SharedShareKey.swift"; sourceTree = "<group>"; };
 		367CF268C45B48D3B8B4CCE5 /* ShareExtension-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "ShareExtension-Info.plist"; path = "ShareExtension-Info.plist"; sourceTree = "<group>"; };
 		50CEBC6FC31D461AAEBC874F /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = undefined; name = ShareExtension.appex; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8549BBCE3E915914261281E2 /* TestHost.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TestHost.swift; sourceTree = "<group>"; };
 		97B6EEE085E2F91BFC27526A /* Pods-CosmicDolphin.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-CosmicDolphin.debug.xcconfig"; path = "Target Support Files/Pods-CosmicDolphin/Pods-CosmicDolphin.debug.xcconfig"; sourceTree = "<group>"; };
+		A222FA9DF6E6DCCF8AA4443D /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		A28C8EB6F35842F28BD70A5A /* ShareExtension.entitlements */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = ShareExtension.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
 		A32B326DD7424E618B6A6FA6 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = PrivacyInfo.xcprivacy; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = CosmicDolphin/SplashScreen.storyboard; sourceTree = "<group>"; };
@@ -62,9 +81,11 @@
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		D6F84F5AA7436E487C31A92D /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-CosmicDolphin/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		E0844BD79A4A5574E7F69586 /* Pods-CosmicDolphin.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-CosmicDolphin.release.xcconfig"; path = "Target Support Files/Pods-CosmicDolphin/Pods-CosmicDolphin.release.xcconfig"; sourceTree = "<group>"; };
+		E4878B99BFA886D320E8FFB0 /* ShareQueueTestHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShareQueueTestHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = CosmicDolphin/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* CosmicDolphin-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "CosmicDolphin-Bridging-Header.h"; path = "CosmicDolphin/CosmicDolphin-Bridging-Header.h"; sourceTree = "<group>"; };
+		F7F7BE73845B5A1FAC9031D0 /* ShareQueueTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ShareQueueTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -76,6 +97,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		73436202AD8AF03E4E34F12D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8541A5606AD41E45FAA01773 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AAFEE3045821436981DAF2F3 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -83,9 +112,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BB99019F40B3CA06B3CA427E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0DF53B37DF72597BBB90543D /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		040EA9C412617A9E808E44B7 /* ShareQueueTests */ = {
+			isa = PBXGroup;
+			children = (
+				0EE43A3C06DEC42B8AE61CE8 /* ShareKeychainTests.swift */,
+				8549BBCE3E915914261281E2 /* TestHost.swift */,
+			);
+			name = ShareQueueTests;
+			path = ShareQueueTests;
+			sourceTree = "<group>";
+		};
 		13B07FAE1A68108700A75B9A /* CosmicDolphin */ = {
 			isa = PBXGroup;
 			children = (
@@ -112,6 +159,7 @@
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
 				03542B94353DDD4C7A0D0E44 /* libPods-CosmicDolphin.a */,
+				AE13AE9B3FAA2F3B7F2CC73F /* iOS */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -133,6 +181,8 @@
 				B7E9B19C01B54AEDB3368A6F /* ShareExtension */,
 				B2B5C7B1B72AAF3CEF76FA12 /* Pods */,
 				A842959D7D5F2E0797B35843 /* ExpoModulesProviders */,
+				040EA9C412617A9E808E44B7 /* ShareQueueTests */,
+				AEDD747A54E63B07A4934C45 /* SharedShareKey */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -144,6 +194,8 @@
 			children = (
 				13B07F961A680F5B00A75B9A /* CosmicDolphin.app */,
 				50CEBC6FC31D461AAEBC874F /* ShareExtension.appex */,
+				F7F7BE73845B5A1FAC9031D0 /* ShareQueueTests.xctest */,
+				E4878B99BFA886D320E8FFB0 /* ShareQueueTestHost.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -154,6 +206,22 @@
 				24B870F1B8F0B8A4492DABA8 /* CosmicDolphin */,
 			);
 			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
+		AE13AE9B3FAA2F3B7F2CC73F /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				A222FA9DF6E6DCCF8AA4443D /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		AEDD747A54E63B07A4934C45 /* SharedShareKey */ = {
+			isa = PBXGroup;
+			children = (
+				2E34D34F09DEE73492FEE8E2 /* SharedShareKey.swift */,
+			);
+			name = SharedShareKey;
 			sourceTree = "<group>";
 		};
 		B2B5C7B1B72AAF3CEF76FA12 /* Pods */ = {
@@ -233,6 +301,41 @@
 			productReference = 50CEBC6FC31D461AAEBC874F /* ShareExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		5C383FBEAC57EED359C08288 /* ShareQueueTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C2256CC3787DDEB6F8262886 /* Build configuration list for PBXNativeTarget "ShareQueueTests" */;
+			buildPhases = (
+				9AB01EA49BA8A557CEF42146 /* Sources */,
+				BB99019F40B3CA06B3CA427E /* Frameworks */,
+				FDCF1198B3BA1789D68CD75C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C0923CA8C7868CE4BD5E4558 /* PBXTargetDependency */,
+			);
+			name = ShareQueueTests;
+			productName = ShareQueueTests;
+			productReference = F7F7BE73845B5A1FAC9031D0 /* ShareQueueTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		BA8C761F81892A1ACA644CA2 /* ShareQueueTestHost */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 50DE97F34C47CA8913A0E36C /* Build configuration list for PBXNativeTarget "ShareQueueTestHost" */;
+			buildPhases = (
+				8BB0D9E6B64D04C26982AF9F /* Sources */,
+				73436202AD8AF03E4E34F12D /* Frameworks */,
+				248323B2B111C199C2E9FECC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ShareQueueTestHost;
+			productName = ShareQueueTestHost;
+			productReference = E4878B99BFA886D320E8FFB0 /* ShareQueueTestHost.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -267,6 +370,8 @@
 			targets = (
 				13B07F861A680F5B00A75B9A /* CosmicDolphin */,
 				417D5F657D874C378BC1F563 /* ShareExtension */,
+				5C383FBEAC57EED359C08288 /* ShareQueueTests */,
+				BA8C761F81892A1ACA644CA2 /* ShareQueueTestHost */,
 			);
 		};
 /* End PBXProject section */
@@ -283,6 +388,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		248323B2B111C199C2E9FECC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7D9955F364CD996611BC68BF /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A3CEF772509445549C78DCDC /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -290,6 +403,13 @@
 				170A27CBCC514512B76A407F /* MainInterface.storyboard in Resources */,
 				189D110077514013A67AEFC3 /* ShareExtensionPreprocessor.js in Resources */,
 				2FB1EB61E4534D1FB369A595 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FDCF1198B3BA1789D68CD75C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -422,6 +542,15 @@
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
 				EA1DF828A22D2907B64DC8EE /* ExpoModulesProvider.swift in Sources */,
+				B66DE3D5F7FE7C677B933EAE /* SharedShareKey.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8BB0D9E6B64D04C26982AF9F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0E333D29FD9D2F7DBD69FAF4 /* TestHost.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -430,6 +559,16 @@
 			buildActionMask = 2147483647;
 			files = (
 				637BB715D95B458FA6D3CC15 /* ShareViewController.swift in Sources */,
+				E1406F2B9E98FDF2D5560ECF /* SharedShareKey.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9AB01EA49BA8A557CEF42146 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				61BB0394D07A038338396437 /* ShareKeychainTests.swift in Sources */,
+				7BF1E693FCA600A8C5C0846C /* SharedShareKey.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -441,9 +580,37 @@
 			target = 417D5F657D874C378BC1F563 /* ShareExtension */;
 			targetProxy = 726FC58E20894354BD85183A /* PBXContainerItemProxy */;
 		};
+		C0923CA8C7868CE4BD5E4558 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = ShareQueueTestHost;
+			target = BA8C761F81892A1ACA644CA2 /* ShareQueueTestHost */;
+			targetProxy = 936D1D424270CB9EF6521378 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		095E0E8572231488480044F5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ShareQueueTests/ShareQueueTests.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = DVYXX2PWV5;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareQueueTests/Info.plist;
+				INFOPLIST_KEY_SharedKeychainAccessGroup = "$(AppIdentifierPrefix)com.cosmicdolphin.shared";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.cosmicdolphin.app.share-queue-tests";
+				PRODUCT_NAME = ShareQueueTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ShareQueueTestHost.app/ShareQueueTestHost";
+			};
+			name = Debug;
+		};
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 97B6EEE085E2F91BFC27526A /* Pods-CosmicDolphin.debug.xcconfig */;
@@ -515,6 +682,57 @@
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Release;
+		};
+		3981BB4DC56C2E88C33C81F9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ShareQueueTests/ShareQueueTests.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = DVYXX2PWV5;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.cosmicdolphin.app.keychain-test-host";
+				PRODUCT_NAME = ShareQueueTestHost;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		5A25572B9065D2EC8705EC7B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ShareQueueTests/ShareQueueTests.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = DVYXX2PWV5;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.cosmicdolphin.app.keychain-test-host";
+				PRODUCT_NAME = ShareQueueTestHost;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
 		};
 		83CBBA201A601CBA00E9B192 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -661,6 +879,29 @@
 			};
 			name = Release;
 		};
+		BDE6BF77760F1235C66D8159 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ShareQueueTests/ShareQueueTests.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = DVYXX2PWV5;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareQueueTests/Info.plist;
+				INFOPLIST_KEY_SharedKeychainAccessGroup = "$(AppIdentifierPrefix)com.cosmicdolphin.shared";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.cosmicdolphin.app.share-queue-tests";
+				PRODUCT_NAME = ShareQueueTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ShareQueueTestHost.app/ShareQueueTestHost";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		C737914875FD4BFCB03B49DC /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -704,11 +945,29 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		50DE97F34C47CA8913A0E36C /* Build configuration list for PBXNativeTarget "ShareQueueTestHost" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3981BB4DC56C2E88C33C81F9 /* Release */,
+				5A25572B9065D2EC8705EC7B /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "CosmicDolphin" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,
 				83CBBA211A601CBA00E9B192 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C2256CC3787DDEB6F8262886 /* Build configuration list for PBXNativeTarget "ShareQueueTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BDE6BF77760F1235C66D8159 /* Release */,
+				095E0E8572231488480044F5 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

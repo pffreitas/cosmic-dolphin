@@ -2018,6 +2018,8 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - ShareQueue (1.0.0):
+    - ExpoModulesCore
   - Yoga (0.0.0)
 
 DEPENDENCIES:
@@ -2112,6 +2114,7 @@ DEPENDENCIES:
   - RNReanimated (from `../../../node_modules/react-native-reanimated`)
   - RNScreens (from `../../../node_modules/react-native-screens`)
   - RNWorklets (from `../../../node_modules/react-native-worklets`)
+  - ShareQueue (from `../modules/share-queue/ios`)
   - Yoga (from `../../../node_modules/react-native/ReactCommon/yoga`)
 
 EXTERNAL SOURCES:
@@ -2296,6 +2299,8 @@ EXTERNAL SOURCES:
     :path: "../../../node_modules/react-native-screens"
   RNWorklets:
     :path: "../../../node_modules/react-native-worklets"
+  ShareQueue:
+    :path: "../modules/share-queue/ios"
   Yoga:
     :path: "../../../node_modules/react-native/ReactCommon/yoga"
 
@@ -2390,6 +2395,7 @@ SPEC CHECKSUMS:
   RNReanimated: 9aa370001444fd7e301a58993067c31cefef4457
   RNScreens: d8d6f1792f6e7ac12b0190d33d8d390efc0c1845
   RNWorklets: c334b2bdc640e80287d440585bb6a6d553a033a1
+  ShareQueue: fca8f3cdb49eb58ee0a850b6946172d131c435b3
   Yoga: 5934998fbeaef7845dbf698f698518695ab4cd1a
 
 PODFILE CHECKSUM: b567f82847605c20ece5a28eb2ac7cb2002ef90e

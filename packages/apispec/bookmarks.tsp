@@ -600,14 +600,14 @@ interface Bookmarks {
     create(@body request: CreateBookmarkRequest):
         | {
               @statusCode statusCode: 201;
-              @body body: CreateBookmarkResponse;
+              @body body: BookmarkCreateResponse;
           }
         | {
               @doc("Already in the caller's library. `alreadySaved` is true.")
               @statusCode
               statusCode: 200;
 
-              @body body: CreateBookmarkResponse;
+              @body body: BookmarkCreateResponse;
           }
         | {
               @doc("Malformed URL, or a private link with no description.")

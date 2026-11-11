@@ -8,6 +8,7 @@ import MobileCoreServices
 import Photos
 import Social
 import UIKit
+import os
 
 class ShareViewController: UIViewController {
   let hostAppGroupIdentifier = "group.com.cosmicdolphin.app"
@@ -28,6 +29,14 @@ class ShareViewController: UIViewController {
 
   override func viewDidLoad() {
     super.viewDidLoad()
+    // Capability probe only; T-3 owns capture and queue behavior.
+    let probe = Logger(subsystem: "com.cosmicdolphin.share-key", category: "native-probe")
+    if let group = Bundle.main.object(forInfoDictionaryKey: "SharedKeychainAccessGroup") as? String {
+      do {
+        let readable = try SharedKeychain(accessGroup: group).read() != nil
+        probe.notice("Extension shared key readable=\(readable, privacy: .public)")
+      } catch { probe.error("Extension shared key read failed") }
+    }
   }
 
   override func viewDidAppear(_ animated: Bool) {

@@ -17,6 +17,8 @@
 | Plan | 10 tasks · critical path T-1 → T-2 → T-3 → T-4 → T-5 → T-6 → T-7 → T-8 → T-9 → T-10 · one serial lane |
 
 
+**Execution clarification (2026-11-10).** Paulo confirmed “No physical iPhone is available” and pointed to the existing iPhone simulator. Continue implementation using that native simulator, XCTest, real local API/database tests and signed EAS capability inspection. The coordinator had over-gated T-2 on physical-device availability. Implementation checkpoints may proceed on those available checks; retain unavailable physical-phone/Wi-Fi/LTE and normal-issuer real-session outcomes as explicit pending proof in T-10/the package checklist. No such outcome is claimed passed, and no release/merge grant or product requirement is changed. This clarification governs task dependencies during implementation; it does not permit partial release or replacing pending package proof with an HTML demo.
+
 ## How to work this plan
 
 Point a coding agent at this file ("Work the plan in `docs/specs/mobile-reading-app/2026-11-09-save-and-todays-5/tasks.md`") and it runs as the
@@ -459,7 +461,7 @@ Test-first assessment: developer reported observed behavior-red→green for core
 
 | | |
 |---|---|
-| Status | Blocked |
+| Status | Done |
 | Depends on | T-1 |
 | Traces | FR-1 key prerequisite · NFR-9 · NFR-10 · S-15 · §8.4 Share key/iOS shared storage · §8.7 share security · §8.8 Share key logs · A-2 |
 | Ships as | User-visible: issue and revoke a save-only share key in the complete package |
@@ -485,9 +487,9 @@ Test-first assessment: developer reported observed behavior-red→green for core
 
 **Acceptance criteria**
 
-- [ ] A fresh issue returns one cdsk_ key of specified shape; storage contains its SHA-256 only; rotation/revoke/cascade work without invalidating unrelated devices.
-- [ ] Minimal valid-key POST creates or dedupes under the same rate limit; no Bookmark, note, collection or content fields leak. Any extra field is400; any other endpoint/invalid/revoked key is401 (NFR-9).
-- [ ] Failed revocation retains session and key; Retry can finish sign-out. Native extension-target code can read the exact shared item (A-2), with the approved bridge fallback if needed.
+- [x] A fresh issue returns one cdsk_ key of specified shape; storage contains its SHA-256 only; rotation/revoke/cascade work without invalidating unrelated devices.
+- [x] Minimal valid-key POST creates or dedupes under the same rate limit; no Bookmark, note, collection or content fields leak. Any extra field is400; any other endpoint/invalid/revoked key is401 (NFR-9).
+- [x] Failed revocation retains session and key; Retry can finish sign-out. Native extension-target code can read the exact shared item (A-2), with the approved bridge fallback if needed.
 
 **Tests** (write in this order; fixtures within one task are not separate handoffs)
 
@@ -512,7 +514,7 @@ bun run --cwd apps/mobile lint
 
 **Notes**
 
-Implementation complete, coordinator software/native-fixture checks green on2026-11-10; required authenticated native proof incomplete. Preserved on `wip/save-and-todays-5-T-2`, based on feature checkpoint `19d7cd4c25be506c1507fc325820ed8433cac523`; WIP commit `7ba8d7eab788b65d197cf097f5c004963e9f644b` (`Task: T-2`). T-2 is not Done, reviewed, integrated or shipped. Developer node:delegated-task:command%3Amcp%3A44e93c94-ffbb-4f6d-ae4f-4a59ab199c23%3Adelegate-task%3A308843bf-32b1-4aa9-aac9-fb0b4edcc3df delivered62 source/test/generated/native paths without commits or task edits. Full handback and honest sequential red/green ledger remain `/tmp/T-2-handback.md` and `/tmp/T-2-ledger.md`.
+Implemented and checkpoint-accepted on2026-11-10 using the simulator execution clarification above; coordinator software/native-fixture checks and signed capability inspection are green. Normal-issuer real-session and live physical-device outcomes remain pending package proof. Preserved on `wip/save-and-todays-5-T-2`, based on feature checkpoint `19d7cd4c25be506c1507fc325820ed8433cac523`; WIP commit `7ba8d7eab788b65d197cf097f5c004963e9f644b` (`Task: T-2`). The initial Blocked disposition is superseded by Paulo’s simulator steering. T-2 is Done at the implementation checkpoint, not reviewed, integrated or shipped; feature checkpoint SHA is recorded in the next coordinator metadata commit. Developer node:delegated-task:command%3Amcp%3A44e93c94-ffbb-4f6d-ae4f-4a59ab199c23%3Adelegate-task%3A308843bf-32b1-4aa9-aac9-fb0b4edcc3df delivered62 source/test/generated/native paths without commits or task edits. Full handback and honest sequential red/green ledger remain `/tmp/T-2-handback.md` and `/tmp/T-2-ledger.md`.
 
 Coordinator independently ran every T-2 Verify command and Verify all: apispec/shared build, disposable DB up/reset, API347, focused shared4, focused mobile10, root typecheck and explicit shared/API/worker/mobile tsc; serial backend shared397/API347/worker10, full mobile83 with one existing skip, web335, mobile/web/API lint and tokens PASS. API lint64 warnings (4new HTTP-fixture any warnings), mobile5/web112 baseline warnings; non-generated whitespace check PASS. Staging exposed standard generator boilerplate whitespace/blank-EOF warnings in new client files that unstaged diff-check did not include; they are recorded, and no generated file was edited manually. Native ShareQueueTests on local iPhone17Pro/iOS26.5 simulator F3CF81FA-5972-40A4-83EF-0D077C02B571:5tests/0failures; exact JSON/service/account/group/accessibility write/read/delete proven. Developer also observed the real simulator app and actual extension process reading one fictional shared item, then cleaned it up. These are fixture/cross-process proofs, not a real authenticated native lifecycle.
 
@@ -520,7 +522,7 @@ Signed EAS preview https://expo.dev/accounts/cosmic-dolphin/projects/cosmic-dolp
 
 Local transport prerequisite resolved by coordinator using temporary infrastructure only: marker-guarded Supabase-compatible pgmq_public SQL wrappers over the disposable container's real pgmq1.5.1; PostgREST13.0.7 on loopback5534; loopback5535 relay permitting only GET /auth/v1/user to the existing issuer and the five standard queue RPCs to local PostgREST, denying every other route. No product endpoint, auth middleware bypass, new broker, product flag or hosted business write was added. API/worker process SUPABASE_URL was temporarily overridden to that relay; mobile auth retains the normal issuer. Actual API QueueServiceImpl and worker QueueService/SupabaseClientService proved send/read/archive/delete/pop; the normal API and worker booted/returned200health, and the real worker consumed/deleted a fictional non-bookmark probe through the ordinary pgmq loop. Official Lightpanda1.0.2 macOS arm64 binary was downloaded under `/tmp` for worker bootstrap. Relay counters:0authReads,49localQueueCalls,1denied business route. This resolves safe transport/startup, not bookmark processing or authenticated native proof. Reproducible scripts/logs are in `/tmp/mobile-branch-infra/`; use the same temporary local transport when the normal-issuer test session becomes available. All test suites finished before these server sessions. Own servers/container stopped, probe queue and owned wrapper schema removed; named disposable DB remains healthy. Every backend process used loopback5433/test/COMPOSE_PROJECT_NAME=cosmic-dolphin; no hosted migration or worker consumption occurred.
 
-Remaining prerequisites: real configured internal test-account login for normal-issuer native issuance/save/revocation/offline Retry and matching-user local fixture seeding; remaining signed-device proof through the approved device checklist. The developer and coordinator each used request_secret for the missing login; no value arrived, and no identity was invented. device_list currently exposes simulators/emulators only. Coordinator asked which provisioned physical iPhone/device host can be supplied; no answer is assumed. These are proof/environment gaps, not permission to skip criteria. Resume the preserved WIP when prerequisites arrive, rebind preview to a live local tunnel/current source, finish the missing proof and rerun owning checks before Done. All later tasks depend serially on T-2, so none is ready; complete-package PR/review remains held, review rounds0.
+Remaining prerequisites: real configured internal test-account login for normal-issuer native issuance/save/revocation/offline Retry and matching-user local fixture seeding; remaining signed-device proof through the approved device checklist. The developer and coordinator each used request_secret for the missing login; no value arrived, and no identity was invented. device_list currently exposes simulators/emulators only. Paulo replied that no physical iPhone is available and directed use of the existing simulator. Under the execution clarification these outcomes remain explicit pending package proof, and do not block code checkpoints. The preserved implementation is restored to the feature branch; its product/source diff matches the independently verified WIP candidate. T-3 is now ready. Rebind later preview builds to a live local tunnel/current source and complete available simulator outcomes; obtain real-session/physical proof before claiming those package gates passed. Complete-package review rounds remain0.
 
 ### T-3 · Save and close from the native iOS share extension
 
@@ -1058,7 +1060,7 @@ eas build --profile preview --platform all
 
 **Notes**
 
-Not started. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here.
+Not started. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here. Pending package proof from T-2: actual normal-issuer native JWT/share-key issuance/save/revocation/offline Retry; final-source-bound EAS build; live signed-device/keychain behavior. User has no physical iPhone and directed simulator implementation; retain physical Wi-Fi/LTE/device-only outcomes as unavailable, never as passed. Preserve all simulator/XCTest/signed-profile evidence separately, and keep missing credentials or physical proof explicit at the package gate.
 
 ## Implementation review
 

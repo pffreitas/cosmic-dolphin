@@ -211,8 +211,13 @@ it("confirmation written during a create is durable before acceptance and atomic
 
 it("replays on matching sign-in, foreground and Home pull to refresh after an offline launch", async () => {
   const { AppState, RefreshControl } = require("react-native");
-  let foreground: (state: string) => void = () => {};
-  const listener = jest.spyOn(AppState, "addEventListener").mockImplementation((event: unknown, callback: unknown) => { if (event === "change") foreground = callback as (state: string) => void; return { remove: jest.fn() }; });
+  const foregroundListeners = new Set<(state: string) => void>();
+  const foreground = (state: string) => { for (const callback of [...foregroundListeners]) callback(state); };
+  const listener = jest.spyOn(AppState, "addEventListener").mockImplementation((event: unknown, callback: unknown) => {
+    const notify = callback as (state: string) => void;
+    if (event === "change") foregroundListeners.add(notify);
+    return { remove: () => foregroundListeners.delete(notify) };
+  });
   await AsyncStorage.setItem("save-queue:v1", JSON.stringify([{ id: "launch-entry", url: "https://example.com/launch", userId: "reader", captureSource: "save_sheet", capturePlatform: "ios", queuedAt: new Date().toISOString(), attempts: 0 }]));
   mockSession = null;
   mockPath = "/(tabs)";

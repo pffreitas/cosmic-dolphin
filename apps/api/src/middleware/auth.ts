@@ -21,6 +21,8 @@ export async function authMiddleware(
 
     const token = authorization.split(" ")[1];
 
+    if (token?.startsWith("cdsk_")) return reply.status(401).send({ error: "Share key is restricted to bookmark saves" });
+
     const supabase = createClient(
       config.SUPABASE_URL,
       config.SUPABASE_SERVICE_ROLE_KEY

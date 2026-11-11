@@ -3,7 +3,9 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import env from '@fastify/env';
 import { config } from './config/environment';
+import { restrictShareKeyRoutes } from './middleware/share-key';
 import { registerRateLimiting } from './plugins/rate-limit';
+import shareKeyRoutes from './routes/share-keys';
 import bookmarkRoutes from './routes/bookmarks';
 import collectionRoutes from './routes/collections';
 import readingRoutes from './routes/reading';
@@ -25,6 +27,8 @@ const server = Fastify({
     level: config.LOG_LEVEL
   }
 });
+
+server.addHook("onRequest", restrictShareKeyRoutes);
 
 // Register plugins
 server.register(cors, {
@@ -61,6 +65,7 @@ server.register(async function (fastify) {
   });
   
   // Register routes with /api/v1 prefix
+  await fastify.register(shareKeyRoutes, { prefix: '/api/v1' });
   await fastify.register(bookmarkRoutes, { prefix: '/api/v1' });
   await fastify.register(collectionRoutes, { prefix: '/api/v1' });
   await fastify.register(readingRoutes, { prefix: '/api/v1' });
