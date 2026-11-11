@@ -1,6 +1,6 @@
 import React from "react";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
-import ProfileScreen from "@/app/(tabs)/profile";
+import ProfileScreen from "@/app/profile";
 import { PreferencesProvider } from "../PreferencesContext";
 import { AppState } from "react-native";
 import { AuthProvider, useAuth } from "../AuthContext";

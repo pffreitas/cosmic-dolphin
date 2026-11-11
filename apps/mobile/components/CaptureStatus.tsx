@@ -12,7 +12,7 @@ const PHASES = [
   ["extract", "Extracting content", "Extracted content"],
   ["summarise", "Summarising", "Summarised"],
   ["tag", "Tagging", "Tagged"],
-  ["file", "Filing into a collection", "Filed"],
+  ["file", "Filing into a topic", "Filed"],
 ] as const;
 function CaptureRow({ capture }: { capture: Capture }) {
   const { retry, remove, updateBookmark } = useCaptures();

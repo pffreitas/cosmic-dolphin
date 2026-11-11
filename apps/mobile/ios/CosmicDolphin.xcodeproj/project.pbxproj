@@ -41,6 +41,8 @@
 		EA1DF828A22D2907B64DC8EE /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6F84F5AA7436E487C31A92D /* ExpoModulesProvider.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 		F48FD3A311904684B312D4AA /* Inter-400.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A919085575DC48E597DEE932 /* Inter-400.ttf */; };
+		AB5000000000000000000001 /* SourceSerif4-600.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB5000000000000000000003 /* SourceSerif4-600.ttf */; };
+		AB5000000000000000000002 /* SourceSerif4-600.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB5000000000000000000003 /* SourceSerif4-600.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -107,6 +109,7 @@
 		F11748442D0722820044C1D9 /* CosmicDolphin-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "CosmicDolphin-Bridging-Header.h"; path = "CosmicDolphin/CosmicDolphin-Bridging-Header.h"; sourceTree = "<group>"; };
 		F7F7BE73845B5A1FAC9031D0 /* ShareQueueTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ShareQueueTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FFADA73D1A024043B5D1CB4E /* ShareCapture.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = ShareCapture.swift; path = "../modules/share-queue/ios/ShareCapture.swift"; sourceTree = "<group>"; };
+		AB5000000000000000000003 /* SourceSerif4-600.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = "SourceSerif4-600.ttf"; path = "../assets/fonts/SourceSerif4-600.ttf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -248,6 +251,7 @@
 				2A8D1A69F246445CAAB582E2 /* tokens.json */,
 				A919085575DC48E597DEE932 /* Inter-400.ttf */,
 				275265D9315B4A2A9DD8AB4A /* SourceSerif4-400.ttf */,
+				AB5000000000000000000003 /* SourceSerif4-600.ttf */,
 			);
 			name = SharedShareKey;
 			sourceTree = "<group>";
@@ -434,6 +438,7 @@
 				11F3164A25CA4637BAD1EFCF /* tokens.json in Resources */,
 				F48FD3A311904684B312D4AA /* Inter-400.ttf in Resources */,
 				3506A32D2C424BA5882E7AEB /* SourceSerif4-400.ttf in Resources */,
+				AB5000000000000000000001 /* SourceSerif4-600.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -444,6 +449,7 @@
 				8AA5F868E0C6492A96C633CD /* tokens.json in Resources */,
 				7C5BF934F6F34E8AA33E97E7 /* Inter-400.ttf in Resources */,
 				9962588542DB417CBA3B0A35 /* SourceSerif4-400.ttf in Resources */,
+				AB5000000000000000000002 /* SourceSerif4-600.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

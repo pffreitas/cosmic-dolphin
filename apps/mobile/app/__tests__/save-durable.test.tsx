@@ -38,7 +38,7 @@ jest.mock("expo-share-intent", () => ({
 }));
 jest.mock("expo-router", () => {
   const React = require("react");
-  const router = { replace: (path: string) => mockNavigate(path), push: (path: string) => mockNavigate(path), back: jest.fn() };
+  const router = { replace: (path: string) => mockNavigate(path), push: (path: string) => mockNavigate(path), back: jest.fn(), canGoBack: () => false };
   function Stack() {
     const [path, setPath] = React.useState(mockPath);
     mockNavigate = (next: string) => { mockPath = next; setPath(next); };
@@ -47,7 +47,7 @@ jest.mock("expo-router", () => {
     return <Screen />;
   }
   Stack.Screen = function StackScreen() { return null; };
-  return { Stack, useRouter: () => router, usePathname: () => mockPath,
+  return { Stack, useNavigation: () => ({ navigate: (path: string) => mockNavigate("/" + path) }), useRouter: () => router, usePathname: () => mockPath,
     useSegments: () => [mockPath.startsWith("/(auth)") ? "(auth)" : "(tabs)"], useFocusEffect: (effect: any) => React.useEffect(effect, [effect]) };
 });
 

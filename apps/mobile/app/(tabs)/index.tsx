@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useNavigation } from "expo-router";
 import type { FeedScope } from "@cosmic-dolphin/api-client";
 import { CaptureStatus } from "@/components/CaptureStatus";
 import { TopBarAction } from "@/components/TopBar";
@@ -38,6 +38,7 @@ import { rememberEditions } from "@/lib/edition-store";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const rootNavigation = useNavigation("/");
   const { colors } = useTheme();
   const { user } = useAuth();
   const preferences = usePreferences();
@@ -91,7 +92,9 @@ export default function HomeScreen() {
           <TopBarAction
             icon="person-outline"
             label="Your profile"
-            onPress={() => router.push("/(tabs)/profile")}
+            avatar={{ uri: user?.user_metadata?.avatar_url || user?.user_metadata?.picture,
+              initial: (user?.user_metadata?.full_name || user?.email || "You").slice(0, 1).toUpperCase() }}
+            onPress={() => rootNavigation.navigate("profile" as never)}
           />
         </>
       }

@@ -37,7 +37,7 @@ it("no detected URL shows no copied-link row without reading the clipboard", asy
   expect(app.queryByText("Paste copied link")).toBeNull();
   expect(mockText).not.toHaveBeenCalled();
 });
-it("Save keeps its busy label and uncapped text while Reduce Motion stops the indicator", async () => {
+it("Save keeps its busy control label capped and wrappable while Reduce Motion stops the indicator", async () => {
   const { AccessibilityInfo, ActivityIndicator, Text } = require("react-native");
   const { Button } = require("../ui/Signal");
   jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(true);
@@ -46,5 +46,5 @@ it("Save keeps its busy label and uncapped text while Reduce Motion stops the in
   expect(app.getByRole("button", { name: "Save" }).props.accessibilityState).toMatchObject({ busy: true, disabled: true });
   const label = app.UNSAFE_getAllByType(Text).find((text: any) => text.props.children === "Save");
   expect(label!.props.numberOfLines).toBeUndefined();
-  expect(label!.props.maxFontSizeMultiplier).toBeUndefined();
+  expect(label!.props.maxFontSizeMultiplier).toBe(1.3);
 });

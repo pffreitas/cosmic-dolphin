@@ -50,7 +50,8 @@ export default function SaveScreen() {
     setError("");
     try {
       await confirm(savedId, note, readWhen(when));
-      router.replace("/(tabs)");
+      if (router.canGoBack()) router.back();
+      else router.replace("/(tabs)");
     } catch { setError("Change was not saved. Check your connection."); }
     finally { submitting.current = false; setBusy(false); }
   };

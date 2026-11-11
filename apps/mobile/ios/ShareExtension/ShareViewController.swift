@@ -48,7 +48,7 @@ final class ShareViewController: UIViewController {
     close.setTitle("Close", for: .normal)
     close.accessibilityLabel = "Close"
     close.accessibilityIdentifier = "share-close"
-    close.titleLabel?.font = ShareTheme.font("body-sm")
+    close.titleLabel?.font = ShareTheme.font("body-sm", maximumScale: 1.3)
     close.titleLabel?.adjustsFontForContentSizeCategory = true
     close.titleLabel?.numberOfLines = 0
     close.setTitleColor(ShareTheme.color("fg"), for: .normal)

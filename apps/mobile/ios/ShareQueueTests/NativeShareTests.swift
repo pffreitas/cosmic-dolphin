@@ -2,6 +2,7 @@ import XCTest
 import Foundation
 import Darwin
 import UIKit
+import CoreText
 import UniformTypeIdentifiers
 
 final class ShareHTTPFixture: URLProtocol {
@@ -517,6 +518,47 @@ final class NativeShareTests: XCTestCase {
     XCTAssertEqual(try PendingShares(directory: directory).snapshot().count, 1)
     try await Task.sleep(nanoseconds: 1_700_000_000)
     XCTAssertEqual(completions, 1)
+  }
+
+  func testMobilePlumColorsResolveInBothAppearances() {
+    for (style, expected) in [(UIUserInterfaceStyle.light, (90.0, 41.0, 80.0)), (.dark, (227.0, 185.0, 218.0))] {
+      let traits = UITraitCollection(userInterfaceStyle: style)
+      for name in ["accent", "focus"] {
+        let color = ShareTheme.color(name).resolvedColor(with: traits)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        XCTAssertTrue(color.getRed(&r, green: &g, blue: &b, alpha: &a))
+        XCTAssertEqual(r, expected.0 / 255, accuracy: 0.001)
+        XCTAssertEqual(g, expected.1 / 255, accuracy: 0.001)
+        XCTAssertEqual(b, expected.2 / 255, accuracy: 0.001)
+      }
+    }
+  }
+
+  func testTitleUsesCanonicalSemiboldFontResource() throws {
+    let bundle = Bundle(for: ShareViewController.self)
+    let resource = try XCTUnwrap(bundle.url(forResource: "SourceSerif4-600", withExtension: "ttf"))
+    let descriptors = try XCTUnwrap(CTFontManagerCreateFontDescriptorsFromURL(resource as CFURL) as? [CTFontDescriptor])
+    let expected = CTFontDescriptorCopyAttribute(descriptors[0], kCTFontNameAttribute) as? String
+    XCTAssertEqual(ShareTheme.font("title-1", style: .title1).fontName, expected)
+  }
+
+  @MainActor
+  func testAX3CloseCapsAndContentRemainsUncapped() throws {
+    let controller = ShareViewController()
+    controller.loadViewIfNeeded()
+    func descendants(_ view: UIView) -> [UIView] { view.subviews.flatMap { [$0] + descendants($0) } }
+    let views = descendants(controller.view)
+    let close = try XCTUnwrap(views.first { $0.accessibilityIdentifier == "share-close" } as? UIButton)
+    let status = try XCTUnwrap(views.first { $0.accessibilityIdentifier == "share-status" } as? UILabel)
+    XCTAssertLessThanOrEqual(try XCTUnwrap(close.titleLabel?.font.pointSize), 13.5 * 1.3 + 0.01)
+    // UIFontMetrics' default uses the system preference, not performAsCurrent.
+    // Explicit traits keep this policy fixture independent of simulator settings;
+    // the actual controller was also inspected at the global AX3 setting.
+    let traits = UITraitCollection(preferredContentSizeCategory: .accessibilityExtraLarge)
+    XCTAssertLessThanOrEqual(ShareTheme.font("body-sm", maximumScale: 1.3, compatibleWith: traits).pointSize, 13.5 * 1.3 + 0.01)
+    XCTAssertGreaterThan(ShareTheme.font("body-sm", compatibleWith: traits).pointSize, 14 * 1.3)
+    XCTAssertEqual(status.numberOfLines, 0)
+    XCTAssertEqual(close.titleLabel?.numberOfLines, 0)
   }
 
 }

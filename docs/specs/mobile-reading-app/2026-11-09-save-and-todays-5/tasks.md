@@ -675,7 +675,7 @@ Checkpoint commit: `188f8a916819ff28bd6b220a383c77d4b43d7335` (`Task: T-4`).
 
 | | |
 |---|---|
-| Status | In progress |
+| Status | Done |
 | Depends on | T-4 |
 | Traces | FR-17 · FR-28 · NFR-7 · S-15 entry · §7 Navigation/Accessibility/Components · §8.4 Tokens · §8.3 Mobile routing |
 | Ships as | User-visible: apply the plum mobile shell and three destinations in the complete package |
@@ -701,15 +701,15 @@ Checkpoint commit: `188f8a916819ff28bd6b220a383c77d4b43d7335` (`Task: T-4`).
 
 **Acceptance criteria**
 
-- [ ] Cold start, Save modal and avatar/profile return preserve Home/Save/Library; old profile-tab link reaches S-15.
-- [ ] Both-mode accent pairs match §8.4 and all text/UI meet4.5:1/3:1; unknown overrides reject and focus aliases resolve to mobile accent.
-- [ ] Regeneration changes only mobile theme for overrides; web tokens stay unchanged. Existing Library and profile features remain functional.
+- [x] Cold start, Save modal and avatar/profile return preserve Home/Save/Library; old profile-tab link reaches S-15.
+- [x] Both-mode accent pairs match §8.4 and all text/UI meet4.5:1/3:1; unknown overrides reject and focus aliases resolve to mobile accent.
+- [x] Regeneration changes only mobile theme for overrides; web tokens stay unchanged. Existing Library and profile features remain functional.
 
 The following §5 wording is authoritative and copied verbatim; each original criterion is covered by the tests above/below:
 
-- [ ] **FR-17:** The tab bar shall be Home · Save · Library, with profile behind the Home avatar (D-16).
-- [ ] **FR-28:** Mobile shall use the plum accent tokens in light and dark; web is unchanged (D-9).
-- [ ] **FR-28 AC1:** Accent pairs meet NFR-7; web `tokens.css` is unchanged.
+- [x] **FR-17:** The tab bar shall be Home · Save · Library, with profile behind the Home avatar (D-16).
+- [x] **FR-28:** Mobile shall use the plum accent tokens in light and dark; web is unchanged (D-9).
+- [x] **FR-28 AC1:** Accent pairs meet NFR-7; web `tokens.css` is unchanged.
 
 **Tests** (write in this order; fixtures within one task are not separate handoffs)
 
@@ -731,6 +731,16 @@ bun run --cwd apps/mobile lint
 **Notes**
 
 Started2026-11-10 from coordinator-verified T-4 checkpoint `188f8a916819ff28bd6b220a383c77d4b43d7335`; fresh background developer owns T-5 only. Available native targets: local iPhone17Pro/iOS26.5 simulator F3CF81FA-5972-40A4-83EF-0D077C02B571 and local Pixel_7_API_34/Android14 emulator. Own bound device sessions only, restore settings/services at handback. No real test login or physical iPhone is available; fixture/simulator proofs stay labelled and unavailable outcomes stay with T-10 under the execution clarification. T-3 introduced a native canonical-token/font consumer; coordinator inspection found that its mobile override merge, title-1 weight600 and Close label1.3x cap must be completed with this task’s §7/mobile token styling. This is covered mobile styling/integration work, not a new feature; preserve native capture/queue behavior. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here.
+
+Coordinator verification2026-11-11: fresh developer node:delegated-task:command%3Amcp%3A44e93c94-ffbb-4f6d-ae4f-4a59ab199c23%3Adelegate-task%3A3224fda9-e5cd-4700-8647-c09eda2ade5a completed30 changed/new files. Reviewed the full source inventory, preserved profile implementation (only root Back added), real Expo Router navigation tests and native token/font changes. Handback `/tmp/T-5-handback.md`, receipts `/tmp/T-5/`. Home/Save/Library order, avatar/root profile, legacy redirect and Save return now work; Topics is mobile copy only. Shared growth/focus/motion primitives preserve capture/auth behavior. Native mobile merge/aliases, title1 semibold resource and Close1.3x cap are completed.
+
+Coordinator independently PASS: generator5tests, tokens generation/check, apispec/shared build, disposable DB up/reset, focused mobile24, root loose typecheck and shared/API/worker/mobile tsc, serial backend shared397/API347/worker10, mobile lint/full132 with one existing skip, web lint/335tests, focused capture/auth/navigation regressions34, native ShareQueueTests29 and actual ShareExtension simulator target build. All19 serial commands and both native commands passed; logs `/tmp/t5-coordinator-checks/`. Real local Fastify/restricted-key/Postgres fixture ran only after truncating suites and was cleanly stopped. No owned5536 listener remains.
+
+All30 current file hashes independently match final-file-manifest.json. Both web CSS files are byte-identical to starting HEAD; every mobile color outside the six approved overrides and all noncolor generated exports are preserved. The coordinator's first aggregate comparison accidentally included nested changed colors, failed its own checker, then correct exclusion passed; no product change resulted. Own built extension tokens and Inter400/SourceSerif400/SourceSerif600 bytes match canonical source. Native29 includes both-mode plum/focus, font resource and AX3 label/content policy checks. Diff checks pass; generation introduced no additional tracked drift.
+
+Native styling proof is explicitly isolated: UIKit fixture compiles actual share controller/theme with fictional content and own sandbox; RN fixture mounts actual Signal/TopBar/theme/fonts in Expo Go with an isolated preferences boundary. Actual iOS AX3/Android200% in both modes showed readable growing/wrapped content, bounded controls and reachable choices/Close. Coordinator inspected settled dark native Close and Android dark200% sheet images; these support styling, not normal-issuer logged-in product or signed app/extension interoperability. Actual changed-source extension simulator build is unsigned; T-5 does not require a new EAS upload. T-10 still requires final whole-package signed builds, real-session/native/live spoken screen-reader and physical-only outcomes.
+
+Observed test-first qualifications retained for whole-feature review: old-profile redirect was introduced during profile move before its case; its actual infinite-loop red then root-stack replacement green are recorded. Several existing/generator/contrast behaviors first characterized green; supplemental navigation/chrome cases followed primitive/native groups. A reduced-motion refactor syntax failure and native trait-context fixture failure were corrected and rerun; no named failed log is silently called green. Initial full mobile regression failures were fixture/router/profile-import/control-cap mismatches, corrected while preserving persistence/auth assertions;132 then pass. Worker cwd/pattern, SDK/resolver/tool setup retries and async act warnings remain disclosed in the handback. No product auth bypass or skipped/weakened behavior test. Both developer sessions/fixtures/Metro cleaned, precise captured settings restored, existing product app/auth/queue and hooks preserved. Complete-package review rounds remain0. Implementation checkpoint only, not shipped.
 
 ### T-6 · Show immutable daily picks in a finite Home
 
@@ -1086,7 +1096,7 @@ eas build --profile preview --platform all
 
 **Notes**
 
-Not started. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here. Pending package proof from T-2: actual normal-issuer native JWT/share-key issuance/save/revocation/offline Retry; final-source-bound EAS build; live signed-device/keychain behavior. User has no physical iPhone and directed simulator implementation; retain physical Wi-Fi/LTE/device-only outcomes as unavailable, never as passed. Preserve all simulator/XCTest/signed-profile evidence separately, and keep missing credentials or physical proof explicit at the package gate. Pending T-3 proof: normal-issuer host sign-in/key repair/revoked/offline Retry and signed app/extension interoperability; live spoken VoiceOver; all20 Wi-Fi plus20 LTE physical-radio latency trials; final package source-bound native previews. Simulator Safari/local-API capture, refused-transport persistence, signed-out bridge/relaunch, large-text/Reduce Motion and native26 fixtures passed and remain separately labelled. T-5 completes native mobile override/font-weight/Close-label integration. Pending T-4 proof: normal-issuer signed-in no-tap save/matching-user replay; live native spoken TalkBack/retained status/Close (automation suppresses service binding); physical sender return/connectivity. Final signed Android previewcaaef24d passed emulator offline sender return, distinct later intents, no-link lifecycle and durable kill/relaunch; RNTL fictional-boundary sign-in/drain and reader/timer checks pass separately. Final package source builds remain required.
+Not started. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here. Pending package proof from T-2: actual normal-issuer native JWT/share-key issuance/save/revocation/offline Retry; final-source-bound EAS build; live signed-device/keychain behavior. User has no physical iPhone and directed simulator implementation; retain physical Wi-Fi/LTE/device-only outcomes as unavailable, never as passed. Preserve all simulator/XCTest/signed-profile evidence separately, and keep missing credentials or physical proof explicit at the package gate. Pending T-3 proof: normal-issuer host sign-in/key repair/revoked/offline Retry and signed app/extension interoperability; live spoken VoiceOver; all20 Wi-Fi plus20 LTE physical-radio latency trials; final package source-bound native previews. Simulator Safari/local-API capture, refused-transport persistence, signed-out bridge/relaunch, large-text/Reduce Motion and native26 fixtures passed and remain separately labelled. T-5 completes native mobile override/font-weight/Close-label integration. Pending T-4 proof: normal-issuer signed-in no-tap save/matching-user replay; live native spoken TalkBack/retained status/Close (automation suppresses service binding); physical sender return/connectivity. Final signed Android previewcaaef24d passed emulator offline sender return, distinct later intents, no-link lifecycle and durable kill/relaunch; RNTL fictional-boundary sign-in/drain and reader/timer checks pass separately. Final package source builds remain required. T-5 native mobile palette/title-weight/Close-cap integration is completed with29 native tests and unsigned extension build; both-mode AX3/Android200% isolated mounted styling proof passed. Repeat full introduced-screen/navigation/motion matrix with final signed package and real normal-issuer session; Expo Go/fictional styling/policy fixtures are not that proof.
 
 ## Implementation review
 

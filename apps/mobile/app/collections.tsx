@@ -39,7 +39,7 @@ export default function CollectionsScreen() {
       setCollections(next);
       setCounts(count);
     } catch {
-      setError("Your collections could not be loaded.");
+      setError("Your topics could not be loaded.");
     } finally {
       setLoading(false);
     }
@@ -98,7 +98,7 @@ export default function CollectionsScreen() {
     <Screen title="Library" onBack={() => router.back()}>
       <ScrollView contentContainerStyle={layout.content}>
         <PageHeading
-          title="Collections"
+          title="Topics"
           subtitle="An editable home for your saves."
         />
         {error ? (
@@ -117,7 +117,7 @@ export default function CollectionsScreen() {
               row(
                 collection.id,
                 collection.parentId
-                  ? `${collections.find((parent) => parent.id === collection.parentId)?.name || "Collection"} / ${collection.name}`
+                  ? `${collections.find((parent) => parent.id === collection.parentId)?.name || "Topic"} / ${collection.name}`
                   : collection.name,
                 counts?.collections.find(
                   (value) => value.collectionId === collection.id,
@@ -129,24 +129,24 @@ export default function CollectionsScreen() {
           </View>
         )}
         <Button
-          title="New collection"
+          title="New topic"
           icon="add"
           onPress={() => {
             setError("");
             setAdding(true);
           }}
         />
-        <Notice message="Cosmic suggests a collection for each save. When you move one, your choice stays." />
+        <Notice message="Cosmic suggests a topic for each save. When you move one, your choice stays." />
       </ScrollView>
       <Sheet
-        title="New collection"
+        title="New topic"
         visible={adding}
         onClose={() => {
           if (!busy) setAdding(false);
         }}
       >
         <TextInput
-          accessibilityLabel="Collection name"
+          accessibilityLabel="Topic name"
           value={name}
           onChangeText={setName}
           placeholder="A place for your ideas"
@@ -163,7 +163,7 @@ export default function CollectionsScreen() {
         />
         {error ? <Notice message={error} error /> : null}
         <Button
-          title="Create collection"
+          title="Create topic"
           primary
           busy={busy}
           disabled={!name.trim()}
@@ -175,7 +175,7 @@ export default function CollectionsScreen() {
               setName("");
               await load();
             } catch {
-              setError("The collection could not be created. Try again.");
+              setError("The topic could not be created. Try again.");
             } finally {
               setBusy(false);
             }

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Native Jest factories precede imports. */
 import React from "react";
 import { act, render, waitFor } from "@testing-library/react-native";
-import { AccessibilityInfo, BackHandler, Platform } from "react-native";
+import { AccessibilityInfo, ActivityIndicator, BackHandler, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import RootLayout from "../_layout";
 import { saveQueue } from "@/lib/save-queue";
@@ -258,5 +258,13 @@ it("does not replace a pending offline result navigation with sign-in before Exp
   await act(async () => { mockDeferredRoutes = null; mockCommitRoute(route); });
   expect(await app.findByText("Saved on this phone. Cosmic reads it when you open the app.")).toBeTruthy();
   expect(await saveQueue.list()).toHaveLength(1);
+  app.unmount();
+});
+
+it("keeps cold-start auth loading still when reduced motion is enabled", async () => {
+  mockHasIntent = false;
+  jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(true);
+  const app = render(<RootLayout />);
+  await waitFor(() => expect(app.UNSAFE_getByType(ActivityIndicator).props.animating).toBe(false));
   app.unmount();
 });

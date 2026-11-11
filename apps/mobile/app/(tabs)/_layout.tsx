@@ -1,11 +1,19 @@
 import { Tabs, useRouter } from "expo-router";
 import React from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { PlatformPressable } from "@react-navigation/elements";
+import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
+import { useControlFocus } from "@/hooks/useControlFocus";
 import { Ionicons } from "@expo/vector-icons";
 import { textStyle } from "@/constants/fonts";
 import { radius, space } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
+function TabButton(props: BottomTabBarButtonProps) {
+  const { focusStyle, ...focusEvents } = useControlFocus();
+  return <PlatformPressable {...props} {...focusEvents} style={[props.style, focusStyle]} />;
+}
+
 export default function TabLayout() {
   const { colors } = useTheme();
   const router = useRouter();
@@ -24,7 +32,8 @@ export default function TabLayout() {
           borderTopColor: colors.border,
           borderTopWidth: StyleSheet.hairlineWidth,
         },
-        tabBarLabelStyle: { ...textStyle("meta"), fontSize: 11 },
+        tabBarButton: props => <TabButton {...props} />,
+        tabBarLabel: ({ children, color }) => <Text maxFontSizeMultiplier={1.3} style={[textStyle("meta"), { color }]}>{children}</Text>,
         tabBarItemStyle: { minHeight: 48 },
       }}
     >
@@ -32,22 +41,10 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Home",
+          tabBarAccessibilityLabel: "Home, tab, 1 of 3",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? "home" : "home-outline"}
-              size={22}
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="library"
-        options={{
-          title: "Library",
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? "library" : "library-outline"}
               size={22}
               color={color}
             />
@@ -64,6 +61,7 @@ export default function TabLayout() {
         }}
         options={{
           title: "Save",
+          tabBarAccessibilityLabel: "Save, tab, 2 of 3",
           tabBarIcon: () => (
             <View
               style={{
@@ -79,18 +77,20 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="library"
         options={{
-          title: "You",
+          title: "Library",
+          tabBarAccessibilityLabel: "Library, tab, 3 of 3",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? "person" : "person-outline"}
+              name={focused ? "library" : "library-outline"}
               size={22}
               color={color}
             />
           ),
         }}
       />
+      <Tabs.Screen name="profile" options={{ href: null }} />
       <Tabs.Screen name="explore" options={{ href: null }} />
     </Tabs>
   );

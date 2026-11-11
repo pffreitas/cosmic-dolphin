@@ -297,7 +297,28 @@ function mobileColorTokens(tokens) {
 
 export function renderMobileTheme(tokens) {
   assertSectionsCover(tokens);
+  for (const mode of ["light", "dark"]) {
+    const unknown = Object.keys(tokens.color.mobile?.[mode] ?? {}).filter(
+      name => !Object.hasOwn(tokens.color.light, name),
+    );
+    if (unknown.length) throw new Error(`color.mobile.${mode} has unknown canonical keys: ${unknown.join(", ")}.`);
+  }
+  tokens = { ...tokens, color: {
+    light: { ...tokens.color.light, ...tokens.color.mobile?.light },
+    dark: { ...tokens.color.dark, ...tokens.color.mobile?.dark },
+  } };
 
+  for (const mode of ["light", "dark"]) {
+    const palette = tokens.color[mode];
+    const resolveColor = (name, seen = new Set()) => {
+      if (!Object.hasOwn(palette, name) || seen.has(name)) {
+        throw new Error(`Alias {${name}} is missing or circular in color.mobile.${mode}.`);
+      }
+      const alias = typeof palette[name] === "string" && palette[name].match(ALIAS);
+      return alias ? resolveColor(alias[1], new Set([...seen, name])) : palette[name];
+    };
+    tokens.color[mode] = Object.fromEntries(Object.keys(palette).map(name => [name, resolveColor(name)]));
+  }
   const names = mobileColorTokens(tokens);
   const skipped = COLOR_SECTIONS.flatMap(([, n]) => n).filter((n) => !names.includes(n));
 

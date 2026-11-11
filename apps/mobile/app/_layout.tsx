@@ -14,6 +14,7 @@ import { ShareIntentProvider, useShareIntentContext } from "expo-share-intent";
 import { View, ActivityIndicator, Platform } from "react-native";
 
 import { radius } from "@/constants/theme";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useTheme } from "@/hooks/useTheme";
 import { CaptureProvider, useCaptures } from "@/contexts/CaptureContext";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
@@ -27,6 +28,7 @@ SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
   const { scheme, colors } = useTheme();
+  const reduceMotion = useReducedMotion();
   const router = useRouter();
   const pathname = usePathname();
   const { session, isLoading } = useAuth();
@@ -152,7 +154,7 @@ function RootLayoutNav() {
             backgroundColor: colors.bg,
           }}
         >
-          <ActivityIndicator size="large" color={colors.accent} />
+          <ActivityIndicator size="large" color={colors.accent} animating={!reduceMotion} />
         </View>
       </>
     );
@@ -166,14 +168,14 @@ function RootLayoutNav() {
           backgroundColor={colors.bg}
           translucent={false}
         />
-        <Stack>
+        <Stack screenOptions={{ animation: reduceMotion ? "none" : "default" }}>
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen
             name="bookmark/[id]"
             options={{
               headerShown: false,
-              animation: "slide_from_right",
+              animation: reduceMotion ? "none" : "slide_from_right",
             }}
           />
           <Stack.Screen
@@ -181,7 +183,7 @@ function RootLayoutNav() {
             options={{
               headerShown: false,
               presentation: "modal",
-              animation: "slide_from_bottom",
+              animation: reduceMotion ? "none" : "slide_from_bottom",
             }}
           />
           <Stack.Screen
@@ -189,7 +191,7 @@ function RootLayoutNav() {
             options={{
               headerShown: false,
               presentation: "modal",
-              animation: "slide_from_bottom",
+              animation: reduceMotion ? "none" : "slide_from_bottom",
               sheetCornerRadius: radius.lg,
             }}
           />
@@ -200,6 +202,7 @@ function RootLayoutNav() {
           <Stack.Screen name="topic" options={{ headerShown: false }} />
           <Stack.Screen name="collections" options={{ headerShown: false }} />
           <Stack.Screen name="reader/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="profile" options={{ headerShown: false }} />
           <Stack.Screen name="settings" options={{ headerShown: false }} />
           <Stack.Screen name="+not-found" />
         </Stack>

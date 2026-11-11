@@ -138,6 +138,30 @@ Dark is a first-class translation, not an inversion. Three rules:
 3. Never carry a light-mode literal into a dark surface. Every colour on a surface comes from the
    same token set as that surface.
 
+### Mobile plum override
+
+The Save and Today’s 5 mobile shell uses `color.mobile.light` and
+`color.mobile.dark` in `tokens.json`. The generator validates every override name
+against the canonical color keys, merges each mode, then resolves aliases. The
+native iOS share panel consumes the same effective palette. Web CSS and every
+other Signal token keep their canonical values.
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| accent | `#5A2950` | `#E3B9DA` |
+| accent-hover | `#6E3563` | `#D4A5CB` |
+| accent-fg | `#FCF7FB` | `#2A1026` |
+| accent-soft | `#F4E8F1` | `#36202F` |
+| accent-border | `#D9BCD2` | `#6B4462` |
+| focus | `{accent}` | `{accent}` |
+
+Text remains at least 4.5:1 and meaningful icons/focus outlines at least 3:1.
+Accent borders and `border-strong` reinforce labelled controls; they do not
+identify controls on their own (see the existing exception in `audit.md`).
+Content follows uncapped Dynamic Type. Tab and control labels cap at 1.3×,
+with growing touch targets and wrapping rows. Keyboard focus uses a 2px outline
+with a 2px offset; reduced motion keeps sheets and progress indicators still.
+
 ## Typography
 
 Two voices, and the split is the single most load-bearing rule in the system.
