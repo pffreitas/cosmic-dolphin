@@ -56,6 +56,9 @@ function rememberOwnedBookmark(bookmark: ContractBookmark, userId?: string) {
   return rememberBookmark(bookmark);
 }
 export const MobileAPI = {
+  async content(id: string, signal?: AbortSignal, userId?: string) {
+    return new BookmarksApi(await configuration(userId)).bookmarksGetContent({ id }, { signal });
+  },
   async notInterested(id: string, userId?: string) {
     return new FeedApi(await configuration(userId)).feedFeedback({ feedFeedbackRequest: { kind: "not_interested", bookmarkId: id } });
   },

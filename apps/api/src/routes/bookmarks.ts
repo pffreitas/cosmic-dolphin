@@ -1008,6 +1008,17 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
     }
   );
 
+  fastify.get<{ Params: { id: string } }>("/bookmarks/:id/content",
+    { preHandler: authenticate }, async (request, reply) => {
+      try {
+        const content = await services.bookmark.getContentByOwner(request.params.id, request.userId!);
+        return content ? reply.send(content) : reply.status(404).send({ error: "Bookmark content not found" });
+      } catch (error) {
+        fastify.log.error({ error }, "Get bookmark content error");
+        return reply.status(500).send({ error: "Internal server error" });
+      }
+    });
+
   // Title, tags, archived. What the Library's bulk bar writes through for
   // **Archive** and **Add tag** — and the reason `tags` is the whole list
   // rather than a delta: the toast offers an undo for eight seconds, and an

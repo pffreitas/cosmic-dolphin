@@ -5,6 +5,19 @@ import "@typespec/openapi3";
 using TypeSpec.Http;
 namespace CosmicDolphinService;
 
+@doc("A text-only block of the stored article, never the Cosmic brief.")
+model BookmarkContentBlock {
+    kind: "heading" | "paragraph" | "quote" | "list_item";
+    text: string;
+}
+
+model BookmarkContent {
+    blocks: BookmarkContentBlock[];
+    wordCount: int32;
+    source: "extracted" | "pasted";
+    updatedAt: utcDateTime;
+}
+
 @doc("Processing state of AI pipeline for a bookmark")
 enum ProcessingStatus {
     idle,
@@ -697,6 +710,18 @@ interface Bookmarks {
     @useAuth(BearerAuth)
     @get
     findById(@path id: string): Bookmark | {
+        @statusCode statusCode: 404;
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+
+    @doc("Get complete stored article text for its owner. Missing, private and incomplete content all return 404.")
+    @useAuth(BearerAuth)
+    @get
+    @route("/{id}/content")
+    getContent(@path id: string): BookmarkContent | {
         @statusCode statusCode: 404;
         @body body: BookmarkError;
     } | {

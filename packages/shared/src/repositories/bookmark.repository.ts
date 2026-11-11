@@ -110,6 +110,7 @@ export interface BookmarkRepository {
     >
   ): Promise<void>;
   getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
+  getOwnedScrapedUrlContent(bookmarkId: string, userId: string): Promise<ScrapedUrlContents | null>;
   updateScrapedUrlContents(
     id: string,
     contents: Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
@@ -379,6 +380,19 @@ export class BookmarkRepositoryImpl
         links: result.links,
       };
     }, "getScrapedUrlContent");
+  }
+
+  async getOwnedScrapedUrlContent(bookmarkId: string, userId: string): Promise<ScrapedUrlContents | null> {
+    const row = await this.db.selectFrom("scraped_url_contents as content")
+      .innerJoin("bookmarks as bookmark", "bookmark.id", "content.bookmark_id")
+      .selectAll("content")
+      .where("bookmark.id", "=", bookmarkId)
+      .where("bookmark.user_id", "=", userId)
+      .where("bookmark.is_private_link", "=", false)
+      .executeTakeFirst();
+    return row ? { id: row.id, bookmarkId, title: row.title, content: row.content,
+      metadata: row.metadata, createdAt: row.created_at, updatedAt: row.updated_at,
+      images: row.images, links: row.links } : null;
   }
 
   async updateScrapedUrlContents(

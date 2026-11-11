@@ -16,6 +16,7 @@
 import * as runtime from '../runtime';
 import type {
   Bookmark,
+  BookmarkContent,
   BookmarkCreateResponse,
   BookmarkError,
   BookmarkLibraryCounts,
@@ -42,6 +43,8 @@ import type {
 import {
     BookmarkFromJSON,
     BookmarkToJSON,
+    BookmarkContentFromJSON,
+    BookmarkContentToJSON,
     BookmarkCreateResponseFromJSON,
     BookmarkCreateResponseToJSON,
     BookmarkErrorFromJSON,
@@ -99,6 +102,10 @@ export interface BookmarksFeedRequest {
 }
 
 export interface BookmarksFindByIdRequest {
+    id: string;
+}
+
+export interface BookmarksGetContentRequest {
     id: string;
 }
 
@@ -340,6 +347,47 @@ export class BookmarksApi extends runtime.BaseAPI {
      */
     async bookmarksFindById(requestParameters: BookmarksFindByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Bookmark> {
         const response = await this.bookmarksFindByIdRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Get complete stored article text for its owner. Missing, private and incomplete content all return 404.
+     */
+    async bookmarksGetContentRaw(requestParameters: BookmarksGetContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BookmarkContent>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling bookmarksGetContent().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("BearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/bookmarks/{id}/content`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BookmarkContentFromJSON(jsonValue));
+    }
+
+    /**
+     * Get complete stored article text for its owner. Missing, private and incomplete content all return 404.
+     */
+    async bookmarksGetContent(requestParameters: BookmarksGetContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BookmarkContent> {
+        const response = await this.bookmarksGetContentRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -24,6 +24,7 @@ export class BookmarkActions {
   private confirmedArchive = new Map<string, boolean>();
   private confirmedLater = new Map<string, Date | null>();
   private confirmedRead = new Map<string, Date | undefined>();
+  private confirmedNote = new Map<string, string | null>();
   private pending = new Map<string, Promise<unknown>>();
   private changedSequence = new Map<string, number>();
   private deferred?: () => void;
@@ -82,6 +83,7 @@ export class BookmarkActions {
       if (changes[bookmark.id] || hidden[bookmark.id]) changed = true;
       delete changes[bookmark.id]; delete hidden[bookmark.id];
       this.confirmedRead.set(bookmark.id, bookmark.readAt);
+      this.confirmedNote.set(bookmark.id, bookmark.userNote ?? null);
       this.confirmedLater.set(bookmark.id, bookmark.laterUntil ?? null);
       this.confirmedArchive.set(bookmark.id, bookmark.isArchived ?? false);
       this.confirmedPlacement.set(bookmark.id, { collectionId: bookmark.collectionId, collectionPath: bookmark.collectionPath });
@@ -138,6 +140,17 @@ export class BookmarkActions {
       apply(prior); this.publish({ ...this.state, toast: undefined });
       this.request(() => MobileAPI.refile(bookmark.id, prior.collectionId, this.userId), () => apply(this.confirmedPlacement.get(bookmark.id)!), `${bookmark.id}:move`, () => this.confirmedPlacement.set(bookmark.id, prior));
     });
+  };
+  note = (bookmark: Bookmark, userNote: string | null) => {
+    if (!this.owns(bookmark) || (userNote?.length ?? 0) > 500) return;
+    const prior = this.view(bookmark).userNote ?? null;
+    if (!this.confirmedNote.has(bookmark.id)) this.confirmedNote.set(bookmark.id, prior);
+    const apply = (value: string | null) => this.publish({ ...this.state,
+      changes: { ...this.state.changes, [bookmark.id]: { ...this.state.changes[bookmark.id], userNote: value } },
+    });
+    apply(userNote);
+    this.request(() => MobileAPI.update(bookmark.id, { userNote }, undefined, this.userId), () => apply(this.confirmedNote.get(bookmark.id)!), `${bookmark.id}:note`, () => this.confirmedNote.set(bookmark.id, userNote));
+    this.showToast(userNote ? "Note saved" : "Note cleared");
   };
   save = (item: FeedItem) => {
     if (!item.bookmark || (item.type !== "followed_save" && item.type !== "reshare")) return;

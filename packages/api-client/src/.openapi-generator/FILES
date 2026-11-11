@@ -24,6 +24,8 @@ src/models/Bookmark.ts
 src/models/BookmarkCapturePlatform.ts
 src/models/BookmarkCaptureSource.ts
 src/models/BookmarkCollectionCount.ts
+src/models/BookmarkContent.ts
+src/models/BookmarkContentBlock.ts
 src/models/BookmarkCreateResponse.ts
 src/models/BookmarkError.ts
 src/models/BookmarkImage.ts

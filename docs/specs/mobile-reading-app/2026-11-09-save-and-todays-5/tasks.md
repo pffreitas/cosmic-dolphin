@@ -928,7 +928,7 @@ Checkpoint commit: `42ec686f935b127747f49cbafe503442faa8946b` (`Task: T-7`).
 
 | | |
 |---|---|
-| Status | In progress |
+| Status | Done |
 | Depends on | T-7 |
 | Traces | FR-18 · FR-19 · FR-20 · FR-21 · NFR-3 · NFR-6 · S-11 · S-12 · S-22 · §8.4 Content GET · §8.6 Content404/old-reader progress · §7 Deep links |
 | Ships as | User-visible: read a bookmark and continue to the next pick in the complete package |
@@ -954,20 +954,20 @@ Checkpoint commit: `42ec686f935b127747f49cbafe503442faa8946b` (`Task: T-7`).
 
 **Acceptance criteria**
 
-- [ ] Real complete extracted content is served to owner and rendered in Read with provenance; no complete/private/offline reaches specified empty/connection states. Brief is never labeled original article text.
-- [ ] Mark done navigates through next undone visible original slots and finishes with AllNdone/Back; outside-set behavior follows FR-21.
-- [ ] Private note boundaries/null clear and Move are persisted/reversible; confirmed move survives reprocessing and public DTOs remain stripped.
-- [ ] Old reader links/highlight list/appearance/progress survive; S-11/12/22 loading/empty/error/offline/success states and wrapping bar match prototype.
+- [x] Real complete extracted content is served to owner and rendered in Read with provenance; no complete/private/offline reaches specified empty/connection states. Brief is never labeled original article text.
+- [x] Mark done navigates through next undone visible original slots and finishes with AllNdone/Back; outside-set behavior follows FR-21.
+- [x] Private note boundaries/null clear and Move are persisted/reversible; confirmed move survives reprocessing and public DTOs remain stripped.
+- [x] Old reader links/highlight list/appearance/progress survive; S-11/12/22 loading/empty/error/offline/success states and wrapping bar match prototype.
 
 The following §5 wording is authoritative and copied verbatim; each original criterion is covered by the tests above/below:
 
-- [ ] **FR-18:** The bookmark breadcrumb shall open Move; a confirmed move stops AI refiling.
-- [ ] **FR-18 AC1:** A moved save survives reprocessing.
-- [ ] **FR-19:** The user shall add, edit or clear a private note (≤ 500 characters) at save and on the bookmark page.
-- [ ] **FR-20:** The bookmark page shall offer Brief (brief, key points, provenance), Read (extracted text) and Original (in-app browser).
-- [ ] **FR-20 AC1:** No extracted content follows §8.6 "Content 404 or offline".
-- [ ] **FR-21:** Mark done on a pick's page shall show the done count, Undo and Next pick (next undone visible pick).
-- [ ] **FR-21 AC1:** After the last undone pick, "All {N} done" and Back replace Next pick; outside the set, Done, Undo, Back.
+- [x] **FR-18:** The bookmark breadcrumb shall open Move; a confirmed move stops AI refiling.
+- [x] **FR-18 AC1:** A moved save survives reprocessing.
+- [x] **FR-19:** The user shall add, edit or clear a private note (≤ 500 characters) at save and on the bookmark page.
+- [x] **FR-20:** The bookmark page shall offer Brief (brief, key points, provenance), Read (extracted text) and Original (in-app browser).
+- [x] **FR-20 AC1:** No extracted content follows §8.6 "Content 404 or offline".
+- [x] **FR-21:** Mark done on a pick's page shall show the done count, Undo and Next pick (next undone visible pick).
+- [x] **FR-21 AC1:** After the last undone pick, "All {N} done" and Back replace Next pick; outside the set, Done, Undo, Back.
 
 **Tests** (write in this order; fixtures within one task are not separate handoffs)
 
@@ -993,6 +993,20 @@ bun run --cwd apps/mobile lint
 **Notes**
 
 Started2026-11-11 from coordinator-verified T-7 checkpoint `42ec686f935b127747f49cbafe503442faa8946b`; fresh background developer owns T-8 only. Extend existing owner content/filing/reading/highlight services and implement S-11 Brief/Read/Original, notes/Move and immutable Next pick test-first in prescribed order. T-7 controller/read-sequence freshness and explicit Done semantics must remain intact; no note/offline action queue. NFR-3 needs100owner HTTP GET timings after10warmups over20,000words, response bytes≤500KB and p95≤400ms on final source, never concurrent with truncating suites. Native AX3/200% wrapping and text-selection checks use own bound sessions on local iOS F3CF81FA-5972-40A4-83EF-0D077C02B571/Android emulator-5554, restore settings/installs/services. Normal-issuer login/physical iPhone remain unavailable, isolated fictional view fixtures are labelled and package-only proof remains T-10 under execution clarification. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here.
+
+Coordinator verification2026-11-11: fresh developer node:delegated-task:command%3Amcp%3A44e93c94-ffbb-4f6d-ae4f-4a59ab199c23%3Adelegate-task%3A3fabca37-c1e3-44f0-80c6-6dcd48687710 delivered25 intended product/test files. Full handback `/tmp/T-8-handback.md`, chronological red/green/setup/characterization ledger and native receipts `/tmp/T-8/`. Reviewed complete owner contract/SQL/service/pure inert mapper, reader/redirect/tools/progress/controller integration, privacy and existing-test changes. Stored complete extraction is read separately from brief; private/incomplete/nonowner404, source provenance, tag/block/fallback limits, Next original slot, note null/bounds/revert, Move/filing and private reading regressions are covered. All original typed/mobile/shared assertions retained; only required mock members/import setup added. No worker transport, recovery writes, new service/broker/flag/auth endpoint or public note exposure.
+
+Root found an open private note draft could survive an account change into the next account's reader. Public RNTL account-switch regression actually failed with the previous-account TextInput still present; then passed after clearing note/menu state on page/account changes, binding loaded page data and result application to the current page/account, and restricting the note sheet to its owner. Late callbacks cannot apply an earlier page as the current loaded identity. Existing late-page/content/picks/progress and all reading regressions still pass. Final25 source paths remain unchanged as an inventory; only bookmark-reading.test and bookmark/[id] differ from the child manifest, other23 child product hashes match. Direct small-finding correction follows the higher-priority root instruction, not a Sol review round.
+
+Root independently PASS: apispec/shared build, disposable DB up/reset, prescribed API356/24files, shared focused63/6suites, final mobile focused39; root loose typecheck and shared/API/worker/mobile tsc; serial backend shared411/API356/worker10; mobile lint/full254 plus one pre-existing skip; web lint/335tests; tokens:check; API lint. After the small reader correction, repeated affected mobile focused/tsc/lint/full and final-source performance, all pass. Other verified backend/web sources remained unchanged. Logs `/tmp/t8-coordinator-checks/`. No test newly skipped, weakened or deleted.
+
+NFR-3 independently measured after final correction: stored20,000-word article, fixture SHA2561324c27035867432793e85a43fb3df62a7186031954203bc017a09a571036959;10warmups then100serial owner HTTP GETs with response+JSON, monotonic timer/rank95. Final189010bytes (≤500000), p95=10.103291ms (≤400), DB127.0.0.1:5433/APIhttp://127.0.0.1:49934. Candidate HEAD92e6ca62f335fc32e16a6f0e73384e6dede10ab3 plus27-file source manifest (25product +2preserved hooks), SHA256f57c841c616f68f29c9fc363ace93f489eba9644d6b4566e2ceb9541b6ec044c; all file hashes independently match. Receipt `/tmp/t8-coordinator-checks/content-performance.json` retains100timing/byte samples and actual SQL cleanup assertions. Auth injection exists only in isolated fictional owner test registration, not a normal-issuer proof. Root fixture's owned bookmark/content/auth user removed, server/database closed, no TRUNCATE during measurement. Child's initial cleanup failure (auth deletion alone left bookmark) was explicitly recorded; marker/owner/id/URL/content-hash guarded orphan cleanup and corrected final rerun are documented, not falsely passed.
+
+Native proof: isolated fixture mounted actual reader/tools/controller/progress/tokens with fictional view/transport boundaries and on-screen no-account-session label. Both requested native fontScale2.643/AX3 and2.0/Android200% confirmed; initial Android1.75 corrected before passing proof. Root inspected both native Done/count/action bars and actual iOS Copy /Android text handles+Copy/Share selection images. Android Done image includes wrapped Undo/Next; iOS Done action tree captures Undo inside8s, while the later screenshot shows expired Undo and Next. Actual Next page replacement and last All2done/Back receipts retained. Visual markup remains unchanged by root identity/draft guards; fixtures do not prove final signed or normal-issuer authenticated package. No live spoken VoiceOver/TalkBack or physical Wi-Fi/LTE claim. Final signed-source, real-session, live-spoken/physical-only and complete-package proofs remain T-10 under execution clarification.
+
+Child setup/first-green qualifications remain in its ledger: initial mapper-supported tags and existing404/limits/Undo matrices characterized green; new timestamp expectation corrected to actual DB trigger timestamp; new fallback grouping asserts contract invariants; key-point matcher/Markdown/token/inset/mocked members corrected without weakening old assertions. Native wrong-root Expo startup briefly changed root tsconfig, owned process stopped and exact original restored; dependency/menu selector failures and initial1.75 text setting were corrected openly. No successful proof is claimed from failed retries. Native clipboard Copy changed fictional copied text; prior clipboard content was not captured and exact restoration is not claimed. Settings/text/app inventories/own sessions/Metro8087/reverse and performance ports were restored/closed; cleanup receipt inspected. Named disposable DB remains healthy. Root created no native session or device setting change.
+
+Approved spec/prototype/tasks-before-metadata and both hook bytes independently preserved; no env/issuer/native/package config drift. Tracked diff check passes; newly generated BookmarkContent/BookmarkContentBlock retain13 generator-produced trailing blank-comment lines (8+5), plus2 generator-produced blank EOF lines, never manually edited; staged audit reports exactly15 generated warnings. No handwritten whitespace issue. No child commits/staging/push/PR/artifact edits, no per-task review. Whole-feature Sol ledger remains0/max5. Implementation checkpoint only, not shipped.
 
 ### T-9 · Explain extraction failures and recover with pasted text
 

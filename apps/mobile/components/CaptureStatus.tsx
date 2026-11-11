@@ -9,13 +9,7 @@ import { textStyle } from "@/constants/fonts";
 import { MobileAPI } from "@/lib/mobile-api";
 import { Button, layout } from "./ui/Signal";
 import type { Bookmark } from "@/lib/api";
-const PHASES = [
-  ["fetch", "Fetching page", "Fetched page"],
-  ["extract", "Extracting content", "Extracted content"],
-  ["summarise", "Summarising", "Summarised"],
-  ["tag", "Tagging", "Tagged"],
-  ["file", "Filing into a topic", "Filed"],
-] as const;
+import { PendingPhases } from "./PendingPhases";
 function CaptureRow({ capture, onCompleted }: { capture: Capture; onCompleted?: () => void }) {
   const { retry, remove, updateBookmark } = useCaptures();
   const { colors } = useTheme();
@@ -49,12 +43,7 @@ function CaptureRow({ capture, onCompleted }: { capture: Capture; onCompleted?: 
     <Text style={[textStyle("bodySm"), { color: failed ? colors.danger : colors.fgSecondary }]}>
       {failed ? "Couldn't save this link" : queued ? "Saved on this phone. Cosmic reads it when you open the app." : capture.status === "saving" ? "Saving…" : capture.alreadySaved ? "Already in your Library" : processing ? "Cosmic is reading it" : "Saved privately to your Library"}
     </Text>
-    {processing ? <View accessibilityLabel="Processing phases">
-      {PHASES.filter(([phase]) => !capture.entry.isPrivateLink || phase !== "fetch").map(([phase, running, completed]) => {
-        const event = events.filter(value => value.kind === "phase" && value.phase === phase).sort((a, b) => b.sequence - a.sequence)[0];
-        return <Text key={phase} style={[textStyle("bodySm"), { color: colors.fgSecondary }]}>{event?.status === "completed" ? completed : event?.status === "running" ? `${running}…` : running}</Text>;
-      })}
-    </View> : null}
+    {processing ? <PendingPhases events={events} privateLink={capture.entry.isPrivateLink} /> : null}
     {path ? <Text style={[textStyle("meta"), { color: colors.fgSecondary }]}>{path}</Text> : null}
     {failed ? <>
       {capture.entry.failure !== "rejected" ? <Button title="Retry" onPress={() => retry(capture.id)} /> : null}

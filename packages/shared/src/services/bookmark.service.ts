@@ -19,6 +19,7 @@ import {
 import { WebScrapingService } from "./web-scraping.service";
 import { NewBookmark, BookmarkUpdate } from "../database/schema";
 import { ContentExtractionError, isIncompleteExtraction } from "./content-extraction";
+import { bookmarkContentBlocks, type BookmarkContent } from "./bookmark-content-blocks";
 
 export interface PrivateLinkMetadata extends CaptureFields {
   title?: string;
@@ -78,6 +79,7 @@ export interface BookmarkService {
     userId: string
   ): Promise<{ bookmark: Bookmark; isLikedByCurrentUser: boolean } | null>;
   getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
+  getContentByOwner(bookmarkId: string, userId: string): Promise<BookmarkContent | null>;
   create(
     url: string,
     userId: string,
@@ -149,6 +151,15 @@ export class BookmarkServiceImpl implements BookmarkService {
     private webScrapingService: WebScrapingService,
     private collectionRepository?: CollectionRepository
   ) {}
+
+  async getContentByOwner(bookmarkId: string, userId: string): Promise<BookmarkContent | null> {
+    const stored = await this.bookmarkRepository.getOwnedScrapedUrlContent(bookmarkId, userId);
+    if (!stored || isIncompleteExtraction(stored)) return null;
+    const blocks = bookmarkContentBlocks(stored.content);
+    if (!blocks.length) return null;
+    return { blocks, wordCount: blocks.reduce((count, block) => count + block.text.split(/\s+/).length, 0),
+      source: stored.metadata?.extraction?.provider === "user_paste" ? "pasted" : "extracted", updatedAt: stored.updatedAt };
+  }
 
   async updateByOwner(id: string, userId: string, data: OwnerBookmarkUpdate): Promise<Bookmark> {
     const row = await this.bookmarkRepository.updateOwned(id, userId, {

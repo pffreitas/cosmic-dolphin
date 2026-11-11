@@ -6,6 +6,8 @@ export * from './Bookmark';
 export * from './BookmarkCapturePlatform';
 export * from './BookmarkCaptureSource';
 export * from './BookmarkCollectionCount';
+export * from './BookmarkContent';
+export * from './BookmarkContentBlock';
 export * from './BookmarkCreateResponse';
 export * from './BookmarkError';
 export * from './BookmarkImage';
