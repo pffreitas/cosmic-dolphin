@@ -119,7 +119,8 @@ it("owner fields stay private across shared-slug, public saves, Explore, followe
 it("legacy omission stays NULL with unknown platform and capture logs carry attribution without note text", async () => {
   const legacy = (await create({ source_url: "https://example.com/legacy" })).json().bookmark;
   expect(legacy).toMatchObject({ captureSource: null, capturePlatform: "unknown", captureQueuedAt: null, userNote: null, laterUntil: null });
-  const queuedAt = new Date(Date.now() - 10000).toISOString();
+  // Capture age uses database creation time, so keep the fixture on that clock.
+  const queuedAt = new Date(new Date(legacy.createdAt).getTime() - 10000).toISOString();
   const body = { source_url: "https://example.com/logged", user_note: "PRIVATE_NOTE_NEVER_LOG", capture_source: "save_sheet", capture_platform: "ios", queued_at: queuedAt };
   await create(body);
   await create(body);

@@ -844,7 +844,7 @@ Checkpoint commit: `aafb44ed54aee259196d1fbece61cc3abf1ca26c` (`Task: T-6`).
 
 | | |
 |---|---|
-| Status | In progress |
+| Status | Done |
 | Depends on | T-6 |
 | Traces | FR-10 · FR-11 · FR-12 · FR-13 · NFR-6 · NFR-8 · S-3 · S-4 · S-18 · §8.4 Writes · §8.6 Not for me Undo/Action while offline/non-own card · §7 Accessibility |
 | Ships as | User-visible: complete, snooze or reject an own save with Undo in the complete package |
@@ -870,21 +870,21 @@ Checkpoint commit: `aafb44ed54aee259196d1fbece61cc3abf1ca26c` (`Task: T-6`).
 
 **Acceptance criteria**
 
-- [ ] Done/read and Later mutate immediately, Undo within8s restores prior state, network failure reverts with connection toast. Future previous snooze survives Undo; elapsed prior clears.
-- [ ] Tonight19:00 edge, Tomorrow, next future weekend and next Monday match all FR-11 examples; hidden original pick returns after Home focus revealsAt with1of4→1of5.
-- [ ] Rejection feedback is absent after Undo, deferred exactly at stated events; killed process retains accepted own archive and may reshow non-own; no queued actions.
-- [ ] Ownership matrix holds for gestures/buttons/menu/SR actions, digest Open only; Undo expiry and status differ accessibly without extending8s.
+- [x] Done/read and Later mutate immediately, Undo within8s restores prior state, network failure reverts with connection toast. Future previous snooze survives Undo; elapsed prior clears.
+- [x] Tonight19:00 edge, Tomorrow, next future weekend and next Monday match all FR-11 examples; hidden original pick returns after Home focus revealsAt with1of4→1of5.
+- [x] Rejection feedback is absent after Undo, deferred exactly at stated events; killed process retains accepted own archive and may reshow non-own; no queued actions.
+- [x] Ownership matrix holds for gestures/buttons/menu/SR actions, digest Open only; Undo expiry and status differ accessibly without extending8s.
 
 The following §5 wording is authoritative and copied verbatim; each original criterion is covered by the tests above/below:
 
-- [ ] **FR-10:** On own saves, swipe right or Done shall set `read_at` at once with an 8 s Undo. A done pick stays in the set.
-- [ ] **FR-10 AC1:** Undo within 8 s clears `read_at` and restores the slot; network failure follows §8.6 "Action while offline".
-- [ ] **FR-11:** On own saves, swipe left shall snooze to Tonight; Later offers four times and Not for me, sent at once with an 8 s Undo. Device-local: **Tonight** 20:00 (tomorrow if now ≥ 19:00); **Tomorrow** 07:00; **This weekend** next future Sat or Sun 09:00; **Next week** next Monday 07:00.
-- [ ] **FR-11 AC1:** This weekend on Saturday 10:00 is Sunday 09:00; on Sunday 10:00 it is next Saturday 09:00. Next week on a Monday is the following Monday.
-- [ ] **FR-12:** Not for me shall hide the card with 8 s Undo, archive own saves immediately, and send `not_interested` on toast close, navigation away or background.
-- [ ] **FR-12 AC1:** Undo and process kill follow §8.6 "Not for me Undo"; followed saves are never archived.
-- [ ] **FR-13:** Card actions (⋯, long press) shall be: own saves Open, Mark done/not done, Later…, Move…, Not for me. Followed and reshares: Open, Save to Library, Not for me. Digests: Open only (D-23).
-- [ ] **FR-13 AC1:** Followed saves and digests have no swipe, Done or Later buttons.
+- [x] **FR-10:** On own saves, swipe right or Done shall set `read_at` at once with an 8 s Undo. A done pick stays in the set.
+- [x] **FR-10 AC1:** Undo within 8 s clears `read_at` and restores the slot; network failure follows §8.6 "Action while offline".
+- [x] **FR-11:** On own saves, swipe left shall snooze to Tonight; Later offers four times and Not for me, sent at once with an 8 s Undo. Device-local: **Tonight** 20:00 (tomorrow if now ≥ 19:00); **Tomorrow** 07:00; **This weekend** next future Sat or Sun 09:00; **Next week** next Monday 07:00.
+- [x] **FR-11 AC1:** This weekend on Saturday 10:00 is Sunday 09:00; on Sunday 10:00 it is next Saturday 09:00. Next week on a Monday is the following Monday.
+- [x] **FR-12:** Not for me shall hide the card with 8 s Undo, archive own saves immediately, and send `not_interested` on toast close, navigation away or background.
+- [x] **FR-12 AC1:** Undo and process kill follow §8.6 "Not for me Undo"; followed saves are never archived.
+- [x] **FR-13:** Card actions (⋯, long press) shall be: own saves Open, Mark done/not done, Later…, Move…, Not for me. Followed and reshares: Open, Save to Library, Not for me. Digests: Open only (D-23).
+- [x] **FR-13 AC1:** Followed saves and digests have no swipe, Done or Later buttons.
 
 **Tests** (write in this order; fixtures within one task are not separate handoffs)
 
@@ -907,6 +907,20 @@ bun run --cwd apps/mobile lint
 **Notes**
 
 Started2026-11-11 from coordinator-verified T-6 checkpoint `aafb44ed54aee259196d1fbece61cc3abf1ca26c`; fresh background developer owns T-7 only. Implement reusable optimistic/reversible card actions, timing/menu ownership and8s accessible Undo test-first in the prescribed order. T-6 snapshots and cache/account/error regressions must remain intact. Available native targets: local iPhone17Pro/iOS26.5 simulator F3CF81FA-5972-40A4-83EF-0D077C02B571 and local Android14 emulator-5554; use own bound device sessions, restore precise settings and clean owned services. No normal-issuer test login or physical iPhone is available; explicitly labelled isolated fixtures are permitted for implementation checks, while unavailable real-session/live spoken/physical/final-package proof remains with T-10 under the execution clarification. No durable action queue or product auth bypass. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here.
+
+Coordinator verification2026-11-11: fresh developer node:delegated-task:command%3Amcp%3A44e93c94-ffbb-4f6d-ae4f-4a59ab199c23%3Adelegate-task%3A4edbab96-23e8-4149-8d39-0da82da06b17 delivered12 intended mobile files. Full handback/acceptance accounting `/tmp/T-7-handback.md`, chronological receipts `/tmp/T-7/`. Reviewed all12 source/test files, generated transport/owner guards, per-bookmark ordered writes and confirmed baselines, deferred rejection/Undo, local calendar options, ownership matrix, Home overlays/counters and native policy/layout evidence. Each criterion above is covered by public component/transport/clock tests, with unavailable package-native proofs retained below.
+
+Coordinator independently reproduced the existing API capture-age failure: expected≥10, received9 in `/tmp/t7-coordinator-checks/capture-clock-red.log`. The fixture used host Date.now while production logs compare database creation time to queued time. Anchored queuedAt ten seconds before the earlier returned database-created legacy bookmark; the original ≥10 assertion and all attribution/privacy assertions are unchanged. Existing public HTTP test green, complete prescribed API gate352 and serial backend gate now pass. No production backend logger change or weakened assertion.
+
+Two small product corrections were fixed directly by root under the higher-priority small-findings instruction. Done on an already-done pick toggled it unread; a public Home regression actually failed, then passing true for the shared Done/button/right-swipe/SR callback kept it done. The menu still explicitly offers Mark not done and its DELETE path is tested. A Home read started before an accepted Done could subsequently clear its overlay; a public deferred-response regression actually failed. Fresh fulfilled feed/picks carry a runtime read sequence, and synchronization ignores reads preceding pending/completed writes. Cached fallback is excluded from synchronization. Existing later fresh reads still honor another device's unread state. No persisted action queue or client calendar authority. Final15 product/test files: child12 plus useHomeFeed integration, reading-sequence helper and capture fixture. Only Home, the component action test and controller differ from the child manifest; other9 child hashes match.
+
+Root independently PASS: apispec/shared build, disposable DB up/reset, prescribed API352; final focused mobile98 across10suites (all task patterns plus T-6 regressions), root loose typecheck and shared/API/worker/mobile explicit tsc; serial backend shared406/API352/worker10; mobile lint/full215 with one pre-existing skip; web lint/335tests; tokens:check; API lint. Logs `/tmp/t7-coordinator-checks/`, final15-file manifest SHA256ec8fcefa2e198e22810dcc73b43fb1158324a02ba7df9c77ab3a608fe0f06529. First verification stopped at the old fresh-read regression during the synchronization fix; final remaining checks were run after green. No failure is silently relabelled passed.
+
+Test-first qualifications are retained for whole-feature review. Child supplemental RNTL cases followed later phases; Move failure was added while the preceding case was still red, then new fixtures were corrected to existing PATCH/collection and structured paths. An incorrect uncapped-control assumption temporarily changed Signal before valid red; original foundation control caps were restored, leaving Signal unchanged. Setup/first-green characterizations and native squeezed-toast failure/retries are documented individually. Root's initial time-based synchronization passed the stale-read case but failed the existing fresh-read case: actual diagnostic values showed both events at clock100. Awaiting the public read adapter strengthened the existing fixture without changing its assertion; the clock equality still failed. Runtime ordering replaced timestamps, both cases then passed. Temporary diagnostic output was removed. Every actual intermediate failure remains in named logs; no behavior test was skipped, weakened or deleted. These are implementation-verification corrections, not Sol rounds.
+
+Native proof stays accurately bounded: developer used own bound local iOS/Android sessions and actual product components/controller in an isolated fictional ExpoGo view/transport fixture. AX3fontScale2.643 and Android200%/fontScale2 with native Reduce Motion=true, own5 menus, Done/Undo and actual Android right gesture were observed. Root inspected final iOS/Android toast images: status is readable above wrapped Undo/Close; card/content text stays uncapped. Four options/non-own matrix/left gesture and8s SR status policy have component tests; synthetic Android SR policy is not live spoken TalkBack. Toast/card/sheet/gesture visual source is unchanged by root's Home/order fixes; exact native fixtures are not claimed as final whole-package signed or authenticated proof. User has no physical iPhone or normal-issuer test credential. T-10 retains real-session, live spoken VoiceOver/TalkBack, physical-only Wi-Fi/LTE and final signed-source/package outcomes. No new EAS build required by T-7.
+
+Both child device sessions and owned ExpoGo installs/Metro8086/receiver8098/forwards were cleaned; socket receipts confirm ports closed, iOS text/motion and Android text/motion/OS-added font Quick Settings tile restored, pre-existing app inventory preserved. Root created no native session or device service; test HTTP fixtures stopped, named disposable DB retained. Approved spec/prototype/tasks-before-update and both hook bytes independently matched preserved hashes. Final handwritten/staged diff check passes; no generated/package/native/environment drift, commits/pushes/PR by the developer, or per-task review. Whole-feature Sol ledger remains0/max5. Implementation checkpoint only, not shipped.
 
 ### T-8 · Read a bookmark and continue to the next pick
 

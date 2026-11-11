@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { FlatList, RefreshControl, ScrollView, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter, useNavigation } from "expo-router";
-import { type FeedScope, type ContinueReadingItem } from "@cosmic-dolphin/api-client";
+import { type FeedScope, type ContinueReadingItem, type FeedItem } from "@cosmic-dolphin/api-client";
 import { CaptureStatus } from "@/components/CaptureStatus";
 import { CaptureFailureToast } from "@/components/CaptureFailureToast";
 import { TopBarAction } from "@/components/TopBar";
 import { FeedCard } from "@/components/FeedCard";
+import { Toast } from "@/components/Toast";
+import { useBookmarkActions } from "@/lib/bookmark-actions";
+import { BookmarkActionSheets, type ActionSheet } from "@/components/BookmarkActionSheets";
 import { TodayProgress, TodaySkeleton } from "@/components/TodayProgress";
 import { CopiedLink } from "@/components/CopiedLink";
 import { Button, Chip, EmptyState, Notice, Screen, Segments, SkeletonRows } from "@/components/ui/Signal";
@@ -25,16 +28,35 @@ export default function HomeScreen() {
   const rootNavigation = useNavigation("/");
   const { colors } = useTheme();
   const { user } = useAuth();
+  const { controller, state: actionState } = useBookmarkActions(user?.id);
+  const [selection, setSelection] = useState<ActionSheet>();
+  const cardActions = (item: FeedItem) => ({
+    done: item.bookmark ? () => controller.done(item.bookmark!, true) : undefined,
+    later: () => setSelection({ item, mode: "later" }),
+    tonight: item.bookmark ? () => controller.later(item.bookmark!) : undefined,
+    more: () => setSelection({ item, mode: "menu" }),
+    save: () => controller.save(item),
+  });
   const [scope, setScope] = useState<FeedScope>("for_you");
   const [topic, setTopic] = useState("All topics");
   const feed = useHomeFeed(scope);
   const { drain, changeError } = useCaptures();
+  useEffect(() => {
+    if (feed.serverRead) controller.synchronize(feed.serverRead.bookmarks, feed.serverRead.sequence);
+  }, [controller, feed.serverRead]);
   useEffect(() => { if (user) rememberEditions(user.id, buildEditions(feed.items)); }, [user, feed.items]);
+  const originalBookmarks = new Map([...(feed.picks?.items.map(pick => pick.bookmark) ?? []), ...feed.items.flatMap(item => item.bookmark ? [item.bookmark] : [])].map(bookmark => [bookmark.id, bookmark]));
+  const unreadDelta = [...originalBookmarks.values()].filter(bookmark => bookmark.userId === user?.id).reduce((delta, bookmark) => {
+    const current = controller.view(bookmark);
+    return delta + Number(!current.isArchived && !current.readAt) - Number(!bookmark.isArchived && !bookmark.readAt);
+  }, 0);
+  const unreadCount = Math.max(0, (feed.counts?.unread ?? 0) + unreadDelta);
   const topics = [...new Set(feed.items.flatMap(item => (item.bookmark?.cosmicTags ?? []).map(topicName)))];
+  const visiblePicks = feed.picks?.items.map(pick => ({ ...pick, bookmark: controller.view(pick.bookmark) })).filter(pick => controller.isVisible({ type: "own_save", bookmark: pick.bookmark })) ?? [];
   const pickIds = new Set(feed.picks?.items.map(item => item.bookmark.id));
   const wholeFailure = scope === "for_you" && !!feed.error && !!feed.picksError && !feed.items.length && !feed.picks;
   const firstRun = !feed.error && !feed.picksError && scope === "for_you" && !feed.loading && !feed.picks?.computedAt && feed.counts?.all === 0 && feed.counts.archived === 0;
-  const filtered = feed.items.filter(item => topic === "All topics" || item.bookmark?.cosmicTags?.map(topicName).includes(topic));
+  const filtered = feed.items.filter(item => controller.isVisible(item) && !((item.type === "own_save" || item.type === "pending") && controller.view(item.bookmark!).readAt)).map(item => ({ ...item, bookmark: item.bookmark ? controller.view(item.bookmark) : undefined })).filter(item => topic === "All topics" || item.bookmark?.cosmicTags?.map(topicName).includes(topic));
   const visible = scope === "for_you" ? filtered.filter(item =>
     item.type !== "pending" && item.bookmark?.processingStatus !== "processing" &&
     (!item.bookmark || !pickIds.has(item.bookmark.id)) &&
@@ -74,12 +96,12 @@ export default function HomeScreen() {
           {!feed.loading && feed.picks && !feed.picks.computedAt && !firstRun ? <EmptyState
             title="No picks right now"
             description="No saved links are ready for a pick right now. A new save can become a pick once Cosmic has read it." /> : null}
-          {!feed.loading && feed.picks?.computedAt && feed.picks.items.length === 0 ? <EmptyState
+          {!feed.loading && feed.picks?.computedAt && visiblePicks.length === 0 ? <EmptyState
             title="No picks to show"
             description="Today's picks are set for later or no longer in your Library. New saves appear below." /> : null}
           {feed.picks ? <>
-            <TodayProgress items={feed.picks.items} />
-            {feed.picks.items.map(pick => <FeedCard key={pick.position} today item={{ type: "own_save", bookmark: pick.bookmark, rankingReason: pick.reason }} />)}
+            <TodayProgress items={visiblePicks} />
+            {visiblePicks.map(pick => <FeedCard key={pick.position} today item={{ type: "own_save", bookmark: pick.bookmark, rankingReason: pick.reason }} actions={cardActions({ type: "own_save", bookmark: pick.bookmark })} />)}
           </> : null}
           {feed.resume.map(item => <ContinueReading key={item.bookmark.id} item={item} />)}
           {visible.length ? <Text style={[textStyle("meta"), { color: colors.fgTertiary, padding: space.s4 }]}>More for you</Text> : null}
@@ -91,16 +113,18 @@ export default function HomeScreen() {
           action={scope === "unread" ? "Save a link" : undefined}
           onAction={() => router.push("/save")} /> : null}
       </View>}
-      renderItem={({ item }) => <FeedCard item={item} />}
+      renderItem={({ item }) => <FeedCard item={item} actions={cardActions(item)} />}
       ListFooterComponent={<View style={{ gap: space.s4, padding: space.s4 }}>
         {feed.hasMore ? <Button title={scope === "unread" ? "More saves" : "More reading lists"} busy={feed.more} onPress={feed.loadMore} /> : null}
         {scope === "for_you" && !feed.loading && !firstRun && !feed.error && feed.counts ? <View style={{ gap: space.s4 }}>
           <Text style={[textStyle("title2"), { color: colors.fg }]}>{"You're caught up"}</Text>
-          <Text style={[textStyle("bodySm"), { color: colors.fgSecondary }]}>{feed.counts?.unread ?? 0} unread saves are in your Library.</Text>
+          <Text style={[textStyle("bodySm"), { color: colors.fgSecondary }]}>{unreadCount} unread saves are in your Library.</Text>
           <Button title="Open Library" onPress={() => router.push("/library")} />
         </View> : null}
       </View>} />
     <CaptureFailureToast message={changeError} />
+    <Toast message={actionState.toast?.message} undo={actionState.toast?.undo} close={controller.closeToast} />
+    <BookmarkActionSheets selection={selection} controller={controller} onChange={setSelection} onClose={() => setSelection(undefined)} />
   </Screen>;
 }
 function ContinueReading({ item }: { item: ContinueReadingItem }) {

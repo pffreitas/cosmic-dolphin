@@ -1,6 +1,7 @@
 /** Native adapters around the generated contract. Never manufacture feed content. */
 import {
   PicksApi,
+  FeedApi,
   ShareKeysApi,
   BookmarksApi,
   CollectionsApi,
@@ -55,6 +56,13 @@ function rememberOwnedBookmark(bookmark: ContractBookmark, userId?: string) {
   return rememberBookmark(bookmark);
 }
 export const MobileAPI = {
+  async notInterested(id: string, userId?: string) {
+    return new FeedApi(await configuration(userId)).feedFeedback({ feedFeedbackRequest: { kind: "not_interested", bookmarkId: id } });
+  },
+  async read(id: string, done: boolean, userId?: string) {
+    const client = new BookmarksApi(await configuration(userId));
+    return done ? client.bookmarksMarkRead({ id }) : client.bookmarksMarkUnread({ id });
+  },
   async issueShareKey(deviceId: string, userId: string) {
     return new ShareKeysApi(await configuration(userId)).shareKeysIssue({ issueShareKeyRequest: { deviceId } });
   },
@@ -151,10 +159,10 @@ export const MobileAPI = {
       await new BookmarksApi(await configuration()).bookmarksList(query)
     ).bookmarks.map(nativeBookmark);
   },
-  async saveRecommendation(id: string) {
-    return rememberBookmark(
-      (await new BookmarksApi(await configuration()).bookmarksReshare({ id }))
-        .bookmark,
+  async saveRecommendation(id: string, userId?: string) {
+    return rememberOwnedBookmark(
+      (await new BookmarksApi(await configuration(userId)).bookmarksReshare({ id }))
+        .bookmark, userId,
     );
   },
   async archive(id: string, isArchived: boolean) {
@@ -165,12 +173,12 @@ export const MobileAPI = {
       }),
     );
   },
-  async refile(id: string, collectionId?: string) {
-    return rememberBookmark(
-      await new BookmarksApi(await configuration()).bookmarksRefile({
+  async refile(id: string, collectionId?: string, userId?: string) {
+    return rememberOwnedBookmark(
+      await new BookmarksApi(await configuration(userId)).bookmarksRefile({
         id,
         refileBookmarkRequest: { collectionId: collectionId ?? null },
-      }),
+      }), userId,
     );
   },
   async retry(id: string) {
