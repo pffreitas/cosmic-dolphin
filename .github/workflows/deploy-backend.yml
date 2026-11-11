@@ -73,7 +73,8 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5433/postgres
           NODE_ENV: test
-        run: bun run test:backend
+          COMPOSE_PROJECT_NAME: cosmic-dolphin
+        run: bun run test:backend -- --env-mode=loose --concurrency=1
 
       - name: Stop test database
         if: always()
