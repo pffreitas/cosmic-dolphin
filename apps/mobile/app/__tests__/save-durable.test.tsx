@@ -112,6 +112,8 @@ beforeEach(async () => {
 
 it("cold root Save writes durably, shows Home pending, and replays a lost acknowledgement exactly once", async () => {
   const app = render(<RootLayout />);
+  // Flush asynchronous auth bootstrap and its cold screen imports before the field-query timer starts.
+  await act(async () => {});
   fireEvent.changeText(await app.findByLabelText("Link"), "https://example.com/idea");
   fireEvent.press(app.getByRole("button", { name: "Save" }));
   fireEvent.press(app.getByRole("button", { name: "Save" }));
