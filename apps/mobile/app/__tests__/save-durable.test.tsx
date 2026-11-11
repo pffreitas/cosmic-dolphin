@@ -10,6 +10,7 @@ const mockReaderSession = { access_token: "fixture-jwt", user: { id: "reader" } 
 let mockSession: any = mockReaderSession;
 let mockAuthChange: (event: string, session: any) => void;
 let mockPath = "/save";
+let mockSaveParams: { url?: string; accountId?: string } = {};
 let mockNavigate: (path: string) => void;
 let mockCaptures: ReturnType<typeof useCaptures>;
 let mockCaptureViews: { owner?: string; captureOwners: (string | undefined)[] }[];
@@ -53,7 +54,7 @@ jest.mock("expo-router", () => {
     return <Screen />;
   }
   Stack.Screen = function StackScreen() { return null; };
-  return { Stack, useLocalSearchParams: () => ({}), useNavigation: () => ({ navigate: (path: string) => mockNavigate("/" + path) }), useRouter: () => router, usePathname: () => mockPath,
+  return { Stack, useLocalSearchParams: () => mockSaveParams, useNavigation: () => ({ navigate: (path: string) => mockNavigate("/" + path) }), useRouter: () => router, usePathname: () => mockPath,
     useSegments: () => [mockPath.startsWith("/(auth)") ? "(auth)" : "(tabs)"], useFocusEffect: (effect: any) => React.useEffect(effect, [effect]) };
 });
 
@@ -72,6 +73,7 @@ beforeEach(async () => {
   mockHasUrl.mockResolvedValue(false);
   mockReadClipboard.mockClear();
   mockPath = "/save";
+  mockSaveParams = {};
   mockCaptureViews = [];
   requests = [];
   bookmarks = new Map();
@@ -516,4 +518,105 @@ it("the Save confirmation reports Already in your Library when the generated cre
   fireEvent.press(app.getByRole("button", { name: "Save" }));
   expect(await app.findByText("Already in your Library")).toBeTruthy();
   expect(bookmarks.size).toBe(1);
+});
+
+it.each(["pending", "accepted private"])("scopes the %s Save confirmation and private note to its account", async variant => {
+  const app = render(<RootLayout />);
+  try {
+    fireEvent.changeText(await app.findByLabelText("Link"), "https://private.example/account-a");
+    if (variant === "accepted private") {
+      fireEvent(app.getByLabelText("Page behind a login"), "valueChange", true);
+      fireEvent.changeText(app.getByLabelText("Your title"), "A PRIVATE TITLE");
+      fireEvent.changeText(app.getByLabelText("Describe this link"), "A PRIVATE DESCRIPTION");
+    }
+    fireEvent.press(app.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(requests).toHaveLength(1));
+    fireEvent.changeText(await app.findByLabelText("Note (optional)"), "A PRIVATE SAVE NOTE");
+    if (variant === "accepted private") {
+      expect(requests[0].body).toMatchObject({ is_private_link: true, title: "A PRIVATE TITLE", description: "A PRIVATE DESCRIPTION" });
+      await act(async () => completeRequest());
+      await waitFor(() => expect(mockCaptures.captures[0].status).toBe("saved"));
+    }
+    mockSession = { access_token: "other-jwt", user: { id: "other" } };
+    await act(async () => mockAuthChange("SIGNED_IN", mockSession));
+    expect(app.queryByText("https://private.example/account-a")).toBeNull();
+    expect(app.queryByLabelText("Note (optional)")).toBeNull();
+    expect(app.getByLabelText("Link").props.value).toBe("");
+    expect(app.queryByLabelText("Your title")).toBeNull();
+    expect(mockCaptures.captures).toEqual([]);
+    if (variant === "pending") expect(await saveQueue.list()).toEqual([expect.objectContaining({ userId: "reader", url: "https://private.example/account-a" })]);
+    expect(requests.every(request => request.authorization === "Bearer fixture-jwt")).toBe(true);
+  } finally { app.unmount(); }
+});
+
+it("a completed confirmation from the prior account cannot navigate the new account's Save form", async () => {
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const original = saveQueue.confirm;
+  let confirmed = false;
+  const spy = jest.spyOn(saveQueue, "confirm").mockImplementationOnce(async (...args) => {
+    const value = await original(...args); confirmed = true; await gate; return value;
+  });
+  const app = render(<RootLayout />);
+  try {
+    fireEvent.changeText(await app.findByLabelText("Link"), "https://example.com/a-stale-confirmation");
+    fireEvent.press(app.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(requests).toHaveLength(1));
+    fireEvent.changeText(await app.findByLabelText("Note (optional)"), "A DURABLE PRIVATE NOTE");
+    fireEvent.press(app.getByRole("button", { name: "Done" }));
+    await waitFor(() => expect(confirmed).toBe(true));
+    mockSession = { access_token: "other-jwt", user: { id: "other" } };
+    await act(async () => mockAuthChange("SIGNED_IN", mockSession));
+    fireEvent.changeText(app.getByLabelText("Link"), "https://example.com/b-draft");
+    await act(async () => release());
+    expect(mockPath).toBe("/save");
+    expect(app.getByLabelText("Link").props.value).toBe("https://example.com/b-draft");
+    expect(await saveQueue.list()).toEqual([expect.objectContaining({ userId: "reader", note: "A DURABLE PRIVATE NOTE" })]);
+  } finally { release(); app.unmount(); spy.mockRestore(); }
+});
+
+it("does not reuse an account-bound Paste route after an identity change or a new mount under another account", async () => {
+  mockSaveParams = { url: "https://private.example/a-route", accountId: "reader" };
+  let app = render(<RootLayout />);
+  expect((await app.findByLabelText("Link")).props.value).toBe(mockSaveParams.url);
+  mockSession = { access_token: "other-jwt", user: { id: "other" } };
+  await act(async () => mockAuthChange("SIGNED_IN", mockSession));
+  expect(app.getByLabelText("Link").props.value).toBe("");
+  app.unmount();
+  app = render(<RootLayout />);
+  try { expect((await app.findByLabelText("Link")).props.value).toBe(""); }
+  finally { app.unmount(); }
+});
+it("a late enqueue result cannot restore the prior account's Save confirmation", async () => {
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const original = saveQueue.enqueue;
+  let persisted = false;
+  const spy = jest.spyOn(saveQueue, "enqueue").mockImplementationOnce(async (...args) => {
+    const value = await original(...args); persisted = true; await gate; return value;
+  });
+  const app = render(<RootLayout />);
+  try {
+    fireEvent.changeText(await app.findByLabelText("Link"), "https://example.com/a-late-enqueue");
+    fireEvent.press(app.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(persisted).toBe(true));
+    mockSession = { access_token: "other-jwt", user: { id: "other" } };
+    await act(async () => mockAuthChange("SIGNED_IN", mockSession));
+    fireEvent.changeText(app.getByLabelText("Link"), "https://example.com/b-active-draft");
+    await act(async () => release());
+    expect(app.getByLabelText("Link").props.value).toBe("https://example.com/b-active-draft");
+    expect(app.queryByLabelText("Note (optional)")).toBeNull();
+    expect(mockPath).toBe("/save");
+    expect(await saveQueue.list()).toEqual([expect.objectContaining({ userId: "reader", url: "https://example.com/a-late-enqueue" })]);
+    expect(requests).toEqual([]);
+  } finally { release(); app.unmount(); spy.mockRestore(); }
+});
+
+it("ignores a legacy unscoped URL parameter instead of adopting another account's route draft", async () => {
+  mockSaveParams = { url: "https://private.example/unscoped-old-route" };
+  const app = render(<RootLayout />);
+  try {
+    expect((await app.findByLabelText("Link")).props.value).toBe("");
+    expect(requests).toEqual([]);
+  } finally { app.unmount(); }
 });

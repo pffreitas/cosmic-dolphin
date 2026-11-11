@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, Switch, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Button, Chip, layout, Notice, PageHeading, Screen } from "@/components/ui/Signal";
@@ -6,12 +6,27 @@ import { CaptureFailureToast } from "@/components/CaptureFailureToast";
 import { CopiedLink } from "@/components/CopiedLink";
 import { useTheme } from "@/hooks/useTheme";
 import { useCaptures } from "@/contexts/CaptureContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { textStyle } from "@/constants/fonts";
 import { readWhen, savedReadWhenCopy, type SaveReadWhen } from "@/lib/read-when";
 export default function SaveScreen() {
+  const { user } = useAuth();
+  const params = useLocalSearchParams<{ url?: string; accountId?: string }>();
+  const scope = useRef({ accountId: user?.id, generation: 0 });
+  if (scope.current.accountId !== user?.id) {
+    scope.current = { accountId: user?.id, generation: scope.current.generation + 1 };
+  }
+  const identity = scope.current;
+  const pastedUrl = identity.generation === 0 && typeof params.url === "string"
+    && (typeof params.accountId === "string" && params.accountId === user?.id) ? params.url : "";
+  // A new account gets a fresh form synchronously, including confirmation fields.
+  return <SaveForm key={identity.generation} pastedUrl={pastedUrl} isCurrent={() => scope.current === identity} />;
+}
+function SaveForm({ pastedUrl, isCurrent }: { pastedUrl: string; isCurrent: () => boolean }) {
   const router = useRouter();
-  const params = useLocalSearchParams<{ url?: string }>();
-  const pastedUrl = typeof params.url === "string" ? params.url : "";
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  const current = () => alive.current && isCurrent();
   const { colors } = useTheme();
   const { save, confirm, captures } = useCaptures();
   const [source, setSource] = useState<"save_sheet" | "clipboard">(pastedUrl ? "clipboard" : "save_sheet");
@@ -27,7 +42,7 @@ export default function SaveScreen() {
   const submitting = useRef(false);
   const capture = captures.find(value => value.id === savedId);
   const submit = async () => {
-    if (submitting.current || savedId) return;
+    if (!current() || submitting.current || savedId) return;
     try {
       const parsed = new URL(url.trim());
       if (!["http:", "https:"].includes(parsed.protocol)) throw Error();
@@ -39,27 +54,29 @@ export default function SaveScreen() {
     setBusy(true);
     setError("");
     try {
-      setSavedId(await save({ sourceUrl: url.trim(), captureSource: source,
+      const id = await save({ sourceUrl: url.trim(), captureSource: source,
         capturePlatform: Platform.OS === "ios" ? "ios" : Platform.OS === "android" ? "android" : "web",
-        ...(isPrivate ? { isPrivateLink: true, title: title.trim(), description: description.trim() } : {}) }));
-    } catch { setError("Couldn't save on this phone. Try again."); }
-    finally { submitting.current = false; setBusy(false); }
+        ...(isPrivate ? { isPrivateLink: true, title: title.trim(), description: description.trim() } : {}) });
+      if (current()) setSavedId(id);
+    } catch { if (current()) setError("Couldn't save on this phone. Try again."); }
+    finally { submitting.current = false; if (current()) setBusy(false); }
   };
   const finish = async () => {
-    if (!savedId || submitting.current) return;
+    if (!current() || !savedId || submitting.current) return;
     submitting.current = true;
     setBusy(true);
     setError("");
     try {
       await confirm(savedId, note, readWhen(when));
+      if (!current()) return;
       if (router.canGoBack()) router.back();
       else router.replace("/(tabs)");
-    } catch { setError("Change was not saved. Check your connection."); }
-    finally { submitting.current = false; setBusy(false); }
+    } catch { if (current()) setError("Change was not saved. Check your connection."); }
+    finally { submitting.current = false; if (current()) setBusy(false); }
   };
   const input = [layout.input, { backgroundColor: colors.bgPanel, color: colors.fg, borderColor: colors.borderStrong }];
   const label = [textStyle("bodySm"), { color: colors.fg }];
-  return <Screen title="Save a link" onBack={() => router.back()}>
+  return <Screen title="Save a link" onBack={() => { if (current()) router.back(); }}>
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <ScrollView contentContainerStyle={layout.content} keyboardShouldPersistTaps="handled">
         {savedId ? <>

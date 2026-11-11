@@ -91,7 +91,7 @@ export default function HomeScreen() {
           {firstRun ? <View style={{ padding: space.s5, gap: space.s4 }}>
             <Text style={[textStyle("title2"), { color: colors.fg }]}>Close the tab. Cosmic will bring it back.</Text>
             <Text style={[textStyle("body"), { color: colors.fgSecondary }]}>Save a link and your first pick appears here as soon as Cosmic has read it.</Text>
-            <CopiedLink onPaste={url => router.push({ pathname: "/save", params: { url } })} />
+            <CopiedLink onPaste={url => router.push({ pathname: "/save", params: { url, accountId: user?.id } })} />
             <Button title="Save a link" primary onPress={() => router.push("/save")} />
             <Text style={[textStyle("bodySm"), { color: colors.fgSecondary }]}>Share from any app: tap Share, then Cosmic Dolphin.</Text>
           </View> : null}
