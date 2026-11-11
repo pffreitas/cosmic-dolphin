@@ -432,6 +432,8 @@ Logs carry no key value or note text.
 
 ### 8.9 Rollout, migration and rollback
 
+**Authorized beta gate revision (2026-11-11).** Paulo explicitly approved full send to the default branch and TestFlight to beta-test and validate. `main` is the actual default/deploy branch. Keep the complete single package, Sol review, local/static/numeric/security checks, signed capabilities, live PR checks and backend-success-before-TestFlight order. Required normal-session/physical-radio/live-spoken/full native/prior-device proofs that are unavailable here are now pending TestFlight beta validation rather than blockers to review/PR/merge/internal beta delivery. Their functional requirements remain unchanged and no missing proof is claimed passed. No public/wider rollout is authorized; capture-loss clearance and deferred operator measurements remain in force. The user explicitly assigns the manual TestFlight submission to the coordinator. This latest grant supersedes the original no-merge and pre-merge device-proof timing below.
+
 - **Release unit.** One PR to `main`, squash-merged (D-13). `main` is unprotected (`gh api …/branches/main/protection` → 404). Approval does not authorise the merge.
 - **PR checks.** `accessibility.yml`, `mobile-pr.yml`.
 - **Pre-merge** (backend CI runs after merge): `bun run typecheck` (web); `bunx tsc --noEmit -p` separately for api, worker, shared and mobile tsconfigs; `bun run test:db`; `bun run apispec` with the client committed; `eas build --profile preview` from the branch through the device checklist; the keychain capability on both bundle IDs (A-2).

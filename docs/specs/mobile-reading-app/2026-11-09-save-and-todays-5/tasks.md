@@ -13,11 +13,13 @@
 | Feature flag | N/A: internal TestFlight audience; extend the existing app in place (D-13, §8.1) |
 | Integration | Feature branch `feature/save-and-todays-5` → one complete GitHub PR → `main` on `origin` (`git@github.com:pffreitas/cosmic-dolphin.git`); squash merge |
 | Delivery | github-pr |
-| Authorization | User “go ahead with the implementation” on 2026-11-10 authorizes the approved plan’s implementation, feature checkpoint commits and reviewed package PR delivery. No merge grant. Earlier spec/plan approvals preserved. |
+| Authorization | Paulo approved full send on2026-11-11: “Approved full send the change to master and TestFlight so I can beta test it via TestFlight to validate”. This authorizes the complete package review/PR/squash merge into the actual default branch main and manual TestFlight delivery after backend green. Earlier approvals preserved; remaining unavailable native/session proofs move to beta validation under the explicit grant below. |
 | Plan | 10 tasks · critical path T-1 → T-2 → T-3 → T-4 → T-5 → T-6 → T-7 → T-8 → T-9 → T-10 · one serial lane |
 
 
 **Execution clarification (2026-11-10).** Paulo confirmed “No physical iPhone is available” and pointed to the existing iPhone simulator. Continue implementation using that native simulator, XCTest, real local API/database tests and signed EAS capability inspection. The coordinator had over-gated T-2 on physical-device availability. Implementation checkpoints may proceed on those available checks; retain unavailable physical-phone/Wi-Fi/LTE and normal-issuer real-session outcomes as explicit pending proof in T-10/the package checklist. No such outcome is claimed passed, and no release/merge grant or product requirement is changed. This clarification governs task dependencies during implementation; it does not permit partial release or replacing pending package proof with an HTML demo.
+
+**Beta delivery authorization (2026-11-11).** Paulo approved the concrete gate-change proposal and explicitly requested full send to “master and TestFlight” for beta validation. The actual repository default/deploy branch is `main`; use its existing squash PR and deployment workflows. This latest user instruction supersedes the earlier no-merge grant and pre-review/pre-PR/pre-merge blocks caused solely by unavailable T-10 native/session/physical proof. All implementation, local tests/types/lint/generation, numeric/security/compatibility/query fixtures, signed capability inspections, whole-feature Sol review and live GitHub checks remain required. Bring the complete verified T-10 WIP into this feature, review/merge the single complete package, require deploy-backend tests/migrations/API/worker green, then dispatch production iOS TestFlight. Pending normal-issuer/physical-radio/live-spoken/full native matrix/prior-device evidence stays explicitly unchecked for TestFlight beta validation; it is not passed, removed or replaced with HTML. T-10 Done denotes completed code and available proof under this authorized beta gate, not all physical acceptance proofs. No public App Store/wider rollout is granted, and any capture loss still requires PM clearance. The latest instruction also explicitly assigns the manual TestFlight step to the coordinator. This authorized exception governs the generic all-task/proof gate text below.
 
 ## How to work this plan
 
@@ -1101,7 +1103,7 @@ Checkpoint commit: `675e63ed9badd32158cb7840eb4173daf708df0f` (`Task: T-9`).
 
 | | |
 |---|---|
-| Status | Blocked |
+| Status | Done |
 | Depends on | T-9 |
 | Traces | NFR-1…10 integration proof · G-1…6 · §8.3 CI · §8.9 release/rollback · §8.10 all levels · §9 mitigations · A-1…4 · DOC-1/2 |
 | Ships as | User-visible: prove the complete package and add its mobile PR gate in the complete package |
@@ -1180,6 +1182,8 @@ Blocked-work preservation: all9 verified product/test/document changes are commi
 
 Concrete proposed exception for user review: `/tmp/T-10-proof-gate-proposal.md` permits whole-feature Sol review and one complete draft PR while T-10's missing proof remains unchecked, moving those checks only to a mandatory merge gate. Proposal is NOT approved or applied; current pre-review/pre-PR gates stay in force. No request for a physical phone or credentials is repeated.
 
+Authorized beta checkpoint2026-11-11: user full-send/TestFlight request above resolves the delivery block by assigning unavailable device/session proof to beta validation. Imported all9 verified files from WIPfc52a46e30c4ee7bdf0caafc1fa80cb0f7a74130 via cherry-pick `0b9e44819e3cb6b3f86f57fe76fd340397749add` (`Task: T-10`). No code/behavior changed in that import. Original blocked history and unchecked physical/native acceptance criteria above are retained; proposal's earlier mandatory-merge-gate timing is superseded by the explicit request to validate through TestFlight. Proceed through whole-package Sol/CI and backend green to production-signed TestFlight; never submit the tunnel-bound internal preview as the beta. Final candidate re-verification and reviewer/PR/build/submission IDs will be recorded.
+
 ## Implementation review
 
 One ledger;0 of5 rounds used. Record current fetched full Base SHA and reviewed feature SHA when execution starts. Tasks Done only mean verified feature checkpoints; package approval remains Pending until cumulative Sol review. Planning fresh-eyes review is separate from implementation review and consumes none of these rounds.
@@ -1194,9 +1198,9 @@ One ledger;0 of5 rounds used. Record current fetched full Base SHA and reviewed 
 
 | Repo | PR | Head SHA | Base SHA | State | Proof / decisions | Merge SHA |
 |---|---|---|---|---|---|---|
-| cosmic-dolphin | | | b7045a4c56f896d085e2e1aef79b12ea1cfa6407 | Blocked | T-1…9 verified checkpoints; T-10 verified available implementation preserved in wip/save-and-todays-5-T-10. Required native/external package proof pending; gate exception proposal not approved. | |
+| cosmic-dolphin | | | b7045a4c56f896d085e2e1aef79b12ea1cfa6407 | Implementing | Full-send/TestFlight authorized2026-11-11. All10 implementation checkpoints included; remaining device proof assigned to beta. Whole-feature review and live CI required before merge, backend green before TestFlight. | |
 
-States: Not started, Implementing, Reviewing, Waiting, Ready, Blocked, Merged. Ready leaves the PR open. Plan approval does not grant merge.
+States: Not started, Implementing, Reviewing, Waiting, Ready, Blocked, Merged. Ready leaves the PR open. Plan approval alone does not grant merge; the2026-11-11 full-send instruction above now does.
 
 ## Rollout
 
