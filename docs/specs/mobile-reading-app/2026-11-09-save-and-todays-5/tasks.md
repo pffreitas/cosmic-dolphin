@@ -836,13 +836,15 @@ Final-source NFR-2 independently rerun after both corrections:10warmups,100compu
 
 A-3 native receipts report hermes=true, timeZone=America/New_York, ok=true on both available devices, with IANA and UTC formatting; no expo-localization fallback needed. Developer mounted actual card/progress/Signal/theme/fonts in an isolated ExpoGo fixture with fictional preference boundary, not a normal-issuer whole-Home session. Native-probe code/components are unchanged by the coordinator cache/error fixes; receipts and source manifest inspected. Both owned sessions/ExpoGo installations/Metro/receiver/forwards cleaned, no device settings changed. Final whole-package signed builds, normal-issuer real-session, live spoken screen reader and physical-only Wi-Fi/LTE outcomes remain explicitly pending T-10, as agreed when no physical iPhone was available.
 
-Approved spec/prototype hashes and both existing hook bytes preserved. Tracked diff check passes. The three newly generated files retain14 generator-produced blank-comment whitespace lines (PicksApi2/DailyPick6/TodayPicksResponse6); generated sources were not hand-edited. No new handwritten whitespace warnings. No staging of hooks/environment files, pushes, PR or per-task review. Whole-feature Sol rounds remain0. Implementation checkpoint only, not shipped.
+Approved spec/prototype hashes and both existing hook bytes preserved. Tracked diff check passes. The three newly generated files retain14 generator-produced blank-comment whitespace lines (PicksApi2/DailyPick6/TodayPicksResponse6); generated sources were not hand-edited. The staged diff additionally reports two generator-produced blank EOF lines in DailyPick and TodayPicksResponse. Coordinator warning-count assertions initially assumed14 then15 total, failed, and were corrected by inspecting the complete16 warnings (14trailing +2EOF); no source was changed. No new handwritten whitespace warnings. No staging of hooks/environment files, pushes, PR or per-task review. Whole-feature Sol rounds remain0. Implementation checkpoint only, not shipped.
+
+Checkpoint commit: `aafb44ed54aee259196d1fbece61cc3abf1ca26c` (`Task: T-6`).
 
 ### T-7 · Complete, snooze or reject an own save with Undo
 
 | | |
 |---|---|
-| Status | Todo |
+| Status | In progress |
 | Depends on | T-6 |
 | Traces | FR-10 · FR-11 · FR-12 · FR-13 · NFR-6 · NFR-8 · S-3 · S-4 · S-18 · §8.4 Writes · §8.6 Not for me Undo/Action while offline/non-own card · §7 Accessibility |
 | Ships as | User-visible: complete, snooze or reject an own save with Undo in the complete package |
@@ -904,7 +906,7 @@ bun run --cwd apps/mobile lint
 
 **Notes**
 
-Not started. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here.
+Started2026-11-11 from coordinator-verified T-6 checkpoint `aafb44ed54aee259196d1fbece61cc3abf1ca26c`; fresh background developer owns T-7 only. Implement reusable optimistic/reversible card actions, timing/menu ownership and8s accessible Undo test-first in the prescribed order. T-6 snapshots and cache/account/error regressions must remain intact. Available native targets: local iPhone17Pro/iOS26.5 simulator F3CF81FA-5972-40A4-83EF-0D077C02B571 and local Android14 emulator-5554; use own bound device sessions, restore precise settings and clean owned services. No normal-issuer test login or physical iPhone is available; explicitly labelled isolated fixtures are permitted for implementation checks, while unavailable real-session/live spoken/physical/final-package proof remains with T-10 under the execution clarification. No durable action queue or product auth bypass. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here.
 
 ### T-8 · Read a bookmark and continue to the next pick
 
