@@ -32,6 +32,12 @@ export interface BookmarkMetadata {
 }
 
 export interface Bookmark {
+  processingFailureCode?: import("@cosmic-dolphin/api-client").ProcessingFailureCode | null;
+  userNote?: string | null;
+  laterUntil?: string | null;
+  captureSource?: string | null;
+  capturePlatform?: string | null;
+  captureQueuedAt?: string | null;
   id: string;
   sourceUrl: string;
   collectionId?: string;

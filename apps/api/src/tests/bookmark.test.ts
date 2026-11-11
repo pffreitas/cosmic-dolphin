@@ -137,11 +137,12 @@ describe("Bookmark Feature Validation", () => {
       });
     });
 
-    it("should accept a private link with a non-empty description", () => {
+    it("should accept a private link with a non-empty title and description", () => {
       const result = validateCreateBookmarkBody(
         {
           source_url: "https://figma.com/file/private",
           is_private_link: true,
+          title: "Checkout design",
           description: "Design review for the checkout flow",
         },
         isValidUrl

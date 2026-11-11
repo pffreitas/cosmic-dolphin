@@ -1,6 +1,6 @@
 type ShareIntentValue = unknown;
 
-const URL_REGEX = /(https?:\/\/[^\s,;)]+)/g;
+const URL_REGEX = /(https?:\/\/[^\s,;)]+)/gi;
 
 function stringValue(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
@@ -23,9 +23,9 @@ export function extractSharedUrl(shareIntent: ShareIntentValue): string | null {
     .filter(Boolean);
 
   const possibleValues = [
+    intent.text,
     intent.url,
     intent.webUrl,
-    intent.text,
     meta?.url,
     meta?.webUrl,
     intent.uri,
@@ -35,8 +35,12 @@ export function extractSharedUrl(shareIntent: ShareIntentValue): string | null {
 
   for (const value of possibleValues) {
     const text = stringValue(value);
-    const match = text?.match(URL_REGEX);
-    if (match?.[0]) return match[0];
+    for (const match of text?.match(URL_REGEX) ?? []) {
+      try {
+        const url = new URL(match);
+        if (["http:", "https:"].includes(url.protocol) && url.hostname) return match;
+      } catch { /* Continue to the next candidate. */ }
+    }
   }
 
   return null;

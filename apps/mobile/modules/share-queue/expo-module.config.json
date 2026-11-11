@@ -1,0 +1,1 @@
+{"platforms":["apple","android"],"apple":{"modules":["ShareQueueModule"]},"android":{"modules":["expo.modules.sharequeue.ShareQueueModule"]}}

@@ -5,6 +5,31 @@ import "@typespec/openapi3";
 using TypeSpec.Http;
 namespace CosmicDolphinService;
 
+@doc("A text-only block of the stored article, never the Cosmic brief.")
+model BookmarkContentBlock {
+    kind: "heading" | "paragraph" | "quote" | "list_item";
+    text: string;
+}
+
+model PasteBookmarkContentRequest {
+    @minLength(200)
+    @maxLength(100000)
+    text: string;
+}
+
+model BookmarkContent {
+    @doc("True when the response contains only the opening portion of the stored article to stay within the 500 KB serialized response or 2,000-block limit. Source still records the actual provenance.")
+    truncated?: boolean;
+    blocks: BookmarkContentBlock[];
+    wordCount: int32;
+    source: "extracted" | "pasted";
+    updatedAt: utcDateTime;
+}
+
+enum ProcessingFailureCode {
+    auth, blocked, empty, unsupported, unavailable, provider, paywall,
+}
+
 @doc("Processing state of AI pipeline for a bookmark")
 enum ProcessingStatus {
     idle,
@@ -74,6 +99,16 @@ enum BookmarkProcessingPhase {
 }
 
 model Bookmark {
+    @doc("Owner-only private note, omitted from public and followed serializers.")
+    userNote?: string | null;
+    @doc("Owner-only snooze expiry; null means No rush.")
+    laterUntil?: utcDateTime | null;
+    @doc("Original capture entry; null for previous clients.")
+    captureSource?: CaptureSource | null;
+    @doc("Original capture platform.")
+    capturePlatform?: CapturePlatform | null;
+    @doc("Time the capture was saved durably on its device.")
+    captureQueuedAt?: utcDateTime | null;
     id: string;
     sourceUrl: string;
     createdAt: utcDateTime;
@@ -115,11 +150,15 @@ model Bookmark {
     shareSlug?: string;
     readAt?: utcDateTime;
     isRead?: boolean;
+    processingFailureCode?: ProcessingFailureCode | null;
     processingStatus?: ProcessingStatus;
     processingStartedAt?: utcDateTime;
     processingCompletedAt?: utcDateTime;
     processingError?: string;
 }
+
+@doc("Public bookmark view. Private capture intent is never part of this contract.")
+model PublicBookmark is OmitProperties<Bookmark, "userNote" | "laterUntil" | "captureSource" | "capturePlatform" | "captureQueuedAt" | "processingFailureCode" | "processingError" | "processingStartedAt" | "processingCompletedAt">;
 
 model BookmarkImage {
     url: string;
@@ -157,7 +196,21 @@ model BookmarkMetadata {
     originalUrl?: string;
 }
 
+enum CaptureSource { ios_share_extension, android_share, save_sheet, clipboard }
+enum CapturePlatform { ios, android, web, `unknown` }
+
 model CreateBookmarkRequest {
+    @doc("Optional private note, independent of the private-link description.")
+    @maxLength(500)
+    user_note?: string;
+    @doc("Future snooze expiry within 60 days; null means No rush.")
+    later_until?: utcDateTime | null;
+    @doc("Capture entry used by this save; omission remains NULL for previous clients.")
+    capture_source?: CaptureSource;
+    @doc("Capture platform; omission is stored as unknown.")
+    capture_platform?: CapturePlatform;
+    @doc("Original device queue timestamp, preserved on replay.")
+    queued_at?: utcDateTime;
     @doc("The source URL to bookmark")
     source_url: string;
 
@@ -400,6 +453,11 @@ model BookmarkLibraryCounts {
     statement as the move.
     """)
 model UpdateBookmarkRequest {
+    @doc("Private note. Omit to preserve; null clears.")
+    @maxLength(500)
+    userNote?: string | null;
+    @doc("Future snooze expiry within 60 days. Omit to preserve; null clears.")
+    laterUntil?: utcDateTime | null;
     title?: string;
 
     @doc("Archive or restore. Archiving keeps the bookmark searchable and is reversible; it is never a delete.")
@@ -568,14 +626,14 @@ interface Bookmarks {
     create(@body request: CreateBookmarkRequest):
         | {
               @statusCode statusCode: 201;
-              @body body: CreateBookmarkResponse;
+              @body body: BookmarkCreateResponse;
           }
         | {
               @doc("Already in the caller's library. `alreadySaved` is true.")
               @statusCode
               statusCode: 200;
 
-              @body body: CreateBookmarkResponse;
+              @body body: BookmarkCreateResponse;
           }
         | {
               @doc("Malformed URL, or a private link with no description.")
@@ -666,6 +724,36 @@ interface Bookmarks {
     @get
     findById(@path id: string): Bookmark | {
         @statusCode statusCode: 404;
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+
+    @doc("Get complete stored article text for its owner. Missing, private and incomplete content all return 404.")
+    @useAuth(BearerAuth)
+    @get
+    @route("/{id}/content")
+    getContent(@path id: string): BookmarkContent | {
+        @statusCode statusCode: 404;
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+
+    @doc("Store owner-supplied article text and enqueue a full reprocess. Private links cannot accept article text.")
+    @useAuth(BearerAuth)
+    @put
+    @route("/{id}/content")
+    putContent(@path id: string, @body request: PasteBookmarkContentRequest): ReprocessBookmarkResponse | {
+        @statusCode statusCode: 400;
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 404;
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 409;
         @body body: BookmarkError;
     } | {
         @statusCode statusCode: 500;
@@ -922,7 +1010,7 @@ interface Bookmarks {
 interface SharedBookmarks {
     @doc("Get a publicly shared bookmark by its share slug")
     @get
-    findBySlug(@path slug: string): Bookmark | {
+    findBySlug(@path slug: string): PublicBookmark | {
         @statusCode statusCode: 404;
         @body body: BookmarkError;
     } | {

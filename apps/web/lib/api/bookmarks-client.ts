@@ -181,9 +181,9 @@ export namespace BookmarksClientAPI {
     const bookmarksApi = await getApiInstance();
 
     try {
-      return await bookmarksApi.bookmarksCreate({
-        createBookmarkRequest: bookmarkData,
-      });
+      const response = await bookmarksApi.bookmarksCreate({ createBookmarkRequest: bookmarkData });
+      if (!("bookmark" in response) || !response.bookmark?.id) throw new Error("Expected owner bookmark response");
+      return response;
     } catch (error: any) {
       const { status, message, response } = await readApiError(error);
 

@@ -27,6 +27,27 @@ import {
     BookmarkLinkToJSON,
     BookmarkLinkToJSONTyped,
 } from './BookmarkLink';
+import type { BookmarkProcessingFailureCode } from './BookmarkProcessingFailureCode';
+import {
+    BookmarkProcessingFailureCodeFromJSON,
+    BookmarkProcessingFailureCodeFromJSONTyped,
+    BookmarkProcessingFailureCodeToJSON,
+    BookmarkProcessingFailureCodeToJSONTyped,
+} from './BookmarkProcessingFailureCode';
+import type { BookmarkCapturePlatform } from './BookmarkCapturePlatform';
+import {
+    BookmarkCapturePlatformFromJSON,
+    BookmarkCapturePlatformFromJSONTyped,
+    BookmarkCapturePlatformToJSON,
+    BookmarkCapturePlatformToJSONTyped,
+} from './BookmarkCapturePlatform';
+import type { BookmarkCaptureSource } from './BookmarkCaptureSource';
+import {
+    BookmarkCaptureSourceFromJSON,
+    BookmarkCaptureSourceFromJSONTyped,
+    BookmarkCaptureSourceToJSON,
+    BookmarkCaptureSourceToJSONTyped,
+} from './BookmarkCaptureSource';
 import type { CollectionPathItem } from './CollectionPathItem';
 import {
     CollectionPathItemFromJSON,
@@ -55,6 +76,36 @@ import {
  * @interface Bookmark
  */
 export interface Bookmark {
+    /**
+     * Owner-only private note, omitted from public and followed serializers.
+     * @type {string}
+     * @memberof Bookmark
+     */
+    userNote?: string | null;
+    /**
+     * Owner-only snooze expiry; null means No rush.
+     * @type {Date}
+     * @memberof Bookmark
+     */
+    laterUntil?: Date | null;
+    /**
+     * 
+     * @type {BookmarkCaptureSource}
+     * @memberof Bookmark
+     */
+    captureSource?: BookmarkCaptureSource | null;
+    /**
+     * 
+     * @type {BookmarkCapturePlatform}
+     * @memberof Bookmark
+     */
+    capturePlatform?: BookmarkCapturePlatform | null;
+    /**
+     * Time the capture was saved durably on its device.
+     * @type {Date}
+     * @memberof Bookmark
+     */
+    captureQueuedAt?: Date | null;
     /**
      * 
      * @type {string}
@@ -218,6 +269,12 @@ export interface Bookmark {
     isRead?: boolean;
     /**
      * 
+     * @type {BookmarkProcessingFailureCode}
+     * @memberof Bookmark
+     */
+    processingFailureCode?: BookmarkProcessingFailureCode | null;
+    /**
+     * 
      * @type {ProcessingStatus}
      * @memberof Bookmark
      */
@@ -266,6 +323,11 @@ export function BookmarkFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
     }
     return {
         
+        'userNote': json['userNote'] == null ? json['userNote'] : json['userNote'],
+        'laterUntil': json['laterUntil'] == null ? json['laterUntil'] : (new Date(json['laterUntil'])),
+        'captureSource': json['captureSource'] == null ? json['captureSource'] : BookmarkCaptureSourceFromJSON(json['captureSource']),
+        'capturePlatform': json['capturePlatform'] == null ? json['capturePlatform'] : BookmarkCapturePlatformFromJSON(json['capturePlatform']),
+        'captureQueuedAt': json['captureQueuedAt'] == null ? json['captureQueuedAt'] : (new Date(json['captureQueuedAt'])),
         'id': json['id'],
         'sourceUrl': json['sourceUrl'],
         'createdAt': (new Date(json['createdAt'])),
@@ -292,6 +354,7 @@ export function BookmarkFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         'shareSlug': json['shareSlug'] == null ? undefined : json['shareSlug'],
         'readAt': json['readAt'] == null ? undefined : (new Date(json['readAt'])),
         'isRead': json['isRead'] == null ? undefined : json['isRead'],
+        'processingFailureCode': json['processingFailureCode'] == null ? json['processingFailureCode'] : BookmarkProcessingFailureCodeFromJSON(json['processingFailureCode']),
         'processingStatus': json['processingStatus'] == null ? undefined : ProcessingStatusFromJSON(json['processingStatus']),
         'processingStartedAt': json['processingStartedAt'] == null ? undefined : (new Date(json['processingStartedAt'])),
         'processingCompletedAt': json['processingCompletedAt'] == null ? undefined : (new Date(json['processingCompletedAt'])),
@@ -310,6 +373,11 @@ export function BookmarkFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
 
     return {
         
+        'userNote': value['userNote'],
+        'laterUntil': value['laterUntil'] == null ? value['laterUntil'] : ((value['laterUntil'] as any).toISOString()),
+        'captureSource': BookmarkCaptureSourceToJSON(value['captureSource']),
+        'capturePlatform': BookmarkCapturePlatformToJSON(value['capturePlatform']),
+        'captureQueuedAt': value['captureQueuedAt'] == null ? value['captureQueuedAt'] : ((value['captureQueuedAt'] as any).toISOString()),
         'id': value['id'],
         'sourceUrl': value['sourceUrl'],
         'createdAt': ((value['createdAt']).toISOString()),
@@ -336,6 +404,7 @@ export function BookmarkFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         'shareSlug': value['shareSlug'],
         'readAt': value['readAt'] == null ? undefined : ((value['readAt']).toISOString()),
         'isRead': value['isRead'],
+        'processingFailureCode': BookmarkProcessingFailureCodeToJSON(value['processingFailureCode']),
         'processingStatus': ProcessingStatusToJSON(value['processingStatus']),
         'processingStartedAt': value['processingStartedAt'] == null ? undefined : ((value['processingStartedAt']).toISOString()),
         'processingCompletedAt': value['processingCompletedAt'] == null ? undefined : ((value['processingCompletedAt']).toISOString()),

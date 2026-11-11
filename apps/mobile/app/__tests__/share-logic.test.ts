@@ -106,3 +106,10 @@ describe('share sheet layout helpers', () => {
     expect(getShareScrollBottomInset(34)).toBeGreaterThanOrEqual(220);
   });
 });
+
+it('skips malformed HTTP candidates to save the first valid URL in the shared text', () => {
+  expect(extractSharedUrl({ text: 'https:// then HTTPS://example.com/first?x=1 and https://second.com' })).toBe('HTTPS://example.com/first?x=1');
+});
+it('prefers the first valid URL in text over a parser-selected later webUrl', () => {
+  expect(extractSharedUrl({ text: 'https://?invalid HTTPS://localhost:8080/first https://later.com', webUrl: 'https://later.com' })).toBe('HTTPS://localhost:8080/first');
+});

@@ -44,7 +44,7 @@ export function UpdateHighlightRequestFromJSONTyped(json: any, ignoreDiscriminat
     }
     return {
         
-        'note': json['note'] == null ? undefined : json['note'],
+        'note': json['note'] == null ? json['note'] : json['note'],
     };
 }
 

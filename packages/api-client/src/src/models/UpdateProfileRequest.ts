@@ -57,8 +57,8 @@ export function UpdateProfileRequestFromJSONTyped(json: any, ignoreDiscriminator
     }
     return {
         
-        'name': json['name'] == null ? undefined : json['name'],
-        'pictureUrl': json['pictureUrl'] == null ? undefined : json['pictureUrl'],
+        'name': json['name'] == null ? json['name'] : json['name'],
+        'pictureUrl': json['pictureUrl'] == null ? json['pictureUrl'] : json['pictureUrl'],
         'handle': json['handle'] == null ? undefined : json['handle'],
     };
 }

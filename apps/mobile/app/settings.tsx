@@ -1,5 +1,5 @@
 import React from "react";
-import { Alert, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import {
   Button,
@@ -10,7 +10,7 @@ import {
   Screen,
 } from "@/components/ui/Signal";
 import { usePreferences } from "@/contexts/PreferencesContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { SignOutControl } from "@/components/SignOutControl";
 import { useTheme } from "@/hooks/useTheme";
 import { textStyle } from "@/constants/fonts";
 import { space } from "@/constants/theme";
@@ -18,7 +18,6 @@ export default function SettingsScreen() {
   const router = useRouter();
   const preferences = usePreferences();
   const { colors } = useTheme();
-  const { signOut } = useAuth();
   return (
     <Screen title="Settings" onBack={() => router.back()}>
       <ScrollView contentContainerStyle={layout.content}>
@@ -83,25 +82,7 @@ export default function SettingsScreen() {
           title="Restore hidden Home topics"
           onPress={() => preferences.update({ hiddenTopics: [] })}
         />
-        <Button
-          title="Sign out"
-          onPress={() =>
-            Alert.alert(
-              "Sign out?",
-              "Your library will be here when you return.",
-              [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Sign out",
-                  style: "destructive",
-                  onPress: () => {
-                    void signOut();
-                  },
-                },
-              ],
-            )
-          }
-        />
+        <SignOutControl />
       </ScrollView>
     </Screen>
   );

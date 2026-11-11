@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
-  AccessibilityInfo,
   ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
@@ -16,6 +15,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { textStyle } from "@/constants/fonts";
 import { radius, space } from "@/constants/theme";
+import { useControlFocus } from "@/hooks/useControlFocus";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useTheme } from "@/hooks/useTheme";
 import { TopBar, TopBarAction } from "@/components/TopBar";
 
@@ -71,6 +72,7 @@ export function PageHeading({
 }
 export function Button({
   title,
+  detail,
   onPress,
   primary,
   busy,
@@ -79,6 +81,7 @@ export function Button({
   style,
 }: {
   title: string;
+  detail?: string;
   onPress: () => void;
   primary?: boolean;
   busy?: boolean;
@@ -87,17 +90,24 @@ export function Button({
   style?: ViewStyle;
 }) {
   const { colors } = useTheme();
+  const reduceMotion = useReducedMotion();
+  const [focused, setFocused] = useState(false);
   const foreground = primary ? colors.accentFg : colors.fg;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={title}
+      accessibilityLabel={detail ? `${title}, ${detail}` : title}
       accessibilityState={{ disabled: disabled || busy, busy }}
       disabled={disabled || busy}
       onPress={onPress}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
       style={({ pressed }) => [
         styles.button,
         {
+          outlineColor: colors.focus,
+          outlineWidth: focused ? 2 : 0,
+          outlineOffset: 2,
           borderRadius: primary ? radius.pill : radius.sm,
           borderWidth: primary ? 0 : StyleSheet.hairlineWidth,
           borderColor: colors.borderStrong,
@@ -108,11 +118,12 @@ export function Button({
       ]}
     >
       {busy ? (
-        <ActivityIndicator color={foreground} size="small" />
+        <ActivityIndicator color={foreground} size="small" animating={!reduceMotion} />
       ) : icon ? (
         <Ionicons name={icon} size={18} color={foreground} />
       ) : null}
       <Text
+        maxFontSizeMultiplier={1.3}
         style={[
           textStyle("bodySm"),
           { color: foreground, fontFamily: "InterSemibold", flexShrink: 1 },
@@ -120,6 +131,11 @@ export function Button({
       >
         {title}
       </Text>
+      {detail ? (
+        <Text maxFontSizeMultiplier={1.3} style={[textStyle("meta"), { color: foreground, flexShrink: 1 }]}>
+          {detail}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -133,13 +149,16 @@ export function Chip({
   onPress: () => void;
 }) {
   const { colors } = useTheme();
+  const { focusStyle, ...focusEvents } = useControlFocus();
   return (
     <Pressable
+      {...focusEvents}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected }}
       style={({ pressed }) => [
         styles.chip,
+        focusStyle,
         {
           borderColor: colors.border,
           backgroundColor: selected
@@ -151,6 +170,7 @@ export function Chip({
       ]}
     >
       <Text
+        maxFontSizeMultiplier={1.3}
         style={[
           textStyle("meta"),
           { color: selected ? colors.accentFg : colors.fgSecondary },
@@ -171,6 +191,7 @@ export function Segments<T extends string>({
   onChange: (value: T) => void;
 }) {
   const { colors } = useTheme();
+  const [focused, setFocused] = useState<T>();
   return (
     <View
       accessibilityRole="tablist"
@@ -182,15 +203,21 @@ export function Segments<T extends string>({
           accessibilityRole="tab"
           accessibilityState={{ selected: value === option.value }}
           onPress={() => onChange(option.value)}
+          onFocus={() => setFocused(option.value)}
+          onBlur={() => setFocused(undefined)}
           style={[
             styles.segment,
             {
+              outlineColor: colors.focus,
+              outlineWidth: focused === option.value ? 2 : 0,
+              outlineOffset: 2,
               backgroundColor:
                 value === option.value ? colors.bgPanel : "transparent",
             },
           ]}
         >
           <Text
+            maxFontSizeMultiplier={1.3}
             style={[
               textStyle("meta"),
               {
@@ -228,7 +255,7 @@ export function Notice({
       <Text
         style={[
           textStyle("bodySm"),
-          { color: error ? colors.danger : colors.fgSecondary, flex: 1 },
+          { color: error ? colors.danger : colors.fgSecondary, flexGrow: 1, flexShrink: 1, flexBasis: space.s8 * 2 },
         ]}
       >
         {message}
@@ -274,7 +301,7 @@ export function EmptyState({
 export function SkeletonRows() {
   const { colors } = useTheme();
   return (
-    <View accessibilityLabel="Loading content" accessibilityRole="progressbar">
+    <View accessible accessibilityLabel="Loading content" accessibilityRole="progressbar">
       {[0, 1, 2].map((i) => (
         <View
           key={i}
@@ -313,22 +340,7 @@ export function Sheet({
   children: React.ReactNode;
 }) {
   const { colors } = useTheme();
-  const [reduceMotion, setReduceMotion] = useState(false);
-  useEffect(() => {
-    if (!visible) return;
-    let active = true;
-    AccessibilityInfo.isReduceMotionEnabled().then((value) => {
-      if (active) setReduceMotion(value);
-    });
-    const subscription = AccessibilityInfo.addEventListener(
-      "reduceMotionChanged",
-      setReduceMotion,
-    );
-    return () => {
-      active = false;
-      subscription.remove();
-    };
-  }, [visible]);
+  const reduceMotion = useReducedMotion();
   return (
     <Modal
       visible={visible}
@@ -383,8 +395,9 @@ export function Sheet({
 }
 export const layout = StyleSheet.create({
   content: { padding: space.s5, paddingBottom: space.s7, gap: space.s4 },
-  row: { flexDirection: "row", alignItems: "center", gap: space.s2 },
+  row: { flexWrap: "wrap", flexDirection: "row", alignItems: "center", gap: space.s2 },
   between: {
+    flexWrap: "wrap",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -406,6 +419,7 @@ export const layout = StyleSheet.create({
 });
 const styles = StyleSheet.create({
   button: {
+    flexWrap: "wrap",
     minHeight: 44,
     paddingHorizontal: space.s4,
     paddingVertical: space.s2,
@@ -435,6 +449,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   notice: {
+    flexWrap: "wrap",
     padding: space.s3,
     borderRadius: radius.md,
     borderWidth: StyleSheet.hairlineWidth,

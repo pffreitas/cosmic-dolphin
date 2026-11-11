@@ -44,7 +44,7 @@ export function RefileBookmarkRequestFromJSONTyped(json: any, ignoreDiscriminato
     }
     return {
         
-        'collectionId': json['collectionId'] == null ? undefined : json['collectionId'],
+        'collectionId': json['collectionId'] == null ? json['collectionId'] : json['collectionId'],
     };
 }
 

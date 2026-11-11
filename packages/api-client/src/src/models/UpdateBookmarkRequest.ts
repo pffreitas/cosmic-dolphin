@@ -25,6 +25,18 @@ import { mapValues } from '../runtime';
  */
 export interface UpdateBookmarkRequest {
     /**
+     * Private note. Omit to preserve; null clears.
+     * @type {string}
+     * @memberof UpdateBookmarkRequest
+     */
+    userNote?: string | null;
+    /**
+     * Future snooze expiry within 60 days. Omit to preserve; null clears.
+     * @type {Date}
+     * @memberof UpdateBookmarkRequest
+     */
+    laterUntil?: Date | null;
+    /**
      * 
      * @type {string}
      * @memberof UpdateBookmarkRequest
@@ -75,6 +87,8 @@ export function UpdateBookmarkRequestFromJSONTyped(json: any, ignoreDiscriminato
     }
     return {
         
+        'userNote': json['userNote'] == null ? json['userNote'] : json['userNote'],
+        'laterUntil': json['laterUntil'] == null ? json['laterUntil'] : (new Date(json['laterUntil'])),
         'title': json['title'] == null ? undefined : json['title'],
         'isArchived': json['isArchived'] == null ? undefined : json['isArchived'],
         'tags': json['tags'] == null ? undefined : json['tags'],
@@ -93,6 +107,8 @@ export function UpdateBookmarkRequestFromJSONTyped(json: any, ignoreDiscriminato
 
     return {
         
+        'userNote': value['userNote'],
+        'laterUntil': value['laterUntil'] == null ? value['laterUntil'] : ((value['laterUntil'] as any).toISOString()),
         'title': value['title'],
         'isArchived': value['isArchived'],
         'tags': value['tags'],

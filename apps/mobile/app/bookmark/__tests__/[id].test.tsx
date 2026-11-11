@@ -13,9 +13,13 @@ import {
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "123" }),
   useRouter: () => ({ back: jest.fn() }),
+  useFocusEffect: (effect: () => void) => require("react").useEffect(effect, [effect]),
 }));
 
-jest.mock("@/lib/mobile-api", () => ({ MobileAPI: {} }));
+jest.mock("@/lib/mobile-api", () => ({ MobileAPI: {
+  picks: jest.fn(async () => ({ items: [] })),
+  content: jest.fn(async () => ({ blocks: [], wordCount: 0, source: "extracted" })),
+} }));
 
 jest.mock("@/lib/api", () => ({
   BookmarksAPI: {

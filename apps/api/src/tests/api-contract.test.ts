@@ -87,3 +87,51 @@ describe("API contract", () => {
     expect(reading).toContain('@route("/{id}/highlights")');
   });
 });
+
+it("public bookmark schemas omit every private capture field and public saves use that schema", async () => {
+  const openApi = await Bun.file(repoPath("packages/apispec/tsp-output/@typespec/openapi3/openapi.yaml")).text();
+  const publicSchema = openApi.match(/ {4}PublicBookmark:\n([\s\S]*?)(?=\n {4}[A-Za-z]|\n {2}[A-Za-z]|$)/)?.[1];
+  expect(publicSchema).toBeDefined();
+  for (const field of ["userNote", "laterUntil", "captureSource", "capturePlatform", "captureQueuedAt", "processingFailureCode", "processingError", "processingStartedAt", "processingCompletedAt"]) {
+    expect(publicSchema).not.toMatch(new RegExp(`^\\s+${field}:`, "m"));
+  }
+  const publicSaves = openApi.match(/ {4}PublicSavesResponse:\n([\s\S]*?)(?=\n {4}[A-Za-z]|$)/)?.[1];
+  expect(publicSaves).toContain("#/components/schemas/PublicBookmark");
+});
+
+it("generated bookmark create preserves the minimal auth-selected response at both success statuses", async () => {
+  const { BookmarksApi, Configuration } = await import("@cosmic-dolphin/api-client");
+  const minimal = { id: "share-save", message: "Saved", alreadySaved: false };
+  for (const status of [201, 200]) {
+    const client = new BookmarksApi(new Configuration({ basePath: "https://fixture.invalid/api/v1", accessToken: "cdsk_fixture", fetchApi: async () => new Response(JSON.stringify({ ...minimal, alreadySaved: status === 200 }), { status }) }));
+    const result = await client.bookmarksCreate({ createBookmarkRequest: { sourceUrl: "https://example.com", captureSource: "ios_share_extension", capturePlatform: "ios" } });
+    expect(Object.keys(result).sort()).toEqual(["alreadySaved", "id", "message"]);
+    expect(result).toEqual({ ...minimal, alreadySaved: status === 200 });
+  }
+});
+it("generated JWT create still returns full owner bookmarks with dates and nullable capture fields", async () => {
+  const { BookmarksApi, Configuration } = await import("@cosmic-dolphin/api-client");
+  const bookmark = { id: "owner-save", userId: "owner", sourceUrl: "https://example.com", createdAt: "2026-11-10T12:00:00Z", updatedAt: "2026-11-10T12:00:00Z", userNote: null, laterUntil: null, captureSource: null, capturePlatform: "unknown", captureQueuedAt: null };
+  for (const status of [201, 200]) {
+    const client = new BookmarksApi(new Configuration({ basePath: "https://fixture.invalid/api/v1", accessToken: "fixture-jwt", fetchApi: async () => new Response(JSON.stringify({ bookmark, message: "Saved", ...(status === 200 ? { alreadySaved: true } : {}) }), { status }) }));
+    const result = await client.bookmarksCreate({ createBookmarkRequest: { sourceUrl: bookmark.sourceUrl } });
+    expect("bookmark" in result).toBe(true);
+    if (!("bookmark" in result)) throw new Error("Missing owner response");
+    expect(result.bookmark.createdAt).toEqual(new Date(bookmark.createdAt));
+    expect(result.bookmark).toMatchObject({ userId: "owner", userNote: null, laterUntil: null, captureSource: null });
+    expect("id" in result).toBe(false);
+  }
+});
+
+it("T9 generated owner paste preserves the enum and nullable failure code", async () => {
+  const { BookmarksApi, Configuration } = await import("@cosmic-dolphin/api-client");
+  for (const processingFailureCode of [null, "paywall", "auth", "blocked", "empty", "unsupported", "unavailable", "provider"] as const) {
+    const bookmark = { id: "fictional", userId: "owner", sourceUrl: "https://fictional.example", createdAt: "2026-11-10T00:00:00Z", updatedAt: "2026-11-10T00:00:00Z", processingFailureCode };
+    const client = new BookmarksApi(new Configuration({ fetchApi: async (_url: string | URL | Request, init?: RequestInit) => {
+      expect(init?.method).toBe("PUT");
+      expect(JSON.parse(init?.body as string)).toEqual({ text: "x".repeat(200) });
+      return new Response(JSON.stringify({ bookmark, message: "Reprocessing this bookmark" }));
+    } }));
+    expect((await client.bookmarksPutContent({ id: bookmark.id, pasteBookmarkContentRequest: { text: "x".repeat(200) } })).bookmark.processingFailureCode).toBe(processingFailureCode);
+  }
+});

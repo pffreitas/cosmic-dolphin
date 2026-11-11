@@ -125,7 +125,7 @@ export default function LibraryScreen() {
             />
             <View style={layout.between}>
               <Button
-                title="Collections"
+                title="Topics"
                 icon="folder-outline"
                 onPress={() => router.push("/collections")}
               />
@@ -197,7 +197,7 @@ export default function LibraryScreen() {
               description={
                 filter === "read"
                   ? "Mark a save as read and return to it here."
-                  : "Save a link or move one into this collection."
+                  : "Save a link or move one into this topic."
               }
               action="Save a link"
               onAction={() => router.push("/save")}
@@ -232,7 +232,7 @@ export default function LibraryScreen() {
         ))}
       </Sheet>
       <Sheet
-        title={moving ? "Move to collection" : "Save actions"}
+        title={moving ? "Move to topic…" : "Save actions"}
         visible={Boolean(selected)}
         onClose={() => {
           if (!busy) {
@@ -248,7 +248,7 @@ export default function LibraryScreen() {
             </Text>
             {collectionError ? (
               <Notice
-                message="Collections could not be loaded."
+                message="Topics could not be loaded."
                 error
                 action="Retry"
                 onAction={loadCollections}
@@ -278,7 +278,7 @@ export default function LibraryScreen() {
         ) : (
           <>
             <Button
-              title="Move to collection"
+              title="Move to topic…"
               disabled={busy}
               onPress={() => {
                 setMoving(true);

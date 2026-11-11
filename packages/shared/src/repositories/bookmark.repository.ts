@@ -100,6 +100,8 @@ export interface BookmarkRepository {
     userId: string
   ): Promise<{ bookmark: Bookmark; isLikedByCurrentUser: boolean } | null>;
   create(data: NewBookmark): Promise<Bookmark>;
+  updateOwned(id: string, userId: string, data: BookmarkUpdate): Promise<Bookmark>;
+  mergeCapture(id: string, userId: string, note?: string, laterUntil?: Date | null): Promise<Bookmark>;
   insertScrapedUrlContents(
     bookmarkId: string,
     contents: Omit<
@@ -108,6 +110,8 @@ export interface BookmarkRepository {
     >
   ): Promise<void>;
   getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
+  getOwnedScrapedUrlContent(bookmarkId: string, userId: string): Promise<ScrapedUrlContents | null>;
+  storePastedContent(bookmarkId: string, userId: string, content: string): Promise<Bookmark>;
   updateScrapedUrlContents(
     id: string,
     contents: Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
@@ -305,6 +309,18 @@ export class BookmarkRepositoryImpl
     }, "findByIdAndUserWithLikeStatus");
   }
 
+  async updateOwned(id: string, userId: string, data: BookmarkUpdate): Promise<Bookmark> {
+    return this.db.updateTable("bookmarks").set({ ...data, updated_at: new Date() }).where("id", "=", id).where("user_id", "=", userId).returningAll().executeTakeFirstOrThrow();
+  }
+
+  async mergeCapture(id: string, userId: string, note?: string, laterUntil?: Date | null): Promise<Bookmark> {
+    return this.db.updateTable("bookmarks").set({
+      ...(note === undefined ? {} : { user_note: sql<string>`coalesce(user_note, ${note})` }),
+      ...(laterUntil === undefined ? {} : { later_until: laterUntil }),
+      updated_at: new Date(),
+    }).where("id", "=", id).where("user_id", "=", userId).returningAll().executeTakeFirstOrThrow();
+  }
+
   async create(data: NewBookmark): Promise<Bookmark> {
     return this.executeQuery(async () => {
       const result = await this.db
@@ -365,6 +381,32 @@ export class BookmarkRepositoryImpl
         links: result.links,
       };
     }, "getScrapedUrlContent");
+  }
+
+  async storePastedContent(bookmarkId: string, userId: string, content: string): Promise<Bookmark> {
+    return this.db.transaction().execute(async transaction => {
+      const bookmark = await transaction.selectFrom("bookmarks").selectAll().where("id", "=", bookmarkId).where("user_id", "=", userId).forUpdate().executeTakeFirst();
+      if (!bookmark) throw new Error("Bookmark not found");
+      if (bookmark.is_private_link) throw new Error("Private links cannot accept article text");
+      const existing = await transaction.selectFrom("scraped_url_contents").select("id").where("bookmark_id", "=", bookmarkId).executeTakeFirst();
+      const data = { title: bookmark.title || bookmark.source_url, content, metadata: { extraction: { status: "complete", provider: "user_paste" } }, images: null, links: null, updated_at: new Date() };
+      if (existing) await transaction.updateTable("scraped_url_contents").set(data).where("id", "=", existing.id).execute();
+      else await transaction.insertInto("scraped_url_contents").values({ ...data, bookmark_id: bookmarkId }).execute();
+      return transaction.updateTable("bookmarks").set({ processing_failure_code: null, processing_status: "processing", processing_error: null, processing_started_at: new Date(), processing_completed_at: null, updated_at: new Date() }).where("id", "=", bookmarkId).returningAll().executeTakeFirstOrThrow();
+    });
+  }
+
+  async getOwnedScrapedUrlContent(bookmarkId: string, userId: string): Promise<ScrapedUrlContents | null> {
+    const row = await this.db.selectFrom("scraped_url_contents as content")
+      .innerJoin("bookmarks as bookmark", "bookmark.id", "content.bookmark_id")
+      .selectAll("content")
+      .where("bookmark.id", "=", bookmarkId)
+      .where("bookmark.user_id", "=", userId)
+      .where("bookmark.is_private_link", "=", false)
+      .executeTakeFirst();
+    return row ? { id: row.id, bookmarkId, title: row.title, content: row.content,
+      metadata: row.metadata, createdAt: row.created_at, updatedAt: row.updated_at,
+      images: row.images, links: row.links } : null;
   }
 
   async updateScrapedUrlContents(

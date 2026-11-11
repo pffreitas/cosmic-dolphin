@@ -1,4 +1,5 @@
 import Expo
+import os
 import React
 import ReactAppDependencyProvider
 
@@ -13,6 +14,13 @@ public class AppDelegate: ExpoAppDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
+    let probe = Logger(subsystem: "com.cosmicdolphin.share-key", category: "native-probe")
+    if let group = Bundle.main.object(forInfoDictionaryKey: "SharedKeychainAccessGroup") as? String {
+      do {
+        let readable = try SharedKeychain(accessGroup: group).read() != nil
+        probe.notice("App target shared key readable=\(readable, privacy: .public)")
+      } catch { probe.error("App target shared key read failed") }
+    }
     let delegate = ReactNativeDelegate()
     let factory = ExpoReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()

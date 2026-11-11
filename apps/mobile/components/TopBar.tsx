@@ -1,10 +1,11 @@
 import React, { type ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { BrandSignature } from "@/components/BrandMark";
 import { textStyle } from "@/constants/fonts";
 import { radius, space } from "@/constants/theme";
+import { useControlFocus } from "@/hooks/useControlFocus";
 import { PRESSED_OPACITY, useTheme } from "@/hooks/useTheme";
 
 export const TOP_BAR_HEIGHT = 52;
@@ -37,7 +38,7 @@ export function TopBar({
         styles.bar,
         {
           backgroundColor: colors.bg,
-          height:
+          minHeight:
             title === "Cosmic Dolphin" && subtitle
               ? TOP_BAR_HEIGHT + space.s5
               : TOP_BAR_HEIGHT,
@@ -66,7 +67,7 @@ export function TopBar({
           <View style={styles.titles}>
             <Text
               style={[textStyle("body"), styles.title, { color: colors.fg }]}
-              numberOfLines={1}
+              maxFontSizeMultiplier={1.3}
               accessibilityRole="header"
             >
               {title}
@@ -96,26 +97,36 @@ export function TopBarAction({
   label,
   onPress,
   tint,
+  avatar,
 }: {
   icon: React.ComponentProps<typeof Ionicons>["name"];
   label: string;
   onPress: () => void;
   tint?: string;
+  avatar?: { uri?: string; initial: string };
 }) {
   const { colors } = useTheme();
+  const { focusStyle, ...focusEvents } = useControlFocus();
 
   return (
     <Pressable
+      {...focusEvents}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
       hitSlop={space.s2}
       style={({ pressed }) => [
         styles.action,
+        focusStyle,
         { backgroundColor: pressed ? colors.bgInset : "transparent" },
       ]}
     >
-      <Ionicons name={icon} size={20} color={tint ?? colors.fgSecondary} />
+      {avatar ? (
+        avatar.uri ? <Image source={{ uri: avatar.uri }} style={styles.avatar} /> :
+          <View style={[styles.avatar, { backgroundColor: colors.accent }]}>
+            <Text maxFontSizeMultiplier={1.3} style={[textStyle("label"), { color: colors.accentFg }]}>{avatar.initial}</Text>
+          </View>
+      ) : <Ionicons name={icon} size={20} color={tint ?? colors.fgSecondary} />}
     </Pressable>
   );
 }
@@ -127,7 +138,8 @@ export function pressedOpacity(pressed: boolean) {
 
 const styles = StyleSheet.create({
   bar: {
-    height: TOP_BAR_HEIGHT,
+    minHeight: TOP_BAR_HEIGHT,
+    paddingVertical: space.s1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -156,6 +168,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: space.s1,
   },
+  avatar: { width: 28, height: 28, borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
   action: {
     width: 44,
     height: 44,

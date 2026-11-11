@@ -1,6 +1,16 @@
 import { Generated, Insertable, Selectable, Updateable } from "kysely";
 
 // Base table interface
+export interface DailyPicksTable {
+  user_id: string;
+  local_date: string;
+  bookmark_ids: string[];
+  reasons: string[];
+  time_zone: string;
+  computed_at: Generated<Date>;
+}
+export type DailyPicksRow = Selectable<DailyPicksTable>;
+
 export interface BaseTable {
   id: Generated<string>;
   created_at: Generated<Date>;
@@ -44,6 +54,12 @@ export type CollectionSuggestionStatus = "pending" | "accepted" | "dismissed";
 
 // Bookmarks table
 export interface BookmarksTable extends BaseTable {
+  processing_failure_code: import("../types").ProcessingFailureCode | null;
+  user_note: string | null;
+  later_until: Date | null;
+  capture_source: import("../types").CaptureSource | null;
+  capture_platform: import("../types").CapturePlatform | null;
+  capture_queued_at: Date | null;
   source_url: string;
   title: string | null;
   metadata: any | null; // JSONB
@@ -393,7 +409,17 @@ export interface BookmarkProcessingEventsTable extends BaseTable {
 }
 
 // Database schema interface
+export interface ShareKeysTable {
+  id: Generated<string>;
+  user_id: string;
+  device_id: string;
+  key_hash: string;
+  created_at: Generated<Date>;
+  revoked_at: Generated<Date | null>;
+}
+
 export interface Database {
+  share_keys: ShareKeysTable;
   collections: CollectionsTable;
   collection_suggestions: CollectionSuggestionsTable;
   bookmarks: BookmarksTable;
@@ -415,6 +441,7 @@ export interface Database {
   feed_feedback: FeedFeedbackTable;
   feed_ranking_config: FeedRankingConfigTable;
   feed_digests: FeedDigestsTable;
+  daily_picks: DailyPicksTable;
   feed_digest_likes: FeedDigestLikesTable;
 }
 

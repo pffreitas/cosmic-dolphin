@@ -13,13 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
-import type { Bookmark } from './Bookmark';
+import type { PublicBookmark } from './PublicBookmark';
 import {
-    BookmarkFromJSON,
-    BookmarkFromJSONTyped,
-    BookmarkToJSON,
-    BookmarkToJSONTyped,
-} from './Bookmark';
+    PublicBookmarkFromJSON,
+    PublicBookmarkFromJSONTyped,
+    PublicBookmarkToJSON,
+    PublicBookmarkToJSONTyped,
+} from './PublicBookmark';
 
 /**
  * 
@@ -29,10 +29,10 @@ import {
 export interface PublicSavesResponse {
     /**
      * 
-     * @type {Array<Bookmark>}
+     * @type {Array<PublicBookmark>}
      * @memberof PublicSavesResponse
      */
-    bookmarks: Array<Bookmark>;
+    bookmarks: Array<PublicBookmark>;
     /**
      * Absent when this page is the last one.
      * @type {string}
@@ -59,7 +59,7 @@ export function PublicSavesResponseFromJSONTyped(json: any, ignoreDiscriminator:
     }
     return {
         
-        'bookmarks': ((json['bookmarks'] as Array<any>).map(BookmarkFromJSON)),
+        'bookmarks': ((json['bookmarks'] as Array<any>).map(PublicBookmarkFromJSON)),
         'nextCursor': json['nextCursor'] == null ? undefined : json['nextCursor'],
     };
 }
@@ -75,7 +75,7 @@ export function PublicSavesResponseFromJSONTyped(json: any, ignoreDiscriminator:
 
     return {
         
-        'bookmarks': ((value['bookmarks'] as Array<any>).map(BookmarkToJSON)),
+        'bookmarks': ((value['bookmarks'] as Array<any>).map(PublicBookmarkToJSON)),
         'nextCursor': value['nextCursor'],
     };
 }

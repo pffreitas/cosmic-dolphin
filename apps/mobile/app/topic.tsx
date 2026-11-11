@@ -82,7 +82,7 @@ export default function TopicScreen() {
                 ? "This reading list could not be loaded"
                 : "This reading list has changed"
             }
-            description="Return to Home for your latest collections."
+            description="Return to Home for your latest topics."
             action={failed ? "Try again" : "Go to Home"}
             onAction={() =>
               failed ? setAttempt((v) => v + 1) : router.replace("/(tabs)")

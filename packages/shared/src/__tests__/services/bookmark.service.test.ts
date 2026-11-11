@@ -13,6 +13,8 @@ describe("BookmarkService", () => {
 
   beforeEach(() => {
     mockRepository = {
+      updateOwned: jest.fn(),
+      mergeCapture: jest.fn(),
       create: jest.fn(),
       findByUserAndUrl: jest.fn(),
       findById: jest.fn(),
@@ -21,6 +23,8 @@ describe("BookmarkService", () => {
       insertScrapedUrlContents: jest.fn(),
       updateScrapedUrlContents: jest.fn(),
       getScrapedUrlContent: jest.fn(),
+      getOwnedScrapedUrlContent: jest.fn(),
+      storePastedContent: jest.fn(),
       findByUser: jest.fn(),
       searchByQuickAccess: jest.fn(),
       fullTextSearch: jest.fn(),
