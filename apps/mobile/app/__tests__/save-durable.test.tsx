@@ -3,12 +3,16 @@ import React from "react";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import RootLayout from "../_layout";
+import { saveQueue } from "@/lib/save-queue";
+import type { useCaptures } from "@/contexts/CaptureContext";
 
 const mockReaderSession = { access_token: "fixture-jwt", user: { id: "reader" } };
 let mockSession: any = mockReaderSession;
 let mockAuthChange: (event: string, session: any) => void;
 let mockPath = "/save";
 let mockNavigate: (path: string) => void;
+let mockCaptures: ReturnType<typeof useCaptures>;
+let mockCaptureViews: { owner?: string; captureOwners: (string | undefined)[] }[];
 jest.mock("@/lib/supabase", () => ({
   supabase: { auth: {
     getSession: jest.fn(async () => ({ data: { session: mockSession } })),
@@ -40,6 +44,8 @@ jest.mock("expo-router", () => {
   const React = require("react");
   const router = { replace: (path: string) => mockNavigate(path), push: (path: string) => mockNavigate(path), back: jest.fn(), canGoBack: () => false };
   function Stack() {
+    mockCaptures = require("@/contexts/CaptureContext").useCaptures();
+    mockCaptureViews.push({ owner: require("@/contexts/AuthContext").useAuth().user?.id, captureOwners: mockCaptures.captures.map(value => value.entry.userId) });
     const [path, setPath] = React.useState(mockPath);
     mockNavigate = (next: string) => { mockPath = next; setPath(next); };
     if (path.startsWith("/(auth)")) return React.createElement(require("react-native").Text, {}, "Sign in");
@@ -66,6 +72,7 @@ beforeEach(async () => {
   mockHasUrl.mockResolvedValue(false);
   mockReadClipboard.mockClear();
   mockPath = "/save";
+  mockCaptureViews = [];
   requests = [];
   bookmarks = new Map();
   holdFirst = true;
@@ -211,6 +218,160 @@ it("confirmation written during a create is durable before acceptance and atomic
   expect(bookmarks.size).toBe(1);
 });
 
+it("create ACK cannot discard confirmed note/timing while PATCH is held across provider unmount and restart", async () => {
+  const transport = global.fetch;
+  const patches: any[] = [];
+  let holdPatch = true;
+  global.fetch = jest.fn(async (url, init) => {
+    if (init?.method === "PATCH") {
+      const body = JSON.parse(init.body as string);
+      patches.push(body);
+      if (holdPatch) return new Promise<Response>((_resolve, reject) => {
+        init.signal?.addEventListener("abort", () => reject(new Error("Killed before confirmation ACK")));
+      });
+      const bookmark = { ...bookmarks.values().next().value, ...body };
+      bookmarks.set(bookmark.sourceUrl, bookmark);
+      return response(bookmark);
+    }
+    return transport(url, init);
+  }) as any;
+  const app = render(<RootLayout />);
+  try {
+    fireEvent.changeText(await app.findByLabelText("Link"), "https://example.com/confirmation-kill");
+    fireEvent.press(app.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(requests).toHaveLength(1));
+    fireEvent.changeText(app.getByLabelText("Note (optional)"), "Durable edited note");
+    fireEvent.press(app.getByRole("button", { name: "Tonight" }));
+    fireEvent.press(app.getByRole("button", { name: "Done" }));
+    await waitFor(() => expect(mockPath).toBe("/(tabs)"));
+    const [confirmed] = JSON.parse((await AsyncStorage.getItem("save-queue:v1"))!);
+    await act(async () => completeRequest());
+    await waitFor(() => expect(patches).toHaveLength(1));
+    expect(JSON.parse((await AsyncStorage.getItem("save-queue:v1"))!)).toEqual([
+      expect.objectContaining({ id: confirmed.id, note: confirmed.note, laterUntil: confirmed.laterUntil, userId: "reader" }),
+    ]);
+    app.unmount();
+    await act(async () => {});
+    expect(JSON.parse((await AsyncStorage.getItem("save-queue:v1"))!)).toHaveLength(1);
+    holdPatch = false;
+    const restarted = render(<RootLayout />);
+    expect(await restarted.findByText("Saved idea")).toBeTruthy();
+    await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem("save-queue:v1"))!)).toEqual([]));
+    expect(bookmarks.size).toBe(1);
+    expect(bookmarks.values().next().value).toMatchObject({ userNote: confirmed.note, laterUntil: confirmed.laterUntil });
+    expect(patches).toEqual([patches[0], patches[0]]);
+    // A stored create receipt replays the set-field reconciliation, not another create/job.
+    expect(requests).toHaveLength(1);
+    restarted.unmount();
+  } finally { app.unmount(); }
+});
+
+it("edits and explicit clears made during a held confirmation PATCH remain durable until their own ACK", async () => {
+  const transport = global.fetch;
+  const patches: any[] = [];
+  const acceptPatch: (() => void)[] = [];
+  global.fetch = jest.fn(async (url, init) => {
+    if (init?.method === "PATCH") {
+      const body = JSON.parse(init.body as string);
+      patches.push(body);
+      return new Promise<Response>((resolve, reject) => {
+        acceptPatch.push(() => {
+          const bookmark = { ...bookmarks.values().next().value, ...body };
+          bookmarks.set(bookmark.sourceUrl, bookmark);
+          resolve(response(bookmark));
+        });
+        init.signal?.addEventListener("abort", () => reject(new Error("Unmounted")));
+      });
+    }
+    return transport(url, init);
+  }) as any;
+  const app = render(<RootLayout />);
+  try {
+    fireEvent.changeText(await app.findByLabelText("Link"), "https://example.com/newer-confirmation");
+    fireEvent.press(app.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(requests).toHaveLength(1));
+    fireEvent.changeText(app.getByLabelText("Note (optional)"), "First confirmed note");
+    fireEvent.press(app.getByRole("button", { name: "Tonight" }));
+    fireEvent.press(app.getByRole("button", { name: "Done" }));
+    await waitFor(() => expect(mockPath).toBe("/(tabs)"));
+    const [entry] = await saveQueue.list();
+    await act(async () => completeRequest());
+    await waitFor(() => expect(patches).toHaveLength(1));
+    await act(async () => mockCaptures.confirm(entry.id, "", null));
+    expect(patches).toHaveLength(1);
+    expect(await saveQueue.list()).toEqual([expect.objectContaining({ note: "", laterUntil: null })]);
+    await act(async () => acceptPatch[0]());
+    await waitFor(() => expect(patches).toHaveLength(2));
+    expect(patches[1]).toEqual({ userNote: "", laterUntil: null });
+    expect(await saveQueue.list()).toEqual([expect.objectContaining({ note: "", laterUntil: null })]);
+    await act(async () => acceptPatch[1]());
+    await waitFor(async () => expect(await saveQueue.list()).toEqual([]));
+    expect(bookmarks.values().next().value).toMatchObject({ userNote: "", laterUntil: null });
+    expect(requests).toHaveLength(1);
+  } finally { app.unmount(); }
+});
+
+it("account switch aborts reconciliation, hides the private capture and replays only for its owner despite a late PATCH response", async () => {
+  const transport = global.fetch;
+  const patches: { body: any; authorization: string }[] = [];
+  let lateResponse!: () => void;
+  global.fetch = jest.fn(async (url, init) => {
+    if (init?.method === "PATCH") {
+      const body = JSON.parse(init.body as string);
+      patches.push({ body, authorization: (init.headers as any).Authorization });
+      if (patches.length === 1) return new Promise<Response>(resolve => {
+        // Deliberately ignore abort, as a server can finish after session change.
+        lateResponse = () => resolve(response({ ...bookmarks.values().next().value, ...body }));
+      });
+      const bookmark = { ...bookmarks.values().next().value, ...body };
+      bookmarks.set(bookmark.sourceUrl, bookmark);
+      return response(bookmark);
+    }
+    return transport(url, init);
+  }) as any;
+  const app = render(<RootLayout />);
+  try {
+    fireEvent.changeText(await app.findByLabelText("Link"), "https://example.com/private-account-intent");
+    fireEvent.press(app.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(requests).toHaveLength(1));
+    fireEvent.changeText(app.getByLabelText("Note (optional)"), "Owner private intent");
+    fireEvent.press(app.getByRole("button", { name: "Done" }));
+    await waitFor(() => expect(mockPath).toBe("/(tabs)"));
+    const [entry] = await saveQueue.list();
+    await act(async () => completeRequest());
+    await waitFor(() => expect(patches).toHaveLength(1));
+    mockSession = { access_token: "other-jwt", user: { id: "other" } };
+    await act(async () => mockAuthChange("SIGNED_IN", mockSession));
+    await act(async () => lateResponse());
+    await act(async () => mockCaptures.drain());
+    expect(mockCaptures.captures).toEqual([]);
+    await act(async () => { await expect(mockCaptures.confirm(entry.id, "Other account edit", null)).rejects.toThrow("account"); });
+    expect(await saveQueue.list()).toEqual([expect.objectContaining({ userId: "reader", note: "Owner private intent" })]);
+    expect(patches).toHaveLength(1);
+    mockSession = mockReaderSession;
+    await act(async () => mockAuthChange("SIGNED_IN", mockSession));
+    await waitFor(async () => expect(await saveQueue.list()).toEqual([]));
+    expect(patches).toHaveLength(2);
+    expect(patches.every(patch => patch.authorization === "Bearer fixture-jwt")).toBe(true);
+    expect(bookmarks.values().next().value.userNote).toBe("Owner private intent");
+    expect(requests).toHaveLength(1);
+  } finally { lateResponse?.(); app.unmount(); }
+});
+
+it("a new account never receives the prior account's captures during the render before effect cleanup", async () => {
+  const app = render(<RootLayout />);
+  try {
+    fireEvent.changeText(await app.findByLabelText("Link"), "https://example.com/private-render");
+    fireEvent.press(app.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(requests).toHaveLength(1));
+    mockSession = { access_token: "other-jwt", user: { id: "other" } };
+    await act(async () => mockAuthChange("SIGNED_IN", mockSession));
+    expect(mockCaptureViews.filter(view => view.owner === "other")).not.toHaveLength(0);
+    expect(mockCaptureViews.filter(view => view.owner === "other").flatMap(view => view.captureOwners)).not.toContain("reader");
+    expect(await saveQueue.list()).toEqual([expect.objectContaining({ userId: "reader", url: "https://example.com/private-render" })]);
+  } finally { app.unmount(); }
+});
+
 it("replays on matching sign-in, foreground and Home pull to refresh after an offline launch", async () => {
   const { AppState, RefreshControl } = require("react-native");
   const foregroundListeners = new Set<(state: string) => void>();
@@ -253,9 +414,45 @@ it("a replay 400 retains an unsent Home row with Remove and no Retry", async () 
   fireEvent.press(await app.findByRole("button", { name: "Done" }));
   expect(await app.findByText("Couldn't save this link")).toBeTruthy();
   expect(app.queryByRole("button", { name: "Retry" })).toBeNull();
-  fireEvent.press(app.getByRole("button", { name: "Remove" }));
+  // Remove crosses the storage promise lane; flush the event's React updates.
+  await act(async () => { fireEvent.press(app.getByRole("button", { name: "Remove" })); });
   await waitFor(() => expect(app.queryByText("https://example.com/rejected")).toBeNull());
   expect(await AsyncStorage.getItem("save-queue:v1")).toBe("[]");
+});
+
+it("Remove stays removed when a Home refresh delivers its older durable queue snapshot afterward", async () => {
+  const transport = global.fetch;
+  global.fetch = jest.fn(async (url, init) => init?.method === "POST" ? response({ error: "Rejected" }, 400) : transport(url, init)) as any;
+  const app = render(<RootLayout />);
+  const list = saveQueue.list;
+  let deliverSnapshot!: () => void;
+  let captured = false;
+  try {
+    fireEvent.changeText(await app.findByLabelText("Link"), "https://example.com/rejected");
+    fireEvent.press(app.getByRole("button", { name: "Save" }));
+    fireEvent.press(await app.findByRole("button", { name: "Done" }));
+    await app.findByText("Couldn't save this link");
+    // Finish the original replay before holding a fresh real storage read.
+    await act(async () => saveQueue.drain("reader", { create: async () => { throw new Error("Rejected rows must not replay"); } }));
+    jest.spyOn(saveQueue, "list").mockImplementationOnce(async () => {
+      const snapshot = await list();
+      expect(snapshot[0].failure).toBe("rejected");
+      return new Promise(resolve => { captured = true; deliverSnapshot = () => resolve(snapshot); });
+    });
+    fireEvent(app.UNSAFE_getByType(require("react-native").RefreshControl), "refresh");
+    await waitFor(() => expect(captured).toBe(true));
+    fireEvent.press(app.getByRole("button", { name: "Remove" }));
+    await waitFor(async () => expect(await AsyncStorage.getItem("save-queue:v1")).toBe("[]"));
+    await act(async () => deliverSnapshot());
+    await act(async () => saveQueue.drain("reader", { create: async () => { throw new Error("Removed rows must not replay"); } }));
+    expect(app.queryByText("https://example.com/rejected")).toBeNull();
+    expect(app.queryByRole("button", { name: "Remove" })).toBeNull();
+    expect(await AsyncStorage.getItem("save-queue:v1")).toBe("[]");
+  } finally {
+    deliverSnapshot?.();
+    jest.restoreAllMocks();
+    app.unmount();
+  }
 });
 
 it("Home keeps a processing capture above the loaded feed with real phases and its available filing path", async () => {

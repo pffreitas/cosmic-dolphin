@@ -22,6 +22,8 @@ export function CaptureProvider({ children }: { children: React.ReactNode }) {
   const owner = useRef(user?.id);
   owner.current = user?.id;
   const accepted = useRef(new Map<string, Bookmark>());
+  // A completed Remove wins over snapshots read by an earlier drain.
+  const removed = useRef(new Set<string>());
   const lifetime = useRef(new AbortController());
   const draining = useRef<{ signal: AbortSignal; done: Promise<void> } | null>(null);
   const drain = useCallback((onlyUnattempted = false): Promise<void> => {
@@ -46,16 +48,15 @@ export function CaptureProvider({ children }: { children: React.ReactNode }) {
       const entries = await saveQueue.list();
       if (signal.aborted) return;
       setCaptures(previous => {
-        const saved = previous.filter(capture => capture.status === "saved");
-        return [...entries.filter(entry => !entry.userId || entry.userId === userId).reverse().map(entry => ({ id: entry.id, entry, status: entry.failure === "retry" || entry.failure === "rejected" ? "failed" as const : "queued" as const })), ...saved];
+        const saved = previous.filter(capture => capture.status === "saved" && !removed.current.has(capture.id));
+        return [...entries.filter(entry => !removed.current.has(entry.id) && (!entry.userId || entry.userId === userId)).reverse().map(entry => ({ id: entry.id, entry, status: entry.failure === "retry" || entry.failure === "rejected" ? "failed" as const : "queued" as const })), ...saved];
       });
       if (!entries.some(entry => !entry.userId || entry.userId === userId)) return;
       await saveQueue.drain(userId, MobileAPI, {
         signal, onlyUnattempted,
-        onAccepting: (entry, bookmark) => { if (!signal.aborted) accepted.current.set(entry.id, bookmark); },
-        onConfirmationFailure: () => { if (!signal.aborted) setChangeError("Change was not saved. Check your connection."); },
+        onAccepting: (entry, bookmark) => { if (!signal.aborted && owner.current === userId && !removed.current.has(entry.id)) accepted.current.set(entry.id, bookmark); },
         onStatus: (entry, status, bookmark, alreadySaved) => {
-          if (signal.aborted || owner.current !== userId) return;
+          if (signal.aborted || owner.current !== userId || removed.current.has(entry.id)) return;
           if (bookmark) accepted.current.set(entry.id, bookmark);
           setCaptures(previous => previous.map(value => value.id === entry.id ? { id: entry.id, entry, status, bookmark, alreadySaved } : value));
           if (status === "saved") setRevision(value => value + 1);
@@ -121,9 +122,13 @@ export function CaptureProvider({ children }: { children: React.ReactNode }) {
   };
   const remove = async (id: string) => {
     await saveQueue.remove(id);
+    removed.current.add(id);
+    accepted.current.delete(id);
     setCaptures(previous => previous.filter(value => value.id !== id));
   };
-  return <Context.Provider value={{ captures, revision, changeError, acknowledge, save, confirm, drain, updateBookmark,
+  const visibleCaptures = captures.filter(capture => (!capture.entry.userId || capture.entry.userId === user?.id)
+    && (!capture.bookmark || capture.bookmark.userId === user?.id));
+  return <Context.Provider value={{ captures: visibleCaptures, revision, changeError, acknowledge, save, confirm, drain, updateBookmark,
     invalidate: () => setRevision(value => value + 1),
     retry: () => { void drain().catch(() => {}); }, remove: id => { void remove(id).catch(() => {}); },
   }}>{children}</Context.Provider>;

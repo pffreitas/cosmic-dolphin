@@ -20,6 +20,10 @@ export type SaveEntry = {
   failure?: "rejected" | "retry" | "auth";
   note?: string;
   laterUntil?: string | null;
+  // Additive v1 fields: distinguish newer confirmation from duplicate-save
+  // note precedence, and resume reconciliation without recreating the bookmark.
+  initial?: { note?: string };
+  acknowledged?: { bookmark: Bookmark; alreadySaved?: boolean; note?: string; laterUntil?: string | null };
 };
 const KEY = "save-queue:v1";
 // All read/modify/write operations share one lane, including separate providers.
@@ -41,7 +45,6 @@ export type QueueDrainOptions = {
   signal?: AbortSignal;
   onStatus?: (entry: SaveEntry, status: "saving" | "queued" | "failed" | "saved", bookmark?: Bookmark, alreadySaved?: boolean) => void;
   onAccepting?: (entry: SaveEntry, bookmark: Bookmark) => void;
-  onConfirmationFailure?: () => void;
 };
 let drains: Promise<unknown> = Promise.resolve();
 export const saveQueue = {
@@ -70,29 +73,65 @@ export const saveQueue = {
         entry = await serialized(async () => {
           const entries = await read();
           const current = entries.find(value => value.id === queued.id);
-          if (!current) return undefined;
+          if (!current || options.signal?.aborted || (current.userId && current.userId !== userId)
+            || current.failure === "rejected" || (current.notBefore && Date.parse(current.notBefore) > Date.now())) return undefined;
           current.userId = userId;
           current.attempts++;
           if (current.laterUntil && Date.parse(current.laterUntil) <= Date.now()) current.laterUntil = null;
+          current.initial ??= { note: current.note };
           await AsyncStorage.setItem(KEY, JSON.stringify(entries));
           return current;
         });
         if (!entry || options.signal?.aborted) continue;
         options.onStatus?.(entry, "saving");
         try {
-          const result = await saveRequest(signal => client.create(createRequest(entry!), signal, userId), options.signal);
-          if (options.signal?.aborted) break;
-          if (result.bookmark.userId !== userId) throw { response: new Response(null, { status: 401 }) };
-          const latest = await saveQueue.accept(entry.id, () => options.onAccepting?.(entry!, result.bookmark));
-          if (latest && (latest.note !== entry.note || latest.laterUntil !== entry.laterUntil)) {
-            try {
-              if (!client.update) throw new Error("Confirmation update unavailable");
-              result.bookmark = await client.update(result.bookmark.id, { userNote: latest.note, laterUntil: latest.laterUntil == null ? latest.laterUntil : new Date(latest.laterUntil) }, options.signal, userId);
-            } catch { options.onConfirmationFailure?.(); }
+          if (!entry.acknowledged) {
+            const sent = entry;
+            const result = await saveRequest(signal => client.create(createRequest(sent), signal, userId), options.signal);
+            if (options.signal?.aborted) break;
+            if (result.bookmark.userId !== userId) throw { response: new Response(null, { status: 401 }) };
+            // A replay includes the latest fields. Duplicate POST preserves a
+            // stored note, so an edit after the first attempt still needs PATCH.
+            entry = await saveQueue.patch(entry.id, { acknowledged: {
+              ...result, laterUntil: sent.laterUntil,
+              note: result.alreadySaved && sent.note !== sent.initial!.note ? sent.initial!.note : sent.note,
+            } });
           }
-          options.onStatus?.(latest ?? entry, "saved", result.bookmark, result.alreadySaved);
+          // Every ACK covers only its sent snapshot. Confirm and ACK/removal share
+          // the storage lane, so a later confirmation cannot fall between them.
+          while (entry && !options.signal?.aborted) {
+            const latest: SaveEntry | undefined = await serialized(async () => {
+              const entries = await read();
+              const current = entries.find(value => value.id === entry!.id);
+              if (!current || options.signal?.aborted || current.userId !== userId) return undefined;
+              const ack = current.acknowledged!;
+              if (ack.bookmark.userId !== userId) throw { response: new Response(null, { status: 401 }) };
+              if (current.laterUntil && Date.parse(current.laterUntil) <= Date.now()) current.laterUntil = null;
+              if (current.note === ack.note && current.laterUntil === ack.laterUntil) {
+                await AsyncStorage.setItem(KEY, JSON.stringify(entries.filter(value => value.id !== current.id)));
+                options.onAccepting?.(current, ack.bookmark);
+                options.onStatus?.(current, "saved", ack.bookmark, ack.alreadySaved);
+                return undefined;
+              }
+              await AsyncStorage.setItem(KEY, JSON.stringify(entries));
+              return current;
+            });
+            if (!latest || options.signal?.aborted) break;
+            const ack = latest.acknowledged!;
+            if (!client.update) throw new Error("Confirmation update unavailable");
+            const bookmark = await saveRequest(signal => client.update!(ack.bookmark.id, {
+              ...(latest.note !== ack.note ? { userNote: latest.note } : {}),
+              ...(latest.laterUntil !== ack.laterUntil ? { laterUntil: latest.laterUntil == null ? latest.laterUntil : new Date(latest.laterUntil) } : {}),
+            }, signal, userId), options.signal);
+            if (options.signal?.aborted) break;
+            if (bookmark.userId !== userId) throw { response: new Response(null, { status: 401 }) };
+            entry = await saveQueue.patch(latest.id, { acknowledged: {
+              bookmark, alreadySaved: ack.alreadySaved, note: latest.note, laterUntil: latest.laterUntil,
+            } });
+          }
         } catch (error: unknown) {
           if (options.signal?.aborted) break;
+          if (!entry) continue;
           const status = (error as { response?: Response }).response?.status;
           if (status === 401) { const changed = await saveQueue.patch(entry.id, { failure: "auth" }); if (changed) options.onStatus?.(changed, "queued"); break; }
           if (status === 429) {
@@ -145,15 +184,6 @@ export const saveQueue = {
       if (entry.userId && entry.userId !== userId) throw new Error("Capture belongs to another account");
       Object.assign(entry, fields);
       await AsyncStorage.setItem(KEY, JSON.stringify(entries));
-      return entry;
-    });
-  },
-  accept(id: string, onAccepted: () => void) {
-    return serialized(async () => {
-      const entries = await read();
-      const entry = entries.find(value => value.id === id);
-      onAccepted();
-      await AsyncStorage.setItem(KEY, JSON.stringify(entries.filter(value => value.id !== id)));
       return entry;
     });
   },
