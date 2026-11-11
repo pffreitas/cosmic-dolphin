@@ -514,7 +514,7 @@ bun run --cwd apps/mobile lint
 
 **Notes**
 
-Implemented and checkpoint-accepted on2026-11-10 using the simulator execution clarification above; coordinator software/native-fixture checks and signed capability inspection are green. Normal-issuer real-session and live physical-device outcomes remain pending package proof. Preserved on `wip/save-and-todays-5-T-2`, based on feature checkpoint `19d7cd4c25be506c1507fc325820ed8433cac523`; WIP commit `7ba8d7eab788b65d197cf097f5c004963e9f644b` (`Task: T-2`). The initial Blocked disposition is superseded by Paulo’s simulator steering. T-2 is Done at the implementation checkpoint, not reviewed, integrated or shipped; feature checkpoint SHA is recorded in the next coordinator metadata commit. Developer node:delegated-task:command%3Amcp%3A44e93c94-ffbb-4f6d-ae4f-4a59ab199c23%3Adelegate-task%3A308843bf-32b1-4aa9-aac9-fb0b4edcc3df delivered62 source/test/generated/native paths without commits or task edits. Full handback and honest sequential red/green ledger remain `/tmp/T-2-handback.md` and `/tmp/T-2-ledger.md`.
+Implemented and checkpoint-accepted on2026-11-10 using the simulator execution clarification above; coordinator software/native-fixture checks and signed capability inspection are green. Normal-issuer real-session and live physical-device outcomes remain pending package proof. Initially preserved on `wip/save-and-todays-5-T-2`, based on feature checkpoint `19d7cd4c25be506c1507fc325820ed8433cac523`; WIP commit `7ba8d7eab788b65d197cf097f5c004963e9f644b` (`Task: T-2`). The initial Blocked disposition is superseded by Paulo’s simulator steering. T-2 is Done at the implementation checkpoint, not reviewed, integrated or shipped; feature checkpoint `c48128057fa944da6869bf8f13295be50ccd60d6` (`Task: T-2`). Developer node:delegated-task:command%3Amcp%3A44e93c94-ffbb-4f6d-ae4f-4a59ab199c23%3Adelegate-task%3A308843bf-32b1-4aa9-aac9-fb0b4edcc3df delivered62 source/test/generated/native paths without commits or task edits. Full handback and honest sequential red/green ledger remain `/tmp/T-2-handback.md` and `/tmp/T-2-ledger.md`.
 
 Coordinator independently ran every T-2 Verify command and Verify all: apispec/shared build, disposable DB up/reset, API347, focused shared4, focused mobile10, root typecheck and explicit shared/API/worker/mobile tsc; serial backend shared397/API347/worker10, full mobile83 with one existing skip, web335, mobile/web/API lint and tokens PASS. API lint64 warnings (4new HTTP-fixture any warnings), mobile5/web112 baseline warnings; non-generated whitespace check PASS. Staging exposed standard generator boilerplate whitespace/blank-EOF warnings in new client files that unstaged diff-check did not include; they are recorded, and no generated file was edited manually. Native ShareQueueTests on local iPhone17Pro/iOS26.5 simulator F3CF81FA-5972-40A4-83EF-0D077C02B571:5tests/0failures; exact JSON/service/account/group/accessibility write/read/delete proven. Developer also observed the real simulator app and actual extension process reading one fictional shared item, then cleaned it up. These are fixture/cross-process proofs, not a real authenticated native lifecycle.
 
@@ -528,7 +528,7 @@ Remaining prerequisites: real configured internal test-account login for normal-
 
 | | |
 |---|---|
-| Status | Todo |
+| Status | In progress |
 | Depends on | T-2 |
 | Traces | FR-1 · FR-2 · FR-26 iOS attribution · FR-27 bridge import · NFR-1 · NFR-4 · NFR-9 · S-7 · §8.4 iOS shared storage · §8.6 share failures · §9 prebuild risk · A-2 |
 | Ships as | User-visible: save and close from the native iOS share extension in the complete package |
@@ -585,7 +585,7 @@ eas build --profile preview --platform ios
 
 **Notes**
 
-Not started. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here.
+Started2026-11-10 from coordinator-verified T-2 checkpoint `c48128057fa944da6869bf8f13295be50ccd60d6` under Paulo’s simulator execution clarification. Fresh developer assignment follows this metadata checkpoint. Use real native simulator/XCTest fixtures and local branch transport; record unavailable physical Wi-Fi/LTE and real-session outcomes in the pending package proof, never as passed. Root requested T-2’s completed developer to release its own stale device session; that owner reported Closed, and root resumed its own bound simulator command. No other session was reused or closed.
 
 ### T-4 · Save and return from Android sharing without a tap
 
