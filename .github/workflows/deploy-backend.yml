@@ -95,7 +95,8 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # CLI 3 changes configuration and the default db push target.
+          version: 2.122.1
 
       - name: Run Supabase migrations
         env:
