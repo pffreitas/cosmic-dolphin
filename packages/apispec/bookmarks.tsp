@@ -18,6 +18,8 @@ model PasteBookmarkContentRequest {
 }
 
 model BookmarkContent {
+    @doc("True when the response contains only the opening portion of the stored article to stay within the 500 KB serialized response or 2,000-block limit. Source still records the actual provenance.")
+    truncated?: boolean;
     blocks: BookmarkContentBlock[];
     wordCount: int32;
     source: "extracted" | "pasted";

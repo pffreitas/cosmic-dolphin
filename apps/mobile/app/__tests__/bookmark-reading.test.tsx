@@ -8,7 +8,7 @@ import { BookmarksAPI } from "@/lib/api";
 import { MobileAPI } from "@/lib/mobile-api";
 import { openBrowserAsync } from "expo-web-browser";
 
-const mockParams: { id: string; mode?: string } = { id: "article" };
+const mockParams: { id: string; mode?: string; slug?: string } = { id: "article" };
 let mockUserId = "owner";
 const mockRouter = { back: jest.fn(), replace: jest.fn(), push: jest.fn() };
 jest.mock("expo-router", () => ({
@@ -19,7 +19,7 @@ jest.mock("expo-router", () => ({
 jest.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: mockUserId } }) }));
 jest.mock("@/lib/api", () => ({ BookmarksAPI: { findById: jest.fn() } }));
 jest.mock("@/lib/mobile-api", () => ({ MobileAPI: {
-  content: jest.fn(), picks: jest.fn(), read: jest.fn(), update: jest.fn(), refile: jest.fn(), collections: jest.fn(),
+  sharedBookmark: jest.fn(), content: jest.fn(), picks: jest.fn(), read: jest.fn(), update: jest.fn(), refile: jest.fn(), collections: jest.fn(),
   progress: jest.fn(), highlights: jest.fn(), highlight: jest.fn(), removeHighlight: jest.fn(), saveProgress: jest.fn(), retry: jest.fn(), processingTimeline: jest.fn(),
 } }));
 jest.mock("@/lib/bookmark-cache", () => ({ cacheBookmarksInBackground: jest.fn(), getCachedBookmark: jest.fn(), removeCachedBookmark: jest.fn() }));
@@ -29,7 +29,7 @@ jest.mock("expo-web-browser", () => ({ openBrowserAsync: jest.fn(async () => ({}
 const article = { id: "article", userId: "owner", title: "A stored article", sourceUrl: "https://source.example/article", createdAt: "2026-11-09T00:00:00Z", updatedAt: "2026-11-09T00:00:00Z", processingStatus: "completed", cosmicBriefSummary: "Brief only sentinel", cosmicKeyPoints: ["One real key point"], metadata: { wordCount: 1000 }, collectionId: "topic", collectionPath: [{ id: "topic", name: "Reading" }] };
 const content = { blocks: [{ kind: "heading", text: "Article heading" }, { kind: "paragraph", text: "Genuine stored article text." }], wordCount: 6, source: "extracted", updatedAt: new Date() };
 beforeEach(() => {
-  jest.clearAllMocks(); delete mockParams.mode; mockParams.id = "article"; mockUserId = "owner";
+  jest.clearAllMocks(); delete mockParams.mode; delete mockParams.slug; mockParams.id = "article"; mockUserId = "owner";
   jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(true);
   jest.spyOn(AccessibilityInfo, "isScreenReaderEnabled").mockResolvedValue(false);
   (BookmarksAPI.findById as jest.Mock).mockResolvedValue(article);
@@ -429,4 +429,25 @@ it("ignores late full text from the previous save after page replacement", async
   await act(async () => oldContent(content));
   expect(view.getByText("Next save full text")).toBeTruthy();
   expect(view.queryByText("Genuine stored article text.")).toBeNull();
+});
+
+it("labels a budget-limited article as partial and opens its actual original", async () => {
+  (MobileAPI.content as jest.Mock).mockResolvedValue({ ...content, truncated: true });
+  mockParams.mode = "read";
+  const view = render(<BookmarkDetailScreen />);
+  expect(await view.findByText("Showing the opening part of this article. Open the original for the complete text.")).toBeTruthy();
+  fireEvent.press(view.getByText("Open original"));
+  await waitFor(() => expect(openBrowserAsync).toHaveBeenCalledWith(article.sourceUrl));
+});
+it("never substitutes private cached owner content when a public slug fails", async () => {
+  mockParams.slug = "missing-public-slug";
+  (MobileAPI.sharedBookmark as jest.Mock).mockRejectedValue(new Error("Public link not found"));
+  const cache = require("@/lib/bookmark-cache");
+  cache.getCachedBookmark.mockResolvedValue({ ...article, userNote: "PRIVATE CACHED NOTE" });
+  const view = render(<BookmarkDetailScreen />);
+  expect(await view.findByText("Public link not found")).toBeTruthy();
+  expect(BookmarksAPI.findById).not.toHaveBeenCalled();
+  expect(cache.getCachedBookmark).not.toHaveBeenCalled();
+  expect(cache.cacheBookmarksInBackground).not.toHaveBeenCalled();
+  expect(view.queryByText("PRIVATE CACHED NOTE")).toBeNull();
 });

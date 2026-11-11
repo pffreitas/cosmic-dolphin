@@ -28,6 +28,12 @@ import {
  */
 export interface BookmarkContent {
     /**
+     * True when the response contains only the opening portion of the stored article to stay within the 500 KB serialized response or 2,000-block limit. Source still records the actual provenance.
+     * @type {boolean}
+     * @memberof BookmarkContent
+     */
+    truncated?: boolean;
+    /**
      * 
      * @type {Array<BookmarkContentBlock>}
      * @memberof BookmarkContent
@@ -85,6 +91,7 @@ export function BookmarkContentFromJSONTyped(json: any, ignoreDiscriminator: boo
     }
     return {
         
+        'truncated': json['truncated'] == null ? undefined : json['truncated'],
         'blocks': ((json['blocks'] as Array<any>).map(BookmarkContentBlockFromJSON)),
         'wordCount': json['wordCount'],
         'source': json['source'],
@@ -103,6 +110,7 @@ export function BookmarkContentFromJSONTyped(json: any, ignoreDiscriminator: boo
 
     return {
         
+        'truncated': value['truncated'],
         'blocks': ((value['blocks'] as Array<any>).map(BookmarkContentBlockToJSON)),
         'wordCount': value['wordCount'],
         'source': value['source'],

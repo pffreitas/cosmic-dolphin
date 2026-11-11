@@ -5,11 +5,13 @@ import { renderRouter, screen } from "expo-router/testing-library";
 import { Text, RefreshControl } from "react-native";
 import { router } from "expo-router";
 import HomeScreen from "../(tabs)/index";
+import SaveScreen from "../save";
+const mockCaptureSave = jest.fn(async () => "clipboard-capture");
 import { MobileAPI } from "@/lib/mobile-api";
 import type { Bookmark, FeedItem, TodayPicksResponse } from "@cosmic-dolphin/api-client";
 jest.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "fixture-reader", email: "fixture@example.invalid" } }) }));
 jest.mock("@/contexts/PreferencesContext", () => ({ usePreferences: () => ({ appearance: "light", interests: [], hiddenTopics: [], update: jest.fn() }) }));
-jest.mock("@/contexts/CaptureContext", () => ({ useCaptures: () => ({ captures: [], acknowledge: jest.fn(), revision: 0, drain: jest.fn(async () => {}) }) }));
+jest.mock("@/contexts/CaptureContext", () => ({ useCaptures: () => ({ captures: [], save: mockCaptureSave, confirm: jest.fn(), acknowledge: jest.fn(), revision: 0, drain: jest.fn(async () => {}) }) }));
 // The hoisted native-boundary mock resolves Text inside its factory.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 jest.mock("@/components/CopiedLink", () => { const Text = require("react-native").Text; return ({ CopiedLink: ({ onPaste }: { onPaste: (url: string) => void }) => <Text onPress={() => onPaste("https://copied.example/article")}>Paste copied link</Text> }); });
@@ -273,4 +275,15 @@ it("first focus after revealsAt restores the fifth original slot: 1 of 4 becomes
   expect(screen.getByText("Article slot1")).toBeTruthy();
   expect(MobileAPI.picks).toHaveBeenCalledTimes(2);
   expect(MobileAPI.feed).toHaveBeenCalledTimes(2);
+});
+
+it("Home Paste opens the real Save screen with the copied URL and clipboard attribution", async () => {
+  (MobileAPI.feed as jest.Mock).mockResolvedValue({ items: [] });
+  (MobileAPI.picks as jest.Mock).mockResolvedValue({ ...snapshot([]), computedAt: undefined });
+  (MobileAPI.counts as jest.Mock).mockResolvedValue({ all: 0, unread: 0, archived: 0, inbox: 0, collections: [] });
+  renderRouter({ index: HomeScreen, save: SaveScreen });
+  fireEvent.press(await screen.findByText("Paste copied link"));
+  expect((await screen.findByLabelText("Link")).props.value).toBe("https://copied.example/article");
+  fireEvent.press(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(mockCaptureSave).toHaveBeenCalledWith(expect.objectContaining({ sourceUrl: "https://copied.example/article", captureSource: "clipboard" })));
 });

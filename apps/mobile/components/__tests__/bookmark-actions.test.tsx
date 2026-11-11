@@ -3,9 +3,15 @@ import { Text, RefreshControl } from "react-native";
 import { act, fireEvent, waitFor } from "@testing-library/react-native";
 import { renderRouter, screen } from "expo-router/testing-library";
 import HomeScreen from "@/app/(tabs)/index";
+import BookmarkDetailScreen from "@/app/bookmark/[id]";
 import { MobileAPI } from "@/lib/mobile-api";
 
-jest.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "reader" } }) }));
+let mockUserId = "reader";
+const mockAuthListeners = new Set<() => void>();
+jest.mock("@/contexts/AuthContext", () => ({ useAuth: () => {
+  const id = require("react").useSyncExternalStore((listener: () => void) => { mockAuthListeners.add(listener); return () => { mockAuthListeners.delete(listener); }; }, () => mockUserId, () => mockUserId);
+  return { user: { id } };
+} }));
 jest.mock("@/contexts/PreferencesContext", () => ({ usePreferences: () => ({ appearance: "light", interests: [], hiddenTopics: [] }) }));
 jest.mock("@/contexts/CaptureContext", () => ({ useCaptures: () => ({ captures: [], acknowledge: jest.fn(), revision: 0, drain: jest.fn(async () => {}) }) }));
 jest.mock("@/components/CopiedLink", () => ({ CopiedLink: () => null }));
@@ -23,9 +29,12 @@ let items: object[];
 let writes: { path: string; method?: string; body?: string }[];
 let mutation: (path: string, init?: RequestInit) => Promise<Response>;
 let heldPicks: (() => Promise<Response>) | undefined;
+let heldCollections: (() => Promise<Response>) | undefined;
+let reads: string[];
 const response = (value: unknown) => new Response(JSON.stringify(value), { status: 200 });
 beforeEach(() => {
-  picks = [bookmark("one"), bookmark("two")]; items = []; writes = []; heldPicks = undefined;
+  mockUserId = "reader";
+  picks = [bookmark("one"), bookmark("two")]; items = []; writes = []; heldPicks = undefined; heldCollections = undefined; reads = [];
   mutation = async path => response(bookmark(path.includes("two") ? "two" : "one"));
   const fetcher = jest.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const path = new URL(input as string, "https://fixture.invalid").pathname;
@@ -33,11 +42,14 @@ beforeEach(() => {
       writes.push({ path, method: init.method, body: init.body as string });
       return mutation(path, init);
     }
+    reads.push(path);
+    if (path === "/api/v1/bookmarks/shared/public-article") return response(bookmark("foreign", { userId: "other", isPublic: true, shareSlug: "public-article", cosmicBriefSummary: "Public article brief" }));
+    if (path === "/api/v1/bookmarks/foreign") return new Response(JSON.stringify({ error: "Bookmark not found" }), { status: 404 });
     if (path.endsWith("/picks/today")) return heldPicks ? heldPicks() : response({ localDate: "2026-11-11", computedAt: stamp, refreshesAt: "2026-11-12T11:00:00Z", items: picks.map((b, i) => ({ position: i + 1, bookmark: b, reason: `Original reason ${b.id}` })) });
     if (path.endsWith("/feed")) return response({ items });
     if (path.endsWith("/counts")) return response({ all: 2, unread: 2, archived: 0, inbox: 0, collections: [] });
     if (path.endsWith("/continue-reading")) return response({ items: [] });
-    if (path.endsWith("/collections")) return response({ collections: [] });
+    if (path.endsWith("/collections")) return heldCollections ? heldCollections() : response({ collections: [] });
     throw new Error(`Unexpected fixture route ${path}`);
   });
   global.fetch = Object.assign(fetcher, { preconnect: originalFetch.preconnect });
@@ -252,4 +264,64 @@ it("Done on an additional own unread card removes it from the finite tail and Un
   fireEvent.press(screen.getAllByRole("button", { name: "Done" })[2]);
   expect(screen.queryByText("Article tail")).toBeNull(); expect(screen.getByText("Article one")).toBeTruthy();
   fireEvent.press(screen.getByRole("button", { name: "Undo" })); expect(screen.getByText("Article tail")).toBeTruthy();
+});
+
+it("drains a requested Undo after reader navigation unmounts Home before the Done ACK", async () => {
+  let accept!: (value: Response) => void;
+  mutation = async (_path, init) => init?.method === "PUT" ? new Promise(resolve => { accept = resolve; }) : response(bookmark("one"));
+  const view = home(); await screen.findByText("0 of 2 done · 10 min left");
+  fireEvent.press(screen.getAllByRole("button", { name: "Done" })[0]);
+  await waitFor(() => expect(writes).toHaveLength(1));
+  fireEvent.press(screen.getByRole("button", { name: "Undo" }));
+  view.unmount();
+  await act(async () => accept(response(bookmark("one", { readAt: stamp }))));
+  await waitFor(() => expect(writes.map(write => write.method)).toEqual(["PUT", "DELETE"]));
+});
+it("drains navigation feedback after unmount even when the own archive ACK is delayed", async () => {
+  let accept!: (value: Response) => void;
+  mutation = async (_path, init) => init?.method === "PATCH" ? new Promise(resolve => { accept = resolve; }) : response({});
+  const view = home(); await screen.findByText("Article one");
+  fireEvent.press(screen.getAllByRole("button", { name: "More actions" })[0]);
+  fireEvent.press(screen.getByRole("button", { name: "Not for me" }));
+  await waitFor(() => expect(writes).toHaveLength(1));
+  view.unmount();
+  await act(async () => accept(response(bookmark("one", { isArchived: true }))));
+  await waitFor(() => expect(writes.filter(write => write.path.endsWith("/feedback"))).toHaveLength(1));
+});
+
+it("hides an open private Home menu immediately when the account changes", async () => {
+  picks[0] = bookmark("one", { isPrivateLink: true, title: "A PRIVATE MENU TITLE" });
+  const view = home(); await view.findByText("A PRIVATE MENU TITLE");
+  fireEvent.press(view.getAllByRole("button", { name: "More actions" })[0]);
+  expect(view.getAllByText("A PRIVATE MENU TITLE")).toHaveLength(2);
+  await act(async () => { mockUserId = "next-reader"; picks = []; items = []; mockAuthListeners.forEach(listener => listener()); });
+  expect(view.queryByRole("button", { name: "Move to topic…" })).toBeNull();
+  await waitFor(() => expect(view.queryByText("A PRIVATE MENU TITLE")).toBeNull());
+});
+
+it("ignores a collection response from the account whose Move sheet was closed", async () => {
+  let accept!: (value: Response) => void;
+  heldCollections = () => new Promise(resolve => { accept = resolve; });
+  const view = home(); await screen.findByText("Article one");
+  fireEvent.press(screen.getAllByRole("button", { name: "More actions" })[0]);
+  fireEvent.press(screen.getByRole("button", { name: "Move to topic…" }));
+  await waitFor(() => expect(accept).toBeDefined());
+  await act(async () => { mockUserId = "next-reader"; picks = []; items = []; mockAuthListeners.forEach(listener => listener()); });
+  await act(async () => accept(response({ collections: [{ id: "a-private-topic", name: "A PRIVATE COLLECTION", createdAt: stamp, updatedAt: stamp }] })));
+  expect(view.queryByText("A PRIVATE COLLECTION")).toBeNull();
+  expect(view.queryByRole("button", { name: "Inbox" })).toBeNull();
+});
+it.each([ ["followed_save", "card"], ["followed_save", "menu"], ["reshare", "card"], ["reshare", "menu"] ])("opens a %s public article from its %s through the shared-slug HTTP contract", async (type, entry) => {
+  picks = []; items = [{ type, bookmark: bookmark("foreign", { userId: "other", isPublic: true, shareSlug: "public-article" }) }];
+  renderRouter({ index: HomeScreen, "bookmark/[id]": BookmarkDetailScreen });
+  await screen.findByText("Article foreign");
+  if (entry === "menu") {
+    fireEvent.press(screen.getByRole("button", { name: "More actions" }));
+    fireEvent.press(screen.getByRole("button", { name: "Open" }));
+  } else fireEvent.press(screen.getByRole("button", { name: "Open Article foreign" }));
+  expect(await screen.findByText("Public article brief")).toBeTruthy();
+  expect(reads).toContain("/api/v1/bookmarks/shared/public-article");
+  expect(reads).not.toContain("/api/v1/bookmarks/foreign");
+  expect(reads).not.toContain("/api/v1/bookmarks/foreign/content");
+  expect(screen.queryByText("Add a note")).toBeNull();
 });

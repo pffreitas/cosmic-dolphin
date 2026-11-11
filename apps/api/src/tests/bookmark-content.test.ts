@@ -214,3 +214,44 @@ it("T9 decodes pasted text for a video or tweet URL before the actual model boun
     expect((await request(`/bookmarks/${saved.id}/content`)).body.source).toBe("pasted");
   }
 });
+
+it("bounds the real serialized response and HTTP p95 for a 20,000-word article with long words", async () => {
+  const words = Array(20000).fill("x".repeat(30)).join(" ");
+  const saved = await stored(`<p>${words}</p>`);
+  async function sample() {
+    const started = performance.now();
+    const response = await fetch(`${address}/bookmarks/${saved.id}/content`, { headers: { "x-fixture-owner": owner } });
+    const text = await response.text();
+    const elapsed = performance.now() - started;
+    expect(response.status).toBe(200);
+    expect(Buffer.byteLength(text, "utf8")).toBeLessThanOrEqual(500000);
+    const body = JSON.parse(text);
+    expect(body.truncated).toBe(true);
+    expect(body.source).toBe("extracted");
+    expect(body.wordCount).toBe(body.blocks[0].text.split(/\s+/).length);
+    expect(words.startsWith(body.blocks[0].text)).toBe(true);
+    return elapsed;
+  }
+  for (let n = 0; n < 10; n++) await sample();
+  const timings: number[] = [];
+  for (let n = 0; n < 100; n++) timings.push(await sample());
+  const p95 = timings.sort((a, b) => a - b)[Math.ceil(.95 * timings.length) - 1];
+  console.log("bounded-content-long-word-http-p95-ms", p95);
+  expect(p95).toBeLessThanOrEqual(400);
+}, 30000);
+
+it.each(["supported", "fallback"])("budgets Unicode and JSON escaping in %s article content", async kind => {
+  const text = '😀 "quoted" \\ '.repeat(40000).trim();
+  const saved = await stored(kind === "supported" ? `<p>${text}</p>` : text, { extraction: { status: "complete", provider: "user_paste" } });
+  const response = await fetch(`${address}/bookmarks/${saved.id}/content`, { headers: { "x-fixture-owner": owner } });
+  const serialized = await response.text();
+  expect(response.status).toBe(200);
+  expect(Buffer.byteLength(serialized, "utf8")).toBeLessThanOrEqual(500000);
+  const body = JSON.parse(serialized);
+  expect(body.truncated).toBe(true);
+  expect(body.source).toBe("pasted");
+  const delivered = body.blocks.map((block: { text: string }) => block.text).join(" ");
+  expect(text.startsWith(delivered)).toBe(true);
+  expect(delivered).not.toMatch(/[\uD800-\uDBFF]$/);
+  expect(body.wordCount).toBe(delivered.split(/\s+/).length);
+});

@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import { bookmarkRoute } from "@/lib/bookmark-route";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import type { FeedItem, Collection } from "@cosmic-dolphin/api-client";
 import { Button, Sheet, SkeletonRows, Notice } from "./ui/Signal";
@@ -7,19 +8,22 @@ import type { BookmarkActions } from "@/lib/bookmark-actions";
 import { MobileAPI } from "@/lib/mobile-api";
 
 export type ActionSheet = { item: FeedItem; mode: "menu" | "later" | "move" };
-export function BookmarkActionSheets({ selection, controller, onChange, onClose }: {
-  selection?: ActionSheet; controller: BookmarkActions; onChange: (selection: ActionSheet) => void; onClose: () => void;
+export function BookmarkActionSheets({ selection, controller, onChange, onClose, accountId }: {
+  accountId?: string; selection?: ActionSheet; controller: BookmarkActions; onChange: (selection: ActionSheet) => void; onClose: () => void;
 }) {
   const router = useRouter();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const mode = selection?.mode;
-  const load = () => {
+  const request = useRef(0);
+  const load = useCallback(() => {
+    const token = ++request.current;
     setLoading(true); setError(false);
-    void MobileAPI.collections().then(setCollections).catch(() => setError(true)).finally(() => setLoading(false));
-  };
-  useEffect(() => { if (mode === "move") load(); }, [mode]);
+    void MobileAPI.collections(accountId).then(value => { if (token === request.current) setCollections(value); }).catch(() => { if (token === request.current) setError(true); }).finally(() => { if (token === request.current) setLoading(false); });
+  }, [accountId]);
+  const cancel = useCallback(() => { ++request.current; }, []);
+  useEffect(() => { setCollections([]); if (mode === "move") load(); return cancel; }, [mode, load, cancel]);
   const bookmark = selection?.item.bookmark;
   const own = selection?.item.type === "own_save" || selection?.item.type === "pending";
 
@@ -37,7 +41,7 @@ export function BookmarkActionSheets({ selection, controller, onChange, onClose 
         {collections.map(collection => <Button key={collection.id} title={collection.name} onPress={() => { if (bookmark) controller.move(bookmark, collection.id, collection.name); onClose(); }} />)}
       </>}
     </> : <>
-      <Button title="Open" onPress={() => { onClose(); if (bookmark) router.push(`/bookmark/${bookmark.id}`); else if (selection?.item.digest) router.push({ pathname: "/topic", params: { id: `digest:${selection.item.digest.id}` } }); }} />
+      <Button title="Open" onPress={() => { onClose(); if (bookmark && selection) router.push(bookmarkRoute(selection.item)); else if (selection?.item.digest) router.push({ pathname: "/topic", params: { id: `digest:${selection.item.digest.id}` } }); }} />
       {own && bookmark ? <>
         <Button title={controller.view(bookmark).readAt ? "Mark not done" : "Mark done"} onPress={() => { controller.done(bookmark); onClose(); }} />
         <Button title="Later…" onPress={() => { if (selection) onChange({ ...selection, mode: "later" }); }} />

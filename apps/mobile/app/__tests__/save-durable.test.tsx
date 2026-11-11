@@ -47,7 +47,7 @@ jest.mock("expo-router", () => {
     return <Screen />;
   }
   Stack.Screen = function StackScreen() { return null; };
-  return { Stack, useNavigation: () => ({ navigate: (path: string) => mockNavigate("/" + path) }), useRouter: () => router, usePathname: () => mockPath,
+  return { Stack, useLocalSearchParams: () => ({}), useNavigation: () => ({ navigate: (path: string) => mockNavigate("/" + path) }), useRouter: () => router, usePathname: () => mockPath,
     useSegments: () => [mockPath.startsWith("/(auth)") ? "(auth)" : "(tabs)"], useFocusEffect: (effect: any) => React.useEffect(effect, [effect]) };
 });
 

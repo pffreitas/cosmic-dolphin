@@ -29,14 +29,16 @@ export default function HomeScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
   const { controller, state: actionState } = useBookmarkActions(user?.id);
-  const [selection, setSelection] = useState<ActionSheet>();
+  const [selection, setSelection] = useState<ActionSheet & { accountId?: string }>();
   const cardActions = (item: FeedItem) => ({
     done: item.bookmark ? () => controller.done(item.bookmark!, true) : undefined,
-    later: () => setSelection({ item, mode: "later" }),
+    later: () => setSelection({ item, mode: "later", accountId: user?.id }),
     tonight: item.bookmark ? () => controller.later(item.bookmark!) : undefined,
-    more: () => setSelection({ item, mode: "menu" }),
+    more: () => setSelection({ item, mode: "menu", accountId: user?.id }),
     save: () => controller.save(item),
   });
+  useEffect(() => { setSelection(undefined); }, [user?.id]);
+  const currentSelection = selection?.accountId === user?.id ? selection : undefined;
   const [scope, setScope] = useState<FeedScope>("for_you");
   const [topic, setTopic] = useState("All topics");
   const feed = useHomeFeed(scope);
@@ -124,7 +126,7 @@ export default function HomeScreen() {
       </View>} />
     <CaptureFailureToast message={changeError} />
     <Toast message={actionState.toast?.message} undo={actionState.toast?.undo} close={controller.closeToast} />
-    <BookmarkActionSheets selection={selection} controller={controller} onChange={setSelection} onClose={() => setSelection(undefined)} />
+    <BookmarkActionSheets key={user?.id ?? "signed-out"} selection={currentSelection} accountId={user?.id} controller={controller} onChange={value => setSelection({ ...value, accountId: user?.id })} onClose={() => setSelection(undefined)} />
   </Screen>;
 }
 function ContinueReading({ item }: { item: ContinueReadingItem }) {

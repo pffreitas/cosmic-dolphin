@@ -1,3 +1,4 @@
+import { bookmarkRoute } from "@/lib/bookmark-route";
 import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import type { FeedItem } from "@cosmic-dolphin/api-client";
@@ -55,7 +56,7 @@ export function FeedCard({ item, today, actions = {} }: { item: FeedItem; today?
     </View>
     <Pressable {...focusEvents} accessibilityRole="button" accessibilityLabel={`Open ${bookmark.title || domain}`}
       accessibilityActions={own ? [{ name: "done", label: "Mark done" }, { name: "later", label: "Later" }, { name: "more", label: "More actions" }] : [{ name: "more", label: "More actions" }]}
-      onAccessibilityAction={event => { const name = event.nativeEvent.actionName; if (own && name === "done") actions.done?.(); else if (own && name === "later") actions.later?.(); else if (name === "more") actions.more?.(); }} onPress={() => router.push(`/bookmark/${bookmark.id}`)} onLongPress={actions.more} style={focusStyle}>
+      onAccessibilityAction={event => { const name = event.nativeEvent.actionName; if (own && name === "done") actions.done?.(); else if (own && name === "later") actions.later?.(); else if (name === "more") actions.more?.(); }} onPress={() => router.push(bookmarkRoute(item))} onLongPress={actions.more} style={focusStyle}>
       <Text style={[textStyle("title1"), { color: colors.fg }]}>{bookmark.title || domain}</Text>
     </Pressable>
     {failed ? <BookmarkFailure code={bookmark.processingFailureCode} url={bookmark.sourceUrl} privateLink={bookmark.isPrivateLink}

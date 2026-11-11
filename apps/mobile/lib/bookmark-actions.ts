@@ -34,24 +34,25 @@ export class BookmarkActions {
   getSnapshot = () => this.state;
   private publish(state: ActionState) { if (!this.active) return; this.state = state; this.listeners.forEach(listener => listener()); }
   private request(operation: () => Promise<unknown>, rollback: () => void, key: string, accepted?: () => void) {
-    if (!this.active) return;
     const version = (this.versions.get(key) ?? 0) + 1; this.versions.set(key, version);
     const id = ++this.requestId;
     const bookmarkId = key.split(":")[0];
     this.changedSequence.set(bookmarkId, nextReadingSequence());
     const prior = this.pending.get(bookmarkId) ?? Promise.resolve();
-    const job = prior.then(() => this.active ? operation() : undefined).then(() => {
+    // An enqueued, account-bound write outlives the screen; API auth fences account changes.
+    const job = prior.then(operation).then(() => {
       this.changedSequence.set(bookmarkId, nextReadingSequence());
-      if (this.active) accepted?.();
+      accepted?.();
     }).catch(() => {
       this.changedSequence.set(bookmarkId, nextReadingSequence());
-      if (!this.active || this.versions.get(key) !== version) return;
+      if (this.versions.get(key) !== version) return;
       const latest = id === this.requestId; rollback(); if (latest) this.showToast("Change was not saved. Check your connection.");
     });
     this.pending.set(bookmarkId, job);
     void job.finally(() => { if (this.pending.get(bookmarkId) === job) this.pending.delete(bookmarkId); });
   }
   private showToast(message: string, undo?: () => void) {
+    if (!this.active) return;
     this.closeToast();
     const id = ++this.toastId;
     const deadline = Date.now() + 8000;
@@ -99,6 +100,7 @@ export class BookmarkActions {
     return !own || (!value.isArchived && (!value.laterUntil || value.laterUntil.getTime() <= Date.now()));
   };
   reject = (item: FeedItem) => {
+    if (!this.active) return;
     const b = item.bookmark;
     if (!b) return;
     const own = item.type === "own_save" || item.type === "pending";
@@ -153,7 +155,7 @@ export class BookmarkActions {
     this.showToast(userNote ? "Note saved" : "Note cleared");
   };
   save = (item: FeedItem) => {
-    if (!item.bookmark || (item.type !== "followed_save" && item.type !== "reshare")) return;
+    if (!this.active || !item.bookmark || (item.type !== "followed_save" && item.type !== "reshare")) return;
     this.showToast("Saved to Cosmic Dolphin");
     this.request(() => MobileAPI.saveRecommendation(item.bookmark!.id, this.userId), () => {}, `${item.bookmark.id}:save`);
   };
@@ -191,7 +193,7 @@ export function useBookmarkActions(userId?: string) {
     void AccessibilityInfo.isScreenReaderEnabled().then(controller.setScreenReader).catch(() => {});
     const accessibility = AccessibilityInfo.addEventListener("screenReaderChanged", controller.setScreenReader);
     const subscription = AppState.addEventListener("change", state => { if (state !== "active") controller.background(); });
-    return () => { subscription.remove(); accessibility.remove(); controller.dispose(); };
+    return () => { subscription.remove(); accessibility.remove(); controller.navigationAway(); controller.dispose(); };
   }, [controller]);
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
   return { controller, state };

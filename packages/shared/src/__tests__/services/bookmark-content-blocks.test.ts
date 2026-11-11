@@ -1,4 +1,4 @@
-import { bookmarkContentBlocks } from "../../services/bookmark-content-blocks";
+import { bookmarkContentBlocks, limitBookmarkContent } from "../../services/bookmark-content-blocks";
 
 it("maps supported article tags to their text-only reading kinds in source order", () => {
   expect(bookmarkContentBlocks('<h1>One</h1><h2>Two</h2><h3>Three</h3><h4>Four</h4><p>A <strong>paragraph</strong>.</p><blockquote>A quote.</blockquote><ul><li>A list item.</li></ul>')).toEqual([
@@ -34,4 +34,18 @@ it("does not duplicate paragraphs nested in quotes or list items", () => {
   expect(bookmarkContentBlocks('<blockquote><p>Quoted text.</p></blockquote><ul><li><p>List text.</p></li></ul>')).toEqual([
     { kind: "quote", text: "Quoted text." }, { kind: "list_item", text: "List text." },
   ]);
+});
+
+it("reports a partial article at the block ceiling and counts only delivered words", () => {
+  const blocks = bookmarkContentBlocks(Array.from({ length: 2001 }, (_, n) => `<p>Paragraph ${n}</p>`).join(""), 2001);
+  const result = limitBookmarkContent({ blocks, wordCount: 4002, source: "extracted", updatedAt: new Date("2026-11-09T00:00:00Z") });
+  expect(result.truncated).toBe(true);
+  expect(result.blocks).toHaveLength(2000);
+  expect(result.blocks.at(-1)?.text).toBe("Paragraph 1999");
+  expect(result.wordCount).toBe(4000);
+  expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThanOrEqual(500000);
+});
+it("retains a complete response unchanged when it fits", () => {
+  const value = { blocks: [{ kind: "paragraph" as const, text: "Complete article." }], wordCount: 2, source: "pasted" as const, updatedAt: new Date() };
+  expect(limitBookmarkContent(value)).toBe(value);
 });

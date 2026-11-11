@@ -1186,11 +1186,27 @@ Authorized beta checkpoint2026-11-11: user full-send/TestFlight request above re
 
 ## Implementation review
 
-One ledger;1 of5 rounds started (round1 in progress). Record current fetched full Base SHA and reviewed feature SHA when execution starts. Tasks Done only mean verified feature checkpoints; package approval remains Pending until cumulative Sol review. Planning fresh-eyes review is separate from implementation review and consumes none of these rounds.
+One ledger;1 of5 rounds completed (round1 CHANGES REQUESTED; corrections in progress). Record current fetched full Base SHA and reviewed feature SHA when execution starts. Tasks Done only mean verified feature checkpoints; package approval remains Pending until cumulative Sol review. Planning fresh-eyes review is separate from implementation review and consumes none of these rounds.
 
 | Repo | Feature branch | Base SHA | Reviewed SHA | Tasks | Rounds | Verdict | Checks | Findings / follow-ups |
 |---|---|---|---|---|---|---|---|---|
-| cosmic-dolphin | feature/save-and-todays-5 | b7045a4c56f896d085e2e1aef79b12ea1cfa6407 | 3f83ea74a843622a4a815f62ed9c40db040725fe | T-1…T-10 | 1 | Reviewing | Full candidate local gate passes; beta-proof exception authorized | Round1 starting; no verdict yet |
+| cosmic-dolphin | feature/save-and-todays-5 | b7045a4c56f896d085e2e1aef79b12ea1cfa6407 | 3f83ea74a843622a4a815f62ed9c40db040725fe | T-1…T-10 | 1 | CHANGES REQUESTED | Independent generation/types/build/lint/native29; shared426/API380/worker10/web335/mobile271 plus existing skip after retained first timing failure | SOL-1…3 Critical; SOL-4…6 High. Root corrections below; SOL-3 pending. Beta-proof exception remains authorized. |
+
+
+### Round1 correction checkpoint (2026-11-11)
+
+Reviewer OpenAI/Codex gpt-6.1-sol, high effort, reviewed b7045a4c56f896d085e2e1aef79b12ea1cfa6407…3f83ea74a843622a4a815f62ed9c40db040725fe. Complete report `/tmp/save-todays-sol-round-1.md`; root reproduction/fix receipts `/tmp/save-todays-fixes/` and `/tmp/save-todays-root-round-1-fixes.md`. This is the existing whole-feature ledger, not a new task-review loop. Approval remains pending.
+
+- SOL-1: root retained already-enqueued account-bound writes beyond screen disposal, suppressing dead-screen UI; hook cleanup flushes navigation feedback. Real Home unmount with delayed read ACK reproduced dropped Undo, and delayed archive ACK reproduced dropped navigation feedback; both now pass. No durable ordinary-action queue.
+- SOL-2: root fenced Home selection synchronously by account, keyed sheets by account, and fenced collection configuration/results. Real private-menu account-switch regression reproduced the leak and passes; delayed collection completion also passes as a supplemental characterization.
+- SOL-4: root consumed explicit Save URL route params with clipboard attribution. Actual Home Paste→Save→capture test reproduced the empty field, then passed without another clipboard read/title fetch.
+- SOL-5: root routed followed/reshare card and menu Open through generated SharedBookmarksApi and fenced reader identity by slug. Public responses never populate or fall back to private owner caches; owner-only detail/content authorization is unchanged. Four real Home→reader→generated HTTP regressions reproduced owner404, then passed. Failed-public-slug/private-cache regression also passes.
+- SOL-6: root enforced the complete serialized UTF-8 500,000-byte budget including envelope, escaping and delivered word count, retaining article order/provenance. Additive TypeSpec optional `truncated` is regenerated; reader explains partial content and opens the original. Real long-word20,000-word HTTP regression reproduced620,120 bytes, then passed;100-sample bounded-case HTTPp95=27.730250ms. Unicode/escaping supported/fallback and block-ceiling cases pass. This implements the existing response cap; it does not claim the omitted source is delivered.
+- SOL-3: pending fresh developer correction to the durable capture/confirmation boundary. Latest locally acknowledged capture edits must survive create ACK until reconciliation ACK, safe replay/account switch/kill, and later edits during PATCH; ordinary post-acceptance actions remain immediate with rollback.
+
+Root checks: contract generation/shared build; mobile/API tsc and lint/tokens; mobile focused133; content HTTP13 (short and long20k p95 gates); mapper7 all pass. Full mobile first run:281 passed,1 failed,1 existing skip, at the same Remove/rejected-row assertion retained in round1. Do not call it resolved merely because prior isolated runs pass. Transfer investigation and full green gate to the capture-boundary developer; preserve `/tmp/save-todays-fixes/root-mobile-full.log`. Full package verification and fresh source-bound signed inspections remain before the next review/delivery.
+
+Test-first qualifications: SOL-1's two delayed-ACK variants were added in one red cycle. SOL-2 initially had a router setup failure, then a corrected real clean red (`sol2-red-corrected.log`). Delayed-collection, failed-public-cache, partial-copy and Unicode/block-limit coverage were supplemental tests after their primary behavior's clean red/fix; do not invent independent red cycles. Attempted mobile `typecheck` script does not exist; actual `bunx tsc --noEmit -p apps/mobile/tsconfig.json` passed. Lint passes with existing warnings and the test mock's require-style warning; no handwritten diff whitespace errors. Hook/prototype bytes remain untouched; no push, PR or deployment yet.
 
 ## Delivery
 

@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, Switch, Text, TextInput, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Button, Chip, layout, Notice, PageHeading, Screen } from "@/components/ui/Signal";
 import { CaptureFailureToast } from "@/components/CaptureFailureToast";
 import { CopiedLink } from "@/components/CopiedLink";
@@ -10,10 +10,12 @@ import { textStyle } from "@/constants/fonts";
 import { readWhen, savedReadWhenCopy, type SaveReadWhen } from "@/lib/read-when";
 export default function SaveScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ url?: string }>();
+  const pastedUrl = typeof params.url === "string" ? params.url : "";
   const { colors } = useTheme();
   const { save, confirm, captures } = useCaptures();
-  const [source, setSource] = useState<"save_sheet" | "clipboard">("save_sheet");
-  const [url, setUrl] = useState("");
+  const [source, setSource] = useState<"save_sheet" | "clipboard">(pastedUrl ? "clipboard" : "save_sheet");
+  const [url, setUrl] = useState(pastedUrl);
   const [isPrivate, setPrivate] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");

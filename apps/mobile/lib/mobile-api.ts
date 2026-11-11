@@ -4,6 +4,7 @@ import {
   FeedApi,
   ShareKeysApi,
   BookmarksApi,
+  SharedBookmarksApi,
   CollectionsApi,
   Configuration,
   DigestsApi,
@@ -56,6 +57,11 @@ function rememberOwnedBookmark(bookmark: ContractBookmark, userId?: string) {
   return rememberBookmark(bookmark);
 }
 export const MobileAPI = {
+  async sharedBookmark(slug: string, signal?: AbortSignal) {
+    const bookmark = await new SharedBookmarksApi(await configuration()).sharedBookmarksFindBySlug({ slug }, { signal });
+    // Public responses never populate an account's private offline cache.
+    return nativeBookmark(bookmark);
+  },
   async pasteContent(id: string, text: string, signal?: AbortSignal, userId?: string) {
     const client = new BookmarksApi(await configuration(userId));
     const result = await saveRequest(requestSignal => client.bookmarksPutContent({ id, pasteBookmarkContentRequest: { text } }, { signal: requestSignal }), signal);
@@ -143,8 +149,8 @@ export const MobileAPI = {
       limit: 3,
     });
   },
-  async collections() {
-    return (await new CollectionsApi(await configuration()).collectionsList())
+  async collections(userId?: string) {
+    return (await new CollectionsApi(await configuration(userId)).collectionsList())
       .collections;
   },
   async createCollection(name: string, parentId?: string): Promise<Collection> {
