@@ -13,6 +13,11 @@ assert.equal(process.env.NODE_ENV, "test");
 assert.equal(process.env.COMPOSE_PROJECT_NAME, "cosmic-dolphin");
 const db = getTestDatabase();
 await new DatabaseTestUtils(db).waitForConnection();
+async function assertDisposableMarker() {
+  const marker = await sql`SELECT to_regclass('public.__test_database_marker') IS NOT NULL AS present`.execute(db);
+  assert.equal(marker.rows[0]?.present, true, "Refuse native fixture without disposable database marker");
+}
+await assertDisposableMarker();
 // This harness owns exactly this fictional user; it never truncates another session's fixtures.
 const userId = crypto.randomUUID();
 await sql`INSERT INTO auth.users (id, email) VALUES (${userId}::uuid, ${userId + "@example.invalid"})`.execute(db);
@@ -53,7 +58,20 @@ let stopping = false;
 async function stop() {
   if (stopping) return; stopping = true;
   await app.close();
-  await db.deleteFrom("auth.users").where("id", "=", userId).execute();
+  // Revalidate the disposable marker and remove only this harness's URL/owner
+  // rows. bookmarks.user_id does not cascade directly from auth.users.
+  await assertDisposableMarker();
+  await db.transaction().execute(async transaction => {
+    const account = (await sql.raw("SELECT id, email FROM auth.users").execute(transaction)).rows.find(row => row.id === userId);
+    assert.equal(account?.email, userId + "@example.invalid", "Refuse cleanup of another account");
+    const rows = await transaction.selectFrom("bookmarks").select(["id", "source_url"]).where("user_id", "=", userId).execute();
+    for (const row of rows) {
+      assert.ok(row.source_url === article || row.source_url.startsWith(article + "-"), "Refuse cleanup of another fixture URL");
+      await transaction.deleteFrom("scraped_url_contents").where("bookmark_id", "=", row.id).execute();
+      await transaction.deleteFrom("bookmarks").where("id", "=", row.id).where("user_id", "=", userId).where("source_url", "=", row.source_url).execute();
+    }
+    await transaction.deleteFrom("auth.users").where("id", "=", userId).where("email", "=", userId + "@example.invalid").execute();
+  });
   await closeTestDatabase();
 }
 for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => { void stop().then(() => process.exit(0)); });
