@@ -1008,11 +1008,13 @@ Child setup/first-green qualifications remain in its ledger: initial mapper-supp
 
 Approved spec/prototype/tasks-before-metadata and both hook bytes independently preserved; no env/issuer/native/package config drift. Tracked diff check passes; newly generated BookmarkContent/BookmarkContentBlock retain13 generator-produced trailing blank-comment lines (8+5), plus2 generator-produced blank EOF lines, never manually edited; staged audit reports exactly15 generated warnings. No handwritten whitespace issue. No child commits/staging/push/PR/artifact edits, no per-task review. Whole-feature Sol ledger remains0/max5. Implementation checkpoint only, not shipped.
 
+Checkpoint commit: `ed815d7ea591a21220fa4bb2e9cda806c4092c29` (`Task: T-8`).
+
 ### T-9 · Explain extraction failures and recover with pasted text
 
 | | |
 |---|---|
-| Status | Todo |
+| Status | In progress |
 | Depends on | T-8 |
 | Traces | FR-22 · FR-23 · FR-24 · FR-6 failed-card replacement · NFR-9 · NFR-10 · S-16 · S-21 · §8.4 Content PUT/Failure codes · §8.3 Shared processor · §8.7 pasted untrusted text · §8.8 Processing failure log |
 | Ships as | User-visible: explain extraction failures and recover with pasted text in the complete package |
@@ -1075,7 +1077,7 @@ bun run --cwd apps/mobile lint
 
 **Notes**
 
-Not started. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here.
+Started2026-11-11 from coordinator-verified T-8 checkpoint `ed815d7ea591a21220fa4bb2e9cda806c4092c29`; fresh background developer owns T-9 only. Complete truthful extraction-failure classification/blanking and owner pasted-text recovery through the existing pipeline, with contract-first public integration tests in prescribed order. Preserve T-1 nullable failure field and capture/error distinction, T-7 action/order fences and T-8 content/privacy/note account guards/progress. Only local disposable backend data and isolated mocks/fixtures; actual worker RPC must use the existing guarded local transport recipe, never hosted business queues. Native targets and session/physical limitations remain as recorded; real-session/final signed/live-spoken/physical-only proof stays T-10 under execution clarification. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here.
 
 ### T-10 · Prove the complete package and add its mobile PR gate
 
