@@ -31,6 +31,7 @@ import type {
   FeedScope,
   GetBookmarksResponse,
   LikeResponse,
+  PasteBookmarkContentRequest,
   PreviewRequest,
   PreviewResponse,
   RefileBookmarkRequest,
@@ -73,6 +74,8 @@ import {
     GetBookmarksResponseToJSON,
     LikeResponseFromJSON,
     LikeResponseToJSON,
+    PasteBookmarkContentRequestFromJSON,
+    PasteBookmarkContentRequestToJSON,
     PreviewRequestFromJSON,
     PreviewRequestToJSON,
     PreviewResponseFromJSON,
@@ -137,6 +140,11 @@ export interface BookmarksMarkUnreadRequest {
 
 export interface BookmarksPreviewRequest {
     previewRequest: PreviewRequest;
+}
+
+export interface BookmarksPutContentRequest {
+    id: string;
+    pasteBookmarkContentRequest: PasteBookmarkContentRequest;
 }
 
 export interface BookmarksRefileRequest {
@@ -658,6 +666,57 @@ export class BookmarksApi extends runtime.BaseAPI {
      */
     async bookmarksPreview(requestParameters: BookmarksPreviewRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PreviewResponse> {
         const response = await this.bookmarksPreviewRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Store owner-supplied article text and enqueue a full reprocess. Private links cannot accept article text.
+     */
+    async bookmarksPutContentRaw(requestParameters: BookmarksPutContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ReprocessBookmarkResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling bookmarksPutContent().'
+            );
+        }
+
+        if (requestParameters['pasteBookmarkContentRequest'] == null) {
+            throw new runtime.RequiredError(
+                'pasteBookmarkContentRequest',
+                'Required parameter "pasteBookmarkContentRequest" was null or undefined when calling bookmarksPutContent().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("BearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/bookmarks/{id}/content`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: PasteBookmarkContentRequestToJSON(requestParameters['pasteBookmarkContentRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ReprocessBookmarkResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Store owner-supplied article text and enqueue a full reprocess. Private links cannot accept article text.
+     */
+    async bookmarksPutContent(requestParameters: BookmarksPutContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ReprocessBookmarkResponse> {
+        const response = await this.bookmarksPutContentRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

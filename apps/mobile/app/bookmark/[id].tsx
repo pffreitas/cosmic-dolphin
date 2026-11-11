@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import type { Bookmark as ContractBookmark, BookmarkContent, BookmarkProcessingEvent, Comment, TodayPicksResponse } from "@cosmic-dolphin/api-client";
 import * as Clipboard from "expo-clipboard";
-import { openBrowserAsync } from "expo-web-browser";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Markdown from "react-native-markdown-display";
@@ -39,6 +38,7 @@ import { useBookmarkActions } from "@/lib/bookmark-actions";
 import { nextReadingSequence } from "@/lib/reading-sequence";
 import { ReadingTools } from "@/components/ReadingTools";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
+import { BookmarkFailure, openOriginal } from "@/components/BookmarkFailure";
 import { PendingPhases } from "@/components/PendingPhases";
 import { BookmarkActionSheets, type ActionSheet } from "@/components/BookmarkActionSheets";
 import { Toast } from "@/components/Toast";
@@ -77,7 +77,7 @@ function formatDate(dateString: string): string {
 }
 
 export default function BookmarkDetailScreen() {
-  const { id, mode: requestedMode } = useLocalSearchParams<{ id: string; mode?: string }>();
+  const { id, mode: requestedMode, paste: requestedPaste, retry: requestedRetry } = useLocalSearchParams<{ id: string; mode?: string; paste?: string; retry?: string }>();
   const router = useRouter();
   const { user } = useAuth();
   const { colors } = useTheme();
@@ -94,6 +94,15 @@ export default function BookmarkDetailScreen() {
   const [comment, setComment] = useState("");
   const [commentsError, setCommentsError] = useState("");
   const [posting, setPosting] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+  const [pasteBusy, setPasteBusy] = useState(false);
+  const [pasteError, setPasteError] = useState(false);
+  const recoveryHandled = useRef("");
+  const [retryBusy, setRetryBusy] = useState(false);
+  const pasteRequest = useRef(0);
+  const pasteAbort = useRef<AbortController>();
+  const cancelRecovery = useCallback(() => { ++pasteRequest.current; pasteAbort.current?.abort(); }, []);
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [selection, setSelection] = useState<ActionSheet>();
@@ -102,6 +111,8 @@ export default function BookmarkDetailScreen() {
   const { controller, state: actionState } = useBookmarkActions(user?.id);
   const viewed = storedBookmark && loadedIdentity === pageIdentity.current ? controller.view(readingBookmark(storedBookmark)) : undefined;
   const bookmark = viewed ? { ...storedBookmark!, ...viewed, createdAt: viewed.createdAt.toISOString(), updatedAt: viewed.updatedAt.toISOString(), readAt: viewed.readAt?.toISOString(), laterUntil: viewed.laterUntil?.toISOString() } : null;
+  const bookmarkRef = useRef(bookmark);
+  bookmarkRef.current = bookmark;
   const [picks, setPicks] = useState<TodayPicksResponse>();
   useEffect(() => {
     let active = true;
@@ -149,7 +160,10 @@ export default function BookmarkDetailScreen() {
   const [isReadLoading, setIsReadLoading] = useState(false);
   useEffect(() => {
     setNoteOpen(false); setNoteDraft(""); setSelection(undefined);
-  }, [id, user?.id]);
+    cancelRecovery();
+    setPasteOpen(false); setPasteText(""); setPasteBusy(false); setPasteError(false); setRetryBusy(false);
+    return cancelRecovery;
+  }, [id, user?.id, cancelRecovery]);
 
   // Markdown styles based on color scheme - must be called before any early returns
   const markdownStyles = useMemo(
@@ -340,10 +354,54 @@ export default function BookmarkDetailScreen() {
   }, [processingId, processingStatus, applyBookmark, user?.id, controller]);
 
   const handleOpenUrl = () => {
-    if (bookmark?.sourceUrl) {
-      void openBrowserAsync(bookmark.sourceUrl).catch(() => Alert.alert("Could not open original", "Please try again."));
-    }
+    if (bookmark?.sourceUrl) openOriginal(bookmark.sourceUrl);
   };
+
+  const submitPaste = async () => {
+    if (!bookmark || bookmark.userId !== user?.id || bookmark.isPrivateLink || pasteBusy || pasteText.length < 200 || pasteText.length > 100000) return;
+    const identity = pageIdentity.current;
+    const request = ++pasteRequest.current;
+    const abort = new AbortController(); pasteAbort.current = abort;
+    const current = () => identity === pageIdentity.current && request === pasteRequest.current && !abort.signal.aborted;
+    cancelBookmarkRequest();
+    const sequence = nextReadingSequence();
+    setPasteBusy(true); setPasteError(false);
+    try {
+      const result = await MobileAPI.pasteContent(bookmark.id, pasteText, abort.signal, user.id);
+      if (!current()) return;
+      controller.synchronize([readingBookmark(result.bookmark)], sequence);
+      applyBookmark(result.bookmark);
+      setMode("brief"); setPasteOpen(false); setPasteText("");
+    } catch { if (current()) setPasteError(true); }
+    finally { if (current()) setPasteBusy(false); }
+  };
+
+  const retryProcessing = useCallback(async () => {
+    const bookmark = bookmarkRef.current;
+    if (!bookmark || bookmark.userId !== user?.id || retryBusy) return;
+    const identity = pageIdentity.current;
+    const request = ++pasteRequest.current;
+    const abort = new AbortController(); pasteAbort.current = abort;
+    const current = () => identity === pageIdentity.current && request === pasteRequest.current && !abort.signal.aborted;
+    cancelBookmarkRequest();
+    const sequence = nextReadingSequence(); setRetryBusy(true);
+    try {
+      const result = await MobileAPI.retry(bookmark.id, user.id, abort.signal);
+      if (!current()) return;
+      controller.synchronize([readingBookmark(result.bookmark)], sequence);
+      applyBookmark(result.bookmark); setMode("brief");
+    } catch { if (current()) Alert.alert("Could not retry", "Please try again."); }
+    finally { if (current()) setRetryBusy(false); }
+  }, [user?.id, retryBusy, controller, applyBookmark, cancelBookmarkRequest]);
+  const recoveryOwner = bookmark?.userId, recoveryStatus = bookmark?.processingStatus, recoveryCode = bookmark?.processingFailureCode, recoveryPrivate = bookmark?.isPrivateLink;
+  useEffect(() => {
+    if (recoveryOwner !== user?.id || recoveryStatus !== "failed") return;
+    const intent = `${pageIdentity.current}:${requestedPaste || ""}:${requestedRetry || ""}`;
+    if (recoveryHandled.current === intent) return;
+    recoveryHandled.current = intent;
+    if (requestedPaste === "1" && !recoveryPrivate && recoveryCode && recoveryCode !== "provider") setPasteOpen(true);
+    if (requestedRetry === "1") void retryProcessing();
+  }, [recoveryOwner, recoveryStatus, recoveryCode, recoveryPrivate, user?.id, requestedPaste, requestedRetry, retryProcessing]);
 
   const handleBack = () => {
     router.back();
@@ -456,6 +514,7 @@ export default function BookmarkDetailScreen() {
   const processing =
     bookmark.processingStatus === "processing" ||
     bookmark.processingStatus === "idle";
+  const failedPage = ownsBookmark && bookmark.processingStatus === "failed" && !bookmark.isPrivateLink;
   const visiblePicks = (picks?.items ?? []).filter(pick => controller.isVisible({ type: "own_save", bookmark: pick.bookmark })).sort((a, b) => a.position - b.position);
   const isPick = visiblePicks.some(pick => pick.bookmark.id === bookmark.id);
   const doneCount = visiblePicks.filter(pick => controller.view(pick.bookmark).readAt).length;
@@ -554,21 +613,9 @@ export default function BookmarkDetailScreen() {
             onPress={handleOpenUrl}
           />
         </View>
-        {bookmark.processingStatus === "failed" ? (
-          <Notice
-            message="The brief could not be prepared. Your original link is still available."
-            error
-            action="Retry"
-            onAction={async () => {
-              try {
-                await MobileAPI.retry(bookmark.id);
-                await fetchBookmark(bookmark.id);
-              } catch {
-                Alert.alert("Could not retry", "Please try again.");
-              }
-            }}
-          />
-        ) : null}
+        {ownsBookmark && bookmark.processingStatus === "failed" ? <BookmarkFailure code={bookmark.processingFailureCode} url={bookmark.sourceUrl} page privateLink={bookmark.isPrivateLink}
+          onPaste={() => setPasteOpen(true)} onRetry={retryProcessing} /> : null}
+        {!failedPage ? <>
         <View style={layout.row} accessibilityRole="tablist">
           {[["brief", "Brief"], ["read", "Read"], ["original", "Original"]].map(([value, label]) => (
             <Pressable key={value} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected: mode === value }} onPress={() => setMode(value)} style={{ minHeight: 44, padding: space.s3 }}>
@@ -603,7 +650,7 @@ export default function BookmarkDetailScreen() {
             ) : null}
           </View>
           {processing && !bookmark.cosmicBriefSummary ? <>
-            <Notice message="Cosmic is reading it. You can keep browsing while the brief is prepared." />
+            <Notice message={content?.source === "pasted" ? "Cosmic is reading the text you pasted" : bookmark.isPrivateLink ? "Cosmic is preparing your description. You can keep browsing." : "Cosmic is reading it. You can keep browsing while the brief is prepared."} />
             <PendingPhases events={events} privateLink={bookmark.isPrivateLink} />
           </> : null}
           {bookmark.cosmicBriefSummary ? (
@@ -668,6 +715,7 @@ export default function BookmarkDetailScreen() {
             onPress={handleOpenUrl}
           />
         )}
+        </> : null}
         {bookmark.isPublic || isShared ? (
           <Button
             title="Read the conversation"
@@ -764,6 +812,13 @@ export default function BookmarkDetailScreen() {
             }
           }}
         />
+      </Sheet>
+      <Sheet title="Paste the article text" visible={pasteOpen && ownsBookmark && !bookmark.isPrivateLink} onClose={() => { ++pasteRequest.current; pasteAbort.current?.abort(); setPasteBusy(false); setPasteOpen(false); }}>
+        <Text style={[textStyle("bodySm"), { color: colors.fgSecondary }]}>Copy the article where you can read it and paste it here. Cosmic writes the brief from this text only.</Text>
+        <TextInput accessibilityLabel="Article text" multiline editable={!pasteBusy} value={pasteText} onChangeText={setPasteText} placeholder="Paste at least a few paragraphs" placeholderTextColor={colors.fgTertiary} style={[textStyle("body"), { color: colors.fg, borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.md, padding: space.s3, minHeight: space.s6 * 4, textAlignVertical: "top" }]} />
+        <Text style={[textStyle("meta"), { color: colors.fgSecondary }]}>{pasteText.length.toLocaleString("en-US")} characters · at least 200</Text>
+        {pasteError ? <Notice message="Change was not saved. Check your connection." error action="Retry" onAction={submitPaste} /> : null}
+        <Button title="Write the brief" primary busy={pasteBusy} disabled={pasteText.length < 200 || pasteText.length > 100000} onPress={submitPaste} />
       </Sheet>
       <Sheet
         title="Share this save"

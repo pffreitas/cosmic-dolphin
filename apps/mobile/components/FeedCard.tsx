@@ -2,6 +2,7 @@ import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import type { FeedItem } from "@cosmic-dolphin/api-client";
 import { useRouter } from "expo-router";
+import { BookmarkFailure } from "./BookmarkFailure";
 import { Button } from "./ui/Signal";
 import { textStyle } from "@/constants/fonts";
 import { radius, space } from "@/constants/theme";
@@ -44,6 +45,7 @@ export function FeedCard({ item, today, actions = {} }: { item: FeedItem; today?
   let domain = bookmark.sourceUrl;
   try { domain = new URL(bookmark.sourceUrl).hostname.replace(/^www\./, ""); } catch {}
   const minutes = readingMinutes(item);
+  const failed = own && bookmark.processingStatus === "failed";
   const image = bookmark.metadata?.openGraph?.image;
   return <SwipeableCard id={bookmark.id} done={own ? actions.done : undefined} tonight={own ? actions.tonight : undefined}><View style={[styles.card, { backgroundColor: colors.bg, borderColor: colors.border }]} testID={`feed-card-${bookmark.id}`}>
     {item.rankingReason ? <Text testID="ranking-reason" style={[textStyle("meta"), { color: colors.fgTertiary }]}>{item.rankingReason}</Text> : null}
@@ -56,13 +58,14 @@ export function FeedCard({ item, today, actions = {} }: { item: FeedItem; today?
       onAccessibilityAction={event => { const name = event.nativeEvent.actionName; if (own && name === "done") actions.done?.(); else if (own && name === "later") actions.later?.(); else if (name === "more") actions.more?.(); }} onPress={() => router.push(`/bookmark/${bookmark.id}`)} onLongPress={actions.more} style={focusStyle}>
       <Text style={[textStyle("title1"), { color: colors.fg }]}>{bookmark.title || domain}</Text>
     </Pressable>
-    {bookmark.cosmicBriefSummary ? <Text style={[textStyle("bodySm"), { color: colors.fgSecondary }]}>{bookmark.cosmicBriefSummary}</Text> : null}
-    {image ? <Image source={{ uri: image }} accessibilityIgnoresInvertColors style={styles.media} /> : null}
+    {failed ? <BookmarkFailure code={bookmark.processingFailureCode} url={bookmark.sourceUrl} privateLink={bookmark.isPrivateLink}
+      onPaste={() => router.push(`/bookmark/${bookmark.id}?paste=1`)} onRetry={() => router.push(`/bookmark/${bookmark.id}?retry=1`)} /> : bookmark.cosmicBriefSummary ? <Text style={[textStyle("bodySm"), { color: colors.fgSecondary }]}>{bookmark.cosmicBriefSummary}</Text> : null}
+    {image && !failed ? <Image source={{ uri: image }} accessibilityIgnoresInvertColors style={styles.media} /> : null}
     <View style={styles.row}>
       <Text style={[textStyle("meta"), { color: colors.fgTertiary, flex: 1 }]}>{minutes ? `${minutes} min read` : domain}</Text>
       {own ? <>
         <Button title="Later" icon="time-outline" disabled={!actions.later} onPress={() => actions.later?.()} />
-        <Button title="Done" icon={bookmark.readAt ? "checkmark-circle-outline" : "checkmark-outline"} disabled={!actions.done} onPress={() => actions.done?.()} />
+        <Button title={failed ? "Mark done" : "Done"} icon={bookmark.readAt ? "checkmark-circle-outline" : "checkmark-outline"} disabled={!actions.done} onPress={() => actions.done?.()} />
       </> : <Button title="Save to Library" disabled={!actions.save} onPress={() => actions.save?.()} />}
       <Button title="More actions" icon="ellipsis-horizontal" disabled={!actions.more} onPress={() => actions.more?.()} />
     </View>

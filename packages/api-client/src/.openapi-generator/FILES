@@ -34,6 +34,7 @@ src/models/BookmarkLink.ts
 src/models/BookmarkMetadata.ts
 src/models/BookmarkProcessingEvent.ts
 src/models/BookmarkProcessingEventKind.ts
+src/models/BookmarkProcessingFailureCode.ts
 src/models/BookmarkProcessingPhase.ts
 src/models/BookmarkProcessingRun.ts
 src/models/BookmarkProcessingTimelineResponse.ts
@@ -106,12 +107,14 @@ src/models/NoteSectionType.ts
 src/models/NoteType.ts
 src/models/OpenGraph.ts
 src/models/OpenGraphMetadata.ts
+src/models/PasteBookmarkContentRequest.ts
 src/models/Pipeline.ts
 src/models/PipelineStage.ts
 src/models/PipelineStatus.ts
 src/models/PreviewMetadata.ts
 src/models/PreviewRequest.ts
 src/models/PreviewResponse.ts
+src/models/ProcessingFailureCode.ts
 src/models/ProcessingStatus.ts
 src/models/Profile.ts
 src/models/PublicBookmark.ts

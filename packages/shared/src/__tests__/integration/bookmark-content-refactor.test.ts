@@ -69,7 +69,7 @@ describe("Bookmark Content Refactor Integration", () => {
       if (fields === "brief,contentStatus,keyPoints,overview,sections,unusableReason") {
         return {
           contentStatus: "ok",
-          unusableReason: "",
+          unusableReason: null,
           brief: "Generated brief summary",
           overview: "Generated AI summary",
           keyPoints: ["First finding", "Second finding"],

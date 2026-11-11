@@ -225,7 +225,9 @@ export interface CaptureFields {
   capturePlatform?: CapturePlatform | null;
   captureQueuedAt?: Date | null;
 }
+export type ProcessingFailureCode = "auth" | "blocked" | "empty" | "unsupported" | "unavailable" | "provider" | "paywall";
 export interface Bookmark extends BaseEntity, CaptureFields {
+  processingFailureCode?: ProcessingFailureCode | null;
   sourceUrl: string;
   collectionId?: string;
   collectionPath?: CollectionPathItem[];
@@ -339,7 +341,7 @@ export interface ScrapedUrlContents extends BaseEntity {
     extraction?: {
       status: "complete" | "unavailable" | "pending";
       provider: string;
-      fetchedAt: string;
+      fetchedAt?: string;
       language?: string;
       jobId?: string;
       error?: string;
@@ -717,7 +719,7 @@ export interface BlockResponse {
   blocked: boolean;
 }
 
-export type PublicBookmark = Omit<Bookmark, keyof CaptureFields>;
+export type PublicBookmark = Omit<Bookmark, keyof CaptureFields | "processingFailureCode" | "processingError" | "processingStartedAt" | "processingCompletedAt">;
 
 export interface PublicSavesResponse {
   bookmarks: PublicBookmark[];

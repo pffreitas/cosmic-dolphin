@@ -1008,6 +1008,26 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
     }
   );
 
+  fastify.put<{ Params: { id: string }; Body: { text: string } }>("/bookmarks/:id/content",
+    { preHandler: authenticate, config: rateLimited(RATE_LIMITS.reprocess) }, async (request, reply) => {
+      const parsed = z.object({ text: z.string().min(200).max(100000) }).strict().safeParse(request.body);
+      if (!parsed.success) return reply.status(400).send({ error: "Paste between 200 and 100,000 characters" });
+      try {
+        const bookmark = await services.bookmark.putContentByOwner(request.params.id, request.userId!, parsed.data.text);
+        try {
+          await services.queue.sendBookmarkProcessingMessage(bookmark.id, request.userId!, { resume: true });
+        } catch {
+          await services.bookmark.updateProcessingStatus(bookmark.id, "failed", "Failed to enqueue bookmark processing");
+          return reply.status(500).send({ error: "Could not start reprocessing" });
+        }
+        return reply.send({ bookmark, message: "Reprocessing this bookmark" });
+      } catch (error) {
+        if (error instanceof Error && error.message === "Bookmark not found") return reply.status(404).send({ error: "Bookmark not found" });
+        if (error instanceof Error && error.message === "Private links cannot accept article text") return reply.status(409).send({ error: error.message });
+        return reply.status(500).send({ error: "Could not save article text" });
+      }
+    });
+
   fastify.get<{ Params: { id: string } }>("/bookmarks/:id/content",
     { preHandler: authenticate }, async (request, reply) => {
       try {
@@ -1285,7 +1305,7 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
           return reply.status(404).send({ error: "Bookmark not found" });
         }
 
-        const { userNote, laterUntil, captureSource, capturePlatform, captureQueuedAt, quickAccess, searchDocument, userId, processingStatus, processingStartedAt, processingCompletedAt, processingError, ...publicBookmark } = bookmark;
+        const { userNote, laterUntil, captureSource, capturePlatform, captureQueuedAt, processingFailureCode, quickAccess, searchDocument, userId, processingStatus, processingStartedAt, processingCompletedAt, processingError, ...publicBookmark } = bookmark;
 
         let sharedByUserName: string | undefined;
         try {

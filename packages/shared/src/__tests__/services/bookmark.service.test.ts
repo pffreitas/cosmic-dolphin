@@ -24,6 +24,7 @@ describe("BookmarkService", () => {
       updateScrapedUrlContents: jest.fn(),
       getScrapedUrlContent: jest.fn(),
       getOwnedScrapedUrlContent: jest.fn(),
+      storePastedContent: jest.fn(),
       findByUser: jest.fn(),
       searchByQuickAccess: jest.fn(),
       fullTextSearch: jest.fn(),

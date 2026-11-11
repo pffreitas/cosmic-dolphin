@@ -1,16 +1,16 @@
-import { CaptureSource, CapturePlatform } from "@cosmic-dolphin/api-client";
+import { CaptureSource, CapturePlatform, type Bookmark as ContractBookmark, type BookmarkProcessingEvent } from "@cosmic-dolphin/api-client";
 import React, { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import type { BookmarkProcessingEvent } from "@cosmic-dolphin/api-client";
 import { useCaptures, type Capture } from "@/contexts/CaptureContext";
 import { useTheme } from "@/hooks/useTheme";
 import { textStyle } from "@/constants/fonts";
 import { MobileAPI } from "@/lib/mobile-api";
 import { Button, layout } from "./ui/Signal";
 import type { Bookmark } from "@/lib/api";
+import { FeedCard, type FeedCardActions } from "./FeedCard";
 import { PendingPhases } from "./PendingPhases";
-function CaptureRow({ capture, onCompleted }: { capture: Capture; onCompleted?: () => void }) {
+function CaptureRow({ capture, onCompleted, failedActions }: { capture: Capture; onCompleted?: () => void; failedActions?: (bookmark: ContractBookmark) => FeedCardActions }) {
   const { retry, remove, updateBookmark } = useCaptures();
   const { colors } = useTheme();
   const router = useRouter();
@@ -35,6 +35,11 @@ function CaptureRow({ capture, onCompleted }: { capture: Capture; onCompleted?: 
     void load();
     return () => { controller.abort(); clearTimeout(timer); };
   }, [id, processing, capture.id, capture.entry.userId, updateBookmark, onCompleted]);
+  if (capture.bookmark?.processingStatus === "failed") {
+    const saved = capture.bookmark;
+    const bookmark = { ...saved, createdAt: new Date(saved.createdAt), updatedAt: new Date(saved.updatedAt), readAt: saved.readAt ? new Date(saved.readAt) : undefined, laterUntil: saved.laterUntil ? new Date(saved.laterUntil) : saved.laterUntil, captureQueuedAt: saved.captureQueuedAt ? new Date(saved.captureQueuedAt) : saved.captureQueuedAt } as ContractBookmark;
+    return <FeedCard item={{ type: "own_save", bookmark }} actions={failedActions?.(bookmark)} />;
+  }
   const failed = capture.status === "failed";
   const queued = capture.status === "queued";
   const path = capture.bookmark?.collectionPath?.map(part => part.name).join(" › ");
@@ -51,13 +56,13 @@ function CaptureRow({ capture, onCompleted }: { capture: Capture; onCompleted?: 
     </> : capture.bookmark ? <Button title="Open save" onPress={() => router.push(`/bookmark/${capture.bookmark!.id}`)} /> : null}
   </View>;
 }
-export function CaptureStatus({ loadedIds = [], pendingBookmarks = [], onCompleted }: { loadedIds?: string[]; pendingBookmarks?: Bookmark[]; onCompleted?: () => void }) {
+export function CaptureStatus({ loadedIds = [], pendingBookmarks = [], onCompleted, failedActions }: { loadedIds?: string[]; pendingBookmarks?: Bookmark[]; onCompleted?: () => void; failedActions?: (bookmark: ContractBookmark) => FeedCardActions }) {
   const { captures, acknowledge, revision } = useCaptures();
   const ids = loadedIds.join("\0");
   useEffect(() => { acknowledge(ids.split("\0")); }, [ids, acknowledge, revision]);
   return <>
-    {captures.filter(capture => !capture.bookmark || capture.bookmark.processingStatus === "processing" || !loadedIds.includes(capture.bookmark.id)).map(capture => <CaptureRow key={capture.id} capture={capture} />)}
-    {pendingBookmarks.filter(bookmark => !captures.some(capture => capture.bookmark?.id === bookmark.id)).map(bookmark => <CaptureRow key={`feed:${bookmark.id}`} onCompleted={onCompleted} capture={{
+    {captures.filter(capture => !capture.bookmark || capture.bookmark.processingStatus === "processing" || !loadedIds.includes(capture.bookmark.id)).map(capture => <CaptureRow key={capture.id} capture={capture} failedActions={failedActions} />)}
+    {pendingBookmarks.filter(bookmark => !captures.some(capture => capture.bookmark?.id === bookmark.id)).map(bookmark => <CaptureRow key={`feed:${bookmark.id}`} onCompleted={onCompleted} failedActions={failedActions} capture={{
       id: `feed:${bookmark.id}`, status: "saved", bookmark,
       entry: { id: bookmark.id, url: bookmark.sourceUrl, userId: bookmark.userId, queuedAt: bookmark.createdAt,
         captureSource: Object.values(CaptureSource).find(value => value === bookmark.captureSource) ?? CaptureSource.SaveSheet, capturePlatform: Object.values(CapturePlatform).find(value => value === bookmark.capturePlatform) ?? CapturePlatform.Unknown, attempts: 1 },

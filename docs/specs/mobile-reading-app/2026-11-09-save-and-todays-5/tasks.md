@@ -1014,7 +1014,7 @@ Checkpoint commit: `ed815d7ea591a21220fa4bb2e9cda806c4092c29` (`Task: T-8`).
 
 | | |
 |---|---|
-| Status | In progress |
+| Status | Done |
 | Depends on | T-8 |
 | Traces | FR-22 · FR-23 · FR-24 · FR-6 failed-card replacement · NFR-9 · NFR-10 · S-16 · S-21 · §8.4 Content PUT/Failure codes · §8.3 Shared processor · §8.7 pasted untrusted text · §8.8 Processing failure log |
 | Ships as | User-visible: explain extraction failures and recover with pasted text in the complete package |
@@ -1040,17 +1040,17 @@ Checkpoint commit: `ed815d7ea591a21220fa4bb2e9cda806c4092c29` (`Task: T-8`).
 
 **Acceptance criteria**
 
-- [ ] A model-judged paywall with OpenGraph description has empty cosmicBriefSummary and no tag/file/embed, with code/log; every fetch/unusable mapping and legacy no-code row has specified UX.
-- [ ]199chars cannot submit;200–100000 escaped text reprocesses existing stored pasted extraction, yields pending then brief with pasted source;100001 rejected. Failure keeps text.
-- [ ] Nonowner/private cannot paste/read extracted article; provider offers Try again instead of Paste, other codes Original/Paste. Action failure still reverts and link remains safe.
+- [x] A model-judged paywall with OpenGraph description has empty cosmicBriefSummary and no tag/file/embed, with code/log; every fetch/unusable mapping and legacy no-code row has specified UX.
+- [x]199chars cannot submit;200–100000 escaped text reprocesses existing stored pasted extraction, yields pending then brief with pasted source;100001 rejected. Failure keeps text.
+- [x] Nonowner/private cannot paste/read extracted article; provider offers Try again instead of Paste, other codes Original/Paste. Action failure still reverts and link remains safe.
 
 The following §5 wording is authoritative and copied verbatim; each original criterion is covered by the tests above/below:
 
-- [ ] **FR-22:** A save with a `processingFailureCode` (§8.4) shall show its reason and Open original, plus Paste the text (replaced by Try again for `provider`) and the bar Later · Mark done, with an empty brief never filled from metadata.
-- [ ] **FR-22 AC1:** Even with an Open Graph description, unusable content leaves `cosmicBriefSummary` empty; no-code failures follow §7 Copy.
-- [ ] **FR-23:** Paste the text shall accept 200–100,000 characters as content and rebuild the brief, marked as from pasted text.
-- [ ] **FR-23 AC1:** 199 characters keeps submit disabled. Success returns the card to pending.
-- [ ] **FR-24:** Merged into FR-22.
+- [x] **FR-22:** A save with a `processingFailureCode` (§8.4) shall show its reason and Open original, plus Paste the text (replaced by Try again for `provider`) and the bar Later · Mark done, with an empty brief never filled from metadata.
+- [x] **FR-22 AC1:** Even with an Open Graph description, unusable content leaves `cosmicBriefSummary` empty; no-code failures follow §7 Copy.
+- [x] **FR-23:** Paste the text shall accept 200–100,000 characters as content and rebuild the brief, marked as from pasted text.
+- [x] **FR-23 AC1:** 199 characters keeps submit disabled. Success returns the card to pending.
+- [x] **FR-24:** Merged into FR-22.
 
 **Tests** (write in this order; fixtures within one task are not separate handoffs)
 
@@ -1082,6 +1082,18 @@ Started2026-11-11 from coordinator-verified T-8 checkpoint `ed815d7ea591a21220fa
 Assignment correction2026-11-11: the initial developer node:delegated-task:command%3Amcp%3A44e93c94-ffbb-4f6d-ae4f-4a59ab199c23%3Adelegate-task%3A3ab85150-a8c6-41a4-ba0d-690d040c14bd correctly stopped when the coordinator brief incorrectly said processing_failure_code already existed from T-1 and forbade duplicating it. Root checked the committed capture migration/schema/shared types/TypeSpec: no field exists; the approved T-9 Scope expressly requires adding its nullable persistence and owner enum. The brief was wrong, not the approved requirement. Resolution: T-9 is authorized to add the absent column, shared schema/types, owner contract and serializers through the specified migration/TypeSpec pipeline. Do not alter earlier migrations or approved spec/criteria. No additional user approval needed for this already-approved scope.
 
 Initial handback `/tmp/T-9-handback.md` and `/tmp/T-9/` receipts remain preserved. Clean public paywall red received the forbidden OpenGraph brief; partial implementation then failed shared build/missing database column, no green or completed AC claimed. Three known partial product files (API bookmark-content test, shared processor, shared bookmark service) remain unstaged in this same feature checkout; root transfers their ownership to a fresh implementation continuation. Finish that first red/green slice before any subsequent behavior. Failed tsc emitted ignored shared dist; successful build required after adding the contract/schema. No product commit/checkpoint/review round; task remains In progress because the assignment contradiction is now resolved. All protected artifacts and hook bytes were unchanged, owned fixture content/bookmarks/connections cleaned, no active services or devices. Final continuation report must retain these initial red/build/persistence qualifications and the full cumulative inventory. Complete-package Sol ledger stays0/max5 and T-10 proof remains pending.
+
+Coordinator verification2026-11-11: fresh continuation node:delegated-task:command%3Amcp%3A44e93c94-ffbb-4f6d-ae4f-4a59ab199c23%3Adelegate-task%3A93a0919a-9b63-4bea-989a-49bc7b6a1459 delivered33 intended files, including the original three transferred partial files. Full cumulative inventory and acceptance/red-green ledger are in `/tmp/T-9-resume-handback.md` and `/tmp/T-9-resume/`; original `/tmp/T-9/` evidence remains unchanged. The approved nullable field is now an additive checked migration, owner enum and generated contract. Reviewed the migration, persistence and owner transaction, PUT validation/queue dispatch, classification/blanking and soft-phase preservation, untrusted source boundary, public serializers and mobile recovery/request/account guards. No root product correction was required. All33 final source hashes independently match the handback manifest.
+
+Root independently PASS: apispec/shared build, local disposable DB up/reset, exact prescribed API363/24files; shared focused70/4suites; mobile focused56/2suites; standalone worker10; root loose/concurrency1 typecheck plus explicit shared/API/worker/mobile tsc; serial backend shared426/28suites, API363/24files and worker10/2files; mobile lint8warnings/0errors and full271passed/one existing skip; web lint/335tests; tokens; API lint68warnings/0errors and worker src lint9warnings/0errors. All result logs and runner are in `/tmp/t9-coordinator-checks/`. Backend runner uses explicit local5433/test/project environment and serial Turbo; no truncating suite overlapped a native/measurement fixture. One supplementary standalone worker command20 omitted explicit environment; its10 pure worker tests passed, but root repeated command21 with the required explicit local environment and retained both logs. No omitted-environment receipt is substituted for the required gate.
+
+Acceptance accounting: actual HTTP/storage/processor fixtures prove paywall plus OG leaves all summaries/points empty and skips tag/file/embed; all7 fetch and5 model mappings plus clear-on-start, legacy row UX and safe classified logs pass. Owner200/100000 versus199/100001, escaped paragraphs, nonowner404/private409, restricted-key denial and public-field stripping pass. Deterministic existing pgmq registration/drain invokes the actual processor from stored user_paste content and verifies newly source-driven brief/provenance, including original video/post metadata. RNTL proves seven reason/card/page states, provider replacement, private/no-code behavior, retained draft/Retry, pending/pasted brief, account/page abort/late-result fences and existing reversible reading actions. These are local implementation proofs, not normal-issuer signed-session proof.
+
+Test-first qualifications remain explicit for cumulative review. The original clean paywall red is the preserved first red; the initial missing-column/build failures were not green. Supplemental five-reason/owner/bounds/rollback matrices first characterized green where stated. Three expressly replaced unusable/OG semantics gained stronger empty/failed/skip/code expectations; an accidental unrelated normal-recovery expectation change was restored, and normal soft-provider/private/manual filing regressions pass. Prompt representation checks decode JSON and retain the same text budget. Fixture syntax/types/mock defects and stale shared dist were corrected; no failing setup is claimed as an expected product red. A late actual video/post metadata public red exposed HTML at the model source boundary and passed after treating pasted content as an article. Full ledger records each deviation. The disposable DB tmpfs interruption and failed privileged WAL setup remain qualified; subsequent local reset/max_wal_size128MB and final serial suite passed. No earlier failed receipt was overwritten.
+
+Native evidence is limited to the continuation's isolated fictional actual-component iOS S-16 light page. Root inspected `/tmp/T-9-resume/ios-s16-light.png`: subscription reason, empty content region, exact Original/Paste recovery and Later/Mark done bar. Native S-21 was not reached after the recorded invalid-target/missing-label failures (actual label Paste the text). Android install was blocked by another session owning emulator-5554; its one advised status attempt remained unavailable. The developer stopped, closed only its own panels/Metro/ExpoGo and did not alter another session. No Android, AX3/dark/native pasted-flow, live spoken or normal-issuer session pass is inferred. Complete S-state matrix, final-source signed packages and unavailable real-session/physical Wi-Fi/LTE/device-only proof remain T-10 under execution clarification.
+
+All10 protected hashes independently match before coordinator metadata: approved spec/prototype/tasks, hook/env bytes and original receipts/inventory. No old migration, auth flag/endpoint/bypass, new broker/service, note/action replay queue, production write or child checkpoint. DB retained healthy; no owned application/service/device remains. Handwritten diff whitespace passes; staged audit retains exactly13 generator-owned warnings (10 trailing blank-comment/indentation lines and3 blank EOF lines); generated files were not edited manually. Whole-feature Sol ledger remains0/max5, no per-task review or PR. Done is an implementation checkpoint only, not released.
 
 ### T-10 · Prove the complete package and add its mobile PR gate
 

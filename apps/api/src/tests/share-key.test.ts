@@ -65,7 +65,7 @@ it("dedupes without exposing private owner fields and rejects every extra input 
 it("rejects share credentials on every other route and rejects malformed create payloads", async () => {
   const { body: issued } = await request("POST", "/share-keys", { deviceId: "matrix" });
   for (const [method, path] of [
-    ["GET", "/bookmarks"], ["GET", "/bookmarks/counts"], ["GET", "/bookmarks/shared/unknown"],
+    ["PUT", "/bookmarks/00000000-0000-0000-0000-000000000000/content"], ["GET", "/bookmarks/00000000-0000-0000-0000-000000000000/content"], ["GET", "/bookmarks"], ["GET", "/bookmarks/counts"], ["GET", "/bookmarks/shared/unknown"],
     ["GET", "/bookmarks/00000000-0000-0000-0000-000000000000"], ["PATCH", "/bookmarks/00000000-0000-0000-0000-000000000000"],
     ["DELETE", "/bookmarks/00000000-0000-0000-0000-000000000000"], ["POST", "/bookmarks/preview"],
     ["POST", "/share-keys"], ["DELETE", `/share-keys/${issued.id}`], ["GET", "/health"], ["GET", "/not-an-endpoint"],

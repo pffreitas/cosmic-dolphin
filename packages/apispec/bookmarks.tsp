@@ -11,11 +11,21 @@ model BookmarkContentBlock {
     text: string;
 }
 
+model PasteBookmarkContentRequest {
+    @minLength(200)
+    @maxLength(100000)
+    text: string;
+}
+
 model BookmarkContent {
     blocks: BookmarkContentBlock[];
     wordCount: int32;
     source: "extracted" | "pasted";
     updatedAt: utcDateTime;
+}
+
+enum ProcessingFailureCode {
+    auth, blocked, empty, unsupported, unavailable, provider, paywall,
 }
 
 @doc("Processing state of AI pipeline for a bookmark")
@@ -138,6 +148,7 @@ model Bookmark {
     shareSlug?: string;
     readAt?: utcDateTime;
     isRead?: boolean;
+    processingFailureCode?: ProcessingFailureCode | null;
     processingStatus?: ProcessingStatus;
     processingStartedAt?: utcDateTime;
     processingCompletedAt?: utcDateTime;
@@ -145,7 +156,7 @@ model Bookmark {
 }
 
 @doc("Public bookmark view. Private capture intent is never part of this contract.")
-model PublicBookmark is OmitProperties<Bookmark, "userNote" | "laterUntil" | "captureSource" | "capturePlatform" | "captureQueuedAt">;
+model PublicBookmark is OmitProperties<Bookmark, "userNote" | "laterUntil" | "captureSource" | "capturePlatform" | "captureQueuedAt" | "processingFailureCode" | "processingError" | "processingStartedAt" | "processingCompletedAt">;
 
 model BookmarkImage {
     url: string;
@@ -723,6 +734,24 @@ interface Bookmarks {
     @route("/{id}/content")
     getContent(@path id: string): BookmarkContent | {
         @statusCode statusCode: 404;
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 500;
+        @body body: BookmarkError;
+    };
+
+    @doc("Store owner-supplied article text and enqueue a full reprocess. Private links cannot accept article text.")
+    @useAuth(BearerAuth)
+    @put
+    @route("/{id}/content")
+    putContent(@path id: string, @body request: PasteBookmarkContentRequest): ReprocessBookmarkResponse | {
+        @statusCode statusCode: 400;
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 404;
+        @body body: BookmarkError;
+    } | {
+        @statusCode statusCode: 409;
         @body body: BookmarkError;
     } | {
         @statusCode statusCode: 500;

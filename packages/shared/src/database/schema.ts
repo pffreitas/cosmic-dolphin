@@ -54,6 +54,7 @@ export type CollectionSuggestionStatus = "pending" | "accepted" | "dismissed";
 
 // Bookmarks table
 export interface BookmarksTable extends BaseTable {
+  processing_failure_code: import("../types").ProcessingFailureCode | null;
   user_note: string | null;
   later_until: Date | null;
   capture_source: import("../types").CaptureSource | null;

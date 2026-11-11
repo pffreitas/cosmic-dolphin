@@ -222,24 +222,6 @@ export interface PublicBookmark {
      * @memberof PublicBookmark
      */
     processingStatus?: ProcessingStatus;
-    /**
-     * 
-     * @type {Date}
-     * @memberof PublicBookmark
-     */
-    processingStartedAt?: Date;
-    /**
-     * 
-     * @type {Date}
-     * @memberof PublicBookmark
-     */
-    processingCompletedAt?: Date;
-    /**
-     * 
-     * @type {string}
-     * @memberof PublicBookmark
-     */
-    processingError?: string;
 }
 
 
@@ -293,9 +275,6 @@ export function PublicBookmarkFromJSONTyped(json: any, ignoreDiscriminator: bool
         'readAt': json['readAt'] == null ? undefined : (new Date(json['readAt'])),
         'isRead': json['isRead'] == null ? undefined : json['isRead'],
         'processingStatus': json['processingStatus'] == null ? undefined : ProcessingStatusFromJSON(json['processingStatus']),
-        'processingStartedAt': json['processingStartedAt'] == null ? undefined : (new Date(json['processingStartedAt'])),
-        'processingCompletedAt': json['processingCompletedAt'] == null ? undefined : (new Date(json['processingCompletedAt'])),
-        'processingError': json['processingError'] == null ? undefined : json['processingError'],
     };
 }
 
@@ -337,9 +316,6 @@ export function PublicBookmarkFromJSONTyped(json: any, ignoreDiscriminator: bool
         'readAt': value['readAt'] == null ? undefined : ((value['readAt']).toISOString()),
         'isRead': value['isRead'],
         'processingStatus': ProcessingStatusToJSON(value['processingStatus']),
-        'processingStartedAt': value['processingStartedAt'] == null ? undefined : ((value['processingStartedAt']).toISOString()),
-        'processingCompletedAt': value['processingCompletedAt'] == null ? undefined : ((value['processingCompletedAt']).toISOString()),
-        'processingError': value['processingError'],
     };
 }
 

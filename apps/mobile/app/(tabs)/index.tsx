@@ -84,7 +84,7 @@ export default function HomeScreen() {
         {scope === "for_you" ? <>
           <CaptureStatus loadedIds={feed.items.flatMap(item => item.bookmark ? [item.bookmark.id] : [])}
             pendingBookmarks={feed.items.filter(item => item.type === "pending").flatMap(item => item.bookmark ? [nativeBookmark(item.bookmark)] : [])}
-            onCompleted={feed.refresh} />
+            onCompleted={feed.refresh} failedActions={bookmark => cardActions({ type: "own_save", bookmark })} />
           {feed.picksError && !wholeFailure && !feed.offline ? <Notice message={feed.picksError} error action="Retry" onAction={feed.refresh} /> : null}
           {firstRun ? <View style={{ padding: space.s5, gap: space.s4 }}>
             <Text style={[textStyle("title2"), { color: colors.fg }]}>Close the tab. Cosmic will bring it back.</Text>

@@ -96,6 +96,7 @@ it("owner fields stay private across shared-slug, public saves, Explore, followe
   const created = (await create({ source_url: "https://example.com/public", user_note: "Private reason", later_until: new Date(Date.now() + 86400000).toISOString(), capture_source: "clipboard", capture_platform: "ios", queued_at: new Date().toISOString() })).json().bookmark;
   const shared = await bookmark.share(created.id, owner);
   await bookmark.updateProcessingStatus(created.id, "completed");
+  await bookmark.update(created.id, { processingFailureCode: "paywall" });
   const social = new SocialServiceImpl(new SocialRepositoryImpl(db));
   await social.follow(viewer, "fixture_owner");
   const ranking = new FeedRankingServiceImpl(new FeedRepositoryImpl(db), social, "test");
@@ -108,13 +109,14 @@ it("owner fields stay private across shared-slug, public saves, Explore, followe
   const reshare = await bookmark.create("https://example.com/reshare", owner, { savedFromBookmarkId: created.id, userNote: "Resharer's private note", laterUntil: new Date(Date.now() + 86400000), captureSource: "save_sheet", capturePlatform: "ios" });
   await bookmark.updateProcessingStatus(reshare.id, "completed");
   await bookmark.share(reshare.id, owner);
+  await bookmark.update(reshare.id, { processingFailureCode: "auth" });
   ranking.invalidate(viewer);
   publicResults.push((await ranking.getFeed(viewer, { scope: "following" })).items.find(item => item.type === "reshare")?.bookmark);
   for (const value of publicResults) {
     expect(value).toBeDefined();
-    for (const field of ["userNote", "laterUntil", "captureSource", "capturePlatform", "captureQueuedAt"]) expect(Object.prototype.hasOwnProperty.call(value!, field)).toBe(false);
+    for (const field of ["userNote", "laterUntil", "captureSource", "capturePlatform", "captureQueuedAt", "processingFailureCode", "processingError", "processingStartedAt", "processingCompletedAt"]) expect(Object.prototype.hasOwnProperty.call(value!, field)).toBe(false);
   }
-  expect(await bookmark.findByIdAndUser(created.id, owner)).toMatchObject({ userNote: "Private reason", captureSource: "clipboard" });
+  expect(await bookmark.findByIdAndUser(created.id, owner)).toMatchObject({ userNote: "Private reason", captureSource: "clipboard", processingFailureCode: "paywall" });
 });
 it("legacy omission stays NULL with unknown platform and capture logs carry attribution without note text", async () => {
   const legacy = (await create({ source_url: "https://example.com/legacy" })).json().bookmark;

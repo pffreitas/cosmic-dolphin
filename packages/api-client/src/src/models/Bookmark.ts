@@ -27,6 +27,13 @@ import {
     BookmarkLinkToJSON,
     BookmarkLinkToJSONTyped,
 } from './BookmarkLink';
+import type { BookmarkProcessingFailureCode } from './BookmarkProcessingFailureCode';
+import {
+    BookmarkProcessingFailureCodeFromJSON,
+    BookmarkProcessingFailureCodeFromJSONTyped,
+    BookmarkProcessingFailureCodeToJSON,
+    BookmarkProcessingFailureCodeToJSONTyped,
+} from './BookmarkProcessingFailureCode';
 import type { BookmarkCapturePlatform } from './BookmarkCapturePlatform';
 import {
     BookmarkCapturePlatformFromJSON,
@@ -262,6 +269,12 @@ export interface Bookmark {
     isRead?: boolean;
     /**
      * 
+     * @type {BookmarkProcessingFailureCode}
+     * @memberof Bookmark
+     */
+    processingFailureCode?: BookmarkProcessingFailureCode | null;
+    /**
+     * 
      * @type {ProcessingStatus}
      * @memberof Bookmark
      */
@@ -341,6 +354,7 @@ export function BookmarkFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         'shareSlug': json['shareSlug'] == null ? undefined : json['shareSlug'],
         'readAt': json['readAt'] == null ? undefined : (new Date(json['readAt'])),
         'isRead': json['isRead'] == null ? undefined : json['isRead'],
+        'processingFailureCode': json['processingFailureCode'] == null ? json['processingFailureCode'] : BookmarkProcessingFailureCodeFromJSON(json['processingFailureCode']),
         'processingStatus': json['processingStatus'] == null ? undefined : ProcessingStatusFromJSON(json['processingStatus']),
         'processingStartedAt': json['processingStartedAt'] == null ? undefined : (new Date(json['processingStartedAt'])),
         'processingCompletedAt': json['processingCompletedAt'] == null ? undefined : (new Date(json['processingCompletedAt'])),
@@ -390,6 +404,7 @@ export function BookmarkFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         'shareSlug': value['shareSlug'],
         'readAt': value['readAt'] == null ? undefined : ((value['readAt']).toISOString()),
         'isRead': value['isRead'],
+        'processingFailureCode': BookmarkProcessingFailureCodeToJSON(value['processingFailureCode']),
         'processingStatus': ProcessingStatusToJSON(value['processingStatus']),
         'processingStartedAt': value['processingStartedAt'] == null ? undefined : ((value['processingStartedAt']).toISOString()),
         'processingCompletedAt': value['processingCompletedAt'] == null ? undefined : ((value['processingCompletedAt']).toISOString()),

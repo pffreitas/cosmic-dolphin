@@ -56,6 +56,11 @@ function rememberOwnedBookmark(bookmark: ContractBookmark, userId?: string) {
   return rememberBookmark(bookmark);
 }
 export const MobileAPI = {
+  async pasteContent(id: string, text: string, signal?: AbortSignal, userId?: string) {
+    const client = new BookmarksApi(await configuration(userId));
+    const result = await saveRequest(requestSignal => client.bookmarksPutContent({ id, pasteBookmarkContentRequest: { text } }, { signal: requestSignal }), signal);
+    return { ...result, bookmark: rememberOwnedBookmark(result.bookmark, userId) };
+  },
   async content(id: string, signal?: AbortSignal, userId?: string) {
     return new BookmarksApi(await configuration(userId)).bookmarksGetContent({ id }, { signal });
   },
@@ -184,11 +189,12 @@ export const MobileAPI = {
       }), userId,
     );
   },
-  async retry(id: string) {
-    return new BookmarksApi(await configuration()).bookmarksReprocess({
+  async retry(id: string, userId?: string, signal?: AbortSignal) {
+    const result = await new BookmarksApi(await configuration(userId)).bookmarksReprocess({
       id,
       reprocessBookmarkRequest: {},
-    });
+    }, { signal });
+    return { ...result, bookmark: rememberOwnedBookmark(result.bookmark, userId) };
   },
   async highlights(id: string) {
     return (

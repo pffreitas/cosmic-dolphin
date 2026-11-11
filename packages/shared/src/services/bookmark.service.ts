@@ -80,6 +80,7 @@ export interface BookmarkService {
   ): Promise<{ bookmark: Bookmark; isLikedByCurrentUser: boolean } | null>;
   getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
   getContentByOwner(bookmarkId: string, userId: string): Promise<BookmarkContent | null>;
+  putContentByOwner(bookmarkId: string, userId: string, text: string): Promise<Bookmark>;
   create(
     url: string,
     userId: string,
@@ -151,6 +152,12 @@ export class BookmarkServiceImpl implements BookmarkService {
     private webScrapingService: WebScrapingService,
     private collectionRepository?: CollectionRepository
   ) {}
+
+  async putContentByOwner(bookmarkId: string, userId: string, text: string): Promise<Bookmark> {
+    const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    const content = escaped.split(/\r?\n\s*\r?\n/).map(paragraph => `<p>${paragraph}</p>`).join("\n");
+    return this.mapDatabaseToBookmark(await this.bookmarkRepository.storePastedContent(bookmarkId, userId, content));
+  }
 
   async getContentByOwner(bookmarkId: string, userId: string): Promise<BookmarkContent | null> {
     const stored = await this.bookmarkRepository.getOwnedScrapedUrlContent(bookmarkId, userId);
@@ -496,6 +503,7 @@ export class BookmarkServiceImpl implements BookmarkService {
       "collection_id" | "filing_source"
     > = {};
 
+    if (data.processingFailureCode !== undefined) updateData.processing_failure_code = data.processingFailureCode;
     if (data.title !== undefined) updateData.title = data.title;
     if (data.metadata !== undefined) updateData.metadata = data.metadata;
     if (data.isArchived !== undefined) updateData.is_archived = data.isArchived;
@@ -590,6 +598,7 @@ export class BookmarkServiceImpl implements BookmarkService {
       updateData.processing_completed_at = null;
       updateData.processing_error = null;
     } else if (status === "processing") {
+      updateData.processing_failure_code = null;
       updateData.processing_started_at = new Date();
       updateData.processing_completed_at = null;
       updateData.processing_error = null;
@@ -750,6 +759,7 @@ export function mapDatabaseRowToBookmark(data: any): Bookmark {
   return {
     id: data.id,
     sourceUrl: data.source_url,
+    processingFailureCode: data.processing_failure_code ?? null,
     userNote: data.user_note ?? null,
     laterUntil: data.later_until ? new Date(data.later_until) : null,
     captureSource: data.capture_source ?? null,
@@ -793,6 +803,6 @@ export function mapDatabaseRowToBookmark(data: any): Bookmark {
 
 /** Private capture intent never travels with a public, followed or reshare DTO. */
 export function stripPrivateCaptureFields(bookmark: Bookmark): PublicBookmark {
-  const { userNote, laterUntil, captureSource, capturePlatform, captureQueuedAt, ...visible } = bookmark;
+  const { userNote, laterUntil, captureSource, capturePlatform, captureQueuedAt, processingFailureCode, processingError, processingStartedAt, processingCompletedAt, ...visible } = bookmark;
   return visible;
 }

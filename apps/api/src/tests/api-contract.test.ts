@@ -92,7 +92,7 @@ it("public bookmark schemas omit every private capture field and public saves us
   const openApi = await Bun.file(repoPath("packages/apispec/tsp-output/@typespec/openapi3/openapi.yaml")).text();
   const publicSchema = openApi.match(/ {4}PublicBookmark:\n([\s\S]*?)(?=\n {4}[A-Za-z]|\n {2}[A-Za-z]|$)/)?.[1];
   expect(publicSchema).toBeDefined();
-  for (const field of ["userNote", "laterUntil", "captureSource", "capturePlatform", "captureQueuedAt"]) {
+  for (const field of ["userNote", "laterUntil", "captureSource", "capturePlatform", "captureQueuedAt", "processingFailureCode", "processingError", "processingStartedAt", "processingCompletedAt"]) {
     expect(publicSchema).not.toMatch(new RegExp(`^\\s+${field}:`, "m"));
   }
   const publicSaves = openApi.match(/ {4}PublicSavesResponse:\n([\s\S]*?)(?=\n {4}[A-Za-z]|$)/)?.[1];
@@ -120,5 +120,18 @@ it("generated JWT create still returns full owner bookmarks with dates and nulla
     expect(result.bookmark.createdAt).toEqual(new Date(bookmark.createdAt));
     expect(result.bookmark).toMatchObject({ userId: "owner", userNote: null, laterUntil: null, captureSource: null });
     expect("id" in result).toBe(false);
+  }
+});
+
+it("T9 generated owner paste preserves the enum and nullable failure code", async () => {
+  const { BookmarksApi, Configuration } = await import("@cosmic-dolphin/api-client");
+  for (const processingFailureCode of [null, "paywall", "auth", "blocked", "empty", "unsupported", "unavailable", "provider"] as const) {
+    const bookmark = { id: "fictional", userId: "owner", sourceUrl: "https://fictional.example", createdAt: "2026-11-10T00:00:00Z", updatedAt: "2026-11-10T00:00:00Z", processingFailureCode };
+    const client = new BookmarksApi(new Configuration({ fetchApi: async (_url: string | URL | Request, init?: RequestInit) => {
+      expect(init?.method).toBe("PUT");
+      expect(JSON.parse(init?.body as string)).toEqual({ text: "x".repeat(200) });
+      return new Response(JSON.stringify({ bookmark, message: "Reprocessing this bookmark" }));
+    } }));
+    expect((await client.bookmarksPutContent({ id: bookmark.id, pasteBookmarkContentRequest: { text: "x".repeat(200) } })).bookmark.processingFailureCode).toBe(processingFailureCode);
   }
 });

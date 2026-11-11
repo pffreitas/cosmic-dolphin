@@ -111,6 +111,7 @@ export interface BookmarkRepository {
   ): Promise<void>;
   getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
   getOwnedScrapedUrlContent(bookmarkId: string, userId: string): Promise<ScrapedUrlContents | null>;
+  storePastedContent(bookmarkId: string, userId: string, content: string): Promise<Bookmark>;
   updateScrapedUrlContents(
     id: string,
     contents: Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
@@ -380,6 +381,19 @@ export class BookmarkRepositoryImpl
         links: result.links,
       };
     }, "getScrapedUrlContent");
+  }
+
+  async storePastedContent(bookmarkId: string, userId: string, content: string): Promise<Bookmark> {
+    return this.db.transaction().execute(async transaction => {
+      const bookmark = await transaction.selectFrom("bookmarks").selectAll().where("id", "=", bookmarkId).where("user_id", "=", userId).forUpdate().executeTakeFirst();
+      if (!bookmark) throw new Error("Bookmark not found");
+      if (bookmark.is_private_link) throw new Error("Private links cannot accept article text");
+      const existing = await transaction.selectFrom("scraped_url_contents").select("id").where("bookmark_id", "=", bookmarkId).executeTakeFirst();
+      const data = { title: bookmark.title || bookmark.source_url, content, metadata: { extraction: { status: "complete", provider: "user_paste" } }, images: null, links: null, updated_at: new Date() };
+      if (existing) await transaction.updateTable("scraped_url_contents").set(data).where("id", "=", existing.id).execute();
+      else await transaction.insertInto("scraped_url_contents").values({ ...data, bookmark_id: bookmarkId }).execute();
+      return transaction.updateTable("bookmarks").set({ processing_failure_code: null, processing_status: "processing", processing_error: null, processing_started_at: new Date(), processing_completed_at: null, updated_at: new Date() }).where("id", "=", bookmarkId).returningAll().executeTakeFirstOrThrow();
+    });
   }
 
   async getOwnedScrapedUrlContent(bookmarkId: string, userId: string): Promise<ScrapedUrlContents | null> {
