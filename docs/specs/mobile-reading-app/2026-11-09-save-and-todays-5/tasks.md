@@ -603,7 +603,7 @@ Checkpoint commit: `72ae8f28b3ed408527f272b417137d70302e4056` (`Task: T-3`).
 
 | | |
 |---|---|
-| Status | In progress |
+| Status | Done |
 | Depends on | T-3 |
 | Traces | FR-3 · FR-26 Android attribution · FR-27 · S-20 · NFR-4 · §8.4 Android · §8.6 Android share signed out · A-4 |
 | Ships as | User-visible: save and return from Android sharing without a tap in the complete package |
@@ -628,14 +628,14 @@ Checkpoint commit: `72ae8f28b3ed408527f272b417137d70302e4056` (`Task: T-3`).
 
 **Acceptance criteria**
 
-- [ ] Signed-in text share creates one bookmark without Save tap, displays result then returns to the sender (FR-3/A-4).
+- [x] Signed-in text share creates one bookmark without Save tap, displays result then returns to the sender (FR-3/A-4).
 - [ ] Offline/signed-out share survives kill/restart and drains after matching sign-in; offline shows queued then returns; TalkBack does not auto-close (§8.6/§7).
-- [ ] Duplicate root effects cannot create duplicate queue entries; first URL only, android capture metadata retained.
+- [x] Duplicate root effects cannot create duplicate queue entries; first URL only, android capture metadata retained.
 
 The following §5 wording is authoritative and copied verbatim; each original criterion is covered by the tests above/below:
 
-- [ ] **FR-3:** Android sharing shall open the app, save without a tap, and return to the previous app.
-- [ ] **FR-3 AC1:** Offline/signed-out arrival follows §8.6 "Android share signed out".
+- [x] **FR-3:** Android sharing shall open the app, save without a tap, and return to the previous app.
+- [x] **FR-3 AC1:** Offline/signed-out arrival follows §8.6 "Android share signed out".
 
 **Tests** (write in this order; fixtures within one task are not separate handoffs)
 
@@ -656,6 +656,18 @@ eas build --profile preview --platform android
 **Notes**
 
 Started2026-11-10 from coordinator-verified T-3 checkpoint `72ae8f28b3ed408527f272b417137d70302e4056`; a fresh background developer owns T-4 only. Available Android target: host local, Pixel_7_API_34 emulator/Android14. Use device_open and its own bound agent-device command, close only its own session/services on handback. Follow the simulator execution clarification: unavailable normal-issuer real-session and physical device outcomes remain explicit T-10 proof gaps; do not fabricate credentials or pause implementation solely for them. Coordinator records exact checks, honest test-first ledger and build/native source evidence before checkpointing.
+
+Coordinator checkpoint verification2026-11-10: fresh developer node:delegated-task:command%3Amcp%3A44e93c94-ffbb-4f6d-ae4f-4a59ab199c23%3Adelegate-task%3A2d82bf72-f48b-42ca-a6fb-5f5e254aa59d completed T-4 with14 changed/new product files. Handback `/tmp/T-4-handback.md`, receipts `/tmp/T-4/`. Reviewed all14 files, including the native lifecycle Package and serialized Android SharedPreferences inbox: stable native UUID/UTC time persists before React/fonts/auth, app queue persists before native removal, genuine later same-URL intents get new IDs. Generated MobileAPI/CaptureContext owns authenticated transport. No iOS host path or speculative moveTaskToBack fallback. The one-line clipboard module Android version metadata repair was necessary after actual native compilation failed for missing versionName; clipboard behavior is unchanged.
+
+Coordinator independently PASS: apispec/shared build, disposable DB up/reset, focused mobile38, root loose typecheck plus shared/API/worker/mobile tsc, serial backend suites (shared397/API347/worker10), mobile lint/full108 with one existing skip, web lint/335tests, tokens:check and native `:share-queue:compileDebugKotlin`. All18 commands passed; logs `/tmp/t4-coordinator-checks/`. Diff checks pass. Earlier developer extra worker nofix lint used a nonexistent test directory and failed; adapted existing-source nofix lint passed with baseline warnings. This diagnostic is retained, not falsely labelled green.
+
+Developer built final signed INTERNAL Android EAS previewcaaef24d-5bbe-4e8d-824e-0421ea484d68; coordinator corroborated FINISHED via mobile-cwd CLI, independent APK signature verification, all14 current/archive product hashes, actual original public auth bytes and both compiled native classes. APK SHA256a81f761001e2340e02c606cbbdb2db666f2a9a3e59adc13224fbadc6b1bd3865; Hermes82e2a9c2cf13aaf4d9dc372795e3368ff927b5c404a289db38b2398ed3114b80; source manifeste9d9769d2e40e28b90c96f52206e5e56759ae1759aa12b3c3f4211246b3a6641 (1134files/links). This independently corroborates the developer's changed-source upload, not a claimed new coordinator upload. Temp profile restored, no service key/client auth weakening. Final package must rebuild its own source; compiled temporary branch API tunnel is stopped.
+
+Available native proof on host local/Pixel_7_API_34 Android14 emulator: final signed APK's real text/html ACTION_SEND captures firstURL, shows durable offline copy/Close at200%, then BackHandler.exitApp returns to the standalone fixture sender. Fresh no-link after activity exit retains exact copy/Close with no row. Genuine later same-URL arrival has a second ID; coordinator independently compared the recorded before/after-kill queue JSON as exactly equal and inspected final contact/no-link images. Validated-Wi-Fi signed-out text/plain retains row and reaches sign-in. Visual timing supports the1500ms source timer; no exact native millisecond budget is claimed. Actual signed-in no-tap/drain, account/rate/retry/timer/reader-state behavior passes through RNTL real root/AuthProvider/CaptureProvider/generated-API integration at explicitly fictional native/Supabase/fetch boundaries, not a real normal-issuer mobile session.
+
+Proof limitations: combined offline/signed-out/TalkBack criterion remains unchecked for actual normal-issuer matching-session replay and live spoken native TalkBack. TalkBack14.2 was installed and enabled via Settings, but UiAutomation left Bound services:{} and touch exploration false; live retention/announcement/Close is unproved. Native reader-boundary tests pass. Physical sender return and physical-only connectivity remain pending T-10 under the execution clarification. Implemented FR checkmarks do not imply these unavailable proofs passed. No release/merge grant or package gate changed.
+
+Process qualifications retained for whole-feature review: no-link/effect/queue characterizations first ran green; Kotlin boundary implementation first compiled green; supplementary RNTL integration followed URL/queue phase. The real no-link lifecycle regression remained red across superseded previews; initial receiver diagnosis was incomplete, and actual delayed-router assertion established auth-navigation overwrite. Pending-share navigation guard passed that red and final signed emulator regression. No later failing behavior started before the unresolved case was green. Three superseded previews, harness fixes, ABI/environment/compiler setup retries and imprecise original text-size float capture are disclosed in the handback. No tests were weakened/skipped to pass. Own device session/services/fixture state cleaned, restored EAS bytes/hooks preserved. Complete-package review rounds remain0.
 
 ### T-5 · Apply the plum mobile shell and three destinations
 
@@ -1072,7 +1084,7 @@ eas build --profile preview --platform all
 
 **Notes**
 
-Not started. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here. Pending package proof from T-2: actual normal-issuer native JWT/share-key issuance/save/revocation/offline Retry; final-source-bound EAS build; live signed-device/keychain behavior. User has no physical iPhone and directed simulator implementation; retain physical Wi-Fi/LTE/device-only outcomes as unavailable, never as passed. Preserve all simulator/XCTest/signed-profile evidence separately, and keep missing credentials or physical proof explicit at the package gate. Pending T-3 proof: normal-issuer host sign-in/key repair/revoked/offline Retry and signed app/extension interoperability; live spoken VoiceOver; all20 Wi-Fi plus20 LTE physical-radio latency trials; final package source-bound native previews. Simulator Safari/local-API capture, refused-transport persistence, signed-out bridge/relaunch, large-text/Reduce Motion and native26 fixtures passed and remain separately labelled. T-5 completes native mobile override/font-weight/Close-label integration.
+Not started. Coordinator records candidate SHA, exact checks/results, native evidence where required, Task trailer/checkpoint commit, and any blocker here. Pending package proof from T-2: actual normal-issuer native JWT/share-key issuance/save/revocation/offline Retry; final-source-bound EAS build; live signed-device/keychain behavior. User has no physical iPhone and directed simulator implementation; retain physical Wi-Fi/LTE/device-only outcomes as unavailable, never as passed. Preserve all simulator/XCTest/signed-profile evidence separately, and keep missing credentials or physical proof explicit at the package gate. Pending T-3 proof: normal-issuer host sign-in/key repair/revoked/offline Retry and signed app/extension interoperability; live spoken VoiceOver; all20 Wi-Fi plus20 LTE physical-radio latency trials; final package source-bound native previews. Simulator Safari/local-API capture, refused-transport persistence, signed-out bridge/relaunch, large-text/Reduce Motion and native26 fixtures passed and remain separately labelled. T-5 completes native mobile override/font-weight/Close-label integration. Pending T-4 proof: normal-issuer signed-in no-tap save/matching-user replay; live native spoken TalkBack/retained status/Close (automation suppresses service binding); physical sender return/connectivity. Final signed Android previewcaaef24d passed emulator offline sender return, distinct later intents, no-link lifecycle and durable kill/relaunch; RNTL fictional-boundary sign-in/drain and reader/timer checks pass separately. Final package source builds remain required.
 
 ## Implementation review
 

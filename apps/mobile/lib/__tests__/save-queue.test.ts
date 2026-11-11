@@ -100,3 +100,16 @@ it("a stale confirmation from a different account cannot change the original own
   await expect((saveQueue.confirm as any)(entry.id, { note: "Another account", laterUntil: null }, "other")).rejects.toThrow("account");
   expect((await saveQueue.list())[0].note).toBeUndefined();
 });
+it("Android retries retain stable ID, original time, attempts and attribution across rate limit and matching-user replay", async () => {
+  const entry = await saveQueue.enqueue({ sourceUrl: "https://example.com/android-replay", captureSource: "android_share", capturePlatform: "android" }, "reader");
+  const create = jest.fn().mockRejectedValueOnce({ response: new Response(null, { status: 429, headers: { "Retry-After": "120" } }) }).mockResolvedValue({ bookmark: { id: "accepted", userId: "reader" }, alreadySaved: true });
+  await saveQueue.drain("reader", { create } as any);
+  expect(await saveQueue.list()).toEqual([expect.objectContaining({ id: entry.id, queuedAt: entry.queuedAt, attempts: 1, captureSource: "android_share", capturePlatform: "android" })]);
+  await saveQueue.drain("other", { create } as any);
+  await saveQueue.drain("reader", { create } as any);
+  expect(create).toHaveBeenCalledTimes(1);
+  await saveQueue.patch(entry.id, { notBefore: new Date(Date.now() - 1).toISOString() });
+  await saveQueue.drain("reader", { create } as any);
+  expect(create.mock.calls[1][0]).toMatchObject({ sourceUrl: entry.url, queuedAt: new Date(entry.queuedAt), captureSource: "android_share", capturePlatform: "android" });
+  expect(await saveQueue.list()).toEqual([]);
+});

@@ -111,16 +111,19 @@ export const saveQueue = {
     return result;
   },
   list: () => serialized(read),
-  enqueue(params: CreateBookmarkRequest, userId?: string) {
+  enqueue(params: CreateBookmarkRequest, userId?: string, delivery?: { id: string; queuedAt: string }) {
     return serialized(async () => {
+      const entries = await read();
+      const existing = delivery && entries.find(entry => entry.id === delivery.id);
+      if (existing) return existing;
       const entry: SaveEntry = {
-        id: randomUUID(), url: params.sourceUrl, userId,
+        id: delivery?.id ?? randomUUID(), url: params.sourceUrl, userId,
         isPrivateLink: params.isPrivateLink, title: params.title, description: params.description,
         captureSource: params.captureSource!, capturePlatform: params.capturePlatform!,
-        queuedAt: new Date().toISOString(), attempts: 0,
+        queuedAt: delivery?.queuedAt ?? new Date().toISOString(), attempts: 0,
         note: params.userNote, laterUntil: params.laterUntil == null ? params.laterUntil : params.laterUntil.toISOString(),
       };
-      await AsyncStorage.setItem(KEY, JSON.stringify([...(await read()), entry]));
+      await AsyncStorage.setItem(KEY, JSON.stringify([...entries, entry]));
       return entry;
     });
   },

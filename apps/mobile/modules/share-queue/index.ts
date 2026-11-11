@@ -20,3 +20,13 @@ export function sharedKeychain(): ShareQueueNative {
 export function pendingShares(): ShareQueueReader | null {
   return Platform.OS === "ios" ? nativeModule : null;
 }
+
+export type AndroidShare = { id: string; text: string; queuedAt: string; offline: boolean };
+export interface AndroidShareBridge {
+  readAndroidShares(): Promise<string>;
+  removeAndroidShares(ids: string[]): Promise<void>;
+  addListener(event: "onAndroidShare", listener: () => void): { remove(): void };
+}
+export function androidShares(): AndroidShareBridge | null {
+  return Platform.OS === "android" ? nativeModule as unknown as AndroidShareBridge | null : null;
+}
