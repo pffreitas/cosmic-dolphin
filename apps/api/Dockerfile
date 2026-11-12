@@ -9,15 +9,20 @@ COPY package.json bun.lock ./
 
 # Copy workspace package.json files
 COPY packages/shared/package.json ./packages/shared/
+COPY packages/api-client/package.json ./packages/api-client/
 COPY apps/api/package.json ./apps/api/
 
-# Install all dependencies including workspace dependencies
-RUN bun install
+# Install dependencies; workspace builds run explicitly after their source is copied.
+RUN bun install --ignore-scripts
 
 # Copy shared package source and build it first
 COPY packages/shared ./packages/shared
 COPY tsconfig.json ./
 RUN bun run --cwd packages/shared build
+
+# Build the generated client imported by the API's compiled contract tests.
+COPY packages/api-client ./packages/api-client
+RUN bun run --cwd packages/api-client build
 
 # Copy API package source  
 COPY apps/api ./apps/api
