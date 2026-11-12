@@ -92,11 +92,11 @@ java >= 17  # Required for OpenAPI Generator
 git clone <repository-url>
 cd cosmic-dolphin
 
-# Install all dependencies (also generates API client)
+# Install dependencies; explicitly build/generate the API client when needed
 bun install
 
-# Start local database
-bun run db:up
+# Optional full local Supabase for app auth/RPC (tests use a separate Postgres)
+bunx supabase@2.122.1 start
 
 # Start development (see scenarios below)
 bun run dev:fullstack
@@ -353,31 +353,27 @@ API_URL=https://api.cosmic-dolphin.com
 
 ### Local Development
 
+Automated tests use the separate disposable Postgres described in [Testing](#-testing). They do not need the full Supabase stack. For app development requiring local Supabase auth/RPC, configure the environment for that local stack and use a CLI compatible with `supabase/config.toml`. Inventory the Docker context/resources before starting services.
+
 ```bash
-# Start Supabase locally
-bun run db:up
+# Optional full local Supabase stack; run from the repository root.
+bunx supabase@2.122.1 start
 
-# Run migrations
-cd supabase && supabase db push
-
-# Reset database
-bun run db:reset
+# Apply pending migrations explicitly to that local stack.
+bunx supabase@2.122.1 db push --local
 ```
+
+A local reset discards development data. For automated tests, use the documented `db:test:reset` flow with explicit local environment values instead.
 
 ### Migrations
 
-Migrations are in `supabase/migrations/` and managed via Supabase CLI:
+Migrations are in `supabase/migrations/`. Update the Kysely schema, repositories and contracts as appropriate, then verify the unmodified migrations against the disposable database.
 
 ```bash
-# Create new migration
-supabase migration new my_migration_name
-
-# Apply migrations locally
-supabase db push
-
-# Deploy to production (via CI/CD)
-supabase db push --linked
+bunx supabase@2.122.1 migration new my_migration_name
 ```
+
+Production migration application belongs to the authorized backend workflow and its tested CLI pin. Do not infer a local target from plain `db push`: CLI versions changed its defaults. See the [release runbook](docs/runbooks/backend-and-testflight-release.md) before a CLI upgrade or production migration.
 
 ---
 
@@ -409,38 +405,36 @@ await queueService.sendMessage('bookmarks', {
 
 GitHub Actions handles deployment with path-based filtering:
 
-| Workflow | Trigger Paths | Deploys |
-|----------|---------------|---------|
-| `deploy-api.yml` | `apps/api/**`, `packages/shared/**` | API service |
-| `deploy-worker.yml` | `apps/worker/**`, `packages/shared/**` | Worker service |
+| Workflow | Main trigger paths (examples) | Deploys |
+|----------|-------------------------------|---------|
+| `deploy-backend.yml` | `apps/api/**`, `apps/worker/**`, `packages/shared/**`, migrations and backend workflow | Tests → production migrations → API and Worker |
 | `deploy-web.yml` | `apps/web/**`, `packages/api-client/**` | Web app |
+| `deploy-mobile.yml` | Mobile/client/contract paths; manual `destination` input | Internal previews, or production iOS/TestFlight when manually selected |
+
+The workflow files are the source of truth for complete path filters. PR quality/accessibility checks are separate from deployment and can pass without exercising migrations or Docker image builds.
+
+Follow the [backend and TestFlight release runbook](docs/runbooks/backend-and-testflight-release.md). It covers fresh generated inputs, serial local tests, image workspaces, the compatible migration CLI, exact-head release evidence and Apple processing/group assignment. A green scheduling job is not TestFlight availability.
 
 ### Manual Docker Build
 
-```bash
-# Build individual services
-docker build -f apps/api/Dockerfile -t cosmic-dolphin-api .
-docker build -f apps/web/Dockerfile -t cosmic-dolphin-web .
-docker build -f apps/worker/Dockerfile -t cosmic-dolphin-worker .
-```
+Use a separately owned Docker build context when the default VM hosts other work. Inventory resources first; heavy compilation killed existing database containers in a shared 2 GB VM. The runbook gives explicit Linux API/worker build commands for a dedicated Colima profile, source isolation and cleanup. Do not stop or resize shared services to make room for a build.
 
 ---
 
 ## 🧪 Testing
 
 ```bash
-# Start the disposable local Postgres, apply all migrations, run backend tests.
-# No hosted Supabase project, account, or secret needed.
-bun run test:db
+# Fresh contract tests read compiled OpenAPI.
+bun run apispec:compile
+COMPOSE_PROJECT_NAME=cosmic-dolphin bun run db:test:up
+DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/postgres NODE_ENV=test COMPOSE_PROJECT_NAME=cosmic-dolphin bun run db:test:reset
+DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/postgres NODE_ENV=test COMPOSE_PROJECT_NAME=cosmic-dolphin bun run test:backend -- --env-mode=loose --concurrency=1
 
-# On subsequent runs, while the container is still running:
-bun run test:backend
-
-# Stop the container and discard the data:
-bun run db:test:down
+# Only after every task using this disposable database has finished:
+COMPOSE_PROJECT_NAME=cosmic-dolphin bun run db:test:down
 ```
 
-The test harness defaults to `postgres://postgres:postgres@127.0.0.1:5433/postgres`.
+The test harness defaults to `postgres://postgres:postgres@127.0.0.1:5433/postgres`. Shared/API/worker suites truncate the same tables and must run serially, without native/API fixtures using that database.
 Use `.env.test.example` only to override the local connection. The CI test job
 uses the same container flow; the Supabase CLI and production credentials are
 used only by the deployment migration job. See
@@ -457,7 +451,7 @@ commands and safety details.
 |-------|----------|
 | Port already in use | Check for running processes: `lsof -i :3000` |
 | API client outdated | Regenerate: `bun run apispec` |
-| Database connection failed | Ensure database is running: `bun run db:up` |
+| Database connection failed | Check the configured SQL/Supabase endpoints and the appropriate local stack; tests use `bun run db:test:up` |
 | Build fails | Clean and rebuild: `bun run clean && bun run build` |
 | Type errors after API change | Regenerate client and fix imports |
 
@@ -497,6 +491,9 @@ cd apps/api && bun --inspect run dev
 - **API Specification**: `packages/apispec/*.tsp`
 - **Shared Package**: `packages/shared/README.md`
 - **Deployment Configs**: `.do/*.yml`
+- **Agent guidance**: [AGENTS.md](AGENTS.md)
+- **Release runbook**: [Backend and TestFlight](docs/runbooks/backend-and-testflight-release.md)
+- **Retrospective**: [Save + Today’s 5](docs/retrospectives/2026-11-12-save-and-todays-5.md)
 
 ---
 
