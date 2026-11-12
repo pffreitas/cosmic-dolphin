@@ -139,6 +139,30 @@ Dark is a first-class translation, not an inversion. Three rules:
 3. Never carry a light-mode literal into a dark surface. Every colour on a surface comes from the
    same token set as that surface.
 
+### Mobile plum override
+
+The Save and Today’s 5 mobile shell uses `color.mobile.light` and
+`color.mobile.dark` in `tokens.json`. The generator validates every override name
+against the canonical color keys, merges each mode, then resolves aliases. The
+native iOS share panel consumes the same effective palette. Web CSS and every
+other Signal token keep their canonical values.
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| accent | `#5A2950` | `#E3B9DA` |
+| accent-hover | `#6E3563` | `#D4A5CB` |
+| accent-fg | `#FCF7FB` | `#2A1026` |
+| accent-soft | `#F4E8F1` | `#36202F` |
+| accent-border | `#D9BCD2` | `#6B4462` |
+| focus | `{accent}` | `{accent}` |
+
+Text remains at least 4.5:1 and meaningful icons/focus outlines at least 3:1.
+Accent borders and `border-strong` reinforce labelled controls; they do not
+identify controls on their own (see the existing exception in `audit.md`).
+Content follows uncapped Dynamic Type. Tab and control labels cap at 1.3×,
+with growing touch targets and wrapping rows. Keyboard focus uses a 2px outline
+with a 2px offset; reduced motion keeps sheets and progress indicators still.
+
 ## Typography
 
 Two voices, and the split is the single most load-bearing rule in the system.
@@ -263,19 +287,35 @@ Non-negotiable, and treated as build-breaking rather than as polish:
 
 ## Brand
 
-`components/brand/logo.tsx`. The mark is a leaping arc over a single point of light on a 9/32-radius
-accent tile — the "quiet metaphor for depth and connection" of decision 11, drawn rather than
-borrowed. It replaced a 🐬 emoji, which rendered differently on every platform and could take
-neither the accent, a size, nor dark mode.
+The approved identity is the teal dolphin, luminous violet orbit, and guiding star
+on a **Plum shadow** background. The October 24, 2026 selection supersedes the
+light recoloring and flat navy experiments. The artwork itself stays unchanged.
 
-- `LogoMark` — the tile alone, 24px by default, coloured through `fill-accent` /
-  `stroke-accent-fg`, so it translates to dark mode with everything else. Decorative unless given a
-  `title`.
-- `Brandmark` — mark plus "Cosmic Dolphin" at 15px/600, -0.015em, linking home. The one lockup.
-- `app/icon.svg` — the favicon copy of the same geometry, with literals, because a favicon cannot
-  read CSS.
+The background is identical in both themes: a 125-degree gradient from
+`brand-plum` through `brand-mid` at 48% to `brand-black`, with `brand-edge` as
+its fine boundary and `brand-fg` for the wordmark. Values live in `tokens.json`
+and are generated into both clients. No per-theme recoloring or white backing.
 
-Never a dolphin illustration in app chrome, never the mark recoloured outside the accent tokens.
+- Web `Brandmark`: an accessible home link containing a complete gradient
+  capsule and live Inter lettering. Public headers use a compact tile below
+  640px so account actions remain reachable. The same component covers the
+  sidebar, sign-in, sign-up, password reset, and footer.
+- Web `LogoMark`: a gradient tile for compact toolbars, navigation, and inline
+  marketing marks. It is decorative unless given a title.
+- Mobile `BrandSignature`: one accessible capsule in the home top bar and auth
+  screens. The top bar retains heading semantics. `BrandMark` supplies the
+  compact tile. Both use bundled artwork and a generated gradient surface.
+- Launcher icons, favicon, and Apple touch icon always use Plum shadow. Android
+  adaptive icons use a transparent foreground inside the safe zone and a
+  separate full-size gradient background, never a flat fallback as the artwork.
+- Native splash uses a larger gradient plaque on the current system surface;
+  the plaque's artwork, white lettering, and gradient are the same in both
+  appearances. Full-screen artwork uses contain scaling to avoid cropping.
+
+`assets/branding/cosmic-dolphin-master.png` is the source artwork. Run
+`bun run brand:generate` to derive all platform assets, and `bun run tokens`
+after token changes. Placement dimensions and native rebuild requirements are
+in `assets/branding/README.md`. Keep the illustration in these brand placements.
 
 ## Icons
 

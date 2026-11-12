@@ -5,7 +5,7 @@ import { z } from "zod";
 // upstream provider's JSON schema implementation.
 export const SUMMARY_SCHEMA = z.object({
   contentStatus: z.enum(["ok", "unusable"]),
-  unusableReason: z.string(),
+  unusableReason: z.enum(["paywall", "consent", "error_page", "empty", "other"]).nullable(),
   brief: z.string(),
   overview: z.string(),
   keyPoints: z.array(z.string()),

@@ -1,5 +1,6 @@
 import { Bookmark, BookmarkImage, ScrapedUrlContents } from "../types";
 import { BookmarkService } from "./bookmark.service";
+import { ContentExtractionError } from "./content-extraction";
 import { AI } from "../ai";
 import { NoObjectGeneratedError } from "ai";
 import { z } from "zod";
@@ -77,9 +78,14 @@ interface ChunkingResult {
   chunkTexts: string[];
 }
 
+class UnusableSourceError extends Error {
+  constructor(public readonly code: "paywall" | "blocked" | "unavailable" | "empty") { super("Unusable source"); }
+}
+
 interface PhaseFailure {
   phase: BookmarkProcessingPhaseName;
   error: string;
+  unusableCode?: UnusableSourceError["code"];
 }
 
 interface SummariseResult {
@@ -90,6 +96,7 @@ interface SummariseResult {
 }
 
 interface ProcessableContent {
+  kind: SummariseContentKind;
   text: string;
   truncated: boolean;
   originalChars: number;
@@ -129,12 +136,10 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
    * finishing at once, and the two summary calls were two lines for one
    * *Summarising…* step.
    *
-   * **Partial failure is normal and must survive.** Only `fetch` is fatal:
-   * without the page there is nothing for any later phase to work on. Every
-   * other phase is run softly — it records a failed event, and the pipeline
-   * carries on with what it has. A bookmark whose `summarise` failed still
-   * gets its tags, its filing and its content; the run ends `failed`, and the
-   * UI shows the failed line in place of the brief, not in place of the page.
+   * Fetch failures and positively unusable summaries stop this pipeline. An
+   * unusable summary clears the brief, prose and points before any tag, file
+   * or embed work. Other phase failures remain soft: they record a failed
+   * event and preserve useful work from the remaining phases.
    */
   async process(
     id: string,
@@ -250,6 +255,15 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
           }
         }
 
+        const unusable = failures.find(failure => failure.unusableCode);
+        if (unusable?.unusableCode) {
+          await this.bookmarkService.update(id, { cosmicBriefSummary: "", cosmicSummary: "", cosmicKeyPoints: [], processingFailureCode: unusable.unusableCode });
+          await this.bookmarkService.updateProcessingStatus(id, "failed", "Unusable source");
+          await reporter.failRun("Unusable source");
+          console.info("Processing failure classified", { bookmark_id: id, phase: "summarise", code: unusable.unusableCode });
+          return;
+        }
+
         if (inScope("tag")) {
           const tags = await this.runPhase(
             reporter,
@@ -329,6 +343,11 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       await this.bookmarkService.updateProcessingStatus(id, "completed");
       await reporter.completeRun();
     } catch (error) {
+      if (error instanceof ContentExtractionError) {
+        const code = error.code === "pending" ? "provider" : error.code;
+        await this.bookmarkService.update(id, { processingFailureCode: code });
+        console.info("Processing failure classified", { bookmark_id: id, phase: "fetch", code });
+      }
       // Only a fatal phase reaches here — the fetch, or the timeline itself
       // being unavailable. Everything else was already absorbed by `runPhase`.
       const errorMessage =
@@ -341,12 +360,13 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       if (reporter.hasStarted()) {
         await reporter.failRun(errorMessage);
       }
-      // The bookmark and its run are now durably terminal. pgmq must archive
-      // this delivery instead of making the same job processing again after
-      // its visibility timeout. A user can still explicitly retry a phase.
+      // Explicitly classified transient extraction failures can recover on
+      // pgmq redelivery. Unknown/terminal failures still require manual retry.
       const terminalError =
         error instanceof Error ? error : new Error(errorMessage);
-      Object.assign(terminalError, { shouldRetry: false });
+      Object.assign(terminalError, {
+        shouldRetry: error instanceof ContentExtractionError && error.shouldRetry,
+      });
       throw terminalError;
     }
   }
@@ -380,8 +400,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       return await reporter.trackPhase(phase, name, work);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`Bookmark processing phase "${phase}" failed:`, error);
-      failures?.push({ phase, error: message });
+      failures?.push({ phase, error: message, ...(error instanceof UnusableSourceError ? { unusableCode: error.code } : {}) });
       return undefined;
     }
   }
@@ -563,11 +582,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     content: ProcessableContent,
     phaseReporter: BookmarkProcessingPhaseReporter
   ): Promise<SummariseResult> {
-    const kind: SummariseContentKind = this.isTwitterBookmark(bookmark)
-      ? "tweet"
-      : this.isYouTubeBookmark(bookmark)
-        ? "youtube"
-        : "article";
+    const kind = content.kind;
     const prompt = (briefOnly: boolean) => buildSummarisePrompt({
       content: content.text,
       kind,
@@ -635,14 +650,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     }
 
     if (record.contentStatus === "unusable") {
-      return {
-        summary: "",
-        briefSummary: clampText(
-          bookmark.metadata?.openGraph?.description || bookmark.cosmicBriefSummary || "",
-          240
-        ),
-        keyPoints: [],
-      };
+      const codes = { paywall: "paywall", consent: "blocked", error_page: "unavailable", empty: "empty", other: "empty" } as const;
+      throw new UnusableSourceError(codes[record.unusableReason as keyof typeof codes] ?? "empty");
     }
 
     const keyPoints = normaliseKeyPoints(record.keyPoints);
@@ -701,7 +710,6 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     try {
       return await this.bookmarkService.getTopTags(userId, TAG_CANDIDATE_LIMIT);
     } catch (error) {
-      console.error("Failed to read the user's tag vocabulary:", error);
       return [];
     }
   }
@@ -710,11 +718,15 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     bookmark: Bookmark,
     content: ScrapedUrlContents
   ): ProcessableContent {
-    // Twitter content and YouTube transcripts are already plain text.
-    const text = this.isTwitterBookmark(bookmark) || this.isYouTubeBookmark(bookmark)
-      ? (content.content ?? "")
-      : this.chunkingService.stripHtml(content.content ?? "");
-    return { ...budgetText(text), originalChars: text.length };
+    // Pasted articles are escaped HTML even when the original URL is a video or post.
+    const pasted = content.metadata?.extraction?.provider === "user_paste";
+    const kind: SummariseContentKind = !pasted && this.isTwitterBookmark(bookmark)
+      ? "tweet"
+      : !pasted && this.isYouTubeBookmark(bookmark) ? "youtube" : "article";
+    const text = kind === "article"
+      ? this.chunkingService.stripHtml(content.content ?? "")
+      : (content.content ?? "");
+    return { ...budgetText(text), originalChars: text.length, kind };
   }
 
   private buildSearchDocument(
@@ -877,7 +889,6 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
               description: image.description,
             };
           } catch (error) {
-            console.error(`Failed to process image ${image.url}:`, error);
             return null;
           }
         }
@@ -886,7 +897,6 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       const processedImages = await Promise.all(imageProcessingPromises);
       images.push(...processedImages.filter((img) => img !== null));
     } catch (error) {
-      console.error("Failed to process images:", error);
       throw error;
     }
     return images;

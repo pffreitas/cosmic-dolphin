@@ -13,12 +13,57 @@
  */
 
 import { mapValues } from '../runtime';
+import type { CapturePlatform } from './CapturePlatform';
+import {
+    CapturePlatformFromJSON,
+    CapturePlatformFromJSONTyped,
+    CapturePlatformToJSON,
+    CapturePlatformToJSONTyped,
+} from './CapturePlatform';
+import type { CaptureSource } from './CaptureSource';
+import {
+    CaptureSourceFromJSON,
+    CaptureSourceFromJSONTyped,
+    CaptureSourceToJSON,
+    CaptureSourceToJSONTyped,
+} from './CaptureSource';
+
 /**
  * 
  * @export
  * @interface CreateBookmarkRequest
  */
 export interface CreateBookmarkRequest {
+    /**
+     * Optional private note, independent of the private-link description.
+     * @type {string}
+     * @memberof CreateBookmarkRequest
+     */
+    userNote?: string;
+    /**
+     * Future snooze expiry within 60 days; null means No rush.
+     * @type {Date}
+     * @memberof CreateBookmarkRequest
+     */
+    laterUntil?: Date | null;
+    /**
+     * Capture entry used by this save; omission remains NULL for previous clients.
+     * @type {CaptureSource}
+     * @memberof CreateBookmarkRequest
+     */
+    captureSource?: CaptureSource;
+    /**
+     * Capture platform; omission is stored as unknown.
+     * @type {CapturePlatform}
+     * @memberof CreateBookmarkRequest
+     */
+    capturePlatform?: CapturePlatform;
+    /**
+     * Original device queue timestamp, preserved on replay.
+     * @type {Date}
+     * @memberof CreateBookmarkRequest
+     */
+    queuedAt?: Date;
     /**
      * The source URL to bookmark
      * @type {string}
@@ -57,6 +102,8 @@ export interface CreateBookmarkRequest {
     isPrivateLink?: boolean;
 }
 
+
+
 /**
  * Check if a given object implements the CreateBookmarkRequest interface.
  */
@@ -75,6 +122,11 @@ export function CreateBookmarkRequestFromJSONTyped(json: any, ignoreDiscriminato
     }
     return {
         
+        'userNote': json['user_note'] == null ? undefined : json['user_note'],
+        'laterUntil': json['later_until'] == null ? json['later_until'] : (new Date(json['later_until'])),
+        'captureSource': json['capture_source'] == null ? undefined : CaptureSourceFromJSON(json['capture_source']),
+        'capturePlatform': json['capture_platform'] == null ? undefined : CapturePlatformFromJSON(json['capture_platform']),
+        'queuedAt': json['queued_at'] == null ? undefined : (new Date(json['queued_at'])),
         'sourceUrl': json['source_url'],
         'collectionId': json['collection_id'] == null ? undefined : json['collection_id'],
         'title': json['title'] == null ? undefined : json['title'],
@@ -95,6 +147,11 @@ export function CreateBookmarkRequestFromJSONTyped(json: any, ignoreDiscriminato
 
     return {
         
+        'user_note': value['userNote'],
+        'later_until': value['laterUntil'] == null ? value['laterUntil'] : ((value['laterUntil'] as any).toISOString()),
+        'capture_source': CaptureSourceToJSON(value['captureSource']),
+        'capture_platform': CapturePlatformToJSON(value['capturePlatform']),
+        'queued_at': value['queuedAt'] == null ? undefined : ((value['queuedAt']).toISOString()),
         'source_url': value['sourceUrl'],
         'collection_id': value['collectionId'],
         'title': value['title'],

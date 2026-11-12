@@ -1,10 +1,12 @@
-import React, { type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { type ReactNode } from "react";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
-import { textStyle } from '@/constants/fonts';
-import { radius, space } from '@/constants/theme';
-import { PRESSED_OPACITY, useTheme } from '@/hooks/useTheme';
+import { BrandSignature } from "@/components/BrandMark";
+import { textStyle } from "@/constants/fonts";
+import { radius, space } from "@/constants/theme";
+import { useControlFocus } from "@/hooks/useControlFocus";
+import { PRESSED_OPACITY, useTheme } from "@/hooks/useTheme";
 
 export const TOP_BAR_HEIGHT = 52;
 
@@ -36,7 +38,11 @@ export function TopBar({
         styles.bar,
         {
           backgroundColor: colors.bg,
-          borderBottomColor: bordered ? colors.border : 'transparent',
+          minHeight:
+            title === "Cosmic Dolphin" && subtitle
+              ? TOP_BAR_HEIGHT + space.s5
+              : TOP_BAR_HEIGHT,
+          borderBottomColor: bordered ? colors.border : "transparent",
           borderBottomWidth: bordered ? StyleSheet.hairlineWidth : 0,
         },
       ]}
@@ -45,23 +51,37 @@ export function TopBar({
         {onBack ? (
           <TopBarAction icon="chevron-back" label="Go back" onPress={onBack} />
         ) : null}
-        <View style={styles.titles}>
-          <Text
-            style={[textStyle('body'), styles.title, { color: colors.fg }]}
-            numberOfLines={1}
-            accessibilityRole="header"
-          >
-            {title}
-          </Text>
-          {subtitle ? (
+        {title === "Cosmic Dolphin" ? (
+          <View style={styles.brandTitles}>
+            <BrandSignature size={32} heading />
+            {subtitle ? (
+              <Text
+                style={[textStyle("meta"), { color: colors.fgTertiary }]}
+                numberOfLines={1}
+              >
+                {subtitle}
+              </Text>
+            ) : null}
+          </View>
+        ) : (
+          <View style={styles.titles}>
             <Text
-              style={[textStyle('meta'), { color: colors.fgTertiary }]}
-              numberOfLines={1}
+              style={[textStyle("body"), styles.title, { color: colors.fg }]}
+              maxFontSizeMultiplier={1.3}
+              accessibilityRole="header"
             >
-              {subtitle}
+              {title}
             </Text>
-          ) : null}
-        </View>
+            {subtitle ? (
+              <Text
+                style={[textStyle("meta"), { color: colors.fgTertiary }]}
+                numberOfLines={1}
+              >
+                {subtitle}
+              </Text>
+            ) : null}
+          </View>
+        )}
       </View>
       {actions ? <View style={styles.actions}>{actions}</View> : null}
     </View>
@@ -77,26 +97,36 @@ export function TopBarAction({
   label,
   onPress,
   tint,
+  avatar,
 }: {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
+  icon: React.ComponentProps<typeof Ionicons>["name"];
   label: string;
   onPress: () => void;
   tint?: string;
+  avatar?: { uri?: string; initial: string };
 }) {
   const { colors } = useTheme();
+  const { focusStyle, ...focusEvents } = useControlFocus();
 
   return (
     <Pressable
+      {...focusEvents}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
       hitSlop={space.s2}
       style={({ pressed }) => [
         styles.action,
-        { backgroundColor: pressed ? colors.bgInset : 'transparent' },
+        focusStyle,
+        { backgroundColor: pressed ? colors.bgInset : "transparent" },
       ]}
     >
-      <Ionicons name={icon} size={20} color={tint ?? colors.fgSecondary} />
+      {avatar ? (
+        avatar.uri ? <Image source={{ uri: avatar.uri }} style={styles.avatar} /> :
+          <View style={[styles.avatar, { backgroundColor: colors.accent }]}>
+            <Text maxFontSizeMultiplier={1.3} style={[textStyle("label"), { color: colors.accentFg }]}>{avatar.initial}</Text>
+          </View>
+      ) : <Ionicons name={icon} size={20} color={tint ?? colors.fgSecondary} />}
     </Pressable>
   );
 }
@@ -108,36 +138,42 @@ export function pressedOpacity(pressed: boolean) {
 
 const styles = StyleSheet.create({
   bar: {
-    height: TOP_BAR_HEIGHT,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    minHeight: TOP_BAR_HEIGHT,
+    paddingVertical: space.s1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: space.s3,
     gap: space.s2,
   },
   leading: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: space.s1,
   },
   titles: {
     flex: 1,
     paddingHorizontal: space.s1,
   },
-  title: {
-    fontWeight: '600',
-  },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  brandTitles: {
+    flex: 1,
     gap: space.s1,
   },
+  title: {
+    fontWeight: "600",
+  },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.s1,
+  },
+  avatar: { width: 28, height: 28, borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
   action: {
     width: 44,
     height: 44,
     borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

@@ -1,4 +1,6 @@
 import { TwitterServiceImpl, TwitterScrapingError } from "../../services/twitter.service";
+import { BrowserExtractionProvider } from "../../services/extraction-providers";
+import { ContentExtractionError } from "../../services/content-extraction";
 import { HttpClient } from "../../services/http-client";
 
 const makeJsonResponse = (body: object, ok = true) => ({
@@ -37,6 +39,7 @@ const fxResponse = (overrides: Record<string, unknown> = {}) =>
 describe("TwitterService", () => {
   let mockHttpClient: jest.Mocked<HttpClient>;
   let twitterService: TwitterServiceImpl;
+  let browser: jest.Mocked<BrowserExtractionProvider>;
 
   beforeEach(() => {
     mockHttpClient = {
@@ -44,7 +47,8 @@ describe("TwitterService", () => {
       post: jest.fn(),
       get: jest.fn(),
     } as any;
-    twitterService = new TwitterServiceImpl(mockHttpClient);
+    browser = { extract: jest.fn(), extractYouTube: jest.fn(), extractTweet: jest.fn().mockRejectedValue(new Error("Browser unavailable")) };
+    twitterService = new TwitterServiceImpl(mockHttpClient, browser);
   });
 
   describe("isTwitterUrl", () => {
@@ -158,6 +162,37 @@ describe("TwitterService", () => {
       expect(result.title).toBe("Tweet by jack");
       expect(result.content).toContain("just setting up my twttr");
       expect(result.metadata.openGraph?.site_name).toBe("X (formerly Twitter)");
+    });
+
+    it("recovers a targeted post in the browser before the OG fallback", async () => {
+      mockHttpClient.fetch.mockRejectedValue(new Error("Provider unavailable"));
+      browser.extractTweet.mockResolvedValue({ title: "Post by Alice", content: "Actual post text", images: [], links: [], metadata: { extraction: { status: "complete", provider: "lightpanda", fetchedAt: new Date().toISOString() } } });
+      const result = await twitterService.scrape("https://x.com/alice/status/123");
+      expect(result.content).toBe("Actual post text");
+      expect(result.metadata.extraction?.provider).toBe("lightpanda");
+      expect(mockHttpClient.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not open a browser when APIs succeed or for previews", async () => {
+      mockHttpClient.fetch.mockResolvedValueOnce(fxResponse());
+      await twitterService.scrape("https://x.com/alice/status/123");
+      mockHttpClient.fetch.mockRejectedValue(new Error("Blocked"));
+      await expect(twitterService.scrape("https://x.com/alice/status/123", { metadataOnly: true })).rejects.toBeDefined();
+      expect(browser.extractTweet).not.toHaveBeenCalled();
+    });
+
+    it("does not accept an empty oEmbed post instead of browser recovery", async () => {
+      mockHttpClient.fetch.mockRejectedValueOnce(new Error("Blocked"))
+        .mockResolvedValueOnce(makeJsonResponse({ author_name: "Alice", html: "<blockquote></blockquote>" }));
+      browser.extractTweet.mockResolvedValue({ title: "Recovered", content: "Real post", images: [], links: [], metadata: {} });
+      expect((await twitterService.scrape("https://x.com/alice/status/123")).content).toBe("Real post");
+    });
+
+    it("retains terminal browser authentication classification", async () => {
+      mockHttpClient.fetch.mockRejectedValue(new Error("Blocked"));
+      browser.extractTweet.mockRejectedValue(new ContentExtractionError("Private post", "auth", false));
+      await expect(twitterService.scrape("https://x.com/alice/status/123")).rejects.toMatchObject({ code: "auth", shouldRetry: false });
+      expect(mockHttpClient.fetch).toHaveBeenCalledTimes(2);
     });
 
     it("should fall back to OG metadata when fxtwitter and oEmbed both fail", async () => {

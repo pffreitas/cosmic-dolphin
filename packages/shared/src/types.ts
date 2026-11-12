@@ -216,7 +216,18 @@ export interface BookmarkProcessingTimeline {
   pollAfterMs: number;
 }
 
-export interface Bookmark extends BaseEntity {
+export type CaptureSource = "ios_share_extension" | "android_share" | "save_sheet" | "clipboard";
+export type CapturePlatform = "ios" | "android" | "web" | "unknown";
+export interface CaptureFields {
+  userNote?: string | null;
+  laterUntil?: Date | null;
+  captureSource?: CaptureSource | null;
+  capturePlatform?: CapturePlatform | null;
+  captureQueuedAt?: Date | null;
+}
+export type ProcessingFailureCode = "auth" | "blocked" | "empty" | "unsupported" | "unavailable" | "provider" | "paywall";
+export interface Bookmark extends BaseEntity, CaptureFields {
+  processingFailureCode?: ProcessingFailureCode | null;
   sourceUrl: string;
   collectionId?: string;
   collectionPath?: CollectionPathItem[];
@@ -325,7 +336,18 @@ export interface ScrapedUrlContents extends BaseEntity {
   bookmarkId: string;
   title: string;
   content: string;
-  metadata: BookmarkMetadata;
+  metadata: BookmarkMetadata & {
+    /** Internal extraction provenance, stored on the content row only. */
+    extraction?: {
+      status: "complete" | "unavailable" | "pending";
+      provider: string;
+      fetchedAt?: string;
+      language?: string;
+      jobId?: string;
+      error?: string;
+      retryable?: boolean;
+    };
+  };
   images?: {
     url: string;
     alt: string;
@@ -389,6 +411,11 @@ export type BookmarkProcessingPhase =
   | "embed";
 
 export interface CreateBookmarkRequest {
+  user_note?: string;
+  later_until?: string | null;
+  capture_source?: CaptureSource;
+  capture_platform?: CapturePlatform;
+  queued_at?: string;
   source_url: string;
   collection_id?: string;
   title?: string;
@@ -692,8 +719,10 @@ export interface BlockResponse {
   blocked: boolean;
 }
 
+export type PublicBookmark = Omit<Bookmark, keyof CaptureFields | "processingFailureCode" | "processingError" | "processingStartedAt" | "processingCompletedAt">;
+
 export interface PublicSavesResponse {
-  bookmarks: Bookmark[];
+  bookmarks: PublicBookmark[];
   /** Absent when this page is the last one. */
   nextCursor?: string;
 }
@@ -854,3 +883,10 @@ export interface CreateReportResult {
 export type assertCommentAuthorHasNoEmail = Assert<
   "email" extends keyof CommentAuthor ? false : true
 >;
+export interface TodayPicksResponse {
+  localDate: string;
+  refreshesAt: Date;
+  computedAt?: Date;
+  revealsAt?: Date;
+  items: { position: number; bookmark: Bookmark; reason: string }[];
+}

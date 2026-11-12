@@ -79,7 +79,7 @@ export function CreateCollectionRequestFromJSONTyped(json: any, ignoreDiscrimina
         'description': json['description'] == null ? undefined : json['description'],
         'color': json['color'] == null ? undefined : json['color'],
         'icon': json['icon'] == null ? undefined : json['icon'],
-        'parentId': json['parentId'] == null ? undefined : json['parentId'],
+        'parentId': json['parentId'] == null ? json['parentId'] : json['parentId'],
         'isPublic': json['isPublic'] == null ? undefined : json['isPublic'],
     };
 }

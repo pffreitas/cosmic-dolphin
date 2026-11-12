@@ -8,13 +8,19 @@
  *   bun run tokens          regenerate
  *   bun run tokens:check    fail if this file is stale
  *
- * Left out on purpose: nav-glass, nav-shadow and the elevation tokens are CSS
+ * Left out on purpose: brand-gradient, nav-glass, nav-shadow and the elevation tokens are CSS
  * gradients and box-shadows, which React Native has no equivalent for. Signal
  * frames with borders rather than elevation, so mobile does not need them.
  */
 
 export const colors = {
   light: {
+    /* Plum shadow brand */
+    brandPlum: '#34162F',
+    brandMid: '#160D1B',
+    brandBlack: '#050509',
+    brandEdge: '#49273E',
+    brandFg: '#F4F3FC',
     /* Surfaces */
     bg: '#FFFFFF',
     bgSubtle: '#F8F6F3',
@@ -28,11 +34,11 @@ export const colors = {
     border: '#E6E3E0',
     borderStrong: '#D3D0CC',
     /* Accent */
-    accent: '#25221F',
-    accentHover: '#3E3B37',
-    accentFg: '#FDFBFA',
-    accentSoft: '#EEEAE6',
-    accentBorder: '#CBC6C1',
+    accent: '#5A2950',
+    accentHover: '#6E3563',
+    accentFg: '#FCF7FB',
+    accentSoft: '#F4E8F1',
+    accentBorder: '#D9BCD2',
     /* State */
     like: '#C4255E',
     success: '#13793A',
@@ -40,7 +46,7 @@ export const colors = {
     danger: '#CC2121',
     hlBg: '#FAECC4',
     hlLine: '#DEB866',
-    focus: '#25221F',
+    focus: '#5A2950',
     overlay: 'rgba(24,20,16,.45)',
     /* Identity */
     id1: '#88452A',
@@ -61,6 +67,12 @@ export const colors = {
     brandGround: '#010317',
   },
   dark: {
+    /* Plum shadow brand */
+    brandPlum: '#34162F',
+    brandMid: '#160D1B',
+    brandBlack: '#050509',
+    brandEdge: '#49273E',
+    brandFg: '#F4F3FC',
     /* Surfaces */
     bg: '#12100E',
     bgSubtle: '#171513',
@@ -74,11 +86,11 @@ export const colors = {
     border: '#2E2B29',
     borderStrong: '#423F3C',
     /* Accent */
-    accent: '#EAE7E4',
-    accentHover: '#D4D0CC',
-    accentFg: '#181613',
-    accentSoft: '#302D29',
-    accentBorder: '#514C47',
+    accent: '#E3B9DA',
+    accentHover: '#D4A5CB',
+    accentFg: '#2A1026',
+    accentSoft: '#36202F',
+    accentBorder: '#6B4462',
     /* State */
     like: '#F472A0',
     success: '#4ADE80',
@@ -86,7 +98,7 @@ export const colors = {
     danger: '#F87171',
     hlBg: '#413315',
     hlLine: '#9C7B31',
-    focus: '#EAE7E4',
+    focus: '#E3B9DA',
     overlay: 'rgba(0,0,0,.55)',
     /* Identity */
     id1: '#F8B69C',

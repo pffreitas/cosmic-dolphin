@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cosmic Dolphin — brand placements</title>
+<style>
+@font-face{font-family:Inter;src:url(../../apps/mobile/assets/fonts/Inter-600.ttf)}
+*{box-sizing:border-box}body{margin:0;font:14px Inter,sans-serif;background:transparent}
+.themes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.theme{padding:24px;border-radius:16px;overflow:hidden;background:#fff;color:#191714}
+.dark{background:#12100e;color:#f2f0ed}.label{font-size:12px;opacity:.7;margin:28px 0 12px}
+h2{font-size:18px;margin:0 0 28px;font-weight:600}.hero{display:block;width:160px;height:160px;margin:0 auto 24px}.header{display:block;width:100%;height:auto}
+.icons{display:flex;align-items:center;gap:16px;min-height:96px}.icons img{border-radius:22%}
+.phone{width:150px;max-width:100%;margin:0 auto;border-radius:24px;overflow:hidden;border:1px solid #80808040}
+.phone img{display:block;width:100%;height:auto}
+.note{font-size:12px;line-height:1.6;margin:20px 0 0;opacity:.7}
+@media(max-width:540px){.themes{grid-template-columns:1fr}.theme{padding:24px}.phone{width:150px}}
+</style>
+<div class="themes">
+<section class="theme">
+<h2>Light</h2>
+<img class="hero" src="brand-tile.png" alt="Teal dolphin with a luminous violet orbit and guiding star">
+<p class="label">Header · Plum shadow capsule</p>
+<img class="header" src="header-light.png" alt="Cosmic Dolphin light header logo">
+<p class="label">Launcher icon · three sizes</p>
+<div class="icons"><img src="icon-light.png" width="96" height="96" alt="Light app icon"><img src="icon-light.png" width="48" height="48" alt=""><img src="icon-light.png" width="24" height="24" alt=""></div>
+<p class="label">Splash screen</p>
+<div class="phone"><img src="splash-light.png" alt="Light mobile splash screen"></div>
+<p class="note">The approved Plum shadow capsule stays dark on the light application surface.</p>
+</section>
+<section class="theme dark">
+<h2>Dark</h2>
+<img class="hero" src="brand-tile.png" alt="Teal dolphin with a luminous violet orbit and guiding star">
+<p class="label">Header · Plum shadow capsule</p>
+<img class="header" src="header-dark.png" alt="Cosmic Dolphin dark header logo">
+<p class="label">Launcher icon · three sizes</p>
+<div class="icons"><img src="icon-dark.png" width="96" height="96" alt="Dark app icon"><img src="icon-dark.png" width="48" height="48" alt=""><img src="icon-dark.png" width="24" height="24" alt=""></div>
+<p class="label">Splash screen</p>
+<div class="phone"><img src="splash-dark.png" alt="Dark mobile splash screen"></div>
+<p class="note">The same gradient, artwork, and white lettering carry through dark mode.</p>
+</section>
+</div>
+</html>

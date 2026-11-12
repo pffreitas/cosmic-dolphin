@@ -16,6 +16,8 @@
 import * as runtime from '../runtime';
 import type {
   Bookmark,
+  BookmarkContent,
+  BookmarkCreateResponse,
   BookmarkError,
   BookmarkLibraryCounts,
   BookmarkProcessingTimelineResponse,
@@ -29,6 +31,7 @@ import type {
   FeedScope,
   GetBookmarksResponse,
   LikeResponse,
+  PasteBookmarkContentRequest,
   PreviewRequest,
   PreviewResponse,
   RefileBookmarkRequest,
@@ -41,6 +44,10 @@ import type {
 import {
     BookmarkFromJSON,
     BookmarkToJSON,
+    BookmarkContentFromJSON,
+    BookmarkContentToJSON,
+    BookmarkCreateResponseFromJSON,
+    BookmarkCreateResponseToJSON,
     BookmarkErrorFromJSON,
     BookmarkErrorToJSON,
     BookmarkLibraryCountsFromJSON,
@@ -67,6 +74,8 @@ import {
     GetBookmarksResponseToJSON,
     LikeResponseFromJSON,
     LikeResponseToJSON,
+    PasteBookmarkContentRequestFromJSON,
+    PasteBookmarkContentRequestToJSON,
     PreviewRequestFromJSON,
     PreviewRequestToJSON,
     PreviewResponseFromJSON,
@@ -99,6 +108,10 @@ export interface BookmarksFindByIdRequest {
     id: string;
 }
 
+export interface BookmarksGetContentRequest {
+    id: string;
+}
+
 export interface BookmarksGetProcessingTimelineRequest {
     id: string;
 }
@@ -127,6 +140,11 @@ export interface BookmarksMarkUnreadRequest {
 
 export interface BookmarksPreviewRequest {
     previewRequest: PreviewRequest;
+}
+
+export interface BookmarksPutContentRequest {
+    id: string;
+    pasteBookmarkContentRequest: PasteBookmarkContentRequest;
 }
 
 export interface BookmarksRefileRequest {
@@ -212,7 +230,7 @@ export class BookmarksApi extends runtime.BaseAPI {
     /**
      * Create a new bookmark.  The URL is normalised before anything else (lowercased scheme and host, trailing slash stripped, `utm_*`/`fbclid`/`gclid`/`ref`/`mc_cid` dropped); the normalised form is stored in `sourceUrl` and the paste is preserved in `metadata.originalUrl`.  If the caller already has that normalised URL, this returns 200 with `alreadySaved: true` and the existing bookmark — a duplicate paste is not an error and never a 409.  The handler writes the row and enqueues; fetching, extraction, summarising, tagging and filing all happen in the worker. Nothing is awaited that touches the network or a model.
      */
-    async bookmarksCreateRaw(requestParameters: BookmarksCreateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreateBookmarkResponse>> {
+    async bookmarksCreateRaw(requestParameters: BookmarksCreateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BookmarkCreateResponse>> {
         if (requestParameters['createBookmarkRequest'] == null) {
             throw new runtime.RequiredError(
                 'createBookmarkRequest',
@@ -242,13 +260,13 @@ export class BookmarksApi extends runtime.BaseAPI {
             body: CreateBookmarkRequestToJSON(requestParameters['createBookmarkRequest']),
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => CreateBookmarkResponseFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => BookmarkCreateResponseFromJSON(jsonValue));
     }
 
     /**
      * Create a new bookmark.  The URL is normalised before anything else (lowercased scheme and host, trailing slash stripped, `utm_*`/`fbclid`/`gclid`/`ref`/`mc_cid` dropped); the normalised form is stored in `sourceUrl` and the paste is preserved in `metadata.originalUrl`.  If the caller already has that normalised URL, this returns 200 with `alreadySaved: true` and the existing bookmark — a duplicate paste is not an error and never a 409.  The handler writes the row and enqueues; fetching, extraction, summarising, tagging and filing all happen in the worker. Nothing is awaited that touches the network or a model.
      */
-    async bookmarksCreate(requestParameters: BookmarksCreateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateBookmarkResponse> {
+    async bookmarksCreate(requestParameters: BookmarksCreateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BookmarkCreateResponse> {
         const response = await this.bookmarksCreateRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -337,6 +355,47 @@ export class BookmarksApi extends runtime.BaseAPI {
      */
     async bookmarksFindById(requestParameters: BookmarksFindByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Bookmark> {
         const response = await this.bookmarksFindByIdRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Get complete stored article text for its owner. Missing, private and incomplete content all return 404.
+     */
+    async bookmarksGetContentRaw(requestParameters: BookmarksGetContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BookmarkContent>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling bookmarksGetContent().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("BearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/bookmarks/{id}/content`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BookmarkContentFromJSON(jsonValue));
+    }
+
+    /**
+     * Get complete stored article text for its owner. Missing, private and incomplete content all return 404.
+     */
+    async bookmarksGetContent(requestParameters: BookmarksGetContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BookmarkContent> {
+        const response = await this.bookmarksGetContentRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -607,6 +666,57 @@ export class BookmarksApi extends runtime.BaseAPI {
      */
     async bookmarksPreview(requestParameters: BookmarksPreviewRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PreviewResponse> {
         const response = await this.bookmarksPreviewRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Store owner-supplied article text and enqueue a full reprocess. Private links cannot accept article text.
+     */
+    async bookmarksPutContentRaw(requestParameters: BookmarksPutContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ReprocessBookmarkResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling bookmarksPutContent().'
+            );
+        }
+
+        if (requestParameters['pasteBookmarkContentRequest'] == null) {
+            throw new runtime.RequiredError(
+                'pasteBookmarkContentRequest',
+                'Required parameter "pasteBookmarkContentRequest" was null or undefined when calling bookmarksPutContent().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("BearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/bookmarks/{id}/content`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: PasteBookmarkContentRequestToJSON(requestParameters['pasteBookmarkContentRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ReprocessBookmarkResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Store owner-supplied article text and enqueue a full reprocess. Private links cannot accept article text.
+     */
+    async bookmarksPutContent(requestParameters: BookmarksPutContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ReprocessBookmarkResponse> {
+        const response = await this.bookmarksPutContentRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

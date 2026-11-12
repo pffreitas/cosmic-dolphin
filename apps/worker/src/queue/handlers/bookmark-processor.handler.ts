@@ -1,7 +1,7 @@
 import { Injectable, Logger, Inject } from "@nestjs/common";
 import { MessageHandler } from "../interfaces/message-handler.interface";
 import { QueueMessage } from "../../types/queue.types";
-import {
+import type {
   BookmarkQueuePayload,
   BookmarkProcessorService,
 } from "@cosmic-dolphin/shared";
@@ -39,7 +39,7 @@ export class BookmarkProcessorHandler implements MessageHandler {
       const { bookmarkId, userId, phase, resume } = payload.data;
       await this.bookmarkProcessorService.process(bookmarkId, userId, {
         phase,
-        resume,
+        resume: resume || message.read_ct > 1,
       });
 
       this.logger.log(`Successfully processed bookmark ${message.msg_id}`, {

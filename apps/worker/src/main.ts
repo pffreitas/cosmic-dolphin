@@ -1,8 +1,15 @@
+import { execFileSync } from "node:child_process";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { ConfigService } from "@nestjs/config";
 
 async function bootstrap() {
+  const browserVersion = execFileSync(
+    process.env.LIGHTPANDA_BINARY_PATH || "lightpanda",
+    ["version"],
+    { encoding: "utf8", timeout: 5_000 },
+  ).trim();
+  console.log(`Lightpanda browser ready (${browserVersion})`);
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);

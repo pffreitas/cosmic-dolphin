@@ -2,6 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test";
 import { QueueProcessor } from "./queue.processor";
 import { QueueService } from "./queue.service";
 import { SupabaseClientService } from "./supabase-client.service";
+import { BookmarkProcessorHandler } from "./handlers/bookmark-processor.handler";
 
 function configService(values: Record<string, string | undefined>) {
   return {
@@ -85,6 +86,23 @@ describe("queue configuration", () => {
 });
 
 describe("terminal message failures", () => {
+  test("leaves transient extraction failures available for bounded pgmq retry", async () => {
+    const queue = { deleteMessage: async () => undefined, archiveMessage: async () => undefined };
+    const archive = spyOn(queue, "archiveMessage");
+    const handler = { canHandle: () => true, handle: async () => { throw Object.assign(new Error("Public page blocked"), { shouldRetry: true }); } };
+    const processor = new QueueProcessor(queue as never, configService({}) as never, [handler] as never);
+    await (processor as any).processMessage({ msg_id: 44, read_ct: 1, message: { type: "bookmark_process", data: {} } }, { name: "bookmarks", maxRetries: 3 });
+    expect(archive).not.toHaveBeenCalled();
+  });
+
+  test("resumes the bookmark timeline on redelivery", async () => {
+    const service = { process: async () => undefined };
+    const process = spyOn(service, "process");
+    const handler = new BookmarkProcessorHandler(service as never);
+    await handler.handle({ msg_id: 44, read_ct: 2, message: { type: "bookmark_process", data: { bookmarkId: "bookmark-1", userId: "user-1" } } } as never);
+    expect(process).toHaveBeenCalledWith("bookmark-1", "user-1", { phase: undefined, resume: true });
+  });
+
   test("archives a durably failed bookmark without queue redelivery", async () => {
     const queue = {
       deleteMessage: async () => undefined,

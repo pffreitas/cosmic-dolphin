@@ -1,11 +1,13 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
-import { Alert, Platform } from 'react-native';
+import { Alert, AppState, Platform } from 'react-native';
+import { shareKeys as defaultShareKeys } from '@/lib/share-key-client';
+import type { ShareKeyManager } from '@/lib/share-key';
 import { clearBookmarkCache } from '@/lib/bookmark-cache';
 
 // Required for web only
@@ -19,6 +21,8 @@ type AuthContextType = {
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  signOutBusy: boolean;
+  signOutError: string;
   sendMagicLink: (email: string) => Promise<void>;
 };
 
@@ -32,10 +36,28 @@ export function useAuth() {
   return context;
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children, shareKeys = defaultShareKeys }: { children: React.ReactNode; shareKeys?: ShareKeyManager }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      shareKeys.activate(user.id);
+      void shareKeys.ensure(user.id).catch(() => {});
+    }
+  }, [user?.id, shareKeys]);
+
+  useEffect(() => {
+    const listener = AppState.addEventListener('change', state => {
+      if (state === 'active' && user) void shareKeys.ensure(user.id).catch(() => {});
+    });
+    return () => listener.remove();
+  }, [user?.id, shareKeys]);
+
+  const [signOutBusy, setSignOutBusy] = useState(false);
+  const [signOutError, setSignOutError] = useState('');
+  const signOutRequest = useRef<Promise<void> | null>(null);
 
   // Generate the redirect URI for OAuth
   // Use the custom scheme for native apps
@@ -102,8 +124,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('🔐 AuthProvider: Initializing auth state...');
     console.log('🔐 Redirect URI:', redirectTo);
     
+    let authChanged = false;
+    let mounted = true;
     // Get initial session
     supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (authChanged || !mounted) return;
       console.log('🔐 AuthProvider: Got session', { 
         hasSession: !!session, 
         userEmail: session?.user?.email,
@@ -120,6 +145,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        authChanged = true;
+        if (!mounted) return;
         console.log('🔐 AuthProvider: Auth state changed', { 
           event, 
           hasSession: !!session,
@@ -132,6 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
@@ -206,20 +234,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Sign out
-  const signOut = async () => {
-    try {
-      const signedInUserId = user?.id;
+  // Revocation is acknowledged while the owner JWT and session still exist.
+  const signOut = (): Promise<void> => {
+    if (signOutRequest.current) return signOutRequest.current;
+    const signedInUserId = user?.id;
+    if (!signedInUserId) return Promise.resolve();
+    setSignOutBusy(true);
+    setSignOutError('');
+    const pending = shareKeys.signOut(signedInUserId, async () => {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-
-      if (signedInUserId) {
-        await clearBookmarkCache(signedInUserId);
-      }
-    } catch (error: any) {
-      console.error('Sign out error:', error);
-      Alert.alert('Sign Out Error', error.message || 'Failed to sign out');
-    }
+      setSession(null);
+      setUser(null);
+      await clearBookmarkCache(signedInUserId);
+    }).catch(() => {
+      setSignOutError('Connect to finish signing out');
+    }).finally(() => {
+      setSignOutBusy(false);
+      signOutRequest.current = null;
+    });
+    signOutRequest.current = pending;
+    return pending;
   };
 
   // Send magic link
@@ -253,6 +288,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signInWithEmail,
     signUpWithEmail,
     signOut,
+    signOutBusy,
+    signOutError,
     sendMagicLink,
   };
 

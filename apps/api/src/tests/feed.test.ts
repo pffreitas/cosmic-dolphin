@@ -37,6 +37,7 @@ import {
   feedFeedbackSchema,
   feedRailQuerySchema,
   stripDebugSignals,
+  registerFeedRoutes,
   FEED_PAGE_DEFAULT_LIMIT,
   FEED_PAGE_MAX_LIMIT,
 } from "../routes/feed";
@@ -1584,4 +1585,34 @@ describe("GET /feed/rail", () => {
     expect(rail.topics).toHaveLength(2);
     expect(rail.people[0].savesInWindow).toBe(3);
   });
+});
+
+// Real HTTP + PostgreSQL + ranker; fictional auth exists only at the route
+// registration boundary, never in normal middleware.
+it("real ranked feed excludes own future snoozes and retains elapsed/null saves", async () => {
+  const { default: Fastify } = await import("fastify");
+  const { sql } = await import("kysely");
+  const { getTestDatabase, DatabaseTestUtils, closeTestDatabase } = await import("@cosmic-dolphin/shared/dist/test-utils/database");
+  const { FeedRepositoryImpl, SocialRepositoryImpl, SocialServiceImpl } = await import("@cosmic-dolphin/shared");
+  const db = getTestDatabase(); const owner = crypto.randomUUID(); const app = Fastify();
+  try {
+    await new DatabaseTestUtils(db).truncateAll();
+    await sql`INSERT INTO auth.users(id,email) VALUES (${owner}::uuid, ${owner + "@example.invalid"})`.execute(db);
+    const saves = await db.insertInto("bookmarks").values([
+      { user_id: owner, source_url: "https://future.example/one", processing_status: "completed", later_until: sql`now() + interval '1 hour'` },
+      { user_id: owner, source_url: "https://elapsed.example/one", processing_status: "completed", later_until: sql`now() - interval '1 hour'` },
+      { user_id: owner, source_url: "https://null.example/one", processing_status: "completed", later_until: null },
+    ]).returning(["id", "source_url"]).execute();
+    const feed = new FeedRankingServiceImpl(new FeedRepositoryImpl(db), new SocialServiceImpl(new SocialRepositoryImpl(db)), "test");
+    await registerFeedRoutes(app, { feed }, async request => { request.userId = owner; }, false);
+    const address = await app.listen({ port: 0, host: "127.0.0.1" });
+    const response = await fetch(`${address}/bookmarks/feed?scope=for_you&limit=15`);
+    expect(response.status).toBe(200);
+    const body = await response.json() as { items: { bookmark?: { id: string }; signals?: unknown }[] };
+    const expected = saves.filter(row => !row.source_url.includes("future")).map(row => row.id).sort();
+    expect(body.items.map(item => item.bookmark!.id).sort()).toEqual(expected);
+    expect(body.items.every(item => !item.signals)).toBe(true);
+  } finally {
+    await app.close(); await sql`DELETE FROM auth.users WHERE id = ${owner}::uuid`.execute(db); await closeTestDatabase();
+  }
 });

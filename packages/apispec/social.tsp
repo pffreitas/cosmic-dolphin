@@ -108,7 +108,7 @@ model BlockResponse {
 }
 
 model PublicSavesResponse {
-    bookmarks: Bookmark[];
+    bookmarks: PublicBookmark[];
 
     @doc("Absent when this page is the last one.")
     nextCursor?: string;

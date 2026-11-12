@@ -1,12 +1,12 @@
-import { supabase } from './supabase';
-import { APIError } from './api-errors';
+import { supabase } from "./supabase";
+import { APIError } from "./api-errors";
 
 // API configuration
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || '';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "";
 const API_URL = `${API_BASE_URL}/api/v1`;
 
 if (!API_BASE_URL) {
-  console.warn('⚠️ API URL not set! Check your .env file.');
+  console.warn("⚠️ API URL not set! Check your .env file.");
 }
 
 // Bookmark types matching the API response
@@ -32,6 +32,12 @@ export interface BookmarkMetadata {
 }
 
 export interface Bookmark {
+  processingFailureCode?: import("@cosmic-dolphin/api-client").ProcessingFailureCode | null;
+  userNote?: string | null;
+  laterUntil?: string | null;
+  captureSource?: string | null;
+  capturePlatform?: string | null;
+  captureQueuedAt?: string | null;
   id: string;
   sourceUrl: string;
   collectionId?: string;
@@ -42,6 +48,7 @@ export interface Bookmark {
   cosmicSummary?: string;
   cosmicBriefSummary?: string;
   cosmicTags?: string[];
+  cosmicKeyPoints?: string[];
   metadata?: BookmarkMetadata;
   userId: string;
   createdAt: string;
@@ -53,7 +60,7 @@ export interface Bookmark {
   readAt?: string;
   isRead?: boolean;
   isPrivateLink?: boolean;
-  processingStatus?: 'idle' | 'processing' | 'completed' | 'failed';
+  processingStatus?: "idle" | "processing" | "completed" | "failed";
   processingError?: string;
 }
 
@@ -74,14 +81,14 @@ export interface GetBookmarksResponse {
  * never synthesised on the client; the client does not know what the ranker
  * weighted, and a plausible-sounding wrong answer is worse than none.
  */
-export type FeedScope = 'for_you' | 'following' | 'unread';
+export type FeedScope = "for_you" | "following" | "unread";
 
 export type FeedItemType =
-  | 'own_save'
-  | 'followed_save'
-  | 'reshare'
-  | 'digest'
-  | 'pending';
+  | "own_save"
+  | "followed_save"
+  | "reshare"
+  | "digest"
+  | "pending";
 
 export interface FeedActor {
   id: string;
@@ -112,7 +119,9 @@ export interface GetBookmarksParams {
   limit?: number;
   offset?: number;
   collection_id?: string;
-  read_status?: 'all' | 'unread' | 'read';
+  read_status?: "all" | "unread" | "read";
+  scope?: "all" | "inbox" | "archive";
+  sort?: "newest" | "oldest";
 }
 
 export interface CreateBookmarkParams {
@@ -154,45 +163,59 @@ export interface HybridSearchResultItem {
 }
 
 async function getAuthHeaders(): Promise<HeadersInit> {
-  const { data: { session } } = await supabase.auth.getSession();
-  const accessToken = session?.access_token || '';
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const accessToken = session?.access_token || "";
 
   return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${accessToken}`,
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${accessToken}`,
   };
 }
 
 async function createApiError(response: Response): Promise<APIError> {
   const errorData = await response.json().catch(() => ({}));
-  const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
+  const errorMessage =
+    errorData.error || `HTTP error! status: ${response.status}`;
   return new APIError(errorMessage, response.status);
 }
 
 export namespace BookmarksAPI {
-  export async function list(params: GetBookmarksParams = {}): Promise<Bookmark[]> {
-    const { limit = 20, offset = 0, collection_id, read_status } = params;
-    
+  export async function list(
+    params: GetBookmarksParams = {},
+  ): Promise<Bookmark[]> {
+    const {
+      limit = 20,
+      offset = 0,
+      collection_id,
+      read_status,
+      scope,
+      sort,
+    } = params;
+
     try {
       const headers = await getAuthHeaders();
       const queryParams = new URLSearchParams();
-      queryParams.append('limit', limit.toString());
-      queryParams.append('offset', offset.toString());
+      queryParams.append("limit", limit.toString());
+      queryParams.append("offset", offset.toString());
       if (collection_id) {
-        queryParams.append('collection_id', collection_id);
+        queryParams.append("collection_id", collection_id);
       }
       if (read_status) {
-        queryParams.append('read_status', read_status);
+        queryParams.append("read_status", read_status);
       }
 
+      if (scope) queryParams.append("scope", scope);
+      if (sort) queryParams.append("sort", sort);
       const url = `${API_URL}/bookmarks?${queryParams.toString()}`;
-      console.log('Fetching bookmarks from:', url);
+      console.log("Fetching bookmarks from:", url);
       const response = await fetch(
         `${API_URL}/bookmarks?${queryParams.toString()}`,
         {
-          method: 'GET',
+          method: "GET",
           headers,
-        }
+        },
       );
 
       if (!response.ok) {
@@ -202,8 +225,7 @@ export namespace BookmarksAPI {
       const data: GetBookmarksResponse = await response.json();
       return data.bookmarks || [];
     } catch (error) {
-
-      console.error('Error fetching bookmarks:', {error});
+      console.error("Error fetching bookmarks:", { error });
       throw error;
     }
   }
@@ -221,21 +243,24 @@ export namespace BookmarksAPI {
    * in one place, rather than being unavailable.
    */
   export async function feed(
-    params: { limit?: number; cursor?: string; scope?: FeedScope } = {}
+    params: { limit?: number; cursor?: string; scope?: FeedScope } = {},
   ): Promise<FeedPage> {
     const { limit = 20, cursor, scope } = params;
 
     try {
       const headers = await getAuthHeaders();
       const queryParams = new URLSearchParams();
-      queryParams.append('limit', limit.toString());
-      if (cursor) queryParams.append('cursor', cursor);
-      if (scope) queryParams.append('scope', scope);
+      queryParams.append("limit", limit.toString());
+      if (cursor) queryParams.append("cursor", cursor);
+      if (scope) queryParams.append("scope", scope);
 
-      const response = await fetch(`${API_URL}/bookmarks/feed?${queryParams.toString()}`, {
-        method: 'GET',
-        headers,
-      });
+      const response = await fetch(
+        `${API_URL}/bookmarks/feed?${queryParams.toString()}`,
+        {
+          method: "GET",
+          headers,
+        },
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -250,7 +275,7 @@ export namespace BookmarksAPI {
         nextCursor: data.nextCursor,
       };
     } catch (error) {
-      console.error('Error fetching bookmark feed:', error);
+      console.error("Error fetching bookmark feed:", error);
       throw error;
     }
   }
@@ -259,7 +284,7 @@ export namespace BookmarksAPI {
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}/bookmarks/${id}`, {
-        method: 'GET',
+        method: "GET",
         headers,
       });
 
@@ -272,16 +297,18 @@ export namespace BookmarksAPI {
 
       return await response.json();
     } catch (error) {
-      console.error('Error fetching bookmark by id:', error);
+      console.error("Error fetching bookmark by id:", error);
       throw error;
     }
   }
 
-  export async function create(params: CreateBookmarkParams): Promise<CreateBookmarkResponse> {
+  export async function create(
+    params: CreateBookmarkParams,
+  ): Promise<CreateBookmarkResponse> {
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}/bookmarks`, {
-        method: 'POST',
+        method: "POST",
         headers,
         body: JSON.stringify(params),
       });
@@ -292,12 +319,16 @@ export namespace BookmarksAPI {
 
       return await response.json();
     } catch (error) {
-      console.error('Error creating bookmark:', error);
+      console.error("Error creating bookmark:", error);
       throw error;
     }
   }
 
-  export async function search(query: string, limit = 10, offset = 0): Promise<Bookmark[]> {
+  export async function search(
+    query: string,
+    limit = 10,
+    offset = 0,
+  ): Promise<Bookmark[]> {
     try {
       const headers = await getAuthHeaders();
       const params = new URLSearchParams({
@@ -307,7 +338,7 @@ export namespace BookmarksAPI {
       });
 
       const response = await fetch(`${API_URL}/bookmarks/search?${params}`, {
-        method: 'GET',
+        method: "GET",
         headers,
       });
 
@@ -318,7 +349,7 @@ export namespace BookmarksAPI {
       const data: GetBookmarksResponse = await response.json();
       return data.bookmarks || [];
     } catch (error) {
-      console.error('Error searching bookmarks:', error);
+      console.error("Error searching bookmarks:", error);
       throw error;
     }
   }
@@ -327,7 +358,7 @@ export namespace BookmarksAPI {
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}/bookmarks/preview`, {
-        method: 'POST',
+        method: "POST",
         headers,
         body: JSON.stringify({ url }),
       });
@@ -338,7 +369,7 @@ export namespace BookmarksAPI {
 
       return await response.json();
     } catch (error) {
-      console.error('Error fetching URL preview:', error);
+      console.error("Error fetching URL preview:", error);
       throw error;
     }
   }
@@ -347,7 +378,7 @@ export namespace BookmarksAPI {
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}/bookmarks/${id}/like`, {
-        method: 'PUT',
+        method: "PUT",
         headers,
       });
 
@@ -357,7 +388,7 @@ export namespace BookmarksAPI {
 
       return await response.json();
     } catch (error) {
-      console.error('Error liking bookmark:', error);
+      console.error("Error liking bookmark:", error);
       throw error;
     }
   }
@@ -366,7 +397,7 @@ export namespace BookmarksAPI {
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}/bookmarks/${id}/like`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers,
       });
 
@@ -376,7 +407,7 @@ export namespace BookmarksAPI {
 
       return await response.json();
     } catch (error) {
-      console.error('Error unliking bookmark:', error);
+      console.error("Error unliking bookmark:", error);
       throw error;
     }
   }
@@ -385,19 +416,20 @@ export namespace BookmarksAPI {
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}/bookmarks/${id}/read`, {
-        method: 'PUT',
+        method: "PUT",
         headers,
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
+        const errorMessage =
+          errorData.error || `HTTP error! status: ${response.status}`;
         throw new Error(errorMessage);
       }
 
       return await response.json();
     } catch (error) {
-      console.error('Error marking bookmark read:', error);
+      console.error("Error marking bookmark read:", error);
       throw error;
     }
   }
@@ -406,19 +438,20 @@ export namespace BookmarksAPI {
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}/bookmarks/${id}/read`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers,
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
+        const errorMessage =
+          errorData.error || `HTTP error! status: ${response.status}`;
         throw new Error(errorMessage);
       }
 
       return await response.json();
     } catch (error) {
-      console.error('Error marking bookmark unread:', error);
+      console.error("Error marking bookmark unread:", error);
       throw error;
     }
   }
@@ -427,7 +460,7 @@ export namespace BookmarksAPI {
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}/bookmarks/${id}/share`, {
-        method: 'PUT',
+        method: "PUT",
         headers,
       });
 
@@ -437,7 +470,7 @@ export namespace BookmarksAPI {
 
       return await response.json();
     } catch (error) {
-      console.error('Error sharing bookmark:', error);
+      console.error("Error sharing bookmark:", error);
       throw error;
     }
   }
@@ -446,7 +479,7 @@ export namespace BookmarksAPI {
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}/bookmarks/${id}/share`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers,
       });
 
@@ -456,7 +489,7 @@ export namespace BookmarksAPI {
 
       return await response.json();
     } catch (error) {
-      console.error('Error unsharing bookmark:', error);
+      console.error("Error unsharing bookmark:", error);
       throw error;
     }
   }
@@ -470,11 +503,14 @@ export namespace SearchAPI {
     onError: (error: string) => void;
   }
 
-  export async function askWithStream(query: string, callbacks: SSECallbacks): Promise<void> {
+  export async function askWithStream(
+    query: string,
+    callbacks: SSECallbacks,
+  ): Promise<void> {
     const headers = await getAuthHeaders();
 
     const response = await fetch(`${API_URL}/search/ask`, {
-      method: 'POST',
+      method: "POST",
       headers,
       body: JSON.stringify({ query }),
     });
@@ -486,12 +522,12 @@ export namespace SearchAPI {
 
     const reader = response.body?.getReader();
     if (!reader) {
-      callbacks.onError('No response stream available');
+      callbacks.onError("No response stream available");
       return;
     }
 
     const decoder = new TextDecoder();
-    let buffer = '';
+    let buffer = "";
 
     while (true) {
       const { done, value } = await reader.read();
@@ -499,36 +535,36 @@ export namespace SearchAPI {
 
       buffer += decoder.decode(value, { stream: true });
 
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
 
-      let currentEvent = '';
+      let currentEvent = "";
       for (const line of lines) {
-        if (line.startsWith('event: ')) {
+        if (line.startsWith("event: ")) {
           currentEvent = line.slice(7);
-        } else if (line.startsWith('data: ')) {
+        } else if (line.startsWith("data: ")) {
           const data = line.slice(6);
           try {
             const parsed = JSON.parse(data);
 
             switch (currentEvent) {
-              case 'results':
+              case "results":
                 callbacks.onResults(parsed.results);
                 break;
-              case 'chunk':
+              case "chunk":
                 callbacks.onChunk(parsed.text);
                 break;
-              case 'done':
+              case "done":
                 callbacks.onDone();
                 break;
-              case 'error':
+              case "error":
                 callbacks.onError(parsed.error);
                 break;
             }
           } catch {
             // skip malformed data
           }
-          currentEvent = '';
+          currentEvent = "";
         }
       }
     }

@@ -11,7 +11,7 @@ import {
   ExploreKeyset,
   ExploreRepository,
 } from "../repositories/explore.repository";
-import { mapDatabaseRowToBookmark } from "./bookmark.service";
+import { mapDatabaseRowToBookmark, stripPrivateCaptureFields } from "./bookmark.service";
 
 /**
  * Explore — docs/design-system/pages.md § Explore.
@@ -101,7 +101,7 @@ export class ExploreServiceImpl implements ExploreService {
       // does not follow them: the alternative, `own_save`, would be a lie
       // about whose save it is.
       type: "followed_save",
-      bookmark: mapDatabaseRowToBookmark(row.bookmark),
+      bookmark: stripPrivateCaptureFields(mapDatabaseRowToBookmark(row.bookmark)),
       actor: {
         id: row.author.id,
         handle: row.author.handle ?? "",

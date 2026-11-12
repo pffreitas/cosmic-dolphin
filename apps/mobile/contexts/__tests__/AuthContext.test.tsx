@@ -2,6 +2,8 @@ import React from 'react';
 import { act, render, waitFor } from '@testing-library/react-native';
 
 import { AuthProvider, useAuth } from '../AuthContext';
+import { ShareKeyManager } from '@/lib/share-key';
+import type { SharedShareKey } from '@/lib/share-key';
 import { supabase } from '@/lib/supabase';
 import { clearBookmarkCache } from '@/lib/bookmark-cache';
 
@@ -79,8 +81,12 @@ describe('AuthProvider cache cleanup', () => {
   it('clears the signed-in user bookmark cache after sign out', async () => {
     let authValue: ReturnType<typeof useAuth> | undefined;
 
+    let item: SharedShareKey | null = null;
+    const shareKeys = new ShareKeyManager({ apiBaseUrl: "https://fixture.invalid", api: {
+      issue: async () => ({ id: "fixture-key-id", key: `cdsk_${"a".repeat(43)}` }), revoke: async () => {},
+    }, storage: { read: async () => item, write: async value => { item = value; }, remove: async () => { item = null; }, deviceId: async () => "fixture-installation" } });
     render(
-      <AuthProvider>
+      <AuthProvider shareKeys={shareKeys}>
         <CaptureAuth onValue={(value) => { authValue = value; }} />
       </AuthProvider>
     );

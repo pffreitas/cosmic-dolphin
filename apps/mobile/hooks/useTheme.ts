@@ -1,5 +1,10 @@
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { colors, type ColorSchemeName, type ThemeColors } from '@/constants/theme';
+import { usePreferences } from "@/contexts/PreferencesContext";
+import { useColorScheme } from "@/hooks/useColorScheme";
+import {
+  colors,
+  type ColorSchemeName,
+  type ThemeColors,
+} from "@/constants/theme";
 
 /**
  * The Signal palette for the active colour scheme.
@@ -9,7 +14,11 @@ import { colors, type ColorSchemeName, type ThemeColors } from '@/constants/them
  * surface.
  */
 export function useTheme(): { scheme: ColorSchemeName; colors: ThemeColors } {
-  const scheme = (useColorScheme() ?? 'light') as ColorSchemeName;
+  const system = useColorScheme() ?? "light";
+  const { appearance } = usePreferences();
+  const scheme = (
+    appearance === "system" ? system : appearance
+  ) as ColorSchemeName;
   return { scheme, colors: colors[scheme] };
 }
 

@@ -119,7 +119,7 @@ export function AppShell({
               </SheetContent>
             </Sheet>
 
-            <LogoMark className="size-7 lg:hidden max-sm:hidden" />
+            <LogoMark className="size-8 lg:hidden" />
 
             {/* The omnibox sits on the content's centre axis on desktop. */}
             <div className="min-w-0 flex-1 sm:ml-2 lg:col-start-2 lg:ml-0">

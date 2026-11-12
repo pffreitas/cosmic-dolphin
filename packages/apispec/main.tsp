@@ -2,6 +2,7 @@ import "@typespec/http";
 import "@typespec/rest";
 import "@typespec/openapi3";
 
+import "./share-keys.tsp";
 import "./notes.tsp";
 import "./pipeline.tsp";
 import "./bookmarks.tsp";
@@ -12,6 +13,7 @@ import "./social.tsp";
 import "./comments.tsp";
 import "./digests.tsp";
 import "./feed.tsp";
+import "./picks.tsp";
 import "./explore.tsp";
 
 using TypeSpec.Http;

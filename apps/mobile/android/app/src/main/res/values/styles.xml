@@ -13,7 +13,7 @@
     <item name="android:windowSplashScreenBehavior">icon_preferred</item>
     <item name="android:statusBarColor">@color/splashscreen_statusbar_color</item>
     <item name="android:navigationBarColor">@color/splashscreen_navigationbar_color</item>
-    <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
-    <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
+    <item name="android:windowLightStatusBar" tools:targetApi="23">true</item>
+    <item name="android:windowLightNavigationBar" tools:targetApi="27">true</item>
   </style>
 </resources>

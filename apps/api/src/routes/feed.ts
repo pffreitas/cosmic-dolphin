@@ -1,4 +1,4 @@
-import { FastifyInstance } from "fastify";
+import { FastifyInstance, preHandlerHookHandler } from "fastify";
 import {
   FeedCursor,
   FeedFeedbackInput,
@@ -215,12 +215,22 @@ export default async function feedRoutes(fastify: FastifyInstance) {
     config.NODE_ENV
   );
 
-  const includeSignals = config.NODE_ENV !== "production";
+  await registerFeedRoutes(fastify, services, authMiddleware, config.NODE_ENV !== "production");
+  fastify.addHook("onClose", async () => { await db.destroy(); });
+}
+
+export async function registerFeedRoutes(
+  fastify: FastifyInstance,
+  services: Pick<ServiceContainer, "feed">,
+  authenticate: preHandlerHookHandler,
+  includeSignals: boolean
+) {
+
 
   fastify.get<{
     Querystring: { scope?: string; cursor?: string; limit?: string };
     Reply: FeedResponse | { error: string };
-  }>("/bookmarks/feed", { preHandler: authMiddleware }, async (request, reply) => {
+  }>("/bookmarks/feed", { preHandler: authenticate }, async (request, reply) => {
     try {
       const parsed = feedQuerySchema.safeParse(request.query ?? {});
       if (!parsed.success) {
@@ -296,7 +306,7 @@ export default async function feedRoutes(fastify: FastifyInstance) {
           rankingInvalidated: boolean;
         }
       | { error: string };
-  }>("/feed/feedback", { preHandler: authMiddleware }, async (request, reply) => {
+  }>("/feed/feedback", { preHandler: authenticate }, async (request, reply) => {
     try {
       const parsed = feedFeedbackSchema.safeParse(request.body ?? {});
       if (!parsed.success) {
@@ -335,7 +345,7 @@ export default async function feedRoutes(fastify: FastifyInstance) {
    */
   fastify.get<{
     Querystring: { topicLimit?: string; peopleLimit?: string };
-  }>("/feed/rail", { preHandler: authMiddleware }, async (request, reply) => {
+  }>("/feed/rail", { preHandler: authenticate }, async (request, reply) => {
     try {
       const parsed = feedRailQuerySchema.safeParse(request.query ?? {});
       if (!parsed.success) {

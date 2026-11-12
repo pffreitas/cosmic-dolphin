@@ -47,3 +47,38 @@ why.
 Vercel (precision, restraint, hairlines), Linear (product density, keyboard-first, confident
 accent), Craft.do (warmth, paper, reading comfort). Cosmic Dolphin takes the discipline of the
 first two and the reading temperature of the third.
+
+### October 19, 2026 — shared dolphin identity
+
+By explicit user direction, the abstract teal dolphin with a single violet orbit replaces
+the arc-and-point mark in brand placements across mobile and web. Both themes share one
+transparent master, with open negative space. Headers retain live Inter lettering and
+theme foreground colors; app icons and splash artwork use platform-specific exports.
+
+### October 20, 2026 — rebuild the logo from first principles
+
+The user rejected the detailed mascot and requested a fresh identity. The replacement
+is an abstract teal dolphin silhouette with one violet orbital sweep: broad shapes,
+open negative space, and minimal detail for recognition in small icons and headers.
+Both themes and every placement derive from the same transparent master.
+
+### October 20, 2026 — restore the cosmic character
+
+At the user’s request, the abstract silhouette gains a luminous violet orbit,
+a four-point guiding star, and controlled teal/violet glow. The same transparent
+master continues to supply all placements in both themes.
+
+### October 21, 2026 — a palette designed for white surfaces
+
+The shape is retained by user direction. Light-theme assets use midnight indigo,
+blue-teal, and amethyst with restrained lavender light; dark-theme assets retain
+the original teal and luminous violet effects. Headers select the app theme;
+native launch resources select system appearance.
+
+### October 24, 2026 — Plum shadow capsules across every placement
+
+The user selected the Plum shadow gradient capsule for all platforms and placements.
+This replaces the per-theme recoloring. The same teal/violet artwork and white
+wordmark sit on a purple-black gradient in both themes. Compact placements use a
+gradient tile; launch uses a larger plaque; launcher and adaptive icon backgrounds
+use the same finish. Brand colors are canonical design tokens.

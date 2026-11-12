@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import type { AnchorHTMLAttributes, ReactNode } from "react";
+import type { AnchorHTMLAttributes, ImgHTMLAttributes, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 /**
@@ -28,6 +28,12 @@ import { describe, expect, it, vi } from "vitest";
  * thing needing a real box — the 44px touch target — is asserted against the
  * declared class, which is where its value comes from.
  */
+
+// Test image semantics without loading Next's separate React runtime/optimizer.
+vi.mock("next/image", () => ({
+  // eslint-disable-next-line @next/next/no-img-element -- intentional native element in this SSR harness.
+  default: (props: ImgHTMLAttributes<HTMLImageElement>) => <img {...props} />,
+}));
 
 vi.mock("lucide-react", () => {
   const Icon = () => <svg />;
@@ -214,7 +220,7 @@ const SIDEBAR_DATA = {
 };
 
 describe("nav marks where you are", () => {
-  it("draws the brandmark rather than borrowing an emoji", () => {
+  it("names the brand link and keeps its image decorative", () => {
     const html = render(<Brandmark />);
     const brandmark = html.match(
       /<a[^>]*aria-label="Cosmic Dolphin home"[^>]*>.*?<\/a>/,
@@ -222,7 +228,7 @@ describe("nav marks where you are", () => {
 
     expect(brandmark).toBeTruthy();
     // The mark is decorative inside a named link.
-    expect(brandmark).toMatch(/<svg[^>]*aria-hidden="true"/);
+    expect(brandmark).toMatch(/<img[^>]*alt=""[^>]*aria-hidden="true"|<img[^>]*aria-hidden="true"[^>]*alt=""/);
     expect(brandmark).not.toContain("🐬");
   });
 

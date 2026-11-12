@@ -64,8 +64,9 @@ not by popularity.
 ## Brand Commitments
 
 - **Name:** Cosmic Dolphin. "Cosmic" is a quiet metaphor for depth and connection: subtle brand,
-  serious product. No dolphin motifs in app chrome. The brandmark is a drawn arc over a point of
-  light; it replaced the 🐬 emoji, which is not used in the product.
+  serious product. The current brandmark is the teal dolphin, luminous violet orbit, and guiding star,
+  shared across headers, icons, and splash screens in both themes on the Plum shadow gradient capsule (October 24, 2026 selection).
+  Illustration stays within these brand placements; emoji is not used as the brandmark.
 - **Voice:** calm, plain, sentence case everywhere. Explanations are one sentence, in the second
   person, in plain language ("why this appeared"). Errors name the problem and the way back.
 - **AI has no personality.** It is a quiet editor: it does not chat, does not announce itself as AI,
