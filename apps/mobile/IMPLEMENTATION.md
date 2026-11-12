@@ -1,4 +1,4 @@
-# Signal mobile implementation
+# Mobile implementation
 
 The Save + Today's 5 package follows the approved spec at
 `docs/specs/mobile-reading-app/2026-11-09-save-and-todays-5.md` and its named native S-states.
@@ -7,6 +7,12 @@ Brief/Read, explicit Done/Next pick, private notes and recoverable failed extrac
 and old reader links redirect to their approved destinations. Library and public web behavior
 remain compatibility requirements.
 
+## Release and proof status
+
+Last verified release: 2026-11-12, version1.0.0/build15, deployed head `10e8ad56de7643fb404ca655c52a7cbab257e819`, available to the existing internal Beta group. [Backend production](https://github.com/pffreitas/cosmic-dolphin/actions/runs/43137645677) and [mobile quality/submission scheduling](https://github.com/pffreitas/cosmic-dolphin/actions/runs/43139079920) succeeded; Apple processing and actual group assignment were verified separately. The [release runbook](../../docs/runbooks/backend-and-testflight-release.md) and [retrospective](../../docs/retrospectives/2026-11-12-save-and-todays-5.md) preserve the reusable procedure.
+
+The user's explicit beta exception moved unavailable real-session/physical/live-spoken/full native matrix evidence to beta validation. Historical checkpoint limitations below remain unpassed; they do not reinstate the superseded pre-review block. Do not generalize this exception to future work. Local receipt paths below are historical evidence locations, not a durable release-state index.
+
 ## Connected behavior
 
 - Home uses the existing ranked feed, public discovery and continue-reading endpoints through the generated API client. AI-generated digests retain their complete server-authored source sets. Pipeline-generated tags form topic sections, including normalized AI and self-improvement topics. Topic headings and generic descriptions are UI copy; the client does not invent an AI thesis. Topic detail opens the complete available list. Reading preferences can prioritize interests or hide a topic with Undo.
@@ -14,9 +20,9 @@ remain compatibility requirements.
 - Library remains private and chronological, with read filters, oldest/newest ordering, collections, Inbox, Archive, manual filing and archive/restore. Offline fallback retains the existing account-specific bookmark cache. Paging ignores stale filter/account responses and prevents concurrent duplicate loads.
 - In-app capture creates a pending row immediately, continues the request while the user browses, and offers retry without losing private-link fields. Captures are durably serialized in the app save queue before transport and replay only for their owning account. A completed capture invalidates the visible feed/library. The existing OS share-intent route remains available.
 - Detail shows real summaries/key points and source attribution, processing/retry, explicit read controls, public conversation and an explicit publishing confirmation. Merely opening Share never publishes a private save.
-- The reading view shows the full saved Cosmic brief exposed by the current API. It does **not** claim to show the original article body. The original source remains a separate browser action. Reading size is stored in device preferences; scroll progress and private highlights use existing services. The reader exposes selectable text; users copy and paste a passage into the highlight sheet with an optional note. The app does not automatically read the clipboard.
+- The owner reading view offers Brief and Read. Read uses the content endpoint for stored extracted article text, bounded to 500,000 serialized response bytes and labelled when partial. Original remains a separate browser action. Private notes, pasted-text recovery and Next pick use owner contracts; public-slug reading never falls back to an owner cache/endpoint. Reading size remains a device preference, and text is selectable. Existing highlights use an explicit pasted passage; the app does not automatically read the clipboard.
 - Profile uses real account/public-save APIs and provides profile editing. Settings persist appearance, reading size and topic preferences per account on the device. Placeholder account/support actions were removed.
-- Inter and Source Serif 4 are bundled and loaded before splash dismissal. Signal's generated color/radius/spacing tokens remain canonical; no generated client or theme files were edited.
+- Inter and Source Serif 4 are bundled and loaded before splash dismissal. Generated color/radius/spacing tokens remain canonical, with the approved Plum colors in `color.mobile` overrides. Generated clients/themes are updated only through their source pipelines; mobile changes preserve web token bytes unless explicitly scoped otherwise.
 
 ## Local checks
 

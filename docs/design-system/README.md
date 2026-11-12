@@ -7,6 +7,12 @@ interface, read these documents first and treat them as binding.
 Product behaviour lives next door in [`docs/functional-spec/`](../functional-spec/). The revamp
 touches both; neither document alone is enough to build a screen.
 
+## Mobile scope and token overrides
+
+For shipped mobile behavior and the approved Plum direction, read [Save + Today's 5](../specs/mobile-reading-app/2026-11-09-save-and-todays-5.md) before older mobile prototypes. Its scope supersedes their exploratory screen/ranking/capture behavior. This directory's Signal guidance remains the web reference and the shared semantic-token foundation.
+
+Mobile colors come from `tokens.json` → `color.mobile.light/dark` overrides; the generator merges them into the native theme. Change the JSON and regenerate, never hand-edit either client's theme. Mobile work should preserve web colors unless its task explicitly changes the web direction. Serif-for-content, sans-for-controls and accessibility requirements remain shared.
+
 ## Read in this order
 
 | Document | What it settles |
