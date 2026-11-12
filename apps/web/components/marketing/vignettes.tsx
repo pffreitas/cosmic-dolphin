@@ -32,8 +32,11 @@ import { Tag } from "@/components/ui/badge";
  * that says what it depicts.
  */
 
-/** `inert` as a boolean (React 19); cast because the pinned types predate it. */
-const INERT = { inert: true } as React.HTMLAttributes<HTMLDivElement>;
+/** Next's React 19 runtime treats inert as boolean; the React 18 HTML exporter
+ * forwards it as a string. Preserve the native attribute in both renderers. */
+export const INERT = {
+  inert: Number.parseInt(React.version, 10) >= 19 ? true : "",
+} as React.HTMLAttributes<HTMLDivElement>;
 
 /** A browser-less app window: hairline, 12px frame radius, the dialog shadow. */
 export function AppWindow({

@@ -149,6 +149,10 @@ const NOT_CONTRAST_BEARING: Record<string, string> = {
   "accent-hover": "ground — hover fill under accent-fg",
   "accent-soft": "ground — Tag fill, highlight, selected tree row",
   "hl-bg": "ground — reader highlight",
+  // The same in both modes, and only ever under the dark set's text — see
+  // "landing chrome on the brand ground" below, which measures those pairs.
+  // The raster wordmark's two inks measure 18.6:1 and 10.0:1 against it.
+  "brand-ground": "ground — landing header, footer and closing logo lockup",
 
   // Hairlines. SC 1.4.11 asks for 3:1 on information *required to identify* a
   // component or its state. These separate and decorate; nothing is identified
@@ -225,6 +229,30 @@ describe("header material", () => {
 
     expect(glass).toBeTruthy();
     expect(glass).not.toMatch(/rgba|hsla|transparent|#[0-9a-f]{8}\b|\//i);
+  });
+});
+
+/**
+ * The landing's header and footer are `--cd-brand-ground` in both modes and
+ * carry the `dark` class, so what sits on them is always the dark set. That is
+ * a cross-mode pair the tables above cannot express, so it is measured here.
+ */
+describe("landing chrome on the brand ground", () => {
+  const ground = TOKENS.color.light["brand-ground"];
+  const dark = TOKENS.color.dark;
+
+  it("is one colour in both modes", () => {
+    expect(TOKENS.color.dark["brand-ground"]).toBe(ground);
+  });
+
+  // Nav links, footer copy and links, the footer disclosure.
+  it.each(["fg", "fg-secondary", "fg-tertiary"])("--cd-%s (dark) clears 4.5:1", (token) => {
+    expect(contrast(dark[token], ground)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  // The filled Get started pill and the focus ring.
+  it.each(["accent", "focus"])("--cd-%s (dark) clears 3:1", (token) => {
+    expect(contrast(dark[token], ground)).toBeGreaterThanOrEqual(3);
   });
 });
 

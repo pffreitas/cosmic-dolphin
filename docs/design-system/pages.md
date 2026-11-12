@@ -143,19 +143,45 @@ primary button.
 ## Landing · `/`
 
 Signed out only — a signed-in reader is redirected to Home. Draws its own frame: the public header,
-then four beats, then a footer.
+then six beats, then a footer. The order is the pitch: what it is and what you get, why it exists,
+then one benefit per beat, each proved by a product view rather than described.
 
-1. **Hero** — a neutral chip kicker ("Summaries that name their sources"), a two-line 68px `display`
-   headline whose second line is `--cd-fg-secondary`, one 18px line of what the product does,
-   **Start your library** (primary, large) and **Sign in**. Below, the Library in an app window, fading out at its foot.
-2. **How it works** — on `--cd-bg-subtle`: three alternating text-and-vignette rows (capture,
-   Cosmic brief, filing), numbered `01`–`03`.
-3. **Principles** — "Built to be finished, not scrolled." beside a hairline-ruled definition list.
-4. **Closing** — a `--cd-bg-subtle` bordered panel with one sentence and **Create your account**.
+**Light only.** The landing does not follow the reader's theme or the OS: `ThemeProvider`
+(`components/providers/theme-provider.tsx`) forces light on `/`, before first paint, and leaves the
+stored preference alone for every other route.
 
-Every illustration is a vignette from `components/marketing/vignettes.tsx`: the product's own
-components on illustrative content, marked `inert` and labelled with what they depict. Never a
-screenshot, never a mock drawn to look like the app.
+**Header and footer on the brand ground.** Both are `--cd-brand-ground` edge to edge, the colour of
+the dolphin artwork's own background, so the icon and its light wordmark sit on them with no
+frame. They carry the `dark` class, which resolves every token inside them to the dark set: light
+nav links and a light **Get started** pill. The page between them stays light. The closing lockup
+is the one place the logo sits on a light surface, so there it carries the ground with it as a
+badge at `--cd-radius-brand`.
+
+1. **Hero** — a split. Left: a two-line headline that states the offer ("Actually read / what you
+   save."), its second line in `--cd-fg-secondary`; one 19px sentence naming what goes in and what
+   comes back; **Get started** (primary, large) and a **See how it works** text link. Right: one
+   pasted link becoming a saved item — the URL field, staged AI progress, then the Cosmic brief
+   with key points, sources and a suggested collection. On load it replays the save in the order
+   it happens; under reduced motion everything is simply in place.
+2. **Why it exists** — one centred headline and two lines. No illustration.
+3. **The brief** (`#how-it-works`) — on `--cd-bg-subtle`: a left-aligned heading over the reading
+   demo. Three tabs (video, article, post), each showing *What you saved* beside *What you get
+   back*. A radio group and `:has()` do the switching; there is no client script.
+4. **The morning edition** — text left, Home in an app window right: greeting, a `lead`, two `row`s
+   and the closing line.
+5. **The Library** — mirrored: Library search in an app window left, text right.
+6. **Principles, then closing** — three hairline-ruled promises; then the brand lockup, the brand
+   line ("Less later. / More wonder.") and **Get started**.
+
+Headlines here are the sans at 600, not the serif `display` role: the page keeps serif for the
+saved content inside the product views, so the campaign voice and the content voice stay distinct.
+The headline says what the product does; the brand line belongs to the closing, never the hero.
+
+Every illustration is built like a vignette from `components/marketing/vignettes.tsx`: the product's
+own components on illustrative content, marked `inert` and labelled with what they depict. Never a
+screenshot, never a mock drawn to look like the app. The landing's three views live in
+`components/marketing/landing-visuals.tsx`. Examples are real public links with hand-written
+briefs, and the page says so; it shows no feature, count or duration the product does not have.
 
 ---
 

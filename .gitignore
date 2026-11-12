@@ -61,3 +61,6 @@ apps/mobile/android/build/
 *.orig.*
 web-build/.worktrees/
 .worktrees/
+
+# Playwright CLI session output
+.playwright-cli/
