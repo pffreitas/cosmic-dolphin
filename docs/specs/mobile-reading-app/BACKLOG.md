@@ -7,7 +7,7 @@ Spec each numbered item independently, in this order. The first spec covers Save
 **Outcome:** save from another app safely enough to close the tab, then read a finite set of saved links each day.
 **Includes:** native share capture and persisted save queue; Save sheet with note and Read when; server-owned daily picks and reasons; Done, Later, Undo, Next pick; Brief, Read and Original; failed-save recovery; mobile plum accent.
 **Spec:** [2026-11-09-save-and-todays-5.md](./2026-11-09-save-and-todays-5.md).
-**Status:** spec and prototype approved on 2026-11-10; [ten-task breakdown](./2026-11-09-save-and-todays-5/tasks.md) approved on 2026-11-10; ready for implementation.
+**Status:** shipped to the existing internal TestFlight Beta group on 2026-11-12 as version1.0.0/build15. See the [current delivery summary and full task/review ledger](./2026-11-09-save-and-todays-5/tasks.md#current-delivery-summary-verified-2026-11-12).
 
 ## 2. Ask with numbered sources
 **Outcome:** one field finds saves or answers a question from them, with tappable numbered sources. You can also ask a single article or a whole topic.
