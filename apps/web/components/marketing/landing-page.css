@@ -1,0 +1,861 @@
+/* Signal frames the campaign; the product's own components carry the proof.
+   Light only: components/providers/theme-provider.tsx forces the light theme on `/`.
+   The header and footer are the exception by design: brand ground, dark token set.
+   Sans campaign headlines deliberately contrast with serif saved content.
+   Radius, palette, type families and elevation all use the shared tokens. */
+.landing {
+  color: var(--cd-fg);
+  background: var(--cd-bg);
+  font-family: var(--cd-font-sans);
+  overflow: clip;
+}
+.landing-wrap {
+  width: min(1200px, calc(100% - 96px));
+  margin-inline: auto;
+}
+.landing h1,
+.landing h2,
+.landing h3,
+.landing p {
+  margin: 0;
+}
+.landing a,
+.landing label {
+  -webkit-tap-highlight-color: transparent;
+}
+.landing :is(a, button, summary):focus-visible {
+  outline: 2px solid var(--cd-focus);
+  outline-offset: 5px;
+}
+.landing main:focus {
+  outline: none;
+}
+.landing-skip {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  transform: translateY(-200%);
+  z-index: 40;
+  padding: 12px 20px;
+  background: var(--cd-bg-panel);
+  border: 1px solid var(--cd-border-strong);
+  border-radius: var(--cd-radius-md);
+}
+.landing-skip:focus {
+  transform: none;
+}
+
+/* Header and footer: the brand ground, edge to edge. Both carry `dark`, so
+   every token inside them resolves to the dark set. */
+.landing .landing-header,
+.landing .landing-footer {
+  background: var(--cd-brand-ground);
+  border-color: transparent;
+}
+/* The same measure as the page, so the brand sits on the content edge. */
+.landing-header > div {
+  width: min(1200px, calc(100% - 96px));
+  max-width: none;
+  height: 72px;
+  padding-inline: 0;
+}
+.landing-nav-link {
+  font-size: 14px;
+  padding: 14px 10px;
+  white-space: nowrap;
+  color: var(--cd-fg-secondary);
+}
+.landing-nav-link:hover {
+  color: var(--cd-fg);
+}
+/* The lockup has light lettering and an icon with its own night-sky ground,
+   so it only ever sits on --cd-brand-ground: the header and footer are that
+   ground edge to edge, and the closing lockup carries it as a badge. */
+.landing-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  min-height: 44px;
+  border-radius: var(--cd-radius-sm);
+}
+.landing-brand .landing-brand-icon {
+  width: 40px;
+  height: 40px;
+}
+.landing-brand > img:not(.landing-brand-icon) {
+  width: 150px;
+  height: auto;
+}
+.landing-brand-signature {
+  margin-bottom: 36px;
+}
+.landing-brand-signature .landing-brand {
+  gap: 14px;
+  height: 72px;
+  padding: 0 26px 0 6px;
+  overflow: hidden;
+  background: var(--cd-brand-ground);
+  border-radius: var(--cd-radius-brand);
+}
+.landing-brand-signature .landing-brand-icon {
+  width: 60px;
+  height: 60px;
+}
+.landing-brand-signature .landing-brand > img:not(.landing-brand-icon) {
+  width: min(250px, 48vw);
+}
+
+/* Type */
+.landing h1 {
+  font-size: clamp(46px, 5.5vw, 78px);
+  font-weight: 600;
+  line-height: 1.02;
+  letter-spacing: -0.055em;
+}
+.landing h1 > span,
+.landing-closing h2 > span {
+  color: var(--cd-fg-secondary);
+}
+.landing h2 {
+  text-wrap: balance;
+  font-size: clamp(32px, 3.5vw, 46px);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+.landing .landing-lede {
+  max-width: 30em;
+  margin-top: 28px;
+  font-size: 19px;
+  line-height: 1.55;
+  color: var(--cd-fg-secondary);
+  text-wrap: pretty;
+}
+.landing a[href="/sign-up"] {
+  white-space: nowrap;
+}
+.landing :is(.landing-actions, .landing-closing) a[href="/sign-up"] {
+  min-height: 48px;
+  padding-inline: 26px;
+  font-size: 15px;
+}
+
+/* Hero: the offer on the left, the proof on the right. */
+.landing-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 72px;
+  padding-block: 56px 96px;
+}
+.landing-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-top: 36px;
+}
+.landing-text-link {
+  font-size: 15px;
+  padding-block: 13px;
+  text-decoration: underline;
+  text-decoration-color: var(--cd-border-strong);
+  text-underline-offset: 6px;
+}
+.landing-text-link:hover {
+  text-decoration-color: currentColor;
+}
+.landing-capture {
+  margin: 0;
+  padding: 28px;
+  background: var(--cd-bg-subtle);
+  border: 1px solid var(--cd-border);
+  border-radius: var(--cd-radius-lg);
+}
+.landing-capture-url {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding-inline: 14px;
+  background: var(--cd-bg-panel);
+  border: 1px solid var(--cd-accent);
+  border-radius: var(--cd-radius-md);
+  font-size: 14px;
+}
+.landing-capture-url > svg {
+  flex-shrink: 0;
+}
+.landing-capture-url > span:first-of-type {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.landing-capture-saved {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--cd-success);
+}
+.landing-capture-steps {
+  margin: 14px 2px 16px;
+}
+.landing-capture-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px;
+  background: var(--cd-bg-panel);
+  border: 1px solid var(--cd-border);
+  border-radius: var(--cd-radius-md);
+  box-shadow: var(--cd-shadow-popover);
+}
+.landing-capture-title {
+  font-family: var(--cd-font-serif);
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+.landing-capture-summary {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--cd-fg-secondary);
+}
+.landing-capture-filing,
+.reading-demo-filing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--cd-fg-secondary);
+}
+:is(.landing-capture-filing, .reading-demo-filing) > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+}
+:is(.landing-capture-filing, .reading-demo-filing) b {
+  font-weight: 500;
+  color: var(--cd-fg);
+}
+
+/* Why it exists */
+.landing-problem {
+  padding-block: 104px;
+  border-top: 1px solid var(--cd-border);
+  text-align: center;
+}
+.landing-problem > p {
+  max-width: 33em;
+  margin: 20px auto 0;
+  font-size: 19px;
+  line-height: 1.6;
+  color: var(--cd-fg-secondary);
+  text-wrap: pretty;
+}
+
+/* The brief */
+.landing-brief {
+  padding-block: 96px;
+  background: var(--cd-bg-subtle);
+  border-block: 1px solid var(--cd-border);
+  scroll-margin-top: 72px;
+}
+.landing-section-heading {
+  max-width: 680px;
+}
+.landing-section-heading > p,
+.landing-feature-copy > p {
+  max-width: 31em;
+  margin-top: 20px;
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--cd-fg-secondary);
+  text-wrap: pretty;
+}
+.reading-demo {
+  margin-top: 44px;
+  border: 1px solid var(--cd-border);
+  border-radius: var(--cd-radius-lg);
+  background: var(--cd-bg-panel);
+  overflow: hidden;
+}
+.reading-demo-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: 0;
+  border-bottom: 1px solid var(--cd-border);
+}
+.reading-demo-tabs legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.reading-demo-tabs label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 56px;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--cd-radius-sm);
+  color: var(--cd-fg-secondary);
+  cursor: pointer;
+}
+.reading-demo-tabs input {
+  position: absolute;
+  inset: -1px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  border-radius: var(--cd-radius-sm);
+  cursor: pointer;
+}
+.reading-demo-tabs label > svg {
+  flex-shrink: 0;
+}
+.reading-demo-tabs label > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.reading-demo-tabs b {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.reading-demo-tabs small {
+  overflow: hidden;
+  font-size: 12.5px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reading-demo-tabs label:hover {
+  background: var(--cd-bg-subtle);
+}
+.reading-demo-tabs label:has(input:checked) {
+  color: var(--cd-fg);
+  background: var(--cd-bg-subtle);
+  border-color: var(--cd-border-strong);
+}
+.reading-demo-panel {
+  display: none;
+  grid-template-columns: minmax(0, 0.8fr) auto minmax(0, 1.2fr);
+  align-items: start;
+  gap: 28px;
+  /* Tall enough for the longest example, so changing tabs never moves the page. */
+  min-height: 470px;
+  padding: 36px 40px 40px;
+}
+.reading-demo:has(input[value="article"]:checked) [data-demo-panel="article"],
+.reading-demo:has(input[value="video"]:checked) [data-demo-panel="video"],
+.reading-demo:has(input[value="post"]:checked) [data-demo-panel="post"] {
+  display: grid;
+}
+/* Without :has() nothing can be chosen, so show every example instead. */
+@supports not selector(:has(*)) {
+  .reading-demo-tabs {
+    display: none;
+  }
+  .reading-demo-panel {
+    display: grid;
+  }
+}
+.reading-demo-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.reading-demo-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--cd-fg-tertiary);
+}
+.reading-demo-arrow {
+  align-self: center;
+  color: var(--cd-fg-tertiary);
+}
+.reading-demo-summary {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--cd-fg);
+}
+.reading-demo-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  font-size: 12.5px;
+  color: var(--cd-fg-secondary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.reading-demo-filing {
+  padding-inline: 2px;
+}
+.reading-demo-note {
+  padding: 14px 24px;
+  border-top: 1px solid var(--cd-border);
+  font-size: 12.5px;
+  color: var(--cd-fg-tertiary);
+}
+
+/* What was saved: an excerpt of the source, never a mock screenshot. */
+.saved-link-cover {
+  width: 100%;
+  overflow: hidden;
+  color: var(--cd-fg);
+  background: var(--cd-bg-subtle);
+  border: 1px solid var(--cd-border);
+  border-radius: var(--cd-radius-md);
+}
+.saved-link-source {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--cd-border);
+  font-size: 12.5px;
+  color: var(--cd-fg-secondary);
+}
+.saved-link-source svg {
+  flex-shrink: 0;
+}
+.saved-link-source > span {
+  margin-left: auto;
+}
+.saved-link-article,
+.saved-link-post {
+  padding-bottom: 26px;
+}
+.saved-link-byline {
+  display: block;
+  margin: 26px 22px 14px;
+  font-size: 12.5px;
+  color: var(--cd-fg-secondary);
+}
+.saved-link-cover .saved-link-editorial-title {
+  margin: 0 22px 20px;
+  font-family: var(--cd-font-serif);
+  font-size: 40px;
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+.saved-link-cover blockquote {
+  margin: 20px 22px 0;
+  font-family: var(--cd-font-serif);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+.saved-link-thumbnail {
+  position: relative;
+}
+.saved-link-thumbnail img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+.saved-link-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 40px;
+  transform: translate(-50%, -50%);
+  border-radius: var(--cd-radius-md);
+  background: var(--cd-accent);
+  color: var(--cd-accent-fg);
+}
+.saved-link-caption {
+  padding: 14px 18px 16px;
+  font-size: 12.5px;
+  color: var(--cd-fg-secondary);
+}
+.saved-link-caption b {
+  display: block;
+  font-family: var(--cd-font-serif);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--cd-fg);
+}
+.saved-link-author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 22px 22px 0;
+}
+.saved-link-author > span {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--cd-border);
+  border-radius: var(--cd-radius-pill);
+  background: var(--cd-bg-panel);
+  font-size: 12px;
+}
+.saved-link-author strong,
+.saved-link-author small {
+  display: block;
+  font-size: 12.5px;
+}
+.saved-link-author small {
+  color: var(--cd-fg-secondary);
+}
+
+/* One benefit per section: the claim beside the screen that keeps it. */
+.landing-feature {
+  display: grid;
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+  align-items: center;
+  gap: 80px;
+  padding-top: 128px;
+}
+.landing-feature-flip {
+  grid-template-columns: minmax(0, 1.22fr) minmax(0, 0.78fr);
+}
+.landing-feature-flip > .landing-feature-copy {
+  order: 2;
+}
+.landing-feature-copy > ul {
+  display: grid;
+  gap: 12px;
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.landing-feature-copy li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.landing-feature-copy li > svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+  color: var(--cd-success);
+}
+/* Home's lead image is 300px tall in the app; the vignette is a smaller window. */
+.landing-edition-lead > div:first-child {
+  height: 200px;
+}
+
+.landing-principles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 48px;
+  margin: 128px 0 0;
+  padding: 36px 0;
+  border-block: 1px solid var(--cd-border);
+  list-style: none;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--cd-fg-secondary);
+}
+.landing-principles b {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 600;
+  color: var(--cd-fg);
+}
+
+.landing-closing {
+  padding-block: 104px 112px;
+  text-align: center;
+}
+.landing-closing h2 {
+  margin-bottom: 36px;
+  font-size: clamp(48px, 6.2vw, 88px);
+  line-height: 1;
+  letter-spacing: -0.06em;
+}
+.landing-closing > p {
+  margin-top: 18px;
+  font-size: 12.5px;
+  color: var(--cd-fg-tertiary);
+}
+.landing-footer {
+  font-size: 12.5px;
+  color: var(--cd-fg-secondary);
+}
+.landing-footer > div {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+  padding-block: 28px;
+}
+.landing-footer > div > span {
+  margin-right: auto;
+}
+.landing-photo-credits {
+  max-width: 340px;
+}
+.landing-photo-credits summary {
+  cursor: pointer;
+  padding-block: 12px;
+}
+.landing-photo-credits p {
+  line-height: 1.6;
+}
+.landing-photo-credits a {
+  text-decoration: underline;
+}
+
+/* The hero replays a save in the order it happens: the row exists at once,
+   then the page is read, summarised and filed. Without motion everything is
+   simply in place. */
+@media (prefers-reduced-motion: no-preference) {
+  .landing-hero-copy {
+    animation: landing-arrive 0.6s both;
+  }
+  .landing-capture {
+    animation: landing-arrive 0.7s 0.1s both;
+  }
+  .landing-capture-saved {
+    animation: landing-appear 0.3s 0.6s both;
+  }
+  .landing-capture-steps li,
+  .landing-capture-card > :nth-child(n + 3) {
+    animation: landing-appear 0.35s both;
+  }
+  .landing-capture-steps li:nth-child(1) {
+    animation-delay: 0.75s;
+  }
+  .landing-capture-steps li:nth-child(2) {
+    animation-delay: 0.95s;
+  }
+  .landing-capture-steps li:nth-child(3) {
+    animation-delay: 1.15s;
+  }
+  .landing-capture-card > :nth-child(3) {
+    animation-delay: 1.3s;
+  }
+  .landing-capture-steps li:nth-child(4) {
+    animation-delay: 1.6s;
+  }
+  .landing-capture-card > :nth-child(4) {
+    animation-delay: 1.75s;
+  }
+  @keyframes landing-arrive {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes landing-appear {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+@media (max-width: 1023px) {
+  .landing-wrap,
+  .landing-header > div {
+    width: calc(100% - 56px);
+  }
+  .landing-hero {
+    gap: 40px;
+  }
+  .landing-feature {
+    gap: 48px;
+  }
+  .reading-demo-panel {
+    gap: 20px;
+    padding: 28px 24px 32px;
+  }
+}
+@media (max-width: 899px) {
+  .landing-hero,
+  .landing-feature,
+  .landing-feature-flip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .landing-hero {
+    gap: 48px;
+    padding-block: 48px 72px;
+  }
+  .landing-feature {
+    gap: 36px;
+    padding-top: 88px;
+  }
+  .landing-feature-flip > .landing-feature-copy {
+    order: 0;
+  }
+  .reading-demo-panel {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+  .reading-demo-arrow {
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+  .landing-principles {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    margin-top: 88px;
+  }
+}
+@media (max-width: 767px) {
+  .landing-wrap,
+  .landing-header > div {
+    width: calc(100% - 40px);
+  }
+  .landing-header > div {
+    height: 64px;
+    gap: 8px;
+  }
+  .landing-header .landing-brand {
+    gap: 8px;
+  }
+  .landing-header .landing-brand-icon {
+    width: 36px;
+    height: 36px;
+  }
+  .landing-header .landing-brand > img:not(.landing-brand-icon) {
+    width: clamp(100px, 32vw, 126px);
+  }
+  .landing-header .landing-nav-link {
+    display: none;
+  }
+  .landing-header a[href="/sign-up"] {
+    min-height: 40px;
+    height: 40px;
+    padding-inline: 14px;
+  }
+  .landing-header a[href="/sign-up"] svg {
+    display: none;
+  }
+  .landing-hero {
+    padding-block: 36px 64px;
+  }
+  .landing h1 {
+    font-size: clamp(42px, 12.4vw, 60px);
+  }
+  .landing h2 {
+    font-size: 32px;
+  }
+  .landing .landing-lede {
+    margin-top: 22px;
+    font-size: 17px;
+  }
+  .landing-actions {
+    gap: 20px;
+    margin-top: 28px;
+  }
+  .landing-capture {
+    padding: 14px;
+  }
+  .landing-capture-steps {
+    display: none;
+  }
+  .landing-capture-url {
+    margin-bottom: 14px;
+  }
+  .landing-capture-card {
+    padding: 16px;
+  }
+  .landing-capture-title {
+    font-size: 23px;
+  }
+  .landing-problem {
+    padding-block: 72px;
+  }
+  .landing-problem > p,
+  .landing-section-heading > p,
+  .landing-feature-copy > p {
+    font-size: 17px;
+  }
+  .landing-brief {
+    padding-block: 64px;
+  }
+  .reading-demo {
+    margin-top: 32px;
+  }
+  .reading-demo-tabs {
+    gap: 4px;
+    padding: 8px;
+  }
+  .reading-demo-tabs label {
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 10px 6px;
+  }
+  .reading-demo-tabs small {
+    display: none;
+  }
+  .reading-demo-panel {
+    padding: 20px 16px 24px;
+  }
+  .reading-demo-note {
+    padding: 14px 16px;
+    line-height: 1.5;
+  }
+  .saved-link-cover .saved-link-editorial-title {
+    font-size: 34px;
+  }
+  .landing-feature {
+    padding-top: 72px;
+  }
+  .landing-edition-lead > div:first-child {
+    height: 170px;
+  }
+  .landing-principles {
+    margin-top: 72px;
+    padding-block: 28px;
+  }
+  .landing-closing {
+    padding-block: 72px 80px;
+  }
+  .landing .landing-closing h2 {
+    font-size: clamp(44px, 13vw, 60px);
+  }
+  .landing-footer > div {
+    flex-wrap: wrap;
+    gap: 15px;
+    padding-block: 25px;
+  }
+  .landing-footer > div > span {
+    width: 100%;
+  }
+}

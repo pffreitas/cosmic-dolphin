@@ -1,8 +1,8 @@
 import { Inter, Source_Serif_4 } from "next/font/google";
-import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import Body from "./body";
 import ReduxProvider from "@/components/providers/redux-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import { CommandDialogProvider } from "@/components/providers/command-dialog-provider";
 import { GlobalCommandDialog } from "@/components/global-command-dialog";
 import { GlobalKeyboardShortcuts } from "@/components/global-keyboard-shortcuts";
@@ -129,12 +129,7 @@ export default async function RootLayout({
           <ToastProvider>
             <CommandDialogProvider>
               <Body>
-                <ThemeProvider
-                  attribute="class"
-                  defaultTheme="light"
-                  enableSystem
-                  disableTransitionOnChange
-                >
+                <ThemeProvider>
                   <AppChrome
                     isLoggedIn={isLoggedIn}
                     user={shellUser}

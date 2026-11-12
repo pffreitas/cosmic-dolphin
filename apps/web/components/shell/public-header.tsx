@@ -13,9 +13,12 @@ import { Button } from "@/components/ui/button";
  */
 export function PublicHeader({
   action,
+  brand,
   className,
 }: {
   action?: React.ReactNode;
+  /** Optional campaign identity; other public surfaces keep the product brand. */
+  brand?: React.ReactNode;
   className?: string;
 }) {
   return (
@@ -26,7 +29,7 @@ export function PublicHeader({
       )}
     >
       <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center justify-between gap-4 px-4 sm:px-6">
-        <Brandmark />
+        {brand ?? <Brandmark />}
         <nav aria-label="Account" className="flex items-center gap-2">
           {action ?? (
             <>
