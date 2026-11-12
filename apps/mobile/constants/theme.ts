@@ -57,6 +57,8 @@ export const colors = {
     navEdge: 'rgba(255,255,255,.9)',
     navSheen: 'rgba(255,255,255,.85)',
     navPill: 'rgba(255,255,255,.96)',
+    /* Brand artwork */
+    brandGround: '#010317',
   },
   dark: {
     /* Surfaces */
@@ -101,6 +103,8 @@ export const colors = {
     navEdge: 'rgba(255,255,255,.13)',
     navSheen: 'rgba(255,255,255,.15)',
     navPill: 'rgba(255,255,255,.11)',
+    /* Brand artwork */
+    brandGround: '#010317',
   },
 } as const;
 
@@ -114,6 +118,7 @@ export const radius = {
   sm: 6,
   md: 8,
   lg: 12,
+  brand: 7,
   pill: 999,
 } as const;
 

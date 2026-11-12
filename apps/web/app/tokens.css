@@ -21,6 +21,7 @@
   --cd-radius-sm: 6px;
   --cd-radius-md: 8px;
   --cd-radius-lg: 12px;
+  --cd-radius-brand: 7px;
   --cd-radius-pill: 999px;
 
   /* -------- Space (4px base) -------- */
@@ -91,6 +92,9 @@
   --cd-nav-pill: rgba(255,255,255,.96);
   --cd-nav-shadow: 0 10px 26px -14px rgba(28,22,16,.32), 0 2px 6px -3px rgba(28,22,16,.12);
 
+  /* Brand artwork */
+  --cd-brand-ground: #010317;
+
   /* -------- Elevation -------- */
   --cd-shadow-capsule: var(--cd-nav-shadow);
   --cd-shadow-popover: 0 12px 32px -12px rgba(28, 22, 16, 0.2), 0 2px 6px -3px rgba(28, 22, 16, 0.1);
@@ -149,6 +153,9 @@
   --cd-nav-sheen: rgba(255,255,255,.15);
   --cd-nav-pill: rgba(255,255,255,.11);
   --cd-nav-shadow: 0 12px 30px -16px rgba(0,0,0,.85);
+
+  /* Brand artwork */
+  --cd-brand-ground: #010317;
 
   --cd-shadow-popover: 0 12px 32px -12px rgba(0, 0, 0, 0.7), 0 2px 6px -3px rgba(0, 0, 0, 0.5);
   --cd-shadow-dialog: 0 24px 60px -20px rgba(0, 0, 0, 0.8);

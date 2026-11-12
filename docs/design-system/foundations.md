@@ -103,6 +103,7 @@ costume announcing that a machine made it.
 | `--cd-hl-bg` / `--cd-hl-line` | User highlights inside reader content, and text selection. A soft ochre marker — the one warm hue on the reading surface. |
 | `--cd-focus` | Focus ring. Identical to accent by design — focus is an action affordance. |
 | `--cd-overlay` | The scrim behind a dialog or bottom sheet. Dark in both modes — it dims the page, it does not restate the theme. |
+| `--cd-brand-ground` | The night-sky ground of the dolphin artwork, sampled from the icon. The landing header and footer are this colour, and the closing logo lockup carries it as a badge. Identical in both modes — it belongs to the artwork, not the theme — and anything on it uses the dark set. Never a surface inside the app. |
 
 ### Identity
 
@@ -188,6 +189,7 @@ The reading column is 680px, which at the 18px `reader` size is the same ~70 cha
 | `--cd-radius-sm` | 6px | Buttons, inputs, chips, ghost hit areas, small thumbnails. |
 | `--cd-radius-md` | 8px | Cards, feed items, panels, dialogs, thumbnails, popovers. |
 | `--cd-radius-lg` | 12px | The app frame and the AI callout. Nothing else. |
+| `--cd-radius-brand` | 7px | The landing logo lockup. Nothing else. |
 | `--cd-radius-pill` | 999px | Tags, avatars, segmented filters, the primary CTA. |
 
 Pills are a signal that something is a *token of identity or a single decisive action*. A pill on an
