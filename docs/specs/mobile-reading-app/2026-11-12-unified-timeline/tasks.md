@@ -15,7 +15,7 @@
 | Authorization | User: “Approved, implement it and full send” (spec D-4), implementation/feature pushes/PR/review replies/merge after gates. Exact written spec/prototype approved through “Approve spec (Recommended)”; this task plan approved through “Approve plan (Recommended)” on 2026-11-12. No manual dispatch, backend release or TestFlight submission. |
 | Plan | 1 task · critical path T-1 · 1 lane (A), no parallel developer work |
 
-**Current outcome / next gate / owner / blocker.** T-1 implemented and verified, including approved FR-7 Android prerequisite; both-platform fixture UI proof passed. Coordinator owns cumulative Sol review, then PR checks/merge. Sol rounds 0/5, no PR/push/merge; no current blocker. Worktree: `/private/var/folders/dr/zb3z5bh11d14xybgh0jm4nw80000gn/T/opencode/mobile-unified-timeline`.
+**Current outcome / next gate / owner / blocker.** T-1 committed at b7e8a851b3a1051309722d68e3a7eca7505f615e and verified; Sol APPROVE round1/5, no findings. Both-platform fixture UI proof passed, including FR-7. Coordinator owns PR creation, live checks/reviews and authorized squash merge. No current blocker; PR/merge not yet performed. Worktree: `/private/var/folders/dr/zb3z5bh11d14xybgh0jm4nw80000gn/T/opencode/mobile-unified-timeline`.
 
 **Planning verification.** Structural checker passed with one task, zero errors/warnings. Coordinator fresh-eyes read found no missing dependency or outcome boundary; all work shares one developer context. Council final reads and independent simplification/editor passes are recorded in the spec; the HTML's tested revision is sha256:6accb830dceecf1cde51d251c9fbacbb2d86baaa508436a8433e893a75397942. Only spec, tasks and this standalone HTML are retained after planning cleanup.
 
@@ -415,15 +415,19 @@ Implementation starting. Fresh origin/main d266cf4e83c0825c896325d230907e3c6133b
 
 ## Implementation review
 
-Not started. One cumulative GPT Sol ledger; maximum five rounds across this package, PR fixes and new target candidates. Coordinator fills actual base/reviewed SHA, rounds and checks during execution; no operational SHA or approval is claimed by this draft.
+One cumulative GPT Sol ledger; maximum five rounds across this package, PR fixes and new target candidates. Round1 completed with APPROVE, no findings. Four rounds remain; product/base changes need current review coverage in this same ledger. Review-record-only commits do not alter the reviewed product tree.
 
 | Repo | Feature branch | Base SHA | Reviewed SHA | Tasks | Rounds | Verdict | Checks | Findings / follow-ups |
 |---|---|---|---|---|---|---|---|---|
-| cosmic-dolphin | `feature/mobile-unified-timeline` | d266cf4e83c0825c896325d230907e3c6133b876 | | T-1 | 0 | Pending | Fresh-main baseline passed | |
+| cosmic-dolphin | `feature/mobile-unified-timeline` | d266cf4e83c0825c896325d230907e3c6133b876 | b7e8a851b3a1051309722d68e3a7eca7505f615e | T-1 → b7e8a851b3a1051309722d68e3a7eca7505f615e | 1 | APPROVE | Sol independently reran exact apispec/lint/types/Jest/tokens/diff checks; 311 tests passed | No findings |
+
+Reviewer `openai/gpt-6.1-sol`, T3 task `node:delegated-task:command%3Amcp%3A1b61a131-b174-4732-9fa1-5adb05170e2b%3Adelegate-task%3A381a5587-1c46-4cb2-a9c6-ea4800ea5163`. Confirmed all154 existing web declarations unchanged and meaningful provider/HTTP privacy, topic/default/finite-feed/appearance coverage. Native proof read from coordinator’s receipts, not independently rerun. Usage/effort not exposed. Remaining gate: PR-only CI/live head/base/feedback.
 
 ## Delivery
 
 **Approval provenance.** Paulo Freitas approved the exact written spec/prototype on 2026-11-12 through “Approve spec (Recommended)”; semantic revision is the spec hash in this header. Spec D-4 records the separate full-send grant “Approved, implement it and full send”. This exact task plan was approved through “Approve plan (Recommended)” on 2026-11-12. Preserve both provenance and the existing grant; do not ask for execution/merge permission again within its scope.
+
+The precise FR-7/D-5 native prerequisite and in-progress T-1 scope extension were separately approved on 2026-11-13 through “Include native fix (Recommended)”; current spec hash is recorded above. No broader native changes or manual rollout grant is inferred.
 
 | Repo | PR | Head SHA | Base SHA | State | Proof / decisions | Merge SHA |
 |---|---|---|---|---|---|---|
