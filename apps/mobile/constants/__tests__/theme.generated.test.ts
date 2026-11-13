@@ -19,6 +19,14 @@ const GENERATOR = resolve(REPO_ROOT, 'scripts/generate-tokens.mjs');
  * If this fails: run `bun run tokens` from the repo root and commit both files.
  */
 describe('generated Signal theme', () => {
+  it.each(['light', 'dark'] as const)('%s exposes solid Home-only header roles', mode => {
+    const header = colors[mode] as unknown as Record<string, string>;
+    expect(header.homeHeaderBg).toBe('#000000');
+    expect(header.homeHeaderFg).toBe('#FFFFFF');
+    expect(header.homeHeaderFocus).toBe('#FFFFFF');
+    expect(header.homeHeaderBorder).toBe('#8A8A8A');
+    expect(header.homeHeaderPressed).toBe('#242424');
+  });
   it('is in sync with docs/design-system/tokens.json — for both clients', () => {
     expect(() =>
       execFileSync('node', [GENERATOR, '--check'], { encoding: 'utf8' }),

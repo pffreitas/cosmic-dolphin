@@ -2,10 +2,13 @@ import React from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { act, fireEvent, waitFor } from "@testing-library/react-native";
 import { renderRouter, screen } from "expo-router/testing-library";
-import { Text, RefreshControl } from "react-native";
-import { router } from "expo-router";
+import { Text, RefreshControl, StatusBar, FlatList, ScrollView, StyleSheet } from "react-native";
+import { router, Stack } from "expo-router";
 import HomeScreen from "../(tabs)/index";
 import SaveScreen from "../save";
+import TabLayout from "../(tabs)/_layout";
+import { Chip } from "@/components/ui/Signal";
+import { colors } from "@/constants/theme";
 const mockCaptureSave = jest.fn(async () => "clipboard-capture");
 import { MobileAPI } from "@/lib/mobile-api";
 import type { Bookmark, FeedItem, TodayPicksResponse } from "@cosmic-dolphin/api-client";
@@ -47,6 +50,19 @@ it("For you renders the fixed server pick and its verbatim reason before the fin
   expect(screen.getByText("Article pick")).toBeTruthy();
   expect(screen.getByText("Article tail")).toBeTruthy();
   expect(MobileAPI.picks).toHaveBeenCalled();
+});
+it("opens one finite for_you timeline without audience scopes or a viewer action", async () => {
+  (MobileAPI.feed as jest.Mock).mockResolvedValue({ items: [item("tail")], nextCursor: "unused" });
+  home();
+  await screen.findByText("Article tail");
+  for (const name of ["For you", "Following", "Unread"]) expect(screen.queryByRole("tab", { name })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Today's 5" })).toBeNull();
+  expect(MobileAPI.feed).toHaveBeenCalledTimes(1);
+  expect(MobileAPI.feed).toHaveBeenLastCalledWith("for_you");
+  expect(screen.queryByText("More reading lists")).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "Open Library" }));
+  expect(await screen.findByText("Library destination")).toBeTruthy();
+  expect(MobileAPI.feed).toHaveBeenCalledTimes(1);
 });
 it("orders captures, fixed picks, Continue reading, ten more unsnoozed items, and the Library end", async () => {
   const resume = bookmark("resume");
@@ -134,6 +150,17 @@ it("partial picks failure keeps the feed usable and Retry re-reads the fixed set
   expect(screen.queryByText("Article tail")).toBeNull();
   expect(MobileAPI.picks).toHaveBeenCalledTimes(2);
 });
+it("feed-only failure retains inline picks and Retry restores the finite tail", async () => {
+  (MobileAPI.feed as jest.Mock).mockRejectedValueOnce({ response: { status: 500 } });
+  home();
+  await screen.findByText("Some reading suggestions could not be loaded. Pull to refresh or try again.");
+  expect(screen.getByText("Article pick")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "All topics" }).props.accessibilityState.selected).toBe(true);
+  expect(screen.queryByText("Your reading lists will be back")).toBeNull();
+  fireEvent.press(screen.getByRole("button", { name: "Retry" }));
+  await screen.findByText("Article tail");
+  expect(screen.getByText("You're caught up")).toBeTruthy();
+});
 it("a whole initial load failure offers Retry without displaying an empty-day success", async () => {
   (MobileAPI.feed as jest.Mock).mockRejectedValueOnce(new Error("network"));
   (MobileAPI.picks as jest.Mock).mockRejectedValueOnce(new Error("network"));
@@ -176,44 +203,61 @@ it("shows a picks server error after a successful load without claiming the devi
   expect(screen.getByText("Article tail")).toBeTruthy();
   expect(screen.queryByText("You're offline. Previously loaded saves are shown. Connect to save changes.")).toBeNull();
 });
-it.each(["Following", "Unread"])("%s keeps a paged list without picks, Continue or the caught-up end", async label => {
-  (MobileAPI.feed as jest.Mock).mockImplementation(async (scope, cursor) => ({
-    items: cursor ? [item("page2")] : scope === "for_you" ? [item("tail")] : [item("newest"), item("older")],
-    nextCursor: cursor ? undefined : "page2",
-  }));
-  home();
-  expect(await screen.findByText("Article pick")).toBeTruthy();
-  const pickRequests = (MobileAPI.picks as jest.Mock).mock.calls.length;
-  fireEvent.press(screen.getByRole("tab", { name: label }));
-  expect(await screen.findByText("Article newest")).toBeTruthy();
-  expect(screen.queryByText("Today's 5")).toBeNull();
-  expect(screen.queryByText(/Continue reading/)).toBeNull();
-  expect(screen.queryByText("You're caught up")).toBeNull();
-  expect(screen.getAllByTestId(/^feed-card-/).map(node => node.props.testID)).toEqual(["feed-card-newest", "feed-card-older"]);
-  expect(MobileAPI.picks).toHaveBeenCalledTimes(pickRequests);
-  fireEvent.press(screen.getByRole("button", { name: label === "Unread" ? "More saves" : "More reading lists" }));
-  expect(await screen.findByText("Article page2")).toBeTruthy();
-  expect(MobileAPI.feed).toHaveBeenLastCalledWith(label.toLowerCase(), "page2");
-});
-it.each(["Following", "Unread"])("%s renders its existing empty state with the scope controls available", async label => {
-  (MobileAPI.feed as jest.Mock).mockResolvedValue({ items: [] });
-  home();
-  expect(await screen.findByText("Article pick")).toBeTruthy();
-  fireEvent.press(screen.getByRole("tab", { name: label }));
-  expect(await screen.findByText(label === "Following" ? "Good reading travels through people" : "A fresh starting point")).toBeTruthy();
-  expect(screen.getByText("Save a link to start shaping your feed. Public discoveries and connected reading lists will appear as they become available.")).toBeTruthy();
-  expect(screen.queryByText("You're caught up")).toBeNull();
-  expect(screen.getByRole("tab", { name: "For you" })).toBeTruthy();
-});
-it("For you loading mirrors the progress bar and three rows while scope controls remain usable", async () => {
+it("Home loading mirrors the progress bar and three rows with All topics available", async () => {
   let resolveFeed!: (value: { items: FeedItem[] }) => void;
   (MobileAPI.feed as jest.Mock).mockReturnValue(new Promise(resolve => { resolveFeed = resolve; }));
   home();
   expect(screen.getByTestId("today-skeleton-bar")).toBeTruthy();
   expect(screen.getAllByTestId("today-skeleton-row")).toHaveLength(3);
-  expect(screen.getByRole("tab", { name: "Unread" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "All topics" })).toBeTruthy();
   resolveFeed({ items: [] });
   await screen.findByText("Today's 5");
+});
+it("always starts with selected All topics, even with no tags or a failed initial read", async () => {
+  (MobileAPI.feed as jest.Mock).mockRejectedValue(new Error("offline"));
+  (MobileAPI.picks as jest.Mock).mockRejectedValue(new Error("offline"));
+  home();
+  expect(screen.getByRole("button", { name: "All topics" }).props.accessibilityState.selected).toBe(true);
+  await screen.findByText("Your reading lists will be back");
+  expect(screen.getByRole("button", { name: "All topics" }).props.accessibilityState.selected).toBe(true);
+});
+it("filters only the local tail, preserves topic on return and held/failed refresh, then resets on successful disappearance", async () => {
+  const tagged = (id: string, tags: string[]) => item(id, { bookmark: bookmark(id, { cosmicTags: tags }) });
+  (MobileAPI.feed as jest.Mock).mockResolvedValue({ items: [tagged("ai", ["AI", "Design"]), tagged("design", ["Design"]),
+    item("pending", { type: "pending", bookmark: bookmark("pending", { processingStatus: "processing" }) })] });
+  (MobileAPI.resume as jest.Mock).mockResolvedValue({ items: [{ bookmark: bookmark("resume"), progress: { percent: 50 } }] });
+  const route = renderRouter({ _layout: () => <Stack screenOptions={{ headerShown: false }} />, index: HomeScreen, away: () => <Text>Away</Text> });
+  await screen.findByText("Article ai");
+  expect(screen.getAllByText(/^(All topics|AI|Design)$/).map(node => node.props.children)).toEqual(["All topics", "AI", "Design"]);
+  const requests = (MobileAPI.feed as jest.Mock).mock.calls.length;
+  fireEvent.press(screen.getByRole("button", { name: "AI" }));
+  expect(screen.queryByText("Article design")).toBeNull();
+  for (const title of ["Article pick", "Article resume", "Article pending", "0 of 1 done · 5 min left"]) expect(screen.getByText(title)).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "All topics" }));
+  expect(screen.getByText("Article design")).toBeTruthy();
+  expect(MobileAPI.feed).toHaveBeenCalledTimes(requests);
+  fireEvent.press(screen.getByRole("button", { name: "AI" }));
+  act(() => router.push("/away"));
+  await screen.findByText("Away");
+  let finish!: (value: unknown) => void;
+  (MobileAPI.feed as jest.Mock).mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+  act(() => router.back());
+  await waitFor(() => expect(finish).toBeDefined());
+  expect(screen.getByRole("button", { name: "AI" }).props.accessibilityState.selected).toBe(true);
+  await act(async () => finish({ items: [tagged("ai", ["AI"])] }));
+  (MobileAPI.feed as jest.Mock).mockRejectedValueOnce(new Error("offline"));
+  fireEvent(screen.UNSAFE_getByType(RefreshControl), "refresh");
+  await screen.findByText("You're offline. Previously loaded saves are shown. Connect to save changes.");
+  expect(screen.getByRole("button", { name: "AI" }).props.accessibilityState.selected).toBe(true);
+  (MobileAPI.feed as jest.Mock).mockResolvedValue({ items: [tagged("design", ["Design"])] });
+  fireEvent(screen.UNSAFE_getByType(RefreshControl), "refresh");
+  await screen.findByText("Article design");
+  expect(screen.getByRole("button", { name: "All topics" }).props.accessibilityState.selected).toBe(true);
+  fireEvent.press(screen.getByRole("button", { name: "Design" }));
+  route.unmount();
+  home();
+  await screen.findByText("Article design");
+  expect(screen.getByRole("button", { name: "All topics" }).props.accessibilityState.selected).toBe(true);
 });
 it("shows followed actor/reason verbatim, omits absent reasons and private notes, and retains digest sources", async () => {
   (MobileAPI.feed as jest.Mock).mockResolvedValue({ items: [
@@ -231,33 +275,6 @@ it("shows followed actor/reason verbatim, omits absent reasons and private notes
   expect(screen.getByText("Server digest thesis")).toBeTruthy();
   expect(screen.getByText("Source title")).toBeTruthy();
   expect(screen.getByText("Built from")).toBeTruthy();
-});
-it.each(["Following", "Unread"])("%s supports loading, failed Retry and cached offline reads without For-you sections", async label => {
-  home();
-  expect(await screen.findByText("Article pick")).toBeTruthy();
-  let resolveFeed!: (value: { items: FeedItem[] }) => void;
-  (MobileAPI.feed as jest.Mock).mockReturnValueOnce(new Promise(resolve => { resolveFeed = resolve; }));
-  fireEvent.press(screen.getByRole("tab", { name: label }));
-  expect(await screen.findByRole("progressbar", { name: "Loading content" })).toBeTruthy();
-  expect(screen.queryByTestId("today-skeleton-bar")).toBeNull();
-  resolveFeed({ items: [item("scope")] });
-  expect(await screen.findByText("Article scope")).toBeTruthy();
-  (MobileAPI.feed as jest.Mock).mockRejectedValueOnce(new Error("offline"));
-  fireEvent(screen.UNSAFE_getByType(RefreshControl), "refresh");
-  expect(await screen.findByText("You're offline. Previously loaded saves are shown. Connect to save changes.")).toBeTruthy();
-  expect(screen.getByText("Article scope")).toBeTruthy();
-  expect(screen.queryByText("You're caught up")).toBeNull();
-  expect(screen.queryByText("Today's 5")).toBeNull();
-});
-it.each(["Following", "Unread"])("%s initial failure exposes its existing Retry recovery", async label => {
-  home();
-  expect(await screen.findByText("Article pick")).toBeTruthy();
-  (MobileAPI.feed as jest.Mock).mockRejectedValueOnce(new Error("network"));
-  fireEvent.press(screen.getByRole("tab", { name: label }));
-  expect(await screen.findByText("Some reading suggestions could not be loaded. Pull to refresh or try again.")).toBeTruthy();
-  expect(screen.queryByText("You're caught up")).toBeNull();
-  fireEvent.press(screen.getByRole("button", { name: "Retry" }));
-  expect(await screen.findByText("Article tail")).toBeTruthy();
 });
 it("first focus after revealsAt restores the fifth original slot: 1 of 4 becomes 1 of 5", async () => {
   const original = Array.from({ length: 5 }, (_, index) => ({ position: index + 1,
@@ -286,4 +303,31 @@ it("Home Paste opens the real Save screen with the copied URL and clipboard attr
   expect((await screen.findByLabelText("Link")).props.value).toBe("https://copied.example/article");
   fireEvent.press(screen.getByRole("button", { name: "Save" }));
   await waitFor(() => expect(mockCaptureSave).toHaveBeenCalledWith(expect.objectContaining({ sourceUrl: "https://copied.example/article", captureSource: "clipboard" })));
+});
+it("keeps black topics outside scrolling content and restores status chrome when a mounted Home tab blurs", async () => {
+  (MobileAPI.feed as jest.Mock).mockResolvedValue({ items: [item("tail", { bookmark: bookmark("tail", { cosmicTags: ["Design"] }) })] });
+  const push = jest.spyOn(StatusBar, "pushStackEntry");
+  const pop = jest.spyOn(StatusBar, "popStackEntry");
+  try {
+    renderRouter({ "(tabs)/_layout": TabLayout, "(tabs)/index": HomeScreen,
+      "(tabs)/library": () => <Text>Library destination</Text>, "(tabs)/capture": () => null,
+      "(tabs)/profile": () => null, "(tabs)/explore": () => null, save: () => null, search: () => <Text>Search destination</Text> });
+    await screen.findByText("Article tail");
+    expect(push).toHaveBeenLastCalledWith({ barStyle: "light-content", backgroundColor: colors.light.homeHeaderBg, translucent: false });
+    const entry = push.mock.results.at(-1)!.value;
+    expect(screen.UNSAFE_getByType(FlatList).findAllByType(Chip)).toHaveLength(0);
+    const strip = screen.UNSAFE_getAllByType(ScrollView).find(node => node.props.horizontal)!;
+    expect(StyleSheet.flatten(strip.props.style).backgroundColor).toBe(colors.light.homeHeaderBg);
+    expect(screen.getAllByRole("button").slice(0, 3).map(node => node.props.accessibilityLabel ?? "All topics")).toEqual(["Search", "Your profile", "All topics"]);
+    fireEvent.press(screen.getByRole("button", { name: "Design" }));
+    fireEvent.press(screen.getByLabelText(/^Library, tab,/));
+    await screen.findByText("Library destination");
+    expect(pop).toHaveBeenCalledWith(entry);
+    fireEvent.press(screen.getByLabelText(/^Home, tab,/));
+    await screen.findByText("Article tail");
+    expect(screen.getByRole("button", { name: "Design" }).props.accessibilityState.selected).toBe(true);
+    expect(push.mock.calls.length).toBeGreaterThan(1);
+    fireEvent.press(screen.getByRole("button", { name: "Search" }));
+    await screen.findByText("Search destination");
+  } finally { push.mockRestore(); pop.mockRestore(); }
 });

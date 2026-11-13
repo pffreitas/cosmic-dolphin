@@ -349,3 +349,17 @@ Copy is design material.
   summary?" Not "An error occurred."
 - AI copy is declarative and sourced. "Summarised from the full article", not "AI-powered insights".
 - Never anthropomorphise the pipeline. It *summarised*; it did not *think about* or *love* anything.
+
+## Mobile Home header
+
+Home alone opts into the `home-header-*` roles in both themes. `bg` is solid black
+across the safe area, brand/action bar and persistent topic strip; `fg` is white
+for the live wordmark and controls. Selected topics invert `fg`/`bg`. `border`
+defines unselected controls, `pressed` gives their touch feedback, and `focus`
+is the visible white outline against the black strip. The brand has no gradient
+capsule here. The body retains normal theme surfaces. Other screens and all
+default primitives retain their existing appearance. Home's focus-scoped status
+bar override is removed on blur, even when its tab stays mounted.
+
+These additive semantic roles are generated for both clients by the shared
+schema, but are consumed only by mobile Home. Existing web roles are unchanged.

@@ -15,6 +15,12 @@
 
 export const colors = {
   light: {
+    /* Mobile Home header (opt-in) */
+    homeHeaderBg: '#000000',
+    homeHeaderFg: '#FFFFFF',
+    homeHeaderFocus: '#FFFFFF',
+    homeHeaderBorder: '#8A8A8A',
+    homeHeaderPressed: '#242424',
     /* Plum shadow brand */
     brandPlum: '#34162F',
     brandMid: '#160D1B',
@@ -67,6 +73,12 @@ export const colors = {
     brandGround: '#010317',
   },
   dark: {
+    /* Mobile Home header (opt-in) */
+    homeHeaderBg: '#000000',
+    homeHeaderFg: '#FFFFFF',
+    homeHeaderFocus: '#FFFFFF',
+    homeHeaderBorder: '#8A8A8A',
+    homeHeaderPressed: '#242424',
     /* Plum shadow brand */
     brandPlum: '#34162F',
     brandMid: '#160D1B',

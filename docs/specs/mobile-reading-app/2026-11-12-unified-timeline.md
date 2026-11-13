@@ -52,8 +52,11 @@ Existing authenticated library owners on iOS/Android; no new roles or permission
 | FR-4 | Home shall have solid-black safe area, brand/action bar and persistent topic strip in both themes, white controls and no gradient brand capsule; body and other screens retain existing styling. | Must |
 | FR-5 | Omit the Today’s 5 header pill until its separate swipe-viewer task; preserve existing inline daily picks/progress. | Must |
 | FR-6 | Preserve refresh, all async states, capture, reading/navigation, Done/Later/Undo, Save and the finite feed/Library exit. | Must |
+| FR-7 | Apply the existing Android app theme before splash setup forces window decor: register Expo splash, configure splash system bars, then call super.onCreate. This prevents the pre-existing native title bar from occluding Home. | Must |
 
 **Acceptance criteria:** FR-1/6 preserve existing picks/reasons, deduplication and maximum ten-item tail. FR-2/3 topic→All topics restores the tail without requests; returning from reading preserves the topic. FR-4 search/profile and status-bar glyphs remain readable; leaving Home restores normal appearance. FR-5 exposes no dead viewer action. Owner/refresh boundaries follow §8.6.
+
+**FR-7 criteria:** Android cold launch visibly exposes the custom brand/Search/profile with no gray native title bar. Both themes, splash transition and non-Home chrome remain usable. Keep the existing manifest, themes and release identity; no native regeneration.
 
 ## 6. Non-functional requirements
 
@@ -75,6 +78,8 @@ Reuse Screen, TopBar, BrandSignature, Chip and existing feed/action primitives t
 ### 8.1–8.3 Approach and components
 
 Directly refine Home composition and add opt-in header styling to existing primitives. Delete unreachable Home scope branches, not shared API/hook scope support. Place topics as a sibling above FlatList; no sticky-scroll machinery. Reject new feed hooks/endpoints and any scope-union/ranker rewrite. Add mobile header semantic tokens in `tokens.json`, regenerate themes, document their meaning. Keep shared defaults unchanged.
+
+Approved prerequisite exception FR-7: move `configureSplashSystemBars()` immediately after `SplashScreenManager.registerOnActivity(this)` in Android `MainActivity.onCreate`, still before `super.onCreate(null)`. Native proof reproduced the pre-existing decor-before-theme occlusion; AndroidX applies postSplashScreenTheme during registration. No other native startup/configuration change is included.
 
 ### 8.4 Contracts and data
 
@@ -101,6 +106,8 @@ No new data access or permissions; retain provider/cache/action owner fences and
 
 Test-first Home/primitive/token regression tests, then complete mobile Jest, mobile lint, TypeScript, API generation and token drift checks. Retain generic API/hook scope tests; replace only removed-scope Home expectations. Simulator proof covers default/topic/reader-return, black status area in both themes, large text and action navigation. Label physical-device and normal-session spoken accessibility as unproven; they are not claimed by simulator evidence.
 
+FR-7 adds Android before/after cold-launch and splash/theme/non-Home regression proof. Local proof may use an applicationId-only side-by-side package to preserve the installed app/data; this is emulator UI evidence, not production signing/identity evidence.
+
 ### 8.9 Delivery and rollback
 
 One feature PR from current remote main, not the unrelated landing-page branch, to `main`; squash merge after cumulative Sol review and all checks/feedback pass on exact head/base. Live GitHub currently has no enforced main protection/rulesets; this does not waive gates. PR checks: Mobile lint, types and Jest; Rule ten. Local commands: `bun run apispec`, mobile lint, `bunx tsc --noEmit -p apps/mobile/tsconfig.json`, mobile Jest `--ci --runInBand`, `bun run tokens:check`.
@@ -116,7 +123,8 @@ Shared styling could recolor unrelated screens: require Home opt-in/default regr
 - **D-1 User:** approved black header and removal of scope tabs.
 - **D-2 User latest correction:** All topics first/selected on open. Exact FR-2/3 lifetime and tail-only boundary approved through “Approve spec (Recommended)” on 2026-11-12.
 - **D-3 User:** Today’s 5 horizontal swipe experience deferred. FR-5 pill omission approved in the same written-spec approval.
-- **D-4 Full-send:** “Approved, implement it and full send” grants implementation/PR/merge; written spec/prototype approval completed, subsequent task-plan approval remains pending. Preserve this grant; do not ask for it again.
+- **D-4 Full-send:** “Approved, implement it and full send” grants implementation/PR/merge; written spec/prototype and task-plan approvals completed on 2026-11-12. Preserve this grant; do not ask for it again.
+- **D-5 User amendment, 2026-11-13:** “Include native fix (Recommended)” explicitly approves the exact FR-7 startup-order correction, its global Android boundary, regression proof and corresponding T-1 scope extension. Existing full-send grant continues. No other native changes authorized.
 
 ## 11. Readiness and assumptions
 

@@ -2,6 +2,7 @@ import React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { colors, radius, space } from "@/constants/theme";
 import { textStyle } from "@/constants/fonts";
+import { useTheme } from "@/hooks/useTheme";
 
 const brand = colors.light; // Brand colors are identical in both themes.
 const artwork = require("@/assets/images/brand-mark.png");
@@ -29,18 +30,21 @@ export function BrandMark({
 export function BrandSignature({
   size = 36,
   heading = false,
+  appearance,
 }: {
   size?: number;
   heading?: boolean;
+  appearance?: "home";
 }) {
+  const { colors } = useTheme();
   return (
     <View
-      style={styles.signature}
+      style={[styles.signature, appearance === "home" ? { backgroundColor: colors.homeHeaderBg } : styles.capsule]}
       accessible
       accessibilityRole={heading ? "header" : "image"}
       accessibilityLabel="Cosmic Dolphin"
     >
-      <Image
+      {appearance !== "home" ? <Image
         source={require("@/assets/images/brand-gradient.png")}
         resizeMode="stretch"
         style={[
@@ -48,7 +52,7 @@ export function BrandSignature({
           { width: "100%", height: "100%" },
         ]}
         accessible={false}
-      />
+      /> : null}
       <Image
         source={artwork}
         style={{ width: size, height: size }}
@@ -56,8 +60,9 @@ export function BrandSignature({
         accessible={false}
       />
       <Text
-        style={[textStyle("bodySm"), styles.name]}
-        numberOfLines={1}
+        style={[textStyle("bodySm"), styles.name, appearance === "home" && { color: colors.homeHeaderFg }]}
+        numberOfLines={appearance === "home" ? undefined : 1}
+        maxFontSizeMultiplier={appearance === "home" ? 1.3 : undefined}
         accessible={false}
       >
         Cosmic Dolphin
@@ -75,6 +80,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: space.s1,
     paddingVertical: space.s1,
+  },
+  capsule: {
     paddingLeft: space.s1,
     paddingRight: space.s3,
     borderWidth: 1,
