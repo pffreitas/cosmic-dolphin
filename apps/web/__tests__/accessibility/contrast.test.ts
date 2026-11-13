@@ -81,6 +81,12 @@ type Pairs = Record<string, string[]>;
  * names where, so a pair can be removed when its surface is.
  */
 const TEXT: Pairs = {
+  // Mobile Home's live wordmark and unselected topic labels; topic presses
+  // retain white text on the pressed ground (Signal.tsx, BrandMark.tsx).
+  "home-header-fg": ["home-header-bg", "home-header-pressed"],
+  // Selected topics and the profile fallback invert the header inks:
+  // black labels/initials on the white fill (Signal.tsx, TopBar.tsx).
+  "home-header-bg": ["home-header-fg"],
   // Permanent Plum shadow capsule: live wordmark over every gradient stop,
   // including when the surrounding application uses its light palette.
   "brand-fg": ["brand-plum", "brand-mid", "brand-black"],
@@ -120,6 +126,14 @@ const TEXT: Pairs = {
  * ring, a filled CTA, the AI dot, the heart, the pipeline phase markers.
  */
 const NON_TEXT: Pairs = {
+  // Mobile Home's Search glyph at rest/pressed, and selected topic/profile
+  // fills against the black header (TopBar.tsx, Signal.tsx).
+  "home-header-fg": ["home-header-bg", "home-header-pressed"],
+  // Focus outlines are offset onto the black header, including around white
+  // selected topics; they are not painted on the selected white fill.
+  "home-header-focus": ["home-header-bg"],
+  // Topic boundaries against resting/pressed grounds and selected white fill.
+  "home-header-border": ["home-header-bg", "home-header-pressed", "home-header-fg"],
   // The focus ring must be visible against every ground a control can sit on.
   // This is the pair that fails loudest if anyone "tones down" the accent.
   focus: ["bg", "bg-subtle", "bg-panel", "bg-inset"],

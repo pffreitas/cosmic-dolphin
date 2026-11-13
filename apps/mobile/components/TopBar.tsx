@@ -23,12 +23,14 @@ export function TopBar({
   onBack,
   actions,
   bordered = true,
+  appearance,
 }: {
   title: string;
   subtitle?: string;
   onBack?: () => void;
   actions?: ReactNode;
   bordered?: boolean;
+  appearance?: "home";
 }) {
   const { colors } = useTheme();
 
@@ -37,23 +39,23 @@ export function TopBar({
       style={[
         styles.bar,
         {
-          backgroundColor: colors.bg,
+          backgroundColor: appearance === "home" ? colors.homeHeaderBg : colors.bg,
           minHeight:
             title === "Cosmic Dolphin" && subtitle
               ? TOP_BAR_HEIGHT + space.s5
               : TOP_BAR_HEIGHT,
-          borderBottomColor: bordered ? colors.border : "transparent",
+          borderBottomColor: appearance === "home" ? colors.homeHeaderBg : bordered ? colors.border : "transparent",
           borderBottomWidth: bordered ? StyleSheet.hairlineWidth : 0,
         },
       ]}
     >
       <View style={styles.leading}>
         {onBack ? (
-          <TopBarAction icon="chevron-back" label="Go back" onPress={onBack} />
+          <TopBarAction icon="chevron-back" label="Go back" onPress={onBack} appearance={appearance} />
         ) : null}
         {title === "Cosmic Dolphin" ? (
           <View style={styles.brandTitles}>
-            <BrandSignature size={32} heading />
+            <BrandSignature size={32} heading appearance={appearance} />
             {subtitle ? (
               <Text
                 style={[textStyle("meta"), { color: colors.fgTertiary }]}
@@ -98,12 +100,14 @@ export function TopBarAction({
   onPress,
   tint,
   avatar,
+  appearance,
 }: {
   icon: React.ComponentProps<typeof Ionicons>["name"];
   label: string;
   onPress: () => void;
   tint?: string;
   avatar?: { uri?: string; initial: string };
+  appearance?: "home";
 }) {
   const { colors } = useTheme();
   const { focusStyle, ...focusEvents } = useControlFocus();
@@ -118,15 +122,16 @@ export function TopBarAction({
       style={({ pressed }) => [
         styles.action,
         focusStyle,
-        { backgroundColor: pressed ? colors.bgInset : "transparent" },
+        appearance === "home" && { outlineColor: colors.homeHeaderFocus },
+        { backgroundColor: pressed ? appearance === "home" ? colors.homeHeaderPressed : colors.bgInset : "transparent" },
       ]}
     >
       {avatar ? (
         avatar.uri ? <Image source={{ uri: avatar.uri }} style={styles.avatar} /> :
-          <View style={[styles.avatar, { backgroundColor: colors.accent }]}>
-            <Text maxFontSizeMultiplier={1.3} style={[textStyle("label"), { color: colors.accentFg }]}>{avatar.initial}</Text>
+          <View style={[styles.avatar, { backgroundColor: appearance === "home" ? colors.homeHeaderFg : colors.accent }]}>
+            <Text maxFontSizeMultiplier={1.3} style={[textStyle("label"), { color: appearance === "home" ? colors.homeHeaderBg : colors.accentFg }]}>{avatar.initial}</Text>
           </View>
-      ) : <Ionicons name={icon} size={20} color={tint ?? colors.fgSecondary} />}
+      ) : <Ionicons name={icon} size={20} color={tint ?? (appearance === "home" ? colors.homeHeaderFg : colors.fgSecondary)} />}
     </Pressable>
   );
 }

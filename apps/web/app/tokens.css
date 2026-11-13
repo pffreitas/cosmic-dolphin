@@ -41,6 +41,13 @@
   --cd-duration: 220ms;
 
   /* -------- Colour · light -------- */
+  /* Mobile Home header (opt-in) */
+  --cd-home-header-bg: #000000;
+  --cd-home-header-fg: #FFFFFF;
+  --cd-home-header-focus: #FFFFFF;
+  --cd-home-header-border: #8A8A8A;
+  --cd-home-header-pressed: #242424;
+
   /* Plum shadow brand */
   --cd-brand-plum: #34162F;
   --cd-brand-mid: #160D1B;
@@ -111,6 +118,13 @@
 
 .dark {
   /* -------- Colour · dark -------- */
+  /* Mobile Home header (opt-in) */
+  --cd-home-header-bg: #000000;
+  --cd-home-header-fg: #FFFFFF;
+  --cd-home-header-focus: #FFFFFF;
+  --cd-home-header-border: #8A8A8A;
+  --cd-home-header-pressed: #242424;
+
   /* Plum shadow brand */
   --cd-brand-plum: #34162F;
   --cd-brand-mid: #160D1B;

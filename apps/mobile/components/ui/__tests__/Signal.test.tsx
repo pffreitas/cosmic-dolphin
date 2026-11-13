@@ -1,11 +1,14 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
-import { AccessibilityInfo, Modal, StyleSheet } from 'react-native';
-import { Button, Chip, Segments, PageHeading, Notice, Sheet, layout } from '../Signal';
+import { AccessibilityInfo, Modal, StyleSheet, Text, View, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Button, Chip, Segments, PageHeading, Notice, Sheet, Screen, layout } from '../Signal';
+import { BrandSignature } from '@/components/BrandMark';
 import { renderRouter, screen } from 'expo-router/testing-library';
 import TabLayout from '@/app/(tabs)/_layout';
 import { TopBar, TopBarAction } from '@/components/TopBar';
-import { colors } from '@/constants/theme';
+import { colors, radius, space } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
 let mockAppearance: 'light' | 'dark' = 'light';
 jest.mock('@/contexts/PreferencesContext', () => ({ usePreferences: () => ({ appearance: mockAppearance }) }));
 beforeEach(() => { jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true); });
@@ -100,4 +103,53 @@ it('allows a long chrome heading to wrap at the control-label cap', () => {
   const title = view.getByRole('header', { name: 'A longer chrome heading that needs room to grow' });
   expect(title.props.maxFontSizeMultiplier).toBe(1.3);
   expect(title.props.numberOfLines).toBeUndefined();
+});
+it.each(['light', 'dark'] as const)('%s Home header opts into black chrome, white controls and an unboxed brand without recoloring the body', mode => {
+  mockAppearance = mode;
+  const c = colors[mode];
+  const view = render(<Screen title="Cosmic Dolphin" appearance="home" actions={<TopBarAction appearance="home" icon="search-outline" label="Search" onPress={() => {}} />}>
+    <Chip appearance="home" label="All topics" selected onPress={() => {}} />
+    <Chip appearance="home" label="Design" selected={false} onPress={() => {}} />
+    <Text>Normal body</Text>
+  </Screen>);
+  expect(StyleSheet.flatten(view.UNSAFE_getByType(SafeAreaView).props.style).backgroundColor).toBe(c.homeHeaderBg);
+  expect(StyleSheet.flatten(view.UNSAFE_getByType(TopBar).findAllByType(View)[0].props.style).backgroundColor).toBe(c.homeHeaderBg);
+  const brand = StyleSheet.flatten(view.UNSAFE_getByType(BrandSignature).findAllByType(View)[0].props.style);
+  expect(brand.borderWidth ?? 0).toBe(0);
+  expect(brand.borderRadius).toBeUndefined();
+  expect(view.UNSAFE_getByType(Ionicons).props.color).toBe(c.homeHeaderFg);
+  const body = view.UNSAFE_getAllByType(View).find(node => StyleSheet.flatten(node.props.style)?.maxWidth === 760)!;
+  expect(StyleSheet.flatten(body.props.style).backgroundColor).toBe(c.bg);
+  expect(view.UNSAFE_getAllByType(Image).some(node => node.props.source === require('@/assets/images/brand-gradient.png'))).toBe(false);
+  expect(StyleSheet.flatten(view.getByText('Cosmic Dolphin').props.style).color).toBe(c.homeHeaderFg);
+  for (const name of ['Search', 'All topics', 'Design']) {
+    const control = view.getByRole('button', { name });
+    const style = StyleSheet.flatten(control.props.style);
+    expect(style.minHeight ?? style.height).toBeGreaterThanOrEqual(44);
+    fireEvent(control, 'focus');
+    expect(StyleSheet.flatten(control.props.style).outlineColor).toBe(c.homeHeaderFocus);
+    expect(StyleSheet.flatten(control.props.style).outlineWidth).toBe(2);
+    fireEvent(control, 'blur');
+    expect(StyleSheet.flatten(control.props.style).outlineWidth).toBe(0);
+  }
+  expect(StyleSheet.flatten(view.getByRole('button', { name: 'All topics' }).props.style).backgroundColor).toBe(c.homeHeaderFg);
+  expect(StyleSheet.flatten(view.getByText('All topics').props.style).color).toBe(c.homeHeaderBg);
+  expect(StyleSheet.flatten(view.getByText('Design').props.style).color).toBe(c.homeHeaderFg);
+  expect(view.getByRole('button', { name: 'All topics' }).props.accessibilityState.selected).toBe(true);
+});
+it.each(['light', 'dark'] as const)('%s default Screen, TopBar, BrandSignature and Chip remain on the existing theme', mode => {
+  mockAppearance = mode;
+  const c = colors[mode];
+  const view = render(<Screen title="Library"><BrandSignature /><Chip label="Default chip" selected onPress={() => {}} /></Screen>);
+  expect(StyleSheet.flatten(view.UNSAFE_getByType(SafeAreaView).props.style).backgroundColor).toBe(c.bg);
+  expect(StyleSheet.flatten(view.UNSAFE_getByType(TopBar).findAllByType(View)[0].props.style).backgroundColor).toBe(c.bg);
+  const brand = StyleSheet.flatten(view.UNSAFE_getByType(BrandSignature).findAllByType(View)[0].props.style);
+  expect(brand.borderRadius).toBe(radius.pill);
+  expect(brand.borderColor).toBe(colors.light.brandEdge);
+  expect(brand.backgroundColor).toBe(colors.light.brandBlack);
+  expect(brand.paddingRight).toBe(space.s3);
+  expect(view.UNSAFE_getAllByType(Image).some(node => node.props.source === require('@/assets/images/brand-gradient.png'))).toBe(true);
+  expect(StyleSheet.flatten(view.getByRole('button', { name: 'Default chip' }).props.style).backgroundColor).toBe(c.accent);
+  expect(StyleSheet.flatten(view.getByText('Default chip').props.style).color).toBe(c.accentFg);
+  expect(StyleSheet.flatten(view.getByRole('header', { name: 'Library' }).props.style).color).toBe(c.fg);
 });

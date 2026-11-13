@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { FlatList, RefreshControl, ScrollView, Pressable, StyleSheet, Text, View } from "react-native";
-import { useRouter, useNavigation } from "expo-router";
-import { type FeedScope, type ContinueReadingItem, type FeedItem } from "@cosmic-dolphin/api-client";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { FlatList, RefreshControl, ScrollView, Pressable, StatusBar, StyleSheet, Text, View } from "react-native";
+import { useRouter, useNavigation, useFocusEffect } from "expo-router";
+import { type ContinueReadingItem, type FeedItem } from "@cosmic-dolphin/api-client";
 import { CaptureStatus } from "@/components/CaptureStatus";
 import { CaptureFailureToast } from "@/components/CaptureFailureToast";
 import { TopBarAction } from "@/components/TopBar";
@@ -11,7 +11,7 @@ import { useBookmarkActions } from "@/lib/bookmark-actions";
 import { BookmarkActionSheets, type ActionSheet } from "@/components/BookmarkActionSheets";
 import { TodayProgress, TodaySkeleton } from "@/components/TodayProgress";
 import { CopiedLink } from "@/components/CopiedLink";
-import { Button, Chip, EmptyState, Notice, Screen, Segments, SkeletonRows } from "@/components/ui/Signal";
+import { Button, Chip, EmptyState, Notice, Screen } from "@/components/ui/Signal";
 import { textStyle } from "@/constants/fonts";
 import { space } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
@@ -27,6 +27,10 @@ export default function HomeScreen() {
   const router = useRouter();
   const rootNavigation = useNavigation("/");
   const { colors } = useTheme();
+  useFocusEffect(useCallback(() => {
+    const entry = StatusBar.pushStackEntry({ barStyle: "light-content", backgroundColor: colors.homeHeaderBg, translucent: false });
+    return () => StatusBar.popStackEntry(entry);
+  }, [colors.homeHeaderBg]));
   const { user } = useAuth();
   const { controller, state: actionState } = useBookmarkActions(user?.id);
   const [selection, setSelection] = useState<ActionSheet & { accountId?: string }>();
@@ -39,9 +43,11 @@ export default function HomeScreen() {
   });
   useEffect(() => { setSelection(undefined); }, [user?.id]);
   const currentSelection = selection?.accountId === user?.id ? selection : undefined;
-  const [scope, setScope] = useState<FeedScope>("for_you");
-  const [topic, setTopic] = useState("All topics");
-  const feed = useHomeFeed(scope);
+  const [topicState, setTopicState] = useState({ owner: user?.id, value: "All topics" });
+  const topic = topicState.owner === user?.id ? topicState.value : "All topics";
+  if (topicState.owner !== user?.id) setTopicState({ owner: user?.id, value: "All topics" });
+  const setTopic = (value: string) => setTopicState({ owner: user?.id, value });
+  const feed = useHomeFeed("for_you");
   const { drain, changeError } = useCaptures();
   useEffect(() => {
     if (feed.serverRead) controller.synchronize(feed.serverRead.bookmarks, feed.serverRead.sequence);
@@ -53,37 +59,37 @@ export default function HomeScreen() {
     return delta + Number(!current.isArchived && !current.readAt) - Number(!bookmark.isArchived && !bookmark.readAt);
   }, 0);
   const unreadCount = Math.max(0, (feed.counts?.unread ?? 0) + unreadDelta);
-  const topics = [...new Set(feed.items.flatMap(item => (item.bookmark?.cosmicTags ?? []).map(topicName)))];
+  const topics = useMemo(() => [...new Set(feed.items.flatMap(item => (item.bookmark?.cosmicTags ?? []).map(topicName)))], [feed.items]);
+  useEffect(() => {
+    if (!feed.loading && !feed.refreshing && !feed.error && topic !== "All topics" && !topics.includes(topic)) setTopicState({ owner: user?.id, value: "All topics" });
+  }, [feed.loading, feed.refreshing, feed.error, topic, topics, user?.id]);
   const visiblePicks = feed.picks?.items.map(pick => ({ ...pick, bookmark: controller.view(pick.bookmark) })).filter(pick => controller.isVisible({ type: "own_save", bookmark: pick.bookmark })) ?? [];
   const pickIds = new Set(feed.picks?.items.map(item => item.bookmark.id));
-  const wholeFailure = scope === "for_you" && !!feed.error && !!feed.picksError && !feed.items.length && !feed.picks;
-  const firstRun = !feed.error && !feed.picksError && scope === "for_you" && !feed.loading && !feed.picks?.computedAt && feed.counts?.all === 0 && feed.counts.archived === 0;
+  const wholeFailure = !!feed.error && !!feed.picksError && !feed.items.length && !feed.picks;
+  const firstRun = !feed.error && !feed.picksError && !feed.loading && !feed.picks?.computedAt && feed.counts?.all === 0 && feed.counts.archived === 0;
   const filtered = feed.items.filter(item => controller.isVisible(item) && !((item.type === "own_save" || item.type === "pending") && controller.view(item.bookmark!).readAt)).map(item => ({ ...item, bookmark: item.bookmark ? controller.view(item.bookmark) : undefined })).filter(item => topic === "All topics" || item.bookmark?.cosmicTags?.map(topicName).includes(topic));
-  const visible = scope === "for_you" ? filtered.filter(item =>
+  const visible = filtered.filter(item =>
     item.type !== "pending" && item.bookmark?.processingStatus !== "processing" &&
     (!item.bookmark || !pickIds.has(item.bookmark.id)) &&
     (!item.bookmark?.laterUntil || item.type === "followed_save" || item.type === "reshare" || new Date(item.bookmark.laterUntil).getTime() <= Date.now())
-  ).slice(0, 10) : filtered;
-  return <Screen title="Cosmic Dolphin" actions={<>
-    <TopBarAction icon="search-outline" label="Search" onPress={() => router.push("/search")} />
-    <TopBarAction icon="person-outline" label="Your profile"
+  ).slice(0, 10);
+  return <Screen title="Cosmic Dolphin" appearance="home" actions={<>
+    <TopBarAction appearance="home" icon="search-outline" label="Search" onPress={() => router.push("/search")} />
+    <TopBarAction appearance="home" icon="person-outline" label="Your profile"
       avatar={{ uri: user?.user_metadata?.avatar_url || user?.user_metadata?.picture, initial: (user?.user_metadata?.full_name || user?.email || "You").slice(0, 1).toUpperCase() }}
       onPress={() => rootNavigation.navigate("profile" as never)} />
   </>}>
+    <ScrollView horizontal style={{ flexGrow: 0, backgroundColor: colors.homeHeaderBg }} contentContainerStyle={{ paddingHorizontal: space.s4, paddingVertical: space.s3, gap: space.s2 }}>
+      {["All topics", ...topics.filter(value => value !== "All topics")].map(value => <Chip appearance="home" key={value} label={value} selected={topic === value} onPress={() => setTopic(value)} />)}
+    </ScrollView>
     <FlatList data={feed.loading ? [] : visible} keyExtractor={(item, index) => item.bookmark?.id || item.digest?.id || String(index)}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={feed.refreshing && !feed.loading} onRefresh={() => { void drain().catch(() => {}).then(feed.refresh); }} tintColor={colors.accent} />}
       ListHeaderComponent={<View>
-        <View style={styles.scopes}><Segments options={[
-          { label: "For you", value: "for_you" }, { label: "Following", value: "following" }, { label: "Unread", value: "unread" },
-        ]} value={scope} onChange={value => { setTopic("All topics"); setScope(value); }} /></View>
-        {topics.length ? <ScrollView horizontal contentContainerStyle={{ paddingHorizontal: space.s4, gap: space.s2 }}>
-          {["All topics", ...topics].map(value => <Chip key={value} label={value} selected={topic === value} onPress={() => setTopic(value)} />)}
-        </ScrollView> : null}
         {feed.offline ? <Notice message="You're offline. Previously loaded saves are shown. Connect to save changes." /> : null}
         {feed.error && !wholeFailure && !feed.offline ? <Notice message={feed.error} error action="Retry" onAction={feed.refresh} /> : null}
         {wholeFailure ? <EmptyState title="Your reading lists will be back" description="Try loading your feed again." action="Retry" onAction={feed.refresh} /> : null}
-        {scope === "for_you" ? <>
+        <>
           <CaptureStatus loadedIds={feed.items.flatMap(item => item.bookmark ? [item.bookmark.id] : [])}
             pendingBookmarks={feed.items.filter(item => item.type === "pending").flatMap(item => item.bookmark ? [nativeBookmark(item.bookmark)] : [])}
             onCompleted={feed.refresh} failedActions={bookmark => cardActions({ type: "own_save", bookmark })} />
@@ -107,18 +113,12 @@ export default function HomeScreen() {
           </> : null}
           {feed.resume.map(item => <ContinueReading key={item.bookmark.id} item={item} />)}
           {visible.length ? <Text style={[textStyle("meta"), { color: colors.fgTertiary, padding: space.s4 }]}>More for you</Text> : null}
-        </> : null}
-        {feed.loading ? (scope === "for_you" ? <TodaySkeleton /> : <SkeletonRows />) : null}
-        {scope !== "for_you" && !feed.loading && !feed.error && !visible.length ? <EmptyState
-          title={scope === "following" ? "Good reading travels through people" : "A fresh starting point"}
-          description="Save a link to start shaping your feed. Public discoveries and connected reading lists will appear as they become available."
-          action={scope === "unread" ? "Save a link" : undefined}
-          onAction={() => router.push("/save")} /> : null}
+        </>
+        {feed.loading ? <TodaySkeleton /> : null}
       </View>}
       renderItem={({ item }) => <FeedCard item={item} actions={cardActions(item)} />}
       ListFooterComponent={<View style={{ gap: space.s4, padding: space.s4 }}>
-        {feed.hasMore ? <Button title={scope === "unread" ? "More saves" : "More reading lists"} busy={feed.more} onPress={feed.loadMore} /> : null}
-        {scope === "for_you" && !feed.loading && !firstRun && !feed.error && feed.counts ? <View style={{ gap: space.s4 }}>
+        {!feed.loading && !firstRun && !feed.error && feed.counts ? <View style={{ gap: space.s4 }}>
           <Text style={[textStyle("title2"), { color: colors.fg }]}>{"You're caught up"}</Text>
           <Text style={[textStyle("bodySm"), { color: colors.fgSecondary }]}>{unreadCount} unread saves are in your Library.</Text>
           <Button title="Open Library" onPress={() => router.push("/library")} />
@@ -142,4 +142,4 @@ function ContinueReading({ item }: { item: ContinueReadingItem }) {
     <View style={{ height: 2, backgroundColor: colors.bgInset }}><View style={{ height: 2, width: `${Math.max(0, Math.min(100, item.progress.percent))}%`, backgroundColor: colors.accent }} /></View>
   </Pressable>;
 }
-const styles = StyleSheet.create({ content: { paddingBottom: space.s7 }, scopes: { paddingVertical: space.s3, paddingHorizontal: space.s4 } });
+const styles = StyleSheet.create({ content: { paddingBottom: space.s7 } });

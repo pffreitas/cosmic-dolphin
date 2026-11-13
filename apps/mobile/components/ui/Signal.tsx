@@ -25,21 +25,23 @@ export function Screen({
   title,
   onBack,
   actions,
+  appearance,
 }: {
   children: React.ReactNode;
   title: string;
   onBack?: () => void;
   actions?: React.ReactNode;
+  appearance?: "home";
 }) {
   const { colors } = useTheme();
   return (
     <SafeAreaView
-      style={{ flex: 1, backgroundColor: colors.bg }}
+      style={{ flex: 1, backgroundColor: appearance === "home" ? colors.homeHeaderBg : colors.bg }}
       edges={["top", "left", "right"]}
     >
-      <TopBar title={title} onBack={onBack} actions={actions} />
+      <TopBar title={title} onBack={onBack} actions={actions} appearance={appearance} />
       <View
-        style={{ flex: 1, width: "100%", maxWidth: 760, alignSelf: "center" }}
+        style={{ flex: 1, width: "100%", maxWidth: 760, alignSelf: "center", ...(appearance === "home" ? { backgroundColor: colors.bg } : {}) }}
       >
         {children}
       </View>
@@ -143,10 +145,12 @@ export function Chip({
   label,
   selected,
   onPress,
+  appearance,
 }: {
   label: string;
   selected: boolean;
   onPress: () => void;
+  appearance?: "home";
 }) {
   const { colors } = useTheme();
   const { focusStyle, ...focusEvents } = useControlFocus();
@@ -159,13 +163,14 @@ export function Chip({
       style={({ pressed }) => [
         styles.chip,
         focusStyle,
+        appearance === "home" && { outlineColor: colors.homeHeaderFocus },
         {
-          borderColor: colors.border,
+          borderColor: appearance === "home" ? colors.homeHeaderBorder : colors.border,
           backgroundColor: selected
-            ? colors.accent
+            ? appearance === "home" ? colors.homeHeaderFg : colors.accent
             : pressed
-              ? colors.bgInset
-              : colors.bgPanel,
+              ? appearance === "home" ? colors.homeHeaderPressed : colors.bgInset
+              : appearance === "home" ? colors.homeHeaderBg : colors.bgPanel,
         },
       ]}
     >
@@ -173,7 +178,7 @@ export function Chip({
         maxFontSizeMultiplier={1.3}
         style={[
           textStyle("meta"),
-          { color: selected ? colors.accentFg : colors.fgSecondary },
+          { color: appearance === "home" ? selected ? colors.homeHeaderBg : colors.homeHeaderFg : selected ? colors.accentFg : colors.fgSecondary },
         ]}
       >
         {label}

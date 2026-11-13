@@ -43,8 +43,8 @@ const bookmark = (id: string, topic: string) => ({
   updatedAt: "2026-10-01T00:00:00Z",
   cosmicTags: [topic],
 });
-it("clears a For you topic filter when switching into a different Following feed", async () => {
-  (useHomeFeed as jest.Mock).mockImplementation((scope) => ({
+it("restores the full local tail through All topics without changing the feed scope", async () => {
+  (useHomeFeed as jest.Mock).mockImplementation(() => ({
     loading: false,
     refreshing: false,
     resume: [],
@@ -52,18 +52,15 @@ it("clears a For you topic filter when switching into a different Following feed
     loadMore: jest.fn(),
     more: false,
     hasMore: false,
-    items: (scope === "following"
-      ? [bookmark("design", "Design")]
-      : [bookmark("ai", "AI"), bookmark("design", "Design")]
-    ).map((bookmark) => ({ type: "own_save", bookmark })),
+    items: [bookmark("ai", "AI"), bookmark("design", "Design")].map((bookmark) => ({ type: "own_save", bookmark })),
   }));
   renderRouter({ index: HomeScreen });
   const view = screen;
   fireEvent.press(view.getByText("AI"));
   expect(view.queryByText("Design article")).toBeNull();
-  fireEvent.press(view.getByText("Following"));
+  fireEvent.press(view.getByText("All topics"));
   await waitFor(() => expect(view.getByText("Design article")).toBeTruthy());
-  expect(view.queryByText("Good reading travels through people")).toBeNull();
+  expect(useHomeFeed).toHaveBeenLastCalledWith("for_you");
 });
 
 // Router and tab primitives are real; auth/preferences/data are test boundaries.

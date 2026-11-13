@@ -11,6 +11,13 @@ export function useHomeFeed(scope: FeedScope) {
   const userId = user?.id;
   const { revision } = useCaptures();
   const generation = useRef(0);
+  const key = `${userId}:${scope}`;
+  const activeKey = useRef(key);
+  // Fence the render and old continuations before focus-effect cleanup runs.
+  if (activeKey.current !== key) {
+    activeKey.current = key;
+    generation.current++;
+  }
   const currentKey = useRef<string>();
   const cached = useRef<HomeFeedCache>();
   const [offline, setOffline] = useState(false);
@@ -27,6 +34,7 @@ export function useHomeFeed(scope: FeedScope) {
   const [serverRead, setServerRead] = useState<{ sequence: number; bookmarks: Bookmark[] }>();
   const busy = useRef(false);
   const refresh = useCallback(async () => {
+    if (activeKey.current !== `${userId}:${scope}`) return;
     const token = ++generation.current;
     if (!userId) { setItems([]); setPicks(undefined); setLoading(false); return; }
     setRefreshing(true);
@@ -95,5 +103,10 @@ export function useHomeFeed(scope: FeedScope) {
     } catch { if (token === generation.current) setError("The next reading lists could not be loaded. Try again."); }
     finally { busy.current = false; setMore(false); }
   };
-  return { items, picks, picksError, counts, offline, resume, serverRead, loading, refreshing, refresh, loadMore, more, hasMore: Boolean(cursor) && scope !== "for_you", error };
+  const owned = currentKey.current === key;
+  return { items: owned ? items : [], picks: owned ? picks : undefined,
+    picksError: owned ? picksError : undefined, counts: owned ? counts : undefined,
+    offline: owned && offline, resume: owned ? resume : [], serverRead: owned ? serverRead : undefined,
+    loading: !owned || loading, refreshing: owned && refreshing, refresh, loadMore,
+    more: owned && more, hasMore: owned && Boolean(cursor) && scope !== "for_you", error: owned ? error : undefined };
 }

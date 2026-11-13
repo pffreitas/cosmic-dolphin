@@ -7,6 +7,16 @@ function luminance(hex: string) {
 }
 const ratio = (a: string, b: string) => (Math.max(luminance(a), luminance(b)) + 0.05) / (Math.min(luminance(a), luminance(b)) + 0.05);
 
+it.each(['light', 'dark'] as const)('%s Home text, selected topics, boundaries and focus are readable on black', mode => {
+  const c = colors[mode];
+  for (const ground of [c.homeHeaderBg, c.homeHeaderPressed]) {
+    expect(ratio(c.homeHeaderFg, ground)).toBeGreaterThanOrEqual(4.5);
+    expect(ratio(c.homeHeaderFocus, ground)).toBeGreaterThanOrEqual(3);
+    expect(ratio(c.homeHeaderBorder, ground)).toBeGreaterThanOrEqual(3);
+  }
+  expect(ratio(c.homeHeaderBg, c.homeHeaderFg)).toBeGreaterThanOrEqual(4.5);
+});
+
 it.each(['light', 'dark'] as const)('%s plum text, focus and meaningful UI retain Signal contrast', mode => {
   const c = colors[mode];
   expect([c.accent, c.accentHover, c.accentFg, c.accentSoft, c.accentBorder]).toEqual(mode === 'light'
