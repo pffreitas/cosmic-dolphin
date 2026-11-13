@@ -15,7 +15,7 @@
 | Authorization | User: “Approved, implement it and full send” (spec D-4), implementation/feature pushes/PR/review replies/merge after gates. Exact written spec/prototype approved through “Approve spec (Recommended)”; this task plan approved through “Approve plan (Recommended)” on 2026-11-12. No manual dispatch, backend release or TestFlight submission. |
 | Plan | 1 task · critical path T-1 · 1 lane (A), no parallel developer work |
 
-**Current outcome / next gate / owner / blocker.** T-1 committed at b7e8a851b3a1051309722d68e3a7eca7505f615e and verified; Sol APPROVE round1/5, no findings. Both-platform fixture UI proof passed, including FR-7. Coordinator owns PR creation, live checks/reviews and authorized squash merge. No current blocker; PR/merge not yet performed. Worktree: `/private/var/folders/dr/zb3z5bh11d14xybgh0jm4nw80000gn/T/opencode/mobile-unified-timeline`.
+**Current outcome / next gate / owner / blocker.** [PR #256](https://github.com/pffreitas/cosmic-dolphin/pull/256) at 71d3c58 failed Rule ten shared-token coverage; Mobile lint/types/Jest passed. CI-1 test-only correction reproduced red and now passes locally (197 accessibility tests, full web381). Coordinator requests Sol round2/5 on the correction before pushing, then waits for exact-head CI and authorized merge. Native/app product behavior unchanged. Base remains d266cf4e83c0825c896325d230907e3c6133b876.
 
 **Planning verification.** Structural checker passed with one task, zero errors/warnings. Coordinator fresh-eyes read found no missing dependency or outcome boundary; all work shares one developer context. Council final reads and independent simplification/editor passes are recorded in the spec; the HTML's tested revision is sha256:6accb830dceecf1cde51d251c9fbacbb2d86baaa508436a8433e893a75397942. Only spec, tasks and this standalone HTML are retained after planning cleanup.
 
@@ -299,6 +299,7 @@ bun run tokens:check
 ```
 
 - **Additional candidate proof:** T-1's native/transport/privacy/default-style checks below; inspect cumulative diff for zero new dependencies/endpoints/API enums/cache/persistence changes and zero effective web-color changes. Retain generic feed scope tests.
+- **Shared-token CI proof:** when canonical color roles change, also run the exact Rule ten workflow commands locally: web accessibility tests, full web tests and web lint plus mobile token lint. Add explicit measured compositions to `apps/web/__tests__/accessibility/contrast.test.ts`; never exempt contrast-bearing tokens or weaken global coverage.
 - **Required checks / triggers:** local Verify all before review/push; PR-triggered `Mobile lint, types and Jest` in `.github/workflows/mobile-pr.yml` and `Rule ten` in `.github/workflows/accessibility.yml`, after PR creation and before merge. Check exact live names, current rules/reviews and final head/base; pending/unknown is not passing. Main push triggers `Mobile Quality Checks` and configured iOS/Android preview scheduling in `.github/workflows/deploy-mobile.yml`, not pre-PR proof.
 - **Merge method / protection:** squash as spec §8.9 requires. Planning discovery found no enforced main protections/rulesets; this never waives local proof, cumulative Sol approval, PR checks or feedback resolution. Re-read live rules at delivery; no bypass. Update feature from current target via ordinary merge (no published rebase needed); any changed product/base needs renewed proof/review within the same budget.
 - **Feature flag:** none; do not add a rollout flag, new hook or temporary endpoint.
@@ -413,6 +414,10 @@ Implementation starting. Fresh origin/main d266cf4e83c0825c896325d230907e3c6133b
 - Expo's native-proof Metro regenerated a local ignored `.expo/types/router.d.ts`, introducing test-only `/away` route typing failures; stopped owned Metro, deleted only that task-generated cache file and reran exact tsc successfully. No product tsconfig/type assertions weakened. Original checkout’s cache untouched.
 - Both own device claims released; system appearance/text-size restored. Owned Metro/fixture stopped and Android5592 reverse removed. Physical-device radio, ordinary production account session, spoken screen reader and production signing/distribution remain unproven and are not claimed. No backend/TestFlight/manual deploy performed. Native source and mocked/source-contract tests supplement, not replace, the actual Android/iOS UI proof.
 
+### CI-1 correction
+
+Rule ten failed on71d3c58 (run43462649051): the shared-token audit requires every new canonical role to have measured pairs or a justified non-contrast role. All five home-header roles were unclassified. Mobile job run43462648641 passed. Owning T-1 developer reproduced both coverage failures, then added14 lines of TEXT/NON_TEXT composition pairs (18 measured cases) covering label/selected inversion, pressed icons, focus and boundaries; no exemptions or product values changed. Exact accessibility197 tests and full web381 tests now pass; web lint has no errors (112 pre-existing warnings), API generation and mobile token lint pass. Coordinator independently reran accessibility and full web plus diff check. Receipts `unified-t1-rule-ten-*` and `unified-coordinator-web-tests.log` under approved temp root. Required Sol re-check uses the same five-round ledger, round2; native/device proof remains valid because only a test registry changed.
+
 ## Implementation review
 
 One cumulative GPT Sol ledger; maximum five rounds across this package, PR fixes and new target candidates. Round1 completed with APPROVE, no findings. Four rounds remain; product/base changes need current review coverage in this same ledger. Review-record-only commits do not alter the reviewed product tree.
@@ -431,7 +436,7 @@ The precise FR-7/D-5 native prerequisite and in-progress T-1 scope extension wer
 
 | Repo | PR | Head SHA | Base SHA | State | Proof / decisions | Merge SHA |
 |---|---|---|---|---|---|---|
-| cosmic-dolphin | | | | Not started | | |
+| cosmic-dolphin | https://github.com/pffreitas/cosmic-dolphin/pull/256 | 71d3c58f453440b9b23374d4278174ed9140add9 | d266cf4e83c0825c896325d230907e3c6133b876 | Waiting | Sol1/5 APPROVE; local/native passed; PR Rule ten + Mobile lint/types/Jest in progress, no comments/reviews on first live read | |
 
 One complete squash PR to current `origin/main`, not landing-page history; no per-task delivery. Fetch/recheck exact live head/base/checks/reviews immediately before an authorized merge, with no bypass. Product/base changes consume the same review ledger. Planning evidence is not candidate approval.
 
