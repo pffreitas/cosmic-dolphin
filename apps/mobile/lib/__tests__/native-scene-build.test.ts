@@ -31,6 +31,11 @@ it("starts React Native only after scene connection and registers cold links fir
   expect(delegate).toContain("super.application(application, continue:");
   expect(delegate.indexOf("SceneLaunchOptions.make(")).toBeLessThan(delegate.indexOf("factory.startReactNative("));
   expect(delegate).toContain("appDelegate.startReactNative(in: window, connectionOptions: connectionOptions)");
+  expect(delegate).toContain("sceneRootHost.connect(to: window, start:");
+  expect(delegate).toContain("self.startInitialReactNative(in: window, connectionOptions: connectionOptions)");
+  expect(delegate).toContain("appDelegate?.disconnectScene(from: window)");
+  expect(delegate).toContain("self.application(application, open:");
+  expect(delegate).toContain("self.application(application, continue:");
 });
 
 it("forwards warm scene links and Expo lifecycle callbacks without replacing app handlers", () => {

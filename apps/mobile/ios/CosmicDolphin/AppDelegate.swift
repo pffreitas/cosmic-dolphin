@@ -8,6 +8,7 @@ public class AppDelegate: ExpoAppDelegate {
   // SDK54 modules still read the application delegate's window. The scene owns it.
   var window: UIWindow?
   private var applicationLaunchOptions: [UIApplication.LaunchOptionsKey: Any]?
+  private let sceneRootHost = SceneRootHost()
 
   var reactNativeDelegate: ExpoReactNativeFactoryDelegate?
   var reactNativeFactory: RCTReactNativeFactory?
@@ -36,8 +37,35 @@ public class AppDelegate: ExpoAppDelegate {
   }
 
   func startReactNative(in window: UIWindow, connectionOptions: UIScene.ConnectionOptions) {
-    guard let factory = reactNativeFactory else { return }
     self.window = window
+    sceneRootHost.connect(to: window, start: {
+      self.startInitialReactNative(in: window, connectionOptions: connectionOptions)
+    }, reconnect: {
+      // The existing RN host ignores new initial launch options. Deliver only
+      // this connection's intents as live events to Expo and RN instead.
+      let application = UIApplication.shared
+      for context in connectionOptions.urlContexts {
+        _ = self.application(application, open: context.url, options: SceneLaunchOptions.urlOptions(
+          sourceApplication: context.options.sourceApplication,
+          annotation: context.options.annotation,
+          openInPlace: context.options.openInPlace
+        ))
+      }
+      for activity in connectionOptions.userActivities {
+        _ = self.application(application, continue: activity, restorationHandler: { _ in })
+      }
+    })
+  }
+
+  func disconnectScene(from window: UIWindow) {
+    sceneRootHost.disconnect(from: window)
+    if self.window === window {
+      self.window = nil
+    }
+  }
+
+  private func startInitialReactNative(in window: UIWindow, connectionOptions: UIScene.ConnectionOptions) {
+    guard let factory = reactNativeFactory else { return }
     let application = UIApplication.shared
     let context = connectionOptions.urlContexts.first
     let activity = connectionOptions.userActivities.first(where: { $0.activityType == NSUserActivityTypeBrowsingWeb })
@@ -138,8 +166,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
   }
 
   func sceneDidDisconnect(_ scene: UIScene) {
-    if appDelegate?.window === window {
-      appDelegate?.window = nil
+    if let window {
+      appDelegate?.disconnectScene(from: window)
     }
     window = nil
   }

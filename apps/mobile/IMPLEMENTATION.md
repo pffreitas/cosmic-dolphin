@@ -84,12 +84,17 @@ The host adopts a single UIKit window scene in its committed `Info.plist`.
 `AppDelegate` configures the Expo/RN factory; `SceneDelegate` creates the scene's
 window and starts the root there. The application delegate retains a compatibility
 window reference for Expo SDK54 modules, not a separate legacy window.
+`SceneRootHost` retains the root controller across scene disconnection, detaches
+it from the old window, and reattaches it without initializing RN again. A
+reconnected scene delivers new intents through live link handlers rather than
+trying to replace an already-running RN host's initial launch options.
 
 Cold scene URLs/user activities are passed through `SceneLaunchOptions` to RN and
 registered with Expo Linking before JS starts. Warm URLs/universal links and scene
 lifecycle callbacks forward to the existing app-delegate handlers/subscribers.
 `SceneLaunchOptionsTests` exercises the native initial-link dictionary and URL
-context mapping. `native-scene-build.test.ts` checks the committed manifest/source
+context mapping; `SceneRootHostTests` covers one startup, root retention and new
+intent delivery across disconnect/reconnect. `native-scene-build.test.ts` checks the committed manifest/source
 contract; neither test substitutes for an actual Release launch.
 
 When changing Xcode/linked SDK, verify a Release cold launch on the corresponding
