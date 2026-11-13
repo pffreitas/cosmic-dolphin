@@ -32,6 +32,11 @@
 		9962588542DB417CBA3B0A35 /* SourceSerif4-400.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 275265D9315B4A2A9DD8AB4A /* SourceSerif4-400.ttf */; };
 		AC0000000000000000000001 /* ShareCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFADA73D1A024043B5D1CB4E /* ShareCapture.swift */; };
 		AC0000000000000000000002 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0733BFEA3FC341FB8C361C47 /* ShareViewController.swift */; };
+		AD6000000000000000000001 /* SceneLaunchOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD6000000000000000000004 /* SceneLaunchOptions.swift */; };
+		AD6000000000000000000002 /* SceneLaunchOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD6000000000000000000004 /* SceneLaunchOptions.swift */; };
+		AD6000000000000000000003 /* SceneLaunchOptionsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD6000000000000000000005 /* SceneLaunchOptionsTests.swift */; };
+		AD6000000000000000000006 /* SceneRootHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD6000000000000000000008 /* SceneRootHost.swift */; };
+		AD6000000000000000000007 /* SceneRootHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD6000000000000000000008 /* SceneRootHost.swift */; };
 		B66DE3D5F7FE7C677B933EAE /* SharedShareKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E34D34F09DEE73492FEE8E2 /* SharedShareKey.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		BE462EB6228F4CE390679FC7 /* ShareExtension.appex in Copy Files */ = {isa = PBXBuildFile; fileRef = 50CEBC6FC31D461AAEBC874F /* ShareExtension.appex */; };
@@ -99,6 +104,9 @@
 		A88D1CD2E25045D893DAFE31 /* ShareTheme.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = ShareTheme.swift; path = ShareExtension/ShareTheme.swift; sourceTree = "<group>"; };
 		A919085575DC48E597DEE932 /* Inter-400.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Inter-400.ttf"; path = "../assets/fonts/Inter-400.ttf"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = CosmicDolphin/SplashScreen.storyboard; sourceTree = "<group>"; };
+		AD6000000000000000000004 /* SceneLaunchOptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CosmicDolphin/SceneLaunchOptions.swift; sourceTree = "<group>"; };
+		AD6000000000000000000005 /* SceneLaunchOptionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneLaunchOptionsTests.swift; sourceTree = "<group>"; };
+		AD6000000000000000000008 /* SceneRootHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CosmicDolphin/SceneRootHost.swift; sourceTree = "<group>"; };
 		B32108FAC0C94D8B90405ED6 /* MainInterface.storyboard */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = MainInterface.storyboard; path = MainInterface.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		D6F84F5AA7436E487C31A92D /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-CosmicDolphin/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
@@ -150,6 +158,7 @@
 		040EA9C412617A9E808E44B7 /* ShareQueueTests */ = {
 			isa = PBXGroup;
 			children = (
+				AD6000000000000000000005 /* SceneLaunchOptionsTests.swift */,
 				0EE43A3C06DEC42B8AE61CE8 /* ShareKeychainTests.swift */,
 				8549BBCE3E915914261281E2 /* TestHost.swift */,
 				6B26BCEA21804130A4DE0867 /* NativeShareTests.swift */,
@@ -161,6 +170,8 @@
 		13B07FAE1A68108700A75B9A /* CosmicDolphin */ = {
 			isa = PBXGroup;
 			children = (
+				AD6000000000000000000004 /* SceneLaunchOptions.swift */,
+				AD6000000000000000000008 /* SceneRootHost.swift */,
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
 				F11748442D0722820044C1D9 /* CosmicDolphin-Bridging-Header.h */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
@@ -580,6 +591,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AD6000000000000000000001 /* SceneLaunchOptions.swift in Sources */,
+				AD6000000000000000000006 /* SceneRootHost.swift in Sources */,
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
 				EA1DF828A22D2907B64DC8EE /* ExpoModulesProvider.swift in Sources */,
 				B66DE3D5F7FE7C677B933EAE /* SharedShareKey.swift in Sources */,
@@ -610,6 +623,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AD6000000000000000000002 /* SceneLaunchOptions.swift in Sources */,
+				AD6000000000000000000007 /* SceneRootHost.swift in Sources */,
+				AD6000000000000000000003 /* SceneLaunchOptionsTests.swift in Sources */,
 				61BB0394D07A038338396437 /* ShareKeychainTests.swift in Sources */,
 				AC0000000000000000000001 /* ShareCapture.swift in Sources */,
 				AC0000000000000000000002 /* ShareViewController.swift in Sources */,
