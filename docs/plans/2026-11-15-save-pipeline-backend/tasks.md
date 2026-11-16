@@ -365,7 +365,7 @@ bun run --cwd packages/shared build && bun run --cwd apps/worker build
 
 **Notes**
 
-Verified 2026-11-15 on the feature branch: shared 432 passing (jest -i), API 383, worker 10, builds green, lint 0 errors. Tests written first, mutation-checked. Decisions: the image prompt receives `budgetText` of the page HTML (not stripped text) because the model needs the img URLs; the patch is skipped when empty; the `httpClient` constructor parameter was removed; image-chunk seed helpers moved to `test-utils/factories.ts`; one existing test now expects the summary to be left unwritten instead of written back. Touched `apps/api/src/tests/bookmark-content.test.ts` (constructor argument) and `repositories/index.ts`, outside the listed Touches but required by the removal. Test database: the in-RAM compose database crashed twice with SIGBUS (VM memory), so verification used a disk-backed container `save-pipeline-1-db` on port 5433.
+Verified 2026-11-15 on the feature branch: shared 432 passing (jest -i), API 383, worker 10, builds green, lint 0 errors. Tests written first, mutation-checked. Decisions: the image prompt receives `budgetText` of the page HTML (not stripped text) because the model needs the img URLs; the patch is skipped when empty; the `httpClient` constructor parameter was removed; image-chunk seed helpers moved to `test-utils/factories.ts`; one existing test now expects the summary to be left unwritten instead of written back. Review round 1 added a SQL-guarded `replaceProvisionalTitle` (repository and `ensureScrapedContent`) so an owner retitle during the first fetch survives (R1). Touched `apps/api/src/tests/bookmark-content.test.ts` (constructor argument) and `repositories/index.ts`, outside the listed Touches but required by the removal. Test database: the in-RAM compose database crashed twice with SIGBUS (VM memory), so verification used a disk-backed container `save-pipeline-1-db` on port 5433.
 
 ### T-2 · The worker never loops on, or retries, a message that cannot succeed
 
@@ -422,6 +422,8 @@ cd apps/worker && bunx eslint "src/**/*.ts"
 **Notes**
 
 Verified 2026-11-15 on the feature branch: worker 19 passing, shared 432 (jest -i), API 383, builds green, worker lint 0 errors. Red-first confirmed for exhausted-delivery, BookmarkNotFoundError, stopProcessing timer and shutdown hooks; characterization tests (read_ct 4 still runs, other errors still retry) passed immediately by design. Decisions: setup moved into new `apps/worker/src/app.setup.ts` (main.ts runs bootstrap on import, so it was untestable); `updateProcessingStatus` is not user scoped so onExhausted fails the bookmark by id; the shutdown test uses a stub app and does not send a real SIGTERM.
+
+Review rounds 1 to 3 extended T-2: `BookmarkProcessorService.failExhausted` (acts only on a bookmark still `processing`; closes the latest run in place through `BookmarkProcessingReporter.closeLatestRun`, then sets `failed`; failures propagate and the worker keeps the message), UUID validation of exhausted payload ids, and a processor that does not archive when `onExhausted` throws. The handler no longer injects `BookmarkService`.
 
 ### T-3 · The timeline stops polling when processing has ended
 
@@ -535,7 +537,7 @@ Verified 2026-11-15: API 399 passing, shared 441 (jest -i), worker 19, builds gr
 
 | Repo | Feature branch | Base SHA | Reviewed SHA | Tasks | Rounds | Verdict | Checks | Findings / follow-ups |
 |---|---|---|---|---|---|---|---|---|
-| cosmic-dolphin | `feature/save-pipeline-1` | | | T-1 to T-4 | 0 | Pending | | |
+| cosmic-dolphin | `feature/save-pipeline-1` | `0d4ee5ef86a5810b996def1c3ce18667f021563c` | `7459dccff46511c8e5fc0f1976147baf3d8f2474` | T-1 to T-4 | 4 | APPROVE | Builds green; `bun run test:backend -- --env-mode=loose --concurrency=1 --force` on 7459dcc: shared 458, API 399, worker 21 passing, 0 failures (baseline 428 / 383 / 10); api lint 0 errors; web typecheck passes | Round 1 (8a0ed7b) CHANGES REQUESTED: R1 Critical (owner retitle during first fetch overwritten; T-1) fixed with SQL-guarded `replaceProvisionalTitle`; R2 High (web polling vs stale running events; T-2/T-3) fixed at source by closing the run on exhaustion, residual disputed (web hook deliberately unchanged to keep the web deploy out of this package), dispute accepted in round 2; R3 High (exhaustion archived when `failed` could not be recorded; T-2) fixed. Round 2 (263dbb7) CHANGES REQUESTED: R4 High (exhausted delivery flipped a completed bookmark to failed) fixed; R5 High (malformed ids retained forever) fixed. Round 3 (4a4ae3c) CHANGES REQUESTED: R6 High (resumeRun reopened a terminal run) fixed with `closeLatestRun`. Round 4 (7459dcc) APPROVE, no open Critical or High. Follow-up (Medium, accepted): the web polling hook still polls on any `running` event; revisit in a web package. |
 
 ## Delivery
 
@@ -543,7 +545,7 @@ Verified 2026-11-15: API 399 passing, shared 441 (jest -i), worker 19, builds gr
 
 | Repo | PR | Head SHA | Base SHA | State | Proof / decisions | Merge SHA |
 |---|---|---|---|---|---|---|
-| cosmic-dolphin | | | | Not started | | |
+| cosmic-dolphin | | | | Reviewing | Sol approved 7459dcc in round 4 of 5 | |
 
 ## Rollout
 
