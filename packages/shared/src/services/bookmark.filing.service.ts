@@ -202,6 +202,7 @@ export class BookmarkFilingServiceImpl implements BookmarkFilingService {
           async () =>
             this.ai.generateObjectWithUsage({
               sessionID: session.sessionID,
+              signal: session.signal,
               modelId: BOOKMARK_MODEL_IDS.small,
               prompt,
               schema: FilingGenerationSchema,
@@ -209,6 +210,7 @@ export class BookmarkFilingServiceImpl implements BookmarkFilingService {
         )
       : await this.ai.generateObject({
           sessionID: session.sessionID,
+          signal: session.signal,
           modelId: BOOKMARK_MODEL_IDS.small,
           prompt,
           schema: FilingGenerationSchema,

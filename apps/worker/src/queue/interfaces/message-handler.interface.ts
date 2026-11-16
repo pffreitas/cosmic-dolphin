@@ -3,6 +3,11 @@ import { QueueMessage } from "../../types/queue.types";
 export interface MessageContext {
   /** No delivery is left after this one: a failure is terminal. */
   finalAttempt: boolean;
+  /**
+   * Aborted when the worker stops waiting for this run at shutdown. The handler
+   * passes it down so the run ends instead of lingering past its message.
+   */
+  signal: AbortSignal;
 }
 
 export interface MessageHandler {

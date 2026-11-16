@@ -30,6 +30,7 @@ export * from "./feed-ranking.service";
 export * from "./picks.service";
 export * from "./http-client";
 export * from "./content-extraction";
+export * from "./run-deadline";
 
 import {
   WebScrapingService,

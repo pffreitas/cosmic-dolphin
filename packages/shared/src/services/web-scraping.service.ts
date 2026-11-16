@@ -97,9 +97,16 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     }
 
     try {
+      const signal = context?.signal;
       const response = context?.metadataOnly
-        ? await this.httpClient.fetch(url, { timeoutMs: 8_000, retryLimit: 0 })
-        : await this.httpClient.fetch(url);
+        ? await this.httpClient.fetch(url, {
+            timeoutMs: 8_000,
+            retryLimit: 0,
+            ...(signal ? { signal } : {}),
+          })
+        : signal
+          ? await this.httpClient.fetch(url, { signal })
+          : await this.httpClient.fetch(url);
 
       if (!response.ok) {
         throw new HttpRequestError(
@@ -161,7 +168,9 @@ export class WebScrapingServiceImpl implements WebScrapingService {
       let failure: unknown = error;
       for (const provider of providers) {
         try {
-          const rendered = await provider.extract(url);
+          const rendered = context?.signal
+            ? await provider.extract(url, { signal: context.signal })
+            : await provider.extract(url);
           if (rendered.finalUrl)
             this.detectAuthRedirect(url, rendered.finalUrl);
           const result = this.scrapeContent(

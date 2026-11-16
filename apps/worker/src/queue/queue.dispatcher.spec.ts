@@ -231,4 +231,51 @@ describe("shutdown", () => {
     await tick();
     expect(queue.calls.filter((c) => c.startsWith("delete:2") || c.startsWith("vis:2:3"))).toEqual([]);
   });
+  test("shutdown after the grace period aborts in-flight runs", async () => {
+    const queue = fakeQueue([msg(1)]);
+    let signal: AbortSignal | undefined;
+    const gate = deferred();
+    const processor = build(
+      queue,
+      async (_m, ctx) => {
+        signal = ctx.signal;
+        await gate.promise;
+      },
+      { QUEUE_GRACEFUL_SHUTDOWN_TIMEOUT: "20" },
+    );
+
+    await processor.startProcessing();
+    await tick();
+    expect(signal).toBeDefined();
+    expect(signal!.aborted).toBe(false);
+
+    await processor.stopProcessing();
+
+    expect(signal!.aborted).toBe(true);
+    expect(queue.calls).toEqual(["vis:1:0"]);
+    gate.resolve();
+  });
+
+  test("a run that finishes within the grace period is not aborted", async () => {
+    const queue = fakeQueue([msg(1)]);
+    let signal: AbortSignal | undefined;
+    const gate = deferred();
+    const processor = build(
+      queue,
+      async (_m, ctx) => {
+        signal = ctx.signal;
+        await gate.promise;
+      },
+      { QUEUE_GRACEFUL_SHUTDOWN_TIMEOUT: "1000" },
+    );
+
+    await processor.startProcessing();
+    await tick();
+    const stopping = processor.stopProcessing();
+    gate.resolve();
+    await stopping;
+
+    expect(signal!.aborted).toBe(false);
+    expect(queue.calls).toEqual(["delete:1"]);
+  });
 });

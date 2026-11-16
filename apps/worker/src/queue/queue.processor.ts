@@ -23,6 +23,8 @@ interface InFlightMessage {
   message: QueueMessage;
   /** Returned to the queue at shutdown; its late result must not touch it. */
   released: boolean;
+  /** Aborted at shutdown, once the grace period has passed. */
+  abort: AbortController;
 }
 
 @Injectable()
@@ -108,6 +110,9 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
       ]);
     } catch (error) {
       this.logger.warn("Graceful shutdown timeout reached, forcing stop");
+      // Whatever is still running will not be waited for: stop it, so the run
+      // does not keep calling providers for a message another worker now owns.
+      for (const { abort } of this.inFlight.values()) abort.abort();
     } finally {
       clearTimeout(timer);
     }
@@ -180,7 +185,12 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
 
   private startMessage(message: QueueMessage, config: QueueConfig): void {
     const key = `${config.name}-${message.msg_id}`;
-    this.inFlight.set(key, { config, message, released: false });
+    this.inFlight.set(key, {
+      config,
+      message,
+      released: false,
+      abort: new AbortController(),
+    });
     const promise = this.processMessage(message, config)
       .catch((error) =>
         this.logger.error(`Unhandled error for message ${message.msg_id}`, error),
@@ -237,6 +247,8 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
 
       await handler.handle(message, {
         finalAttempt: message.read_ct > config.maxRetries,
+        signal: this.inFlight.get(`${config.name}-${message.msg_id}`)?.abort
+          .signal ?? new AbortController().signal,
       });
 
       // Successfully processed (or acknowledged by the handler), remove it

@@ -16,11 +16,22 @@ export interface EmbeddingsResult {
   metadata?: Record<string, any>;
 }
 
+export interface EmbeddingCallOptions {
+  /** Aborts the provider request; a run's deadline reaches it through this. */
+  signal?: AbortSignal;
+}
+
 export interface EmbeddingService {
   embedText(text: string): Promise<number[]>;
   embedTexts(texts: string[]): Promise<number[][]>;
-  embedTextWithUsage(text: string): Promise<EmbeddingResult>;
-  embedTextsWithUsage(texts: string[]): Promise<EmbeddingsResult>;
+  embedTextWithUsage(
+    text: string,
+    options?: EmbeddingCallOptions
+  ): Promise<EmbeddingResult>;
+  embedTextsWithUsage(
+    texts: string[],
+    options?: EmbeddingCallOptions
+  ): Promise<EmbeddingsResult>;
   getModelId(): string;
 }
 
@@ -47,10 +58,14 @@ export class EmbeddingServiceImpl implements EmbeddingService {
     return result.value;
   }
 
-  async embedTextWithUsage(text: string): Promise<EmbeddingResult> {
+  async embedTextWithUsage(
+    text: string,
+    options: EmbeddingCallOptions = {}
+  ): Promise<EmbeddingResult> {
     const result = await embed({
       model: this.model,
       value: text,
+      abortSignal: options.signal,
     });
 
     const usage = toProcessingUsage(
@@ -70,12 +85,16 @@ export class EmbeddingServiceImpl implements EmbeddingService {
     return result.value;
   }
 
-  async embedTextsWithUsage(texts: string[]): Promise<EmbeddingsResult> {
+  async embedTextsWithUsage(
+    texts: string[],
+    options: EmbeddingCallOptions = {}
+  ): Promise<EmbeddingsResult> {
     if (texts.length === 0) return { value: [] };
 
     const result = await embedMany({
       model: this.model,
       values: texts,
+      abortSignal: options.signal,
     });
 
     const usage = toProcessingUsage(

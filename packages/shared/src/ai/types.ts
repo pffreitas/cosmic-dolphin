@@ -4,6 +4,8 @@ import { FlexibleSchema } from "@ai-sdk/provider-utils";
 export interface Session {
   sessionID: string;
   refID: string;
+  /** Set on a pipeline run's session: every model call of the run honours it. */
+  signal?: AbortSignal;
 }
 
 export interface Task {
@@ -28,6 +30,8 @@ export interface Message {
 export interface AICallOptions {
   maxOutputTokens?: number;
   providerOptions?: Record<string, Record<string, any>>;
+  /** Aborts the model call; a run's deadline reaches the provider through it. */
+  signal?: AbortSignal;
 }
 
 export interface PromptInput extends AICallOptions {

@@ -132,7 +132,10 @@ export interface BookmarkService {
     metadata: PrivateLinkMetadata,
     budget?: CreateBudget
   ): Promise<CreateAndQueueOutcome | null>;
-  ensureScrapedContent(bookmark: Bookmark): Promise<ScrapedUrlContents | null>;
+  ensureScrapedContent(
+    bookmark: Bookmark,
+    signal?: AbortSignal
+  ): Promise<ScrapedUrlContents | null>;
   createPrivateLink(
     url: string,
     userId: string,
@@ -410,7 +413,8 @@ export class BookmarkServiceImpl implements BookmarkService {
    * place; a pending managed transcript resumes its persisted job.
    */
   async ensureScrapedContent(
-    bookmark: Bookmark
+    bookmark: Bookmark,
+    signal?: AbortSignal
   ): Promise<ScrapedUrlContents | null> {
     const existing = await this.bookmarkRepository.getScrapedUrlContent(
       bookmark.id
@@ -418,8 +422,12 @@ export class BookmarkServiceImpl implements BookmarkService {
     if (existing && !isIncompleteExtraction(existing)) return existing;
 
     const jobId = existing?.metadata?.extraction?.jobId;
-    const scraped = jobId
-      ? await this.webScrapingService.scrape(bookmark.sourceUrl, { transcriptJobId: jobId })
+    const context = {
+      ...(jobId ? { transcriptJobId: jobId } : {}),
+      ...(signal ? { signal } : {}),
+    };
+    const scraped = Object.keys(context).length
+      ? await this.webScrapingService.scrape(bookmark.sourceUrl, context)
       : await this.webScrapingService.scrape(bookmark.sourceUrl);
     if (existing) {
       await this.bookmarkRepository.updateScrapedUrlContents(existing.id, scraped);

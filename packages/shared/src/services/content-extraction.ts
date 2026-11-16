@@ -9,6 +9,8 @@ export interface ExtractionContext {
   transcriptJobId?: string;
   /** URL-card previews must not start paid rendering or transcription jobs. */
   metadataOnly?: boolean;
+  /** The run's deadline: every request and rendered extraction honours it. */
+  signal?: AbortSignal;
 }
 
 /** Failures the queue can recover from must retain their classification. */
@@ -47,20 +49,25 @@ export function isIncompleteExtraction(content: ExtractedContent): boolean {
 export async function withFetchDeadline<T>(
   timeoutMs: number,
   work: (boundedFetch: typeof fetch, signal: AbortSignal) => Promise<T>,
+  outer?: AbortSignal,
 ): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  // The budget and the run's deadline both end the call; whichever is first.
+  const budget = outer
+    ? AbortSignal.any([controller.signal, outer])
+    : controller.signal;
   try {
     const boundedFetch: typeof fetch = (input, init) =>
       fetch(input, {
         ...init,
         signal: init?.signal
-          ? AbortSignal.any([controller.signal, init.signal])
-          : controller.signal,
+          ? AbortSignal.any([budget, init.signal])
+          : budget,
       });
-    return await work(boundedFetch, controller.signal);
+    return await work(boundedFetch, budget);
   } catch (error) {
-    if (controller.signal.aborted) {
+    if (budget.aborted) {
       throw new ContentExtractionError(
         "Content extraction request timed out",
         "provider",

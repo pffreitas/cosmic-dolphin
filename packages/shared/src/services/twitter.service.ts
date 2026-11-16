@@ -94,15 +94,16 @@ export class TwitterServiceImpl implements TwitterService {
   async scrape(
     url: string, context?: ExtractionContext
   ): Promise<Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">> {
+    const signal = context?.signal;
     try {
-      return await this.scrapeViaFxTwitter(url);
+      return await this.scrapeViaFxTwitter(url, signal);
     } catch (primaryError) {
       console.warn(
         `[TwitterService] fxTwitter failed for ${url}, trying oEmbed fallback:`,
         primaryError instanceof Error ? primaryError.message : primaryError
       );
       try {
-        return await this.scrapeViaOEmbed(url);
+        return await this.scrapeViaOEmbed(url, signal);
       } catch (secondaryError) {
         console.warn(
           `[TwitterService] oEmbed failed for ${url}, trying OG fallback:`,
@@ -111,12 +112,14 @@ export class TwitterServiceImpl implements TwitterService {
         try {
           if (!context?.metadataOnly && this.extractStatusId(url)) {
             try {
-              return await this.browserProvider.extractTweet(url);
+              return await (signal
+                ? this.browserProvider.extractTweet(url, { signal })
+                : this.browserProvider.extractTweet(url));
             } catch (browserError) {
               if (browserError instanceof ContentExtractionError && !browserError.shouldRetry) throw browserError;
             }
           }
-          return await this.scrapeViaOgFallback(url);
+          return await this.scrapeViaOgFallback(url, signal);
         } catch (fallbackError) {
           if (fallbackError instanceof ContentExtractionError) throw fallbackError;
           throw new TwitterScrapingError(
@@ -135,7 +138,8 @@ export class TwitterServiceImpl implements TwitterService {
   }
 
   private async scrapeViaFxTwitter(
-    url: string
+    url: string,
+    signal?: AbortSignal
   ): Promise<Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">> {
     const statusId = this.extractStatusId(url);
     if (!statusId) {
@@ -143,7 +147,7 @@ export class TwitterServiceImpl implements TwitterService {
     }
 
     const apiUrl = `https://api.fxtwitter.com/2/${statusId}`;
-    const response = await this.httpClient.fetch(apiUrl);
+    const response = await this.httpClient.fetch(apiUrl, ...(signal ? [{ signal }] as const : []));
 
     if (!response.ok) {
       throw new Error(`fxTwitter returned ${response.status}: ${response.statusText}`);
@@ -267,7 +271,8 @@ export class TwitterServiceImpl implements TwitterService {
   }
 
   private async scrapeViaOEmbed(
-    url: string
+    url: string,
+    signal?: AbortSignal
   ): Promise<Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">> {
     const statusId = this.extractStatusId(url);
     if (!statusId) {
@@ -275,7 +280,7 @@ export class TwitterServiceImpl implements TwitterService {
     }
 
     const oEmbedUrl = `https://publish.twitter.com/oembed?url=${encodeURIComponent(url)}&omit_script=true`;
-    const response = await this.httpClient.fetch(oEmbedUrl);
+    const response = await this.httpClient.fetch(oEmbedUrl, ...(signal ? [{ signal }] as const : []));
 
     if (!response.ok) {
       throw new Error(`oEmbed returned ${response.status}`);
@@ -321,9 +326,10 @@ export class TwitterServiceImpl implements TwitterService {
   }
 
   private async scrapeViaOgFallback(
-    url: string
+    url: string,
+    signal?: AbortSignal
   ): Promise<Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">> {
-    const response = await this.httpClient.fetch(url);
+    const response = await this.httpClient.fetch(url, ...(signal ? [{ signal }] as const : []));
 
     if (!response.ok) {
       throw new Error(`OG fetch returned ${response.status}`);

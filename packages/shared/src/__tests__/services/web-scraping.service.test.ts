@@ -38,6 +38,18 @@ describe("WebScrapingService", () => {
   });
 
   describe("scrape", () => {
+    it("hands the run signal to the page fetch and to rendered extraction", async () => {
+      const controller = new AbortController();
+      const extract = jest.fn().mockResolvedValue({ html: "<main><article><p>" + "Rendered body text. ".repeat(20) + "</p></article></main>", provider: "fake" });
+      const service = new WebScrapingServiceImpl(mockHttpClient, mockYouTubeService, mockTwitterService, [{ extract } as PageExtractionProvider]);
+      mockHttpClient.fetch.mockRejectedValue(new HttpRequestError("HTTP 503", 503));
+
+      await service.scrape("https://example.com/js", { signal: controller.signal });
+
+      expect(mockHttpClient.fetch).toHaveBeenCalledWith("https://example.com/js", expect.objectContaining({ signal: controller.signal }));
+      expect(extract).toHaveBeenCalledWith("https://example.com/js", expect.objectContaining({ signal: controller.signal }));
+    });
+
     it("reads public articles with sign-in navigation and authentication terminology", async () => {
       const article = "A public article about authentication. Users sign in to manage their account, but this documentation is public. ".repeat(4);
       mockHttpClient.fetch.mockResolvedValue(htmlResponse(`<title>Public documentation</title><nav>Sign in</nav><main><article><h1>Authentication guide</h1><p>${article}</p></article></main>`));

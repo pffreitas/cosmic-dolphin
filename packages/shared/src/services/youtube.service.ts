@@ -97,11 +97,14 @@ export class YouTubeServiceImpl implements YouTubeService {
         false,
       );
     const canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const signal = context?.signal;
     let browserRequest: Promise<BrowserVideoPage> | undefined;
     const loadBrowser = () =>
-      (browserRequest ??= this.browserProvider.extractYouTube(canonicalUrl));
+      (browserRequest ??= signal
+        ? this.browserProvider.extractYouTube(canonicalUrl, { signal })
+        : this.browserProvider.extractYouTube(canonicalUrl));
     const [metadataResult, transcriptResult] = await Promise.allSettled([
-      this.fetchOEmbed(canonicalUrl),
+      this.fetchOEmbed(canonicalUrl, signal),
       context?.metadataOnly
         ? Promise.resolve(null)
         : this.fetchTranscript(
@@ -109,6 +112,7 @@ export class YouTubeServiceImpl implements YouTubeService {
             canonicalUrl,
             loadBrowser,
             context?.transcriptJobId,
+            signal,
           ),
     ]);
     let oembed =
@@ -212,10 +216,13 @@ export class YouTubeServiceImpl implements YouTubeService {
     };
   }
 
-  private async fetchOEmbed(url: string): Promise<YouTubeOEmbedResponse> {
+  private async fetchOEmbed(
+    url: string,
+    signal?: AbortSignal,
+  ): Promise<YouTubeOEmbedResponse> {
     const response = await this.httpClient.fetch(
       `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`,
-      { timeoutMs: 8_000, retryLimit: 0 },
+      { timeoutMs: 8_000, retryLimit: 0, ...(signal ? { signal } : {}) },
     );
     if (!response.ok)
       throw new Error(`oEmbed request failed with status ${response.status}`);
@@ -229,14 +236,20 @@ export class YouTubeServiceImpl implements YouTubeService {
     url: string,
     loadBrowser: () => Promise<BrowserVideoPage>,
     jobId?: string,
+    signal?: AbortSignal,
   ): Promise<TranscriptResult> {
     // A persisted job is resumed after a restart/redelivery, never submitted
     // again and never delayed by re-running the failing native strategies.
     if (jobId && this.transcriptProvider)
-      return this.transcriptProvider.fetchTranscript(url, jobId);
-    const library = await this.tryFetchTranscriptViaLibrary(videoId);
+      return signal
+        ? this.transcriptProvider.fetchTranscript(url, jobId, { signal })
+        : this.transcriptProvider.fetchTranscript(url, jobId);
+    const library = await this.tryFetchTranscriptViaLibrary(videoId, signal);
     if (library) return library;
-    const innerTube = await this.tryFetchTranscriptViaInnerTube(videoId);
+    const innerTube = await this.tryFetchTranscriptViaInnerTube(
+      videoId,
+      signal,
+    );
     if (innerTube) return innerTube;
     try {
       const page = await loadBrowser();
@@ -259,7 +272,9 @@ export class YouTubeServiceImpl implements YouTubeService {
         throw error;
     }
     if (this.transcriptProvider)
-      return this.transcriptProvider.fetchTranscript(url);
+      return signal
+        ? this.transcriptProvider.fetchTranscript(url, undefined, { signal })
+        : this.transcriptProvider.fetchTranscript(url);
     throw new ContentExtractionError(
       "YouTube transcript could not be retrieved; captions may be absent or requests blocked",
       "unavailable",
@@ -269,6 +284,7 @@ export class YouTubeServiceImpl implements YouTubeService {
 
   private async tryFetchTranscriptViaLibrary(
     videoId: string,
+    outer?: AbortSignal,
   ): Promise<TranscriptResult | null> {
     try {
       return await withFetchDeadline(20_000, async (boundedFetch) => {
@@ -302,7 +318,7 @@ export class YouTubeServiceImpl implements YouTubeService {
               provider: "youtube-library",
             }
           : null;
-      });
+      }, outer);
     } catch {
       return null;
     }
@@ -310,6 +326,7 @@ export class YouTubeServiceImpl implements YouTubeService {
 
   private async tryFetchTranscriptViaInnerTube(
     videoId: string,
+    outer?: AbortSignal,
   ): Promise<TranscriptResult | null> {
     try {
       return await withFetchDeadline(40_000, async (request, signal) => {
@@ -381,7 +398,7 @@ export class YouTubeServiceImpl implements YouTubeService {
           }
         }
         return null;
-      });
+      }, outer);
     } catch {
       return null;
     }
