@@ -176,15 +176,13 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     const reporter = new BookmarkProcessingReporter(
       this.bookmarkProcessingRepository
     );
-    try {
-      await reporter.resumeRun(id, userId);
-      await reporter.failRun(message);
-    } finally {
-      // The run is closed before the status changes, as everywhere else in the
-      // pipeline: clients stop polling on the status, so it must not flip while
-      // the timeline still reads as running.
-      await this.bookmarkService.updateProcessingStatus(id, "failed", message);
-    }
+    // Close the run without reopening it, then flip the status: clients stop
+    // polling on the status, so it must not change while the timeline still
+    // reads as running. No `finally`: if closing throws, the bookmark stays
+    // `processing` so the redelivered message retries the closure; if the status
+    // write throws, the retry finds a closed run and repeats only the write.
+    await reporter.closeLatestRun(id, userId, message);
+    await this.bookmarkService.updateProcessingStatus(id, "failed", message);
     return true;
   }
 

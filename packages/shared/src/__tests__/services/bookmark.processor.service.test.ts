@@ -1940,18 +1940,169 @@ describe("BookmarkProcessorService", () => {
       expect(mockBookmarkService.updateProcessingStatus.mock.invocationCallOrder[0]).toBeGreaterThan(lastRunWrite);
     });
 
-    it("still marks the bookmark failed when closing the run fails", async () => {
+    const processing = () => {
       mockBookmarkService.findByIdAndUser.mockResolvedValue({ ...testBookmark, processingStatus: "processing" });
       mockBookmarkService.updateProcessingStatus.mockResolvedValue(testBookmark);
+    };
+
+    it("closes a running run, its running phase and turn events, and keeps the token totals", async () => {
+      processing();
+      const timeline = interruptedTimeline();
+      timeline.run.inputTokens = 7;
+      timeline.events.push({ id: "turn-event", runId: "run-1", kind: "turn", name: "Turn", status: "running", sequence: 3, startedAt: new Date() });
+      timeline.events.push({ id: "done-event", runId: "run-1", kind: "phase", name: "Fetch", status: "completed", sequence: 4, startedAt: new Date() });
+      mockBookmarkProcessingRepository.findLatestTimeline.mockResolvedValue(timeline);
+      mockBookmarkProcessingRepository.updateRun.mockResolvedValue({} as any);
+
+      await service.failExhausted(testBookmark.id, testBookmark.userId, "stopped");
+
+      for (const id of ["phase-event", "turn-event"]) {
+        expect(mockBookmarkProcessingRepository.updateEvent).toHaveBeenCalledWith(
+          id,
+          expect.objectContaining({ status: "failed", error: "Interrupted before it finished", endedAt: expect.any(Date), durationMs: expect.any(Number) })
+        );
+      }
+      expect(mockBookmarkProcessingRepository.updateEvent).toHaveBeenCalledWith(
+        "run-event",
+        expect.objectContaining({ status: "failed", error: "stopped", endedAt: expect.any(Date), durationMs: expect.any(Number) })
+      );
+      expect(mockBookmarkProcessingRepository.updateEvent).not.toHaveBeenCalledWith("done-event", expect.anything());
+      expect(mockBookmarkProcessingRepository.updateRun).toHaveBeenCalledWith(
+        "run-1",
+        expect.objectContaining({ status: "failed", error: "stopped" })
+      );
+      // Totals are left out of the write so the stored values stay as they are.
+      const runWrite = mockBookmarkProcessingRepository.updateRun.mock.calls[0][1] as Record<string, unknown>;
+      for (const key of ["inputTokens", "outputTokens", "totalTokens", "reasoningTokens", "cachedInputTokens", "costUsd"]) {
+        expect(runWrite).not.toHaveProperty(key);
+      }
+      expect(mockBookmarkProcessingRepository.createRun).not.toHaveBeenCalled();
+      expect(mockBookmarkProcessingRepository.updateRun).not.toHaveBeenCalledWith(
+        "run-1",
+        expect.objectContaining({ status: "running" })
+      );
+      expect(mockBookmarkService.updateProcessingStatus).toHaveBeenCalledWith(testBookmark.id, "failed", "stopped");
+    });
+
+    it.each(["completed", "failed"] as const)(
+      "leaves a %s run and its events untouched but still fails the processing bookmark",
+      async (runStatus) => {
+        processing();
+        const timeline = interruptedTimeline();
+        timeline.run.status = runStatus;
+        timeline.events.forEach((event: any) => { event.status = runStatus; });
+        mockBookmarkProcessingRepository.findLatestTimeline.mockResolvedValue(timeline);
+
+        await expect(
+          service.failExhausted(testBookmark.id, testBookmark.userId, "stopped")
+        ).resolves.toBe(true);
+
+        expect(mockBookmarkProcessingRepository.updateRun).not.toHaveBeenCalled();
+        expect(mockBookmarkProcessingRepository.updateEvent).not.toHaveBeenCalled();
+        expect(mockBookmarkProcessingRepository.createRun).not.toHaveBeenCalled();
+        expect(mockBookmarkService.updateProcessingStatus).toHaveBeenCalledWith(testBookmark.id, "failed", "stopped");
+      }
+    );
+
+    it("keeps the bookmark processing when closing the run fails, and a redelivery finishes the job", async () => {
+      processing();
       mockBookmarkProcessingRepository.findLatestTimeline.mockResolvedValue(interruptedTimeline());
       mockBookmarkProcessingRepository.updateRun
-        .mockResolvedValueOnce({} as any)
-        .mockRejectedValueOnce(new Error("db down"));
+        .mockRejectedValueOnce(new Error("db down"))
+        .mockResolvedValue({} as any);
 
       await expect(
         service.failExhausted(testBookmark.id, testBookmark.userId, "stopped")
       ).rejects.toThrow("db down");
+      expect(mockBookmarkService.updateProcessingStatus).not.toHaveBeenCalled();
 
+      await expect(
+        service.failExhausted(testBookmark.id, testBookmark.userId, "stopped")
+      ).resolves.toBe(true);
+      expect(mockBookmarkProcessingRepository.updateRun).toHaveBeenCalledTimes(2);
+      expect(mockBookmarkProcessingRepository.updateRun).toHaveBeenLastCalledWith(
+        "run-1",
+        expect.objectContaining({ status: "failed", error: "stopped" })
+      );
+      expect(mockBookmarkService.updateProcessingStatus).toHaveBeenCalledTimes(1);
+      expect(mockBookmarkService.updateProcessingStatus).toHaveBeenCalledWith(testBookmark.id, "failed", "stopped");
+      const lastRunWrite = Math.max(...mockBookmarkProcessingRepository.updateRun.mock.invocationCallOrder);
+      expect(mockBookmarkService.updateProcessingStatus.mock.invocationCallOrder[0]).toBeGreaterThan(lastRunWrite);
+    });
+
+    it("writes the run last, so a failed run-event write leaves the run running and the retry finishes the rest", async () => {
+      processing();
+      const timeline = interruptedTimeline();
+      mockBookmarkProcessingRepository.findLatestTimeline.mockResolvedValue(timeline);
+      mockBookmarkProcessingRepository.updateRun.mockResolvedValue({} as any);
+      mockBookmarkProcessingRepository.updateEvent.mockImplementation(async (id: string, data: any) => {
+        if (id === "run-event" && mockBookmarkProcessingRepository.updateEvent.mock.calls.filter((c: any[]) => c[0] === "run-event").length === 1) {
+          throw new Error("event write down");
+        }
+        return { id, ...data } as any;
+      });
+
+      await expect(
+        service.failExhausted(testBookmark.id, testBookmark.userId, "stopped")
+      ).rejects.toThrow("event write down");
+      expect(mockBookmarkProcessingRepository.updateRun).not.toHaveBeenCalled();
+      expect(mockBookmarkService.updateProcessingStatus).not.toHaveBeenCalled();
+
+      await expect(
+        service.failExhausted(testBookmark.id, testBookmark.userId, "stopped")
+      ).resolves.toBe(true);
+      expect(mockBookmarkProcessingRepository.updateEvent).toHaveBeenLastCalledWith(
+        "run-event",
+        expect.objectContaining({ status: "failed", error: "stopped" })
+      );
+      expect(mockBookmarkProcessingRepository.updateRun).toHaveBeenCalledTimes(1);
+      expect(mockBookmarkProcessingRepository.updateRun).toHaveBeenCalledWith(
+        "run-1",
+        expect.objectContaining({ status: "failed", error: "stopped" })
+      );
+      const lastEventWrite = Math.max(...mockBookmarkProcessingRepository.updateEvent.mock.invocationCallOrder);
+      expect(mockBookmarkProcessingRepository.updateRun.mock.invocationCallOrder[0]).toBeGreaterThan(lastEventWrite);
+      expect(mockBookmarkService.updateProcessingStatus).toHaveBeenCalledWith(testBookmark.id, "failed", "stopped");
+    });
+
+    it("propagates a failed status write after the run closed, and the retry writes only the status", async () => {
+      processing();
+      mockBookmarkProcessingRepository.findLatestTimeline.mockResolvedValueOnce(interruptedTimeline());
+      mockBookmarkProcessingRepository.updateRun.mockResolvedValue({} as any);
+      mockBookmarkService.updateProcessingStatus
+        .mockRejectedValueOnce(new Error("status down"))
+        .mockResolvedValue(testBookmark);
+
+      await expect(
+        service.failExhausted(testBookmark.id, testBookmark.userId, "stopped")
+      ).rejects.toThrow("status down");
+      const runWrites = mockBookmarkProcessingRepository.updateRun.mock.calls.length;
+      const eventWrites = mockBookmarkProcessingRepository.updateEvent.mock.calls.length;
+
+      const closed = interruptedTimeline();
+      closed.run.status = "failed";
+      closed.events.forEach((event: any) => { event.status = "failed"; });
+      mockBookmarkProcessingRepository.findLatestTimeline.mockResolvedValue(closed);
+      await expect(
+        service.failExhausted(testBookmark.id, testBookmark.userId, "stopped")
+      ).resolves.toBe(true);
+
+      expect(mockBookmarkProcessingRepository.updateRun).toHaveBeenCalledTimes(runWrites);
+      expect(mockBookmarkProcessingRepository.updateEvent).toHaveBeenCalledTimes(eventWrites);
+      expect(mockBookmarkService.updateProcessingStatus).toHaveBeenCalledTimes(2);
+    });
+
+    it("writes only the status when the bookmark has no run at all", async () => {
+      processing();
+      mockBookmarkProcessingRepository.findLatestTimeline.mockResolvedValue(null);
+
+      await expect(
+        service.failExhausted(testBookmark.id, testBookmark.userId, "stopped")
+      ).resolves.toBe(true);
+
+      expect(mockBookmarkProcessingRepository.createRun).not.toHaveBeenCalled();
+      expect(mockBookmarkProcessingRepository.updateRun).not.toHaveBeenCalled();
+      expect(mockBookmarkProcessingRepository.updateEvent).not.toHaveBeenCalled();
       expect(mockBookmarkService.updateProcessingStatus).toHaveBeenCalledWith(testBookmark.id, "failed", "stopped");
     });
 

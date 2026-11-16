@@ -192,6 +192,51 @@ describe("Bookmark Content Refactor Integration", () => {
     });
   });
 
+  describe("failExhausted", () => {
+    const seed = async (runStatus: "running" | "completed") => {
+      const db = getTestDatabase();
+      const row = await repository.create(TestDataFactory.createBookmark({
+        user_id: testUserId, source_url: `https://example.com/exhausted-${runStatus}`, processing_status: "processing",
+      }));
+      const processing = new BookmarkProcessingRepositoryImpl(db);
+      const run = await processing.createRun({
+        bookmarkId: row.id, userId: testUserId, status: runStatus, startedAt: new Date(Date.now() - 5000),
+      });
+      await processing.updateRun(run.id, { inputTokens: 11, totalTokens: 15 });
+      const status = runStatus;
+      await processing.createEvent({ runId: run.id, kind: "run", name: "Processing run", status, sequence: 1, startedAt: new Date(Date.now() - 5000) });
+      const phase = await processing.createEvent({ runId: run.id, kind: "phase", phase: "summarise", name: "Summarise", status, sequence: 2, startedAt: new Date(Date.now() - 4000) });
+      await processing.createEvent({ runId: run.id, parentEventId: phase.id, kind: "turn", phase: "summarise", name: "Turn", status, sequence: 3, startedAt: new Date(Date.now() - 3000) });
+      return { row, processing };
+    };
+
+    it("fails a stranded run in place and then the bookmark", async () => {
+      const { row, processing } = await seed("running");
+
+      await expect(processorService.failExhausted(row.id, testUserId, "Stopped")).resolves.toBe(true);
+
+      const timeline = (await processing.findLatestTimeline(row.id, testUserId))!;
+      expect(timeline.run).toMatchObject({ status: "failed", error: "Stopped", inputTokens: 11, totalTokens: 15 });
+      expect(timeline.run.endedAt).toBeInstanceOf(Date);
+      expect(timeline.events.map((event) => event.status)).toEqual(["failed", "failed", "failed"]);
+      expect(timeline.events.map((event) => event.error)).toEqual([
+        "Stopped", "Interrupted before it finished", "Interrupted before it finished",
+      ]);
+      expect(timeline.events.every((event) => event.endedAt instanceof Date)).toBe(true);
+      expect((await service.findByIdAndUser(row.id, testUserId))!.processingStatus).toBe("failed");
+    });
+
+    it("leaves a completed run alone and still fails the processing bookmark", async () => {
+      const { row, processing } = await seed("completed");
+      const before = (await processing.findLatestTimeline(row.id, testUserId))!;
+
+      await processorService.failExhausted(row.id, testUserId, "Stopped");
+
+      expect(await processing.findLatestTimeline(row.id, testUserId)).toEqual(before);
+      expect((await service.findByIdAndUser(row.id, testUserId))!.processingStatus).toBe("failed");
+    });
+  });
+
   describe("content separation and retrieval", () => {
     it("recovers a pending video in place across separate processing attempts", async () => {
       const row = await repository.create(TestDataFactory.createBookmark({
