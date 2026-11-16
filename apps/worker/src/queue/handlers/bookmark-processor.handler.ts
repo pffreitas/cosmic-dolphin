@@ -1,5 +1,5 @@
 import { Injectable, Logger, Inject } from "@nestjs/common";
-import { MessageHandler } from "../interfaces/message-handler.interface";
+import { MessageContext, MessageHandler } from "../interfaces/message-handler.interface";
 import { QueueMessage } from "../../types/queue.types";
 import type {
   BookmarkQueuePayload,
@@ -18,6 +18,8 @@ const isUuid = (value: unknown): value is string =>
 export class BookmarkProcessorHandler implements MessageHandler {
   private readonly logger = new Logger(BookmarkProcessorHandler.name);
 
+  readonly ownsTerminalState = true;
+
   constructor(
     @Inject(BOOKMARK_PROCESSOR_SERVICE)
     private readonly bookmarkProcessorService: BookmarkProcessorService,
@@ -27,7 +29,10 @@ export class BookmarkProcessorHandler implements MessageHandler {
     return messageType === "bookmark_process";
   }
 
-  async handle(message: QueueMessage): Promise<void> {
+  async handle(
+    message: QueueMessage,
+    context?: MessageContext,
+  ): Promise<void> {
     this.logger.log(`Processing bookmark`, {
       msg_id: message.msg_id,
       message_type: message.message?.type,
@@ -47,6 +52,9 @@ export class BookmarkProcessorHandler implements MessageHandler {
       await this.bookmarkProcessorService.process(bookmarkId, userId, {
         phase,
         resume: resume || message.read_ct > 1,
+        finalAttempt: context?.finalAttempt,
+        signal: context?.signal,
+        dispose: context?.dispose,
       });
 
       this.logger.log(`Successfully processed bookmark ${message.msg_id}`, {
@@ -79,7 +87,10 @@ export class BookmarkProcessorHandler implements MessageHandler {
    * archived. Any other failure propagates, so the processor keeps the message
    * and pgmq redelivers it once the database is back.
    */
-  async onExhausted(message: QueueMessage): Promise<void> {
+  async onExhausted(
+    message: QueueMessage,
+    context?: Pick<MessageContext, "dispose">,
+  ): Promise<void> {
     const payload = message.message as BookmarkQueuePayload | undefined;
     const bookmarkId = payload?.data?.bookmarkId;
     const userId = payload?.data?.userId;
@@ -96,6 +107,7 @@ export class BookmarkProcessorHandler implements MessageHandler {
       bookmarkId,
       userId,
       "Processing stopped after repeated worker failures",
+      { dispose: context?.dispose },
     );
     if (!recorded) {
       this.logger.warn(

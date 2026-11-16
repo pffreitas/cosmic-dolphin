@@ -28,8 +28,14 @@ import {
 import { CollectionRepository } from "../repositories/collection.repository";
 import { budgetText, ChunkingService, ChunkingServiceImpl } from "./chunking.service";
 import { EmbeddingService, EmbeddingServiceImpl } from "./embedding.service";
+import { RunDeadlineError, createRunDeadline } from "./run-deadline";
 import { BOOKMARK_MODEL_IDS, summaryProviderOptions } from "./bookmark.model-ids";
-import { BookmarkProcessingRepository } from "../repositories/bookmark-processing.repository";
+import {
+  BookmarkProcessingRepository,
+  BookmarkProcessingRepositoryImpl,
+} from "../repositories/bookmark-processing.repository";
+import type { Kysely } from "kysely";
+import type { Database } from "../database/schema";
 import {
   BookmarkProcessingPhaseName,
   BookmarkProcessingPhaseReporter,
@@ -48,6 +54,28 @@ export interface BookmarkProcessOptions {
    * True for every reprocess — see `BookmarkProcessingReporter.resumeRun`.
    */
   resume?: boolean;
+  /**
+   * No delivery is left after this one. A retryable failure then ends the run
+   * and fails the bookmark; with attempts left it leaves both as they are, so
+   * the bookmark reads `processing` (queued) rather than `failed` while the
+   * queue redelivers it.
+   */
+  finalAttempt?: boolean;
+  /**
+   * The worker is shutting down. Combined with the run's own deadline; when it
+   * fires the run stops and its message goes back to the queue.
+   */
+  signal?: AbortSignal;
+  /**
+   * Dispose of the run's queue message in the same transaction as the terminal
+   * write (the run's closure and the bookmark's final status): `delete` when the
+   * run ended without throwing, `archive` when it ends by throwing. A failure of
+   * that transaction leaves everything as it was and
+   * rejects, so the caller keeps the message. A run that ends by throwing
+   * after that transaction committed carries `terminalPersisted: true`: only
+   * that, or a normal return, tells the caller the message is already disposed of.
+   */
+  dispose?: (transaction: Kysely<Database>, how: "delete" | "archive") => Promise<void>;
 }
 
 /**
@@ -75,8 +103,15 @@ export interface BookmarkProcessorService {
    * status agree and clients stop polling. Returns `false`, having done
    * nothing, when the bookmark does not exist for that user. Errors propagate:
    * the caller must not discard the message while this has not been recorded.
+   * With `options.dispose`, the closure, the status and the message's archival
+   * are one transaction.
    */
-  failExhausted(id: string, userId: string, message: string): Promise<boolean>;
+  failExhausted(
+    id: string,
+    userId: string,
+    message: string,
+    options?: Pick<BookmarkProcessOptions, "dispose">
+  ): Promise<boolean>;
 }
 
 const PRIVATE_LINK_ENRICHMENT_PROMPT = `You are creating a private link quick-access record.
@@ -150,7 +185,11 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     private ai: AI,
     private bookmarkProcessingRepository: BookmarkProcessingRepository,
     chunkingService?: ChunkingService,
-    embeddingService?: EmbeddingService
+    embeddingService?: EmbeddingService,
+    private processingRepositoryFor: (
+      transaction: Kysely<Database>
+    ) => BookmarkProcessingRepository = (transaction) =>
+      new BookmarkProcessingRepositoryImpl(transaction)
   ) {
     this.filingService = new BookmarkFilingServiceImpl(
       collectionRepository,
@@ -164,7 +203,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
   async failExhausted(
     id: string,
     userId: string,
-    message: string
+    message: string,
+    options: Pick<BookmarkProcessOptions, "dispose"> = {}
   ): Promise<boolean> {
     const bookmark = await this.bookmarkService.findByIdAndUser(id, userId);
     if (!bookmark) return false;
@@ -172,6 +212,25 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     // finished (or the bookmark was already failed or reset) before the worker
     // died, that outcome stands: the message is archived and nothing is touched.
     if (bookmark.processingStatus !== "processing") return true;
+
+    const { dispose } = options;
+    if (dispose) {
+      // One transaction: closing the run, the terminal status and archiving the
+      // message commit together or not at all, so a failure anywhere leaves the
+      // bookmark `processing` with its one live message.
+      await this.bookmarkService.updateProcessingStatus(
+        id,
+        "failed",
+        message,
+        async (transaction) => {
+          await new BookmarkProcessingReporter(
+            this.processingRepositoryFor(transaction)
+          ).closeLatestRun(id, userId, message);
+          await dispose(transaction, "archive");
+        }
+      );
+      return true;
+    }
 
     const reporter = new BookmarkProcessingReporter(
       this.bookmarkProcessingRepository
@@ -184,6 +243,52 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     await reporter.closeLatestRun(id, userId, message);
     await this.bookmarkService.updateProcessingStatus(id, "failed", message);
     return true;
+  }
+
+  /**
+   * Write the run's terminal state. Without `options.dispose` this is the plain
+   * sequence (close the run, then change the status, the status change
+   * happening even if closing the run failed). With it, the closure, the status
+   * and the message's disposal are one transaction: all of them or none.
+   */
+  private async settle(
+    reporter: BookmarkProcessingReporter,
+    id: string,
+    options: BookmarkProcessOptions,
+    outcome: {
+      status: "completed" | "failed";
+      message?: string;
+      closeRun: boolean;
+      how: "delete" | "archive";
+    }
+  ): Promise<void> {
+    const { status, message, closeRun } = outcome;
+    const close = (repository?: BookmarkProcessingRepository) =>
+      status === "completed"
+        ? reporter.completeRun(repository)
+        : reporter.failRun(message, repository);
+
+    if (!options.dispose) {
+      try {
+        if (closeRun) await close();
+      } finally {
+        await (status === "completed"
+          ? this.bookmarkService.updateProcessingStatus(id, status)
+          : this.bookmarkService.updateProcessingStatus(id, status, message));
+      }
+      return;
+    }
+
+    const { dispose } = options;
+    await this.bookmarkService.updateProcessingStatus(
+      id,
+      status,
+      message,
+      async (transaction) => {
+        if (closeRun) await close(this.processingRepositoryFor(transaction));
+        await dispose(transaction, outcome.how);
+      }
+    );
   }
 
   /**
@@ -216,12 +321,10 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
 
     let bookmark = existingBookmark;
     const isPrivateLink = bookmark.isPrivateLink;
-
-    // Update processing status to 'processing'
-    bookmark = await this.bookmarkService.updateProcessingStatus(
-      bookmark.id,
-      "processing"
-    );
+    // One deadline for the whole run: every fetch, rendered extraction, model
+    // and embedding call below honours it.
+    const deadline = createRunDeadline(options.signal);
+    const { signal } = deadline;
 
     const reporter = new BookmarkProcessingReporter(
       this.bookmarkProcessingRepository
@@ -233,12 +336,19 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     const patch: ProducedFields = {};
 
     try {
+      // Update processing status to 'processing'. Inside the disposal boundary:
+      // if it throws, the deadline timer is still cleared.
+      bookmark = await this.bookmarkService.updateProcessingStatus(
+        bookmark.id,
+        "processing"
+      );
+
       if (options.resume) {
         await reporter.resumeRun(bookmark.id, userId);
       } else {
         await reporter.startRun(bookmark.id, userId);
       }
-      const session = await this.ai.newSession(bookmark.id);
+      const session = { ...(await this.ai.newSession(bookmark.id)), signal };
       const inScope = (phase: BookmarkProcessingPhaseName) =>
         !options.phase || options.phase === phase;
 
@@ -264,9 +374,9 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         // watched succeed an hour ago.
         const scrapedContent = inScope("fetch")
           ? await reporter.trackPhase("fetch", "Fetch page", () =>
-              this.requireScrapedContent(bookmark)
+              this.requireScrapedContent(bookmark, signal)
             )
-          : await this.requireScrapedContent(bookmark);
+          : await this.requireScrapedContent(bookmark, signal);
 
         if (inScope("extract")) {
           // `wordCount`, `readingTime` and the readable body were written by
@@ -285,7 +395,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
                     bookmark,
                     scrapedContent,
                     phaseReporter
-                  )
+                  ),
+            signal
           );
           if (images) {
             bookmark.cosmicImages = images;
@@ -304,7 +415,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
             "Summarise content",
             failures,
             (phaseReporter) =>
-              this.summarise(session, bookmark, getProcessable(), phaseReporter)
+              this.summarise(session, bookmark, getProcessable(), phaseReporter),
+            signal
           );
           if (summarised) {
             // A scoped retry that recovers only card data cannot replace the
@@ -329,11 +441,12 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         const unusable = failures.find(failure => failure.unusableCode);
         if (unusable?.unusableCode) {
           await this.bookmarkService.update(id, { cosmicBriefSummary: "", cosmicSummary: "", cosmicKeyPoints: [], processingFailureCode: unusable.unusableCode });
-          try {
-            await reporter.failRun("Unusable source");
-          } finally {
-            await this.bookmarkService.updateProcessingStatus(id, "failed", "Unusable source");
-          }
+          await this.settle(reporter, id, options, {
+            status: "failed",
+            message: "Unusable source",
+            closeRun: true,
+            how: "delete",
+          });
           console.info("Processing failure classified", { bookmark_id: id, phase: "summarise", code: unusable.unusableCode });
           return;
         }
@@ -350,7 +463,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
                 bookmark,
                 getProcessable(),
                 phaseReporter
-              )
+              ),
+            signal
           );
           if (tags) {
             bookmark.cosmicTags = tags;
@@ -369,7 +483,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
             "File into a collection",
             failures,
             (phaseReporter) =>
-              this.filingService.file(session, bookmark, phaseReporter)
+              this.filingService.file(session, bookmark, phaseReporter),
+            signal
           );
           this.applyFilingResult(bookmark, filing);
         }
@@ -384,8 +499,9 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
             null,
             async (phaseReporter) => {
               const chunks = await this.chunkContent(scrapedContent);
-              await this.embedChunks(chunks, phaseReporter);
-            }
+              await this.embedChunks(chunks, phaseReporter, signal);
+            },
+            signal
           );
         }
 
@@ -413,22 +529,48 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         const message = failures
           .map((failure) => `${failure.phase}: ${failure.error}`)
           .join("; ");
-        try {
-          await reporter.failRun(message);
-        } finally {
-          await this.bookmarkService.updateProcessingStatus(id, "failed", message);
-        }
+        await this.settle(reporter, id, options, {
+          status: "failed",
+          message,
+          closeRun: true,
+          how: "delete",
+        });
         return;
       }
 
       // Close the run first: the timeline polls on the bookmark's status alone,
       // so the bookmark must not read `completed` while its run is still open.
-      try {
-        await reporter.completeRun();
-      } finally {
-        await this.bookmarkService.updateProcessingStatus(id, "completed");
+      await this.settle(reporter, id, options, {
+        status: "completed",
+        closeRun: true,
+        how: "delete",
+      });
+    } catch (caught) {
+      // Whatever an aborted call threw (an AbortError, a provider's own
+      // timeout, a half-read response) the cause is the deadline.
+      const error =
+        signal.aborted && !(caught instanceof RunDeadlineError)
+          ? new RunDeadlineError(
+              options.signal?.aborted
+                ? "Run stopped because the worker is shutting down"
+                : "Run exceeded its deadline"
+            )
+          : caught;
+      // A shutdown abort never spends the last attempt: the released message
+      // is read again, and a delivery past the limit fails the bookmark itself.
+      const shutdown = options.signal?.aborted === true;
+      const willRetry =
+        error instanceof RunDeadlineError
+          ? shutdown || !options.finalAttempt
+          : error instanceof ContentExtractionError &&
+            error.shouldRetry &&
+            !options.finalAttempt;
+      if (willRetry) {
+        // The failed phase is already on the timeline. Leave the run `running`
+        // and the bookmark `processing`: the message is delayed and the next
+        // delivery resumes this run.
+        throw error;
       }
-    } catch (error) {
       if (error instanceof ContentExtractionError) {
         const code = error.code === "pending" ? "provider" : error.code;
         await this.bookmarkService.update(id, { processingFailureCode: code });
@@ -438,40 +580,60 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       // being unavailable. Everything else was already absorbed by `runPhase`.
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
-      // Close the run before the bookmark leaves `processing`. A failure to
-      // close it must neither skip the status change nor replace `error`, which
-      // is what the caller needs to see (and to read `shouldRetry` from).
-      try {
-        if (reporter.hasStarted()) {
-          await reporter.failRun(errorMessage);
-        }
-      } catch (closeError) {
-        console.error("Failed to close the processing run", {
-          bookmark_id: id,
-          error: closeError instanceof Error ? closeError.message : String(closeError),
+      // Close the run before the bookmark leaves `processing`. Without a
+      // disposal, a failure to close it must neither skip the status change nor
+      // replace `error`, which is what the caller needs to see (and to read
+      // `shouldRetry` from). With one, the closure, the status and the
+      // message's archival commit together, or not at all.
+      if (options.dispose) {
+        await this.settle(reporter, id, options, {
+          status: "failed",
+          message: errorMessage,
+          closeRun: reporter.hasStarted(),
+          how: "archive",
         });
-      } finally {
-        await this.bookmarkService.updateProcessingStatus(
-          id,
-          "failed",
-          errorMessage
-        );
+      } else {
+        try {
+          if (reporter.hasStarted()) {
+            await reporter.failRun(errorMessage);
+          }
+        } catch (closeError) {
+          console.error("Failed to close the processing run", {
+            bookmark_id: id,
+            error: closeError instanceof Error ? closeError.message : String(closeError),
+          });
+        } finally {
+          await this.bookmarkService.updateProcessingStatus(
+            id,
+            "failed",
+            errorMessage
+          );
+        }
       }
       // Explicitly classified transient extraction failures can recover on
       // pgmq redelivery. Unknown/terminal failures still require manual retry.
       const terminalError =
         error instanceof Error ? error : new Error(errorMessage);
       Object.assign(terminalError, {
-        shouldRetry: error instanceof ContentExtractionError && error.shouldRetry,
+        terminalPersisted: true,
+        shouldRetry:
+          error instanceof RunDeadlineError ||
+          (error instanceof ContentExtractionError && error.shouldRetry),
       });
       throw terminalError;
+    } finally {
+      deadline.dispose();
     }
   }
 
   private async requireScrapedContent(
-    bookmark: Bookmark
+    bookmark: Bookmark,
+    signal?: AbortSignal
   ): Promise<ScrapedUrlContents> {
-    const fetched = await this.bookmarkService.ensureScrapedContent(bookmark);
+    const fetched = await this.bookmarkService.ensureScrapedContent(
+      bookmark,
+      signal
+    );
     if (!fetched) {
       throw new Error(`Scraped url content not found: ${bookmark.id}`);
     }
@@ -491,11 +653,15 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     phase: BookmarkProcessingPhaseName,
     name: string,
     failures: PhaseFailure[] | null,
-    work: (phaseReporter: BookmarkProcessingPhaseReporter) => Promise<T>
+    work: (phaseReporter: BookmarkProcessingPhaseReporter) => Promise<T>,
+    signal?: AbortSignal
   ): Promise<T | undefined> {
     try {
       return await reporter.trackPhase(phase, name, work);
     } catch (error) {
+      // A phase failure is absorbed so the others can run, but a run that was
+      // aborted has no time left: stop, and let the queue deliver it again.
+      if (signal?.aborted) throw error;
       const message = error instanceof Error ? error.message : String(error);
       failures?.push({ phase, error: message, ...(error instanceof UnusableSourceError ? { unusableCode: error.code } : {}) });
       return undefined;
@@ -546,6 +712,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
             async () =>
               this.ai.generateObjectWithUsage({
                 sessionID: session.sessionID,
+                signal: session.signal,
                 modelId: BOOKMARK_MODEL_IDS.small,
                 prompt: PRIVATE_LINK_ENRICHMENT_PROMPT
                   .replace("{{URL}}", bookmark.sourceUrl)
@@ -567,7 +734,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
                     .describe("Additional phrases for quick access search"),
                 }),
               })
-          )
+          ),
+        session.signal
       );
 
       if (enrichment) {
@@ -608,7 +776,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         "File private link into a collection",
         failures,
         (phaseReporter) =>
-          this.filingService.file(session, enriched, phaseReporter)
+          this.filingService.file(session, enriched, phaseReporter),
+        session.signal
       );
       this.applyFilingResult(enriched, filing);
     }
@@ -706,6 +875,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         async () => {
           const result = await this.ai.generateObjectWithUsage({
             sessionID: session.sessionID,
+            signal: session.signal,
             modelId: BOOKMARK_MODEL_IDS.large,
             prompt: prompt(false),
             schema: SUMMARY_SCHEMA,
@@ -733,6 +903,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         async () => {
           const result = await this.ai.generateObjectWithUsage({
             sessionID: session.sessionID,
+            signal: session.signal,
             modelId: BOOKMARK_MODEL_IDS.large,
             prompt: prompt(true),
             schema: BRIEF_ONLY_SCHEMA,
@@ -795,6 +966,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       async () =>
         this.ai.generateObjectWithUsage({
           sessionID: session.sessionID,
+          signal: session.signal,
           modelId: BOOKMARK_MODEL_IDS.small,
           prompt: buildTagsPrompt({
             content: content.text,
@@ -891,14 +1063,18 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
 
   private async embedChunks(
     chunkingResult: ChunkingResult,
-    phaseReporter: BookmarkProcessingPhaseReporter
+    phaseReporter: BookmarkProcessingPhaseReporter,
+    signal?: AbortSignal
   ): Promise<void> {
     if (chunkingResult.chunkTexts.length === 0) return;
 
     const embeddings = await phaseReporter.trackTurn(
       "Generate chunk embeddings",
       this.embeddingService.getModelId(),
-      async () => this.embeddingService.embedTextsWithUsage(chunkingResult.chunkTexts)
+      async () =>
+        this.embeddingService.embedTextsWithUsage(chunkingResult.chunkTexts, {
+          signal,
+        })
     );
 
     for (let i = 0; i < chunkingResult.textChunkIds.length; i++) {
@@ -928,6 +1104,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       async () =>
         this.ai.generateObjectWithUsage({
           sessionID: session.sessionID,
+          signal: session.signal,
           modelId: BOOKMARK_MODEL_IDS.small,
           prompt: FILTER_IMAGES_PROMPT.replace(
             "{{CONTENT}}",

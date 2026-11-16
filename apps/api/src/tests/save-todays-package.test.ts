@@ -17,12 +17,16 @@ import { restrictShareKeyRoutes } from "../middleware/share-key";
 const db = getTestDatabase(); const utils = new DatabaseTestUtils(db);
 const repository = new BookmarkRepositoryImpl(db); const webScraping = new WebScrapingServiceImpl();
 const bookmark = new BookmarkServiceImpl(repository, webScraping);
-const jobs: string[] = []; const logs: unknown[] = []; const events: { fields: any; message: string }[] = [];
+const logs: unknown[] = []; const events: { fields: any; message: string }[] = [];
 const services = { bookmark, webScraping, shareKey: new ShareKeyServiceImpl(new ShareKeyRepositoryImpl(db)),
-  queue: { sendBookmarkProcessingMessage: async (id: string) => { jobs.push(id); return 1; } },
-  processingBudget: { check: async () => ({ withinBudget: true }) }, feed: { recordOpen: async () => {} },
+  feed: { recordOpen: async () => {} },
   profile: { findById: async () => ({ name: "Fictional local reader" }) },
 } as unknown as ServiceContainer;
+/** Bookmark ids with a message waiting in the real `bookmarks` queue. */
+async function queuedBookmarkIds(): Promise<string[]> {
+  const result = await sql<{ id: string }>`SELECT message->'data'->>'bookmarkId' AS id FROM pgmq.q_bookmarks ORDER BY msg_id`.execute(db);
+  return result.rows.map(row => row.id);
+}
 let app: FastifyInstance; let address: string; let owner: string; let zone: string;
 const users: string[] = []; const originalInfo = console.info;
 const authenticate = async (request: FastifyRequest, reply: FastifyReply) => {
@@ -45,7 +49,7 @@ beforeAll(async () => {
   console.info = (fields, message) => { events.push({ fields, message }); };
 });
 beforeEach(async () => {
-  await utils.truncateAll(); owner = crypto.randomUUID(); users.push(owner); jobs.length = logs.length = events.length = 0;
+  await utils.truncateAll(); await sql`DELETE FROM pgmq.q_bookmarks`.execute(db); owner = crypto.randomUUID(); users.push(owner); logs.length = events.length = 0;
   await sql`INSERT INTO auth.users(id,email) VALUES (${owner}::uuid, ${`t10-${owner}@example.invalid`})`.execute(db);
 });
 afterAll(async () => {
@@ -114,7 +118,7 @@ it("keeps the same five server slots/reasons across capture, two done writes and
   for (const id of [first, second]) expect((await request(`/bookmarks/${id}`)).body.isRead).toBe(true);
   const library = await request("/bookmarks?limit=100&offset=0"); expect(library.status).toBe(200);
   for (const id of [first, second]) expect(library.body.bookmarks.find((item: any) => item.id === id).isRead).toBe(true);
-  expect(jobs).toEqual([capture.body.id]);
+  expect(await queuedBookmarkIds()).toEqual([capture.body.id]);
   await receipt("primary-http-fixture", { slots: identity(original.body), captureId: capture.body.id, doneIds: [first, second],
     proofLimit: "HTTP second client/library shape; no Safari/swipe/Next pick/native login/live web claim" });
 });
@@ -165,7 +169,7 @@ it("dedupes concurrent capture, limits keys to POST, strips all failure/private 
   const responses = await Promise.all([request("/bookmarks", "POST", input, issued.body.key), request("/bookmarks", "POST", input, issued.body.key)]);
   if (responses.some(result => result.status === 500)) console.error("T10 concurrent failure", logs.filter((entry: any) => entry.level === 50));
   expect(responses.map(result => result.status).sort()).toEqual([200, 201]);
-  expect(responses[0].body.id).toBe(responses[1].body.id); expect(jobs).toHaveLength(1);
+  expect(responses[0].body.id).toBe(responses[1].body.id); expect(await queuedBookmarkIds()).toHaveLength(1);
   const id = responses[0].body.id;
   for (const field of ["user_note", "later_until", "title", "description", "is_private_link", "collection_id", "user_id", "tags", "extra"]) {
     expect((await request("/bookmarks", "POST", { ...input, [field]: null }, issued.body.key)).status).toBe(400);
@@ -196,7 +200,7 @@ it("dedupes concurrent capture, limits keys to POST, strips all failure/private 
   expect((await request(`/share-keys/${issued.body.id}`, "DELETE")).status).toBe(204);
   expect((await request("/bookmarks", "POST", input, issued.body.key)).status).toBe(401);
   const text = JSON.stringify({ logs, events }); expect(text).not.toContain(note); expect(text).not.toContain(issued.body.key);
-  await receipt("security-matrix", { concurrentStatuses: responses.map(result => result.status), sameBookmark: true, queuedJobs: jobs.length,
+  await receipt("security-matrix", { concurrentStatuses: responses.map(result => result.status), sameBookmark: true, queuedJobs: (await queuedBookmarkIds()).length,
     restrictedRouteCount: 13, failureReasons: 7, ownerDenials: 5, publicPrivateFieldsAbsent: privateFields, rawKeyAndNoteAbsentFromLogs: true });
 });
 
@@ -219,7 +223,7 @@ it("accepts previous-client create/list/read/update payloads with additive schem
   expect((await request(`/bookmarks/${id}/read`, "DELETE")).body.isRead).toBe(false);
   const library = await request("/bookmarks?limit=20&offset=0&read_status=all&scope=all&sort=newest");
   expect(library.status).toBe(200); expect(library.body.bookmarks.find((item: any) => item.id === id).title).toBe("Previous client renamed");
-  expect(jobs).toHaveLength(1);
+  expect(await queuedBookmarkIds()).toHaveLength(1);
   await receipt("previous-client-wire", { oldCreate: [201,200], oldList: 200, oldReadUnread: true, oldUpdate: true, currentGeneratedDateDecoding: true,
     proofLimit: "No previous TestFlight install or normal-issuer JWT proof" });
 });

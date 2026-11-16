@@ -152,6 +152,13 @@ async function main() {
       );
     }
 
+    // Production's `postgres` role can use pgmq (spec D-6); the image's does not,
+    // and the queue functions run as the caller, so without this every
+    // `pgmq.send`/`read` over the pool fails with "permission denied for table".
+    await client.query("GRANT USAGE ON SCHEMA pgmq TO postgres");
+    await client.query("GRANT ALL ON ALL TABLES IN SCHEMA pgmq TO postgres");
+    await client.query("GRANT ALL ON ALL SEQUENCES IN SCHEMA pgmq TO postgres");
+
     console.log(`Applied ${files.length} migrations to ${new URL(ADMIN_URL).host}.`);
   } finally {
     await client.end();

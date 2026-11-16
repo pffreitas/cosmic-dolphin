@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, expect, it, mock } from "bun:test";
+import { afterAll, beforeAll, beforeEach, expect, it } from "bun:test";
 import Fastify, { type FastifyInstance } from "fastify";
 import { sql } from "kysely";
 import { ShareKeyRepositoryImpl, ShareKeyServiceImpl, BookmarkRepositoryImpl, BookmarkServiceImpl, WebScrapingServiceImpl, type ServiceContainer } from "@cosmic-dolphin/shared";
@@ -11,7 +11,7 @@ const db = getTestDatabase();
 const utils = new DatabaseTestUtils(db);
 const webScraping = new WebScrapingServiceImpl();
 const bookmark = new BookmarkServiceImpl(new BookmarkRepositoryImpl(db), webScraping);
-const services = { shareKey: new ShareKeyServiceImpl(new ShareKeyRepositoryImpl(db)), bookmark, webScraping, processingBudget: { check: async () => ({ withinBudget: true }) }, queue: { sendBookmarkProcessingMessage: mock(async () => 1) } } as unknown as ServiceContainer;
+const services = { shareKey: new ShareKeyServiceImpl(new ShareKeyRepositoryImpl(db)), bookmark, webScraping } as unknown as ServiceContainer;
 let app: FastifyInstance;
 let address: string;
 let owner: string;

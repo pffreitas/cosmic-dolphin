@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, jest } from "@jest/globals";
+import { describe, it, expect, beforeEach, afterEach, jest } from "@jest/globals";
 import { BookmarkProcessorServiceImpl, BookmarkNotFoundError } from "../../services/bookmark.processor.service";
 import { SUMMARY_SCHEMA, BRIEF_ONLY_SCHEMA, clampText, normaliseKeyPoints, renderSummaryMarkdown } from "../../services/bookmark.summary";
 import { BOOKMARK_MODEL_IDS, summaryProviderOptions } from "../../services/bookmark.model-ids";
@@ -16,6 +16,7 @@ import { ChunkingService } from "../../services/chunking.service";
 import { EmbeddingService } from "../../services/embedding.service";
 import { buildSummarisePrompt, buildTagsPrompt, FILTER_IMAGES_PROMPT } from "../../services/bookmark.processor.prompt";
 import { ContentExtractionError } from "../../services/content-extraction";
+import { RunDeadlineError } from "../../services/run-deadline";
 
 describe("summaryProviderOptions", () => {
   it("requests low reasoning only for Luna while requiring supported parameters", () => {
@@ -45,6 +46,8 @@ describe("BookmarkProcessorService", () => {
 
   beforeEach(() => {
     mockBookmarkService = {
+      createAndQueue: jest.fn(),
+      createPrivateLinkAndQueue: jest.fn(),
       updateByOwner: jest.fn(),
       mergeCapture: jest.fn(),
       findByIdAndUser: jest.fn(),
@@ -53,6 +56,7 @@ describe("BookmarkProcessorService", () => {
       getScrapedUrlContent: jest.fn(),
       getContentByOwner: jest.fn(),
       putContentByOwner: jest.fn(),
+      startReprocess: jest.fn(),
       ensureScrapedContent: jest.fn(),
       countLibrary: jest.fn(),
       update: jest.fn(),
@@ -223,7 +227,6 @@ describe("BookmarkProcessorService", () => {
         updatedAt: new Date(),
       })),
       findLatestTimeline: jest.fn(async () => null),
-      countRunsSince: jest.fn(async () => 0),
     } as any;
 
     mockContentChunkRepository = {
@@ -374,7 +377,8 @@ describe("BookmarkProcessorService", () => {
         testBookmark.userId
       );
       expect(mockBookmarkService.ensureScrapedContent).toHaveBeenCalledWith(
-        testBookmark
+        testBookmark,
+        expect.any(AbortSignal)
       );
       expect(mockAI.newSession).toHaveBeenCalledWith(testBookmark.id);
       expect(mockBookmarkProcessingRepository.createRun).toHaveBeenCalledWith(
@@ -529,7 +533,8 @@ describe("BookmarkProcessorService", () => {
         testBookmark.userId
       );
       expect(mockBookmarkService.ensureScrapedContent).toHaveBeenCalledWith(
-        testBookmark
+        testBookmark,
+        expect.any(AbortSignal)
       );
       expect(mockBookmarkService.updateProcessingStatus).toHaveBeenCalledWith(
         testBookmark.id,
@@ -555,7 +560,7 @@ describe("BookmarkProcessorService", () => {
       mockBookmarkService.updateProcessingStatus.mockResolvedValue(testBookmark);
       mockAI.newSession.mockResolvedValue({ sessionID: "test", refID: testBookmark.id });
       mockBookmarkService.ensureScrapedContent.mockRejectedValue(new ContentExtractionError("Transcript not retrieved", "unavailable", retryable));
-      await expect(service.process(testBookmark.id, testBookmark.userId)).rejects.toMatchObject({ shouldRetry: retryable });
+      await expect(service.process(testBookmark.id, testBookmark.userId, { finalAttempt: true })).rejects.toMatchObject({ shouldRetry: retryable });
       expect(mockAI.generateObjectWithUsage).not.toHaveBeenCalled();
       expect(mockBookmarkService.updateProcessingStatus).toHaveBeenLastCalledWith(testBookmark.id, "failed", "Transcript not retrieved");
     });
@@ -702,7 +707,8 @@ describe("BookmarkProcessorService", () => {
 
       // Verify that the service was called with correct parameters
       expect(mockBookmarkService.ensureScrapedContent).toHaveBeenCalledWith(
-        testBookmark
+        testBookmark,
+        expect.any(AbortSignal)
       );
       expect(mockBookmarkProcessingRepository.createRun).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1062,12 +1068,62 @@ describe("BookmarkProcessorService", () => {
         mockBookmarkProcessingRepository.updateRun.mockRejectedValue(new Error("db down"));
 
         await expect(
-          service.process(testBookmark.id, testBookmark.userId)
+          service.process(testBookmark.id, testBookmark.userId, { finalAttempt: true })
         ).rejects.toMatchObject({ message: "Transcript not retrieved", shouldRetry: true });
 
         expect(mockBookmarkService.updateProcessingStatus).toHaveBeenLastCalledWith(
           testBookmark.id, "failed", "Transcript not retrieved"
         );
+      });
+
+      it("retryable failure with attempts left keeps the bookmark processing and the run open", async () => {
+        arrange();
+        mockBookmarkService.ensureScrapedContent.mockRejectedValue(
+          new ContentExtractionError("Transcript not retrieved", "unavailable", true)
+        );
+
+        await expect(
+          service.process(testBookmark.id, testBookmark.userId, { finalAttempt: false })
+        ).rejects.toMatchObject({ message: "Transcript not retrieved", shouldRetry: true });
+
+        const { runClosed, statusChanged } = order();
+        expect(runClosed).toEqual([]);
+        expect(statusChanged).toEqual([]);
+        expect(mockBookmarkProcessingRepository.updateEvent).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.objectContaining({ status: "failed", error: "Transcript not retrieved" })
+        );
+      });
+
+      it("final attempt fails the bookmark after closing the run", async () => {
+        arrange();
+        mockBookmarkService.ensureScrapedContent.mockRejectedValue(
+          new ContentExtractionError("Transcript not retrieved", "unavailable", true)
+        );
+
+        await expect(
+          service.process(testBookmark.id, testBookmark.userId, { finalAttempt: true })
+        ).rejects.toMatchObject({ shouldRetry: true });
+
+        const { runClosed, statusChanged } = order();
+        expect(runClosed.map(({ status }) => status)).toEqual(["failed"]);
+        expect(statusChanged.map(({ status }) => status)).toEqual(["failed"]);
+        expect(runClosed[0].at).toBeLessThan(statusChanged[0].at);
+      });
+
+      it("a non-retryable error fails the bookmark even with attempts left", async () => {
+        arrange();
+        mockBookmarkService.ensureScrapedContent.mockRejectedValue(
+          new ContentExtractionError("Blocked", "blocked", false)
+        );
+
+        await expect(
+          service.process(testBookmark.id, testBookmark.userId, { finalAttempt: false })
+        ).rejects.toMatchObject({ shouldRetry: false });
+
+        const { runClosed, statusChanged } = order();
+        expect(runClosed.map(({ status }) => status)).toEqual(["failed"]);
+        expect(statusChanged.map(({ status }) => status)).toEqual(["failed"]);
       });
 
       it("when the run never started there is nothing to close", async () => {
@@ -1258,7 +1314,8 @@ describe("BookmarkProcessorService", () => {
       // The fetch still happens — it is idempotent and reuses what is on disk —
       // but silently, so a retry does not redraw a step that already succeeded.
       expect(mockBookmarkService.ensureScrapedContent).toHaveBeenCalledWith(
-        testBookmark
+        testBookmark,
+        expect.any(AbortSignal)
       );
     });
 
@@ -1894,6 +1951,346 @@ describe("BookmarkProcessorService", () => {
     }
     expect(summary).toContain('"paywall", "consent", "error_page", "empty", or "other"');
     expect(summary).toContain('null when contentStatus is "ok"');
+  });
+
+  describe("terminal disposal of the queue message", () => {
+    const trx = { id: "trx" } as any;
+    let log: string[];
+    let dispose: jest.Mock<any>;
+
+    function build() {
+      return new BookmarkProcessorServiceImpl(
+        mockBookmarkService,
+        mockContentChunkRepository,
+        mockCollectionRepository,
+        mockAI,
+        mockBookmarkProcessingRepository,
+        mockChunkingService,
+        mockEmbeddingService,
+        (transaction: any) => {
+          log.push(`repo-for:${transaction.id}`);
+          return mockBookmarkProcessingRepository;
+        }
+      );
+    }
+
+    beforeEach(() => {
+      log = [];
+      dispose = jest.fn(async (_trx: any, how: string) => {
+        log.push(`dispose:${how}`);
+      });
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(testScrapedContent);
+      mockBookmarkService.update.mockResolvedValue(testBookmark);
+      mockAI.newSession.mockResolvedValue({ sessionID: "s", refID: testBookmark.id });
+      mockBookmarkProcessingRepository.updateRun.mockImplementation(
+        (async (id: string, data: any) => {
+          if (data.status === "completed" || data.status === "failed") log.push(`run:${data.status}`);
+          return { id } as any;
+        }) as any
+      );
+      // The terminal write: status, then whatever runs `within` the transaction.
+      mockBookmarkService.updateProcessingStatus.mockImplementation((async (
+        _id: string,
+        status: string,
+        _error?: string,
+        within?: (t: any) => Promise<void>
+      ) => {
+        if (!within) return testBookmark;
+        log.push(`status:${status}`);
+        await within(trx);
+        log.push("commit");
+        return testBookmark;
+      }) as any);
+    });
+
+    it("closes the run, sets the status and deletes the message in one transaction on success", async () => {
+      await build().process(testBookmark.id, testBookmark.userId, { dispose });
+      // The first status write ("processing") has no transaction work.
+      expect(log).toEqual([
+        "status:completed",
+        "repo-for:trx",
+        "run:completed",
+        "dispose:delete",
+        "commit",
+      ]);
+      expect(dispose).toHaveBeenCalledWith(trx, "delete");
+    });
+
+    it("archives the message in the same transaction as a terminal failure", async () => {
+      mockBookmarkService.ensureScrapedContent.mockRejectedValue(
+        new ContentExtractionError("Blocked", "blocked", false)
+      );
+      await expect(
+        build().process(testBookmark.id, testBookmark.userId, { dispose })
+      ).rejects.toMatchObject({ shouldRetry: false, terminalPersisted: true });
+      expect(log).toEqual(["status:failed", "repo-for:trx", "run:failed", "dispose:archive", "commit"]);
+    });
+
+    it("deletes the message with a soft phase failure, in the same transaction", async () => {
+      const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+      mockAI.generateObjectWithUsage.mockImplementation(async (input: any) => {
+        if (input.schema.shape && "overview" in input.schema.shape) throw new Error("AI down");
+        return original(input);
+      });
+      await build().process(testBookmark.id, testBookmark.userId, { dispose });
+      expect(log).toEqual(["status:failed", "repo-for:trx", "run:failed", "dispose:delete", "commit"]);
+    });
+
+    it("does not touch the message for a retryable failure with attempts left", async () => {
+      mockBookmarkService.ensureScrapedContent.mockRejectedValue(
+        new ContentExtractionError("Transcript not retrieved", "unavailable", true)
+      );
+      await expect(
+        build().process(testBookmark.id, testBookmark.userId, { dispose, finalAttempt: false })
+      ).rejects.toMatchObject({ shouldRetry: true });
+      expect(dispose).not.toHaveBeenCalled();
+    });
+
+    it("does not mark a failure persisted when the terminal write fails, so the message is kept", async () => {
+      mockBookmarkService.updateProcessingStatus.mockImplementation((async (
+        _id: string,
+        status: string,
+        _e?: string,
+        within?: unknown
+      ) => {
+        if (within) throw new Error("status write failed");
+        return testBookmark;
+      }) as any);
+      mockBookmarkService.ensureScrapedContent.mockRejectedValue(
+        new ContentExtractionError("Transcript not retrieved", "unavailable", true)
+      );
+      await expect(
+        build().process(testBookmark.id, testBookmark.userId, { dispose, finalAttempt: true })
+      ).rejects.toThrow("status write failed");
+      expect(dispose).not.toHaveBeenCalled();
+    });
+
+    it("does not mark a failure persisted when the disposal itself fails", async () => {
+      dispose.mockRejectedValue(new Error("pgmq down"));
+      await expect(
+        build().process(testBookmark.id, testBookmark.userId, { dispose })
+      ).rejects.not.toHaveProperty("terminalPersisted");
+    });
+
+    it("does not mark an initial lookup failure persisted", async () => {
+      mockBookmarkService.findByIdAndUser.mockRejectedValue(new Error("db down"));
+      await expect(
+        build().process(testBookmark.id, testBookmark.userId, { dispose, finalAttempt: true })
+      ).rejects.not.toHaveProperty("terminalPersisted");
+      expect(dispose).not.toHaveBeenCalled();
+    });
+
+    it("does not mark a failure persisted when writing the failure code fails", async () => {
+      mockBookmarkService.ensureScrapedContent.mockRejectedValue(
+        new ContentExtractionError("Blocked", "blocked", false)
+      );
+      mockBookmarkService.update.mockRejectedValue(new Error("code write failed"));
+      await expect(
+        build().process(testBookmark.id, testBookmark.userId, { dispose, finalAttempt: true })
+      ).rejects.not.toHaveProperty("terminalPersisted");
+      expect(dispose).not.toHaveBeenCalled();
+    });
+
+    it("fails an exhausted bookmark, closes its run and archives the message in one transaction", async () => {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue({ ...testBookmark, processingStatus: "processing" });
+      mockBookmarkProcessingRepository.findLatestTimeline.mockResolvedValue({
+        run: { id: "run-1", status: "running", startedAt: new Date() },
+        events: [],
+      } as any);
+      await expect(
+        build().failExhausted(testBookmark.id, testBookmark.userId, "stopped", { dispose })
+      ).resolves.toBe(true);
+      expect(log).toEqual(["status:failed", "repo-for:trx", "run:failed", "dispose:archive", "commit"]);
+    });
+
+    it("leaves the exhausted bookmark untouched when the archival fails", async () => {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue({ ...testBookmark, processingStatus: "processing" });
+      dispose.mockRejectedValue(new Error("pgmq down"));
+      await expect(
+        build().failExhausted(testBookmark.id, testBookmark.userId, "stopped", { dispose })
+      ).rejects.toThrow("pgmq down");
+      expect(log).not.toContain("commit");
+    });
+
+    it("does not dispose when the exhausted bookmark is no longer processing", async () => {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue({ ...testBookmark, processingStatus: "failed" });
+      await expect(
+        build().failExhausted(testBookmark.id, testBookmark.userId, "stopped", { dispose })
+      ).resolves.toBe(true);
+      expect(dispose).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("deadline disposal", () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("clears the deadline timer when the initial status write throws", async () => {
+      jest.useFakeTimers();
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.updateProcessingStatus.mockRejectedValue(new Error("db down"));
+
+      await expect(
+        service.process(testBookmark.id, testBookmark.userId)
+      ).rejects.toThrow("db down");
+
+      expect(jest.getTimerCount()).toBe(0);
+    });
+  });
+
+  describe("run deadline", () => {
+    const originalDeadline = process.env.RUN_DEADLINE_MS;
+
+    function arrange() {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(testScrapedContent);
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(testBookmark);
+      mockBookmarkService.update.mockResolvedValue(testBookmark);
+      mockAI.newSession.mockResolvedValue({ sessionID: "test-session-id", refID: testBookmark.id });
+    }
+
+    /** Never settles on its own; rejects the way a real call does once aborted. */
+    function hangUntilAborted(signal: AbortSignal | undefined): Promise<never> {
+      return new Promise((_, reject) => {
+        if (signal?.aborted) reject(new Error("aborted"));
+        signal?.addEventListener("abort", () => reject(new Error("aborted")));
+      });
+    }
+
+    beforeEach(() => {
+      process.env.RUN_DEADLINE_MS = "200";
+      arrange();
+    });
+
+    afterEach(() => {
+      if (originalDeadline === undefined) delete process.env.RUN_DEADLINE_MS;
+      else process.env.RUN_DEADLINE_MS = originalDeadline;
+      jest.restoreAllMocks();
+    });
+
+    it("a hanging model call is aborted at the deadline and fails retryably", async () => {
+      let received: AbortSignal | undefined;
+      const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+      mockAI.generateObjectWithUsage.mockImplementation(async (input: any) => {
+        if (input.schema.shape && "overview" in input.schema.shape) {
+          received = input.signal;
+          return hangUntilAborted(input.signal);
+        }
+        return original(input);
+      });
+
+      const failure = await service
+        .process(testBookmark.id, testBookmark.userId)
+        .then(() => undefined, (error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(RunDeadlineError);
+      expect((failure as RunDeadlineError).shouldRetry).toBe(true);
+      expect(received?.aborted).toBe(true);
+      // Retryable: the bookmark stays `processing` for the delayed redelivery.
+      expect(mockBookmarkService.updateProcessingStatus).not.toHaveBeenCalledWith(
+        testBookmark.id,
+        "failed",
+        expect.anything()
+      );
+    });
+
+    it("the last attempt records the deadline as a failure", async () => {
+      mockAI.generateObjectWithUsage.mockImplementation(async (input: any) =>
+        hangUntilAborted(input.signal)
+      );
+
+      await expect(
+        service.process(testBookmark.id, testBookmark.userId, { finalAttempt: true })
+      ).rejects.toBeInstanceOf(RunDeadlineError);
+
+      expect(mockBookmarkService.updateProcessingStatus).toHaveBeenCalledWith(
+        testBookmark.id,
+        "failed",
+        expect.any(String)
+      );
+    });
+
+    it("a hanging fetch is aborted at the deadline", async () => {
+      let received: AbortSignal | undefined;
+      mockBookmarkService.ensureScrapedContent.mockImplementation(
+        (async (_bookmark: Bookmark, signal?: AbortSignal) => {
+          received = signal;
+          return hangUntilAborted(signal);
+        }) as any
+      );
+
+      const failure = await service
+        .process(testBookmark.id, testBookmark.userId)
+        .then(() => undefined, (error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(RunDeadlineError);
+      expect((failure as RunDeadlineError).shouldRetry).toBe(true);
+      expect(received?.aborted).toBe(true);
+    });
+
+    it("an embedding call receives the signal", async () => {
+      mockChunkingService.chunkHtml.mockReturnValue([
+        { content: "chunk text", index: 0, size: 10, startPosition: 0, endPosition: 10 },
+      ]);
+      mockContentChunkRepository.createTextChunk.mockResolvedValue({
+        id: "chunk-1",
+        scrapedContentId: testScrapedContent.id,
+        chunkType: "text",
+        content: "chunk text",
+        index: 0,
+        size: 10,
+        startPosition: 0,
+        endPosition: 10,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await service.process(testBookmark.id, testBookmark.userId);
+
+      const options = mockEmbeddingService.embedTextsWithUsage.mock.calls[0][1] as any;
+      expect(options.signal).toBeInstanceOf(AbortSignal);
+    });
+
+    it("an external abort ends the run the same way", async () => {
+      const controller = new AbortController();
+      mockAI.generateObjectWithUsage.mockImplementation(async (input: any) => {
+        controller.abort();
+        return hangUntilAborted(input.signal);
+      });
+
+      await expect(
+        service.process(testBookmark.id, testBookmark.userId, { signal: controller.signal })
+      ).rejects.toMatchObject({ name: "RunDeadlineError", shouldRetry: true });
+    });
+
+    it("a fast run leaves no pending timer", async () => {
+      const created: unknown[] = [];
+      const cleared: unknown[] = [];
+      const realSet = global.setTimeout;
+      const realClear = global.clearTimeout;
+      jest.spyOn(global, "setTimeout").mockImplementation(((fn: any, ms?: number, ...args: any[]) => {
+        const handle = realSet(fn, ms, ...args);
+        if (ms === 200) created.push(handle);
+        return handle;
+      }) as any);
+      jest.spyOn(global, "clearTimeout").mockImplementation(((handle: any) => {
+        cleared.push(handle);
+        return realClear(handle);
+      }) as any);
+
+      await service.process(testBookmark.id, testBookmark.userId);
+
+      expect(created).toHaveLength(1);
+      expect(cleared).toContain(created[0]);
+    });
+
+    it("defaults the deadline to 240 seconds", async () => {
+      delete process.env.RUN_DEADLINE_MS;
+      const { runDeadlineMs } = await import("../../services/run-deadline");
+      expect(runDeadlineMs()).toBe(240_000);
+    });
   });
 
   describe("failExhausted", () => {

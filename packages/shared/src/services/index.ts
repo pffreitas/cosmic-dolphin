@@ -1,5 +1,6 @@
 export * from "./share-key.service";
 import { ShareKeyServiceImpl } from "./share-key.service";
+import { PgmqRepositoryImpl } from "../repositories/pgmq.repository";
 import { ShareKeyRepositoryImpl } from "../repositories/share-key.repository";
 export * from "./lightpanda.service";
 export * from "./web-scraping.service";
@@ -29,6 +30,7 @@ export * from "./feed-ranking.service";
 export * from "./picks.service";
 export * from "./http-client";
 export * from "./content-extraction";
+export * from "./run-deadline";
 
 import {
   WebScrapingService,
@@ -52,10 +54,6 @@ import {
   FeedRankingServiceImpl,
 } from "./feed-ranking.service";
 import { DigestService, DigestServiceImpl } from "./digest.service";
-import {
-  ProcessingBudgetService,
-  ProcessingBudgetServiceImpl,
-} from "./processing-budget.service";
 import { EmbeddingServiceImpl } from "./embedding.service";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Kysely } from "kysely";
@@ -90,7 +88,6 @@ export interface ServiceContainer {
   profile: ProfileService;
   search: SearchService;
   bookmarkProcessing: BookmarkProcessingRepository;
-  processingBudget: ProcessingBudgetService;
   reading: ReadingService;
   social: SocialService;
   comment: CommentService;
@@ -105,7 +102,7 @@ export interface ServiceContainer {
  *   without moving production — see `docs/functional-spec/05-feed.md`.
  */
 export function createServiceContainer(
-  supabaseClient: SupabaseClient,
+  _supabaseClient: SupabaseClient,
   db: Kysely<Database>,
   environment: string = process.env.NODE_ENV ?? "development"
 ): ServiceContainer {
@@ -138,7 +135,7 @@ export function createServiceContainer(
     picks: new PicksServiceImpl(new PicksRepositoryImpl(db), feed),
     shareKey: new ShareKeyServiceImpl(new ShareKeyRepositoryImpl(db)),
     webScraping: webScrapingService,
-    queue: new QueueServiceImpl(supabaseClient),
+    queue: new QueueServiceImpl(new PgmqRepositoryImpl(db)),
     bookmark: bookmarkService,
     bookmarkLike: new BookmarkLikeServiceImpl(bookmarkLikeRepository),
     // Accepting a collection suggestion creates the collection *and* moves its
@@ -155,9 +152,6 @@ export function createServiceContainer(
       collectionRepository
     ),
     bookmarkProcessing: bookmarkProcessingRepository,
-    processingBudget: new ProcessingBudgetServiceImpl(
-      bookmarkProcessingRepository
-    ),
     reading: new ReadingServiceImpl(bookmarkReadingRepository),
     social: socialService,
     comment: new CommentServiceImpl(commentRepository),

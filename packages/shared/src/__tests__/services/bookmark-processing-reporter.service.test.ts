@@ -97,7 +97,6 @@ function createMockRepository(): jest.Mocked<BookmarkProcessingRepository> {
       updatedAt: data.endedAt ?? new Date("2026-06-21T10:00:00.000Z"),
     })),
     findLatestTimeline: jest.fn(async () => null),
-    countRunsSince: jest.fn(async () => 0),
   };
 }
 

@@ -13,7 +13,10 @@ import {
 // five-minute lease; a waiting browser request must not wait indefinitely.
 let tail: Promise<void> = Promise.resolve();
 
-async function browserSlot<T>(work: () => Promise<T>): Promise<T> {
+async function browserSlot<T>(
+  work: () => Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
   const previous = tail;
   let release!: () => void;
   const current = new Promise<void>((resolve) => {
@@ -21,9 +24,17 @@ async function browserSlot<T>(work: () => Promise<T>): Promise<T> {
   });
   tail = previous.then(() => current);
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let onAbort: (() => void) | undefined;
   try {
     await Promise.race([
       previous,
+      // The run's deadline or shutdown ends the wait for capacity too.
+      new Promise<never>((_, reject) => {
+        if (!signal) return;
+        onAbort = () => reject(browserError("Browser extraction was aborted"));
+        if (signal.aborted) onAbort();
+        else signal.addEventListener("abort", onAbort, { once: true });
+      }),
       new Promise<never>((_, reject) => {
         timer = setTimeout(
           () =>
@@ -38,9 +49,12 @@ async function browserSlot<T>(work: () => Promise<T>): Promise<T> {
         );
       }),
     ]);
+    // Capacity can arrive in the same moment the run is cancelled.
+    if (signal?.aborted) throw browserError("Browser extraction was aborted");
     return await work();
   } finally {
     clearTimeout(timer);
+    if (onAbort) signal?.removeEventListener("abort", onAbort);
     release();
   }
 }
@@ -73,6 +87,7 @@ export class LightpandaPageProvider implements BrowserExtractionProvider {
     ready: string,
     work: (page: Page) => Promise<T>,
     obeyRobots = true,
+    signal?: AbortSignal,
   ): Promise<T> {
     const parsed = new URL(url);
     if (
@@ -133,6 +148,7 @@ export class LightpandaPageProvider implements BrowserExtractionProvider {
       );
       let browser: Browser | undefined;
       let timer: ReturnType<typeof setTimeout> | undefined;
+      let onAbort: (() => void) | undefined;
       try {
         return await Promise.race([
           (async () => {
@@ -251,21 +267,35 @@ export class LightpandaPageProvider implements BrowserExtractionProvider {
               reject(browserError("Browser extraction timed out"));
             }, 30_000);
           }),
+          // The run's deadline ends the browser like its own budget does.
+          new Promise<never>((_, reject) => {
+            if (!signal) return;
+            onAbort = () => {
+              child.kill("SIGKILL");
+              reject(browserError("Browser extraction was aborted"));
+            };
+            if (signal.aborted) onAbort();
+            else signal.addEventListener("abort", onAbort, { once: true });
+          }),
         ]);
       } catch (error) {
         if (error instanceof ContentExtractionError) throw error;
         throw browserError("Lightpanda extraction failed");
       } finally {
         clearTimeout(timer);
+        if (onAbort) signal?.removeEventListener("abort", onAbort);
         // Killing first also unblocks a stalled CDP command or infinite script.
         child.kill("SIGKILL");
         await browser?.disconnect().catch(() => undefined);
         await exit;
       }
-    });
+    }, signal);
   }
 
-  extract(url: string): Promise<RenderedPage> {
+  extract(
+    url: string,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<RenderedPage> {
     return this.withPage(
       url,
       `(() => { const node = document.querySelector('article, main, [role="main"]') || document.body; return node && node.innerText.trim().split(/\\s+/).length > 30; })()`,
@@ -275,10 +305,15 @@ export class LightpandaPageProvider implements BrowserExtractionProvider {
         title: await page.title(),
         provider: "lightpanda",
       }),
+      true,
+      options.signal,
     );
   }
 
-  extractYouTube(url: string): Promise<BrowserVideoPage> {
+  extractYouTube(
+    url: string,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<BrowserVideoPage> {
     return this.withPage(
       url,
       `!!(window.ytInitialPlayerResponse || document.querySelector('#movie_player')?.getPlayerResponse?.())`,
@@ -306,10 +341,14 @@ export class LightpandaPageProvider implements BrowserExtractionProvider {
       })()`)) as BrowserVideoPage;
       },
       false,
+      options.signal,
     );
   }
 
-  async extractTweet(url: string): Promise<ExtractedContent> {
+  async extractTweet(
+    url: string,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<ExtractedContent> {
     const statusId = new URL(url).pathname.match(
       /\/status\/(\d+)(?:\/|$)/,
     )?.[1];
@@ -399,6 +438,7 @@ export class LightpandaPageProvider implements BrowserExtractionProvider {
         };
       },
       false,
+      options.signal,
     );
   }
 }

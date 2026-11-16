@@ -1,8 +1,5 @@
 import { describe, it, expect, mock } from "bun:test";
-import {
-  buildBookmarkProcessingTimelineResponse,
-  queueBookmarkForProcessing,
-} from "../routes/bookmarks";
+import { buildBookmarkProcessingTimelineResponse } from "../routes/bookmarks";
 import { Bookmark } from "@cosmic-dolphin/shared";
 
 describe("GET /bookmarks/:id/processing-timeline", () => {
@@ -242,13 +239,13 @@ describe("GET /bookmarks/:id/processing-timeline", () => {
     expect(response.body.pollAfterMs).toBe(2000);
   });
 
-  it("fails processing when no worker run starts within two minutes", async () => {
-    const staleBookmark = {
+  it("timeline of a long-waiting processing bookmark is unchanged and read-only", async () => {
+    const waiting = {
       ...bookmark,
-      processingStartedAt: new Date(Date.now() - 2 * 60 * 1000 - 1),
+      processingStartedAt: new Date(Date.now() - 60 * 60 * 1000),
     };
     const services = createServices({
-      bookmarkResult: { bookmark: staleBookmark, isLikedByCurrentUser: true },
+      bookmarkResult: { bookmark: waiting, isLikedByCurrentUser: true },
     });
 
     const response = await buildBookmarkProcessingTimelineResponse(
@@ -258,16 +255,13 @@ describe("GET /bookmarks/:id/processing-timeline", () => {
     );
     if (response.statusCode) throw new Error("Expected timeline response");
 
-    expect(services.bookmark.updateProcessingStatus).toHaveBeenCalledWith(
-      "bookmark-1",
-      "failed",
-      "Processing could not start because the background worker is unavailable. Please try again."
-    );
-    expect(response.body.bookmark.processingStatus).toBe("failed");
-    expect(response.body.pollAfterMs).toBe(0);
+    expect(services.bookmark.updateProcessingStatus).not.toHaveBeenCalled();
+    expect(response.body.bookmark).toEqual({ ...waiting, isLikedByCurrentUser: true });
+    expect(response.body.bookmark.processingStatus).toBe("processing");
+    expect(response.body.pollAfterMs).toBe(2000);
   });
 
-  it("keeps polling before the worker-start deadline", async () => {
+  it("keeps polling a recently started processing bookmark", async () => {
     const recentBookmark = {
       ...bookmark,
       processingStartedAt: new Date(Date.now() - 60 * 1000),
@@ -286,167 +280,5 @@ describe("GET /bookmarks/:id/processing-timeline", () => {
     expect(services.bookmark.updateProcessingStatus).not.toHaveBeenCalled();
     expect(response.body.bookmark.processingStatus).toBe("processing");
     expect(response.body.pollAfterMs).toBe(2000);
-  });
-});
-
-describe("queueBookmarkForProcessing", () => {
-  const withinBudget = {
-    withinBudget: true,
-    used: 1,
-    limit: 200,
-    resetsAt: new Date("2026-01-02T00:00:00Z"),
-  };
-  const overBudget = {
-    withinBudget: false,
-    used: 200,
-    limit: 200,
-    resetsAt: new Date("2026-01-02T00:00:00Z"),
-  };
-
-  const bookmark: Bookmark = {
-    id: "bookmark-1",
-    sourceUrl: "https://example.com",
-    userId: "user-1",
-    isPrivateLink: false,
-    isPublic: false,
-    processingStatus: "idle",
-    createdAt: new Date("2026-01-01T00:00:00Z"),
-    updatedAt: new Date("2026-01-01T00:00:00Z"),
-  };
-
-  it("returns a processing bookmark after enqueue succeeds", async () => {
-    const queuedBookmark = {
-      ...bookmark,
-      processingStatus: "processing" as const,
-    };
-    const services = {
-      queue: {
-        sendBookmarkProcessingMessage: mock(async () => 123),
-      },
-      bookmark: {
-        updateProcessingStatus: mock(async () => queuedBookmark),
-      },
-      processingBudget: {
-        check: mock(async () => withinBudget),
-      },
-    } as any;
-
-    const result = await queueBookmarkForProcessing(
-      services,
-      bookmark,
-      "user-1"
-    );
-
-    expect(result).toEqual({ bookmark: queuedBookmark, queued: true });
-    expect(services.queue.sendBookmarkProcessingMessage).toHaveBeenCalledWith(
-      "bookmark-1",
-      "user-1"
-    );
-    expect(services.bookmark.updateProcessingStatus).toHaveBeenCalledWith(
-      "bookmark-1",
-      "processing"
-    );
-  });
-
-  it("marks the bookmark processing before enqueueing the worker job", async () => {
-    const callOrder: string[] = [];
-    const queuedBookmark = {
-      ...bookmark,
-      processingStatus: "processing" as const,
-    };
-    const services = {
-      queue: {
-        sendBookmarkProcessingMessage: mock(async () => {
-          callOrder.push("queue");
-        }),
-      },
-      bookmark: {
-        updateProcessingStatus: mock(async () => {
-          callOrder.push("status");
-          return queuedBookmark;
-        }),
-      },
-      processingBudget: {
-        check: mock(async () => withinBudget),
-      },
-    } as any;
-
-    await queueBookmarkForProcessing(services, bookmark, "user-1");
-
-    expect(callOrder).toEqual(["status", "queue"]);
-  });
-
-  it("marks the bookmark failed when enqueueing fails after processing starts", async () => {
-    const failedBookmark = {
-      ...bookmark,
-      processingStatus: "failed" as const,
-      processingError: "Failed to enqueue bookmark processing",
-    };
-    const services = {
-      queue: {
-        sendBookmarkProcessingMessage: mock(async () => {
-          throw new Error("queue unavailable");
-        }),
-      },
-      bookmark: {
-        updateProcessingStatus: mock(async (_id, status, error) =>
-          status === "failed"
-            ? { ...failedBookmark, processingError: error }
-            : { ...bookmark, processingStatus: status }
-        ),
-      },
-      processingBudget: {
-        check: mock(async () => withinBudget),
-      },
-    } as any;
-    const onQueueError = mock(() => {});
-
-    const result = await queueBookmarkForProcessing(
-      services,
-      bookmark,
-      "user-1",
-      onQueueError
-    );
-
-    expect(result).toEqual({ bookmark: failedBookmark, queued: false });
-    expect(onQueueError).toHaveBeenCalled();
-    expect(services.bookmark.updateProcessingStatus).toHaveBeenLastCalledWith(
-      "bookmark-1",
-      "failed",
-      "Failed to enqueue bookmark processing"
-    );
-  });
-
-  it("saves the bookmark idle and enqueues nothing when the daily budget is spent", async () => {
-    // Over budget the save still stands — the row is idle, not failed, and the
-    // client puts Summarise now on it. docs/functional-spec/03-ai-pipeline.md
-    // § Cost.
-    const idleBookmark = { ...bookmark, processingStatus: "idle" as const };
-    const services = {
-      queue: {
-        sendBookmarkProcessingMessage: mock(async () => 123),
-      },
-      bookmark: {
-        updateProcessingStatus: mock(async () => idleBookmark),
-      },
-      processingBudget: {
-        check: mock(async () => overBudget),
-      },
-    } as any;
-
-    const result = await queueBookmarkForProcessing(
-      services,
-      bookmark,
-      "user-1"
-    );
-
-    expect(result.queued).toBe(false);
-    expect(result.bookmark.processingStatus).toBe("idle");
-    expect(result.message).toContain("Summarise now");
-    expect(services.queue.sendBookmarkProcessingMessage).not.toHaveBeenCalled();
-    expect(services.bookmark.updateProcessingStatus).toHaveBeenCalledWith(
-      "bookmark-1",
-      "idle"
-    );
   });
 });

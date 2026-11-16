@@ -13,7 +13,7 @@ export interface RenderedPage {
 }
 
 export interface PageExtractionProvider {
-  extract(url: string): Promise<RenderedPage>;
+  extract(url: string, options?: { signal?: AbortSignal }): Promise<RenderedPage>;
 }
 
 export interface BrowserVideoPage {
@@ -27,15 +27,22 @@ export interface BrowserVideoPage {
 export interface BrowserExtractionProvider extends PageExtractionProvider {
   extractTweet(
     url: string,
+    options?: { signal?: AbortSignal },
   ): Promise<import("./content-extraction").ExtractedContent>;
-  extractYouTube(url: string): Promise<BrowserVideoPage>;
+  extractYouTube(
+    url: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<BrowserVideoPage>;
 }
 
 /** Optional: the ordinary fetch path never incurs a provider request. */
 export class FirecrawlPageProvider implements PageExtractionProvider {
   constructor(private apiKey = process.env.FIRECRAWL_API_KEY) {}
 
-  async extract(url: string): Promise<RenderedPage> {
+  async extract(
+    url: string,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<RenderedPage> {
     if (!this.apiKey) {
       throw new ContentExtractionError(
         "Rendered extraction is not configured",
@@ -102,7 +109,7 @@ export class FirecrawlPageProvider implements PageExtractionProvider {
         description: metadata?.description,
         image: metadata?.ogImage,
       };
-    });
+    }, options.signal);
   }
 }
 
@@ -111,7 +118,11 @@ export type TranscriptResult =
   | { status: "pending"; jobId: string; provider: string };
 
 export interface TranscriptProvider {
-  fetchTranscript(url: string, jobId?: string): Promise<TranscriptResult>;
+  fetchTranscript(
+    url: string,
+    jobId?: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<TranscriptResult>;
 }
 
 /** Managed captions with optional speech-to-text when a video has no captions. */
@@ -126,6 +137,7 @@ export class SupadataTranscriptProvider implements TranscriptProvider {
   async fetchTranscript(
     url: string,
     jobId?: string,
+    options: { signal?: AbortSignal } = {},
   ): Promise<TranscriptResult> {
     if (!this.apiKey) {
       throw new ContentExtractionError(
@@ -194,6 +206,6 @@ export class SupadataTranscriptProvider implements TranscriptProvider {
         language: data.lang,
         provider: "supadata",
       };
-    });
+    }, options.signal);
   }
 }

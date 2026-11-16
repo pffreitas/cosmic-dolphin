@@ -327,14 +327,18 @@ export class BookmarkProcessingReporter {
     }
   }
 
-  async completeRun(): Promise<void> {
+  /** `repository` writes the closure elsewhere, e.g. on the caller's transaction. */
+  async completeRun(repository?: BookmarkProcessingReporterRepository): Promise<void> {
     this.assertRunStarted();
-    await this.updateRun("completed");
+    await this.updateRun("completed", undefined, repository);
   }
 
-  async failRun(error: unknown): Promise<void> {
+  async failRun(
+    error: unknown,
+    repository?: BookmarkProcessingReporterRepository
+  ): Promise<void> {
     this.assertRunStarted();
-    await this.updateRun("failed", this.getErrorMessage(error));
+    await this.updateRun("failed", this.getErrorMessage(error), repository);
   }
 
   async trackTurn<T>(
@@ -398,7 +402,8 @@ export class BookmarkProcessingReporter {
 
   private async updateRun(
     status: BookmarkProcessingTimelineStatus,
-    error?: string
+    error?: string,
+    repository: BookmarkProcessingReporterRepository = this.repository
   ): Promise<void> {
     const endedAt = this.now();
     const data: UpdateBookmarkProcessingRunData = {
@@ -414,9 +419,9 @@ export class BookmarkProcessingReporter {
       error: error ?? null,
     };
 
-    await this.repository.updateRun(this.runId!, data);
+    await repository.updateRun(this.runId!, data);
     if (this.runEventId) {
-      await this.repository.updateEvent(this.runEventId, {
+      await repository.updateEvent(this.runEventId, {
         status,
         endedAt,
         durationMs: data.durationMs,

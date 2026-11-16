@@ -1,7 +1,11 @@
-import { BookmarkProcessingRepository } from "../repositories/bookmark-processing.repository";
-
 /**
- * The per-user daily processing budget.
+ * The per-user daily processing budget: how many bookmarks a user may create
+ * per UTC day and still have them queued for processing.
+ *
+ * The count is taken by `BookmarkRepository.createAndQueue` inside the
+ * transaction that inserts and queues the bookmark, so a save counts whether
+ * or not it was queued and a burst of saves crosses the limit at the right one.
+ * Concurrent saves can overshoot by at most their own number; no lock is taken.
  *
  * docs/functional-spec/03-ai-pipeline.md § Cost: the pipeline is the expensive
  * half of the product, and a runaway import or a stuck client can spend a
@@ -22,19 +26,6 @@ import { BookmarkProcessingRepository } from "../repositories/bookmark-processin
  * a limit can be raised for an incident without a deploy.
  */
 
-export interface ProcessingBudgetDecision {
-  withinBudget: boolean;
-  /** Runs started in the current window. */
-  used: number;
-  limit: number;
-  /** When the window rolls over. UTC midnight. */
-  resetsAt: Date;
-}
-
-export interface ProcessingBudgetService {
-  check(userId: string): Promise<ProcessingBudgetDecision>;
-}
-
 function envInt(name: string, fallback: number): number {
   const raw = process.env[name];
   if (!raw) return fallback;
@@ -53,35 +44,4 @@ export function startOfUtcDay(now: Date): Date {
   return new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
   );
-}
-
-function nextUtcDay(now: Date): Date {
-  const start = startOfUtcDay(now);
-  return new Date(start.getTime() + 24 * 60 * 60 * 1000);
-}
-
-export class ProcessingBudgetServiceImpl implements ProcessingBudgetService {
-  constructor(
-    private repository: BookmarkProcessingRepository,
-    private limit: number = dailyProcessingBudget(),
-    private now: () => Date = () => new Date()
-  ) {}
-
-  async check(userId: string): Promise<ProcessingBudgetDecision> {
-    const now = this.now();
-    const resetsAt = nextUtcDay(now);
-
-    if (this.limit <= 0) {
-      // A zero budget means "processing is off", which is a legitimate
-      // configuration and must not be read as "unlimited".
-      return { withinBudget: false, used: 0, limit: this.limit, resetsAt };
-    }
-
-    const used = await this.repository.countRunsSince(
-      userId,
-      startOfUtcDay(now)
-    );
-
-    return { withinBudget: used < this.limit, used, limit: this.limit, resetsAt };
-  }
 }

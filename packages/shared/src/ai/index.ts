@@ -90,6 +90,7 @@ export class AI {
       prompt: input.prompt,
       maxOutputTokens: input.maxOutputTokens,
       providerOptions: input.providerOptions,
+      abortSignal: input.signal,
     });
 
     const usage = toProcessingUsage(
@@ -119,6 +120,7 @@ export class AI {
       stopWhen: async ({ steps }) => steps.length >= 1000,
       maxOutputTokens: input.maxOutputTokens,
       providerOptions: input.providerOptions,
+      abortSignal: input.signal,
     });
 
     return this.processStream(input, result);

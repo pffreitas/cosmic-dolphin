@@ -1,58 +1,34 @@
-import { describe, it, expect, jest } from "@jest/globals";
+import { describe, it, expect, afterEach } from "@jest/globals";
 import {
-  ProcessingBudgetServiceImpl,
+  DEFAULT_DAILY_PROCESSING_BUDGET,
+  dailyProcessingBudget,
   startOfUtcDay,
 } from "../../services/processing-budget.service";
-import { BookmarkProcessingRepository } from "../../repositories/bookmark-processing.repository";
 
-function repositoryReturning(count: number) {
-  return {
-    countRunsSince: jest.fn(async () => count),
-  } as unknown as jest.Mocked<BookmarkProcessingRepository>;
-}
-
-describe("ProcessingBudgetService", () => {
-  const now = new Date("2026-08-27T15:42:00.000Z");
-
-  it("counts only runs started in the current UTC day", async () => {
-    const repository = repositoryReturning(3);
-    const service = new ProcessingBudgetServiceImpl(repository, 10, () => now);
-
-    const decision = await service.check("user-1");
-
-    expect(repository.countRunsSince).toHaveBeenCalledWith(
-      "user-1",
-      startOfUtcDay(now)
-    );
-    expect(decision).toEqual({
-      withinBudget: true,
-      used: 3,
-      limit: 10,
-      resetsAt: new Date("2026-08-28T00:00:00.000Z"),
-    });
+describe("processing budget", () => {
+  const original = process.env.PROCESSING_BUDGET_DAILY;
+  afterEach(() => {
+    if (original === undefined) delete process.env.PROCESSING_BUDGET_DAILY;
+    else process.env.PROCESSING_BUDGET_DAILY = original;
   });
 
-  it("refuses once the limit is reached, not after it is passed", async () => {
-    const service = new ProcessingBudgetServiceImpl(
-      repositoryReturning(10),
-      10,
-      () => now
+  it("counts bookmarks created in the current UTC day", () => {
+    expect(startOfUtcDay(new Date("2026-08-27T15:42:00.000Z"))).toEqual(
+      new Date("2026-08-27T00:00:00.000Z")
     );
-
-    await expect(service.check("user-1")).resolves.toMatchObject({
-      withinBudget: false,
-      used: 10,
-    });
+    expect(startOfUtcDay(new Date("2026-08-27T23:59:59.999Z"))).toEqual(
+      new Date("2026-08-27T00:00:00.000Z")
+    );
   });
 
-  it("treats a zero budget as processing being off, never as unlimited", async () => {
-    const repository = repositoryReturning(0);
-    const service = new ProcessingBudgetServiceImpl(repository, 0, () => now);
-
-    await expect(service.check("user-1")).resolves.toMatchObject({
-      withinBudget: false,
-    });
-    // No point asking the database what a disabled pipeline has spent.
-    expect(repository.countRunsSince).not.toHaveBeenCalled();
+  it("defaults the limit and lets the environment override it, zero included", () => {
+    delete process.env.PROCESSING_BUDGET_DAILY;
+    expect(dailyProcessingBudget()).toBe(DEFAULT_DAILY_PROCESSING_BUDGET);
+    process.env.PROCESSING_BUDGET_DAILY = "7";
+    expect(dailyProcessingBudget()).toBe(7);
+    process.env.PROCESSING_BUDGET_DAILY = "0";
+    expect(dailyProcessingBudget()).toBe(0);
+    process.env.PROCESSING_BUDGET_DAILY = "junk";
+    expect(dailyProcessingBudget()).toBe(DEFAULT_DAILY_PROCESSING_BUDGET);
   });
 });

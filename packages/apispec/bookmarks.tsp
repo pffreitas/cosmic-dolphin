@@ -574,6 +574,7 @@ model ReprocessBookmarkRequest {
 
 model ReprocessBookmarkResponse {
     bookmark: Bookmark;
+    @doc("`Reprocessing this bookmark` or `Retrying <phase>` when a run was queued; `Already processing` when the bookmark was already processing, in which case nothing was queued.")
     message: string;
 }
 
@@ -752,7 +753,7 @@ interface Bookmarks {
         @body body: BookmarkError;
     };
 
-    @doc("Store owner-supplied article text and enqueue a full reprocess. Private links cannot accept article text.")
+    @doc("Store owner-supplied article text and enqueue a full reprocess, in one transaction. Answers 409 and stores nothing when the bookmark is private (`Private links cannot accept article text`) or is still processing (`Still processing. Try again when it finishes.`).")
     @useAuth(BearerAuth)
     @put
     @route("/{id}/content")
@@ -782,7 +783,7 @@ interface Bookmarks {
         @body body: BookmarkError;
     };
 
-    @doc("Start a fresh processing run for a bookmark, optionally scoped to one phase. Appends to the existing timeline rather than replacing it, so the run the user already watched stays on screen. Also the **Summarise now** action on a bookmark left `idle` by the daily processing budget: an explicit request is never refused for budget.")
+    @doc("Start a fresh processing run for a bookmark, optionally scoped to one phase. Appends to the existing timeline rather than replacing it, so the run the user already watched stays on screen. Also the **Summarise now** action on a bookmark left `idle` by the daily processing budget: an explicit request is never refused for budget. A bookmark that is already `processing` is left alone: the answer is 202 with the current bookmark and the message `Already processing`, and nothing is queued.")
     @useAuth(BearerAuth)
     @post
     @route("/{id}/reprocess")

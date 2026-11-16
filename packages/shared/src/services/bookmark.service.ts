@@ -7,18 +7,23 @@ import {
   ShareBookmarkResponse,
   ProcessingStatus,
   CollectionPathItem,
+  BookmarkProcessingPhase,
 } from "../types";
 import { nanoid } from "nanoid";
 import {
   BookmarkLibraryCounts,
   BookmarkRepository,
   CollectionRepository,
+  CreateAndQueueResult,
+  CreateBudget,
   FindByUserOptions,
   SearchOptions,
 } from "../repositories";
 import { WebScrapingService } from "./web-scraping.service";
-import { NewBookmark, BookmarkUpdate } from "../database/schema";
+import { NewBookmark, BookmarkUpdate, Database } from "../database/schema";
+import type { Kysely } from "kysely";
 import { ContentExtractionError, isIncompleteExtraction } from "./content-extraction";
+import { dailyProcessingBudget } from "./processing-budget.service";
 import { bookmarkContentBlocks, limitBookmarkContent, type BookmarkContent } from "./bookmark-content-blocks";
 
 export interface PrivateLinkMetadata extends CaptureFields {
@@ -57,6 +62,18 @@ export interface CreateBookmarkOptions extends CaptureFields {
   title?: string;
 }
 
+export interface CreateAndQueueOutcome {
+  bookmark: Bookmark;
+  /** False when today's processing budget was spent: the row stands `idle`, nothing is queued. */
+  queued: boolean;
+}
+
+export interface ReprocessOutcome {
+  bookmark: Bookmark;
+  /** False when the bookmark was already `processing`: nothing changed, nothing queued. */
+  queued: boolean;
+}
+
 export type OwnerBookmarkUpdate = Pick<Partial<Bookmark>, "title" | "isArchived" | "cosmicTags" | "cosmicSummary" | "userNote" | "laterUntil">;
 
 export interface BookmarkService {
@@ -80,13 +97,46 @@ export interface BookmarkService {
   ): Promise<{ bookmark: Bookmark; isLikedByCurrentUser: boolean } | null>;
   getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
   getContentByOwner(bookmarkId: string, userId: string): Promise<BookmarkContent | null>;
-  putContentByOwner(bookmarkId: string, userId: string, text: string): Promise<Bookmark>;
+  /**
+   * Store pasted text and start processing in one transaction. `queued: false`
+   * means the bookmark was already `processing` and nothing was stored.
+   */
+  putContentByOwner(bookmarkId: string, userId: string, text: string): Promise<ReprocessOutcome>;
+  /**
+   * Move to `processing` and queue one message atomically, unless already
+   * processing. `null` when the bookmark is not the user's.
+   */
+  startReprocess(
+    id: string,
+    userId: string,
+    options?: { phase?: BookmarkProcessingPhase }
+  ): Promise<ReprocessOutcome | null>;
   create(
     url: string,
     userId: string,
     options?: CreateBookmarkOptions
   ): Promise<Bookmark>;
-  ensureScrapedContent(bookmark: Bookmark): Promise<ScrapedUrlContents | null>;
+  /**
+   * Create the bookmark and queue its processing in one transaction, within
+   * today's budget. `null` when the user already has this URL.
+   */
+  createAndQueue(
+    url: string,
+    userId: string,
+    options?: CreateBookmarkOptions,
+    budget?: CreateBudget
+  ): Promise<CreateAndQueueOutcome | null>;
+  /** `createAndQueue` for a private link. */
+  createPrivateLinkAndQueue(
+    url: string,
+    userId: string,
+    metadata: PrivateLinkMetadata,
+    budget?: CreateBudget
+  ): Promise<CreateAndQueueOutcome | null>;
+  ensureScrapedContent(
+    bookmark: Bookmark,
+    signal?: AbortSignal
+  ): Promise<ScrapedUrlContents | null>;
   createPrivateLink(
     url: string,
     userId: string,
@@ -133,10 +183,15 @@ export interface BookmarkService {
   ): Promise<Bookmark | null>;
   /** The user's most-used tags — candidates for the `tag` phase. */
   getTopTags(userId: string, limit?: number): Promise<string[]>;
+  /**
+   * `within` runs on the same transaction as the status write, after it: what
+   * it writes commits or rolls back together with the new status.
+   */
   updateProcessingStatus(
     id: string,
     status: ProcessingStatus,
-    error?: string
+    error?: string,
+    within?: (transaction: Kysely<Database>) => Promise<void>
   ): Promise<Bookmark>;
   share(bookmarkId: string, userId: string): Promise<ShareBookmarkResponse>;
   unshare(bookmarkId: string, userId: string): Promise<ShareBookmarkResponse>;
@@ -146,6 +201,11 @@ export interface BookmarkService {
   delete(id: string, userId: string): Promise<void>;
 }
 
+const defaultBudget = (): CreateBudget => ({
+  dailyLimit: dailyProcessingBudget(),
+  now: new Date(),
+});
+
 export class BookmarkServiceImpl implements BookmarkService {
   constructor(
     private bookmarkRepository: BookmarkRepository,
@@ -153,10 +213,24 @@ export class BookmarkServiceImpl implements BookmarkService {
     private collectionRepository?: CollectionRepository
   ) {}
 
-  async putContentByOwner(bookmarkId: string, userId: string, text: string): Promise<Bookmark> {
+  async startReprocess(
+    id: string,
+    userId: string,
+    options: { phase?: BookmarkProcessingPhase } = {}
+  ): Promise<ReprocessOutcome | null> {
+    const result = await this.bookmarkRepository.startReprocess(id, userId, options);
+    if (!result) return null;
+    return {
+      bookmark: await this.enrichWithCollectionPath(this.mapDatabaseToBookmark(result.bookmark)),
+      queued: result.queued,
+    };
+  }
+
+  async putContentByOwner(bookmarkId: string, userId: string, text: string): Promise<ReprocessOutcome> {
     const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     const content = escaped.split(/\r?\n\s*\r?\n/).map(paragraph => `<p>${paragraph}</p>`).join("\n");
-    return this.mapDatabaseToBookmark(await this.bookmarkRepository.storePastedContent(bookmarkId, userId, content));
+    const result = await this.bookmarkRepository.storePastedContent(bookmarkId, userId, content);
+    return { bookmark: this.mapDatabaseToBookmark(result.bookmark), queued: result.queued };
   }
 
   async getContentByOwner(bookmarkId: string, userId: string): Promise<BookmarkContent | null> {
@@ -248,6 +322,56 @@ export class BookmarkServiceImpl implements BookmarkService {
     userId: string,
     options: CreateBookmarkOptions = {}
   ): Promise<Bookmark> {
+    const bookmark = await this.bookmarkRepository.create(
+      this.buildCreateData(url, userId, options)
+    );
+
+    return this.mapDatabaseToBookmark(bookmark);
+  }
+
+  async createAndQueue(
+    url: string,
+    userId: string,
+    options: CreateBookmarkOptions = {},
+    budget: CreateBudget = defaultBudget()
+  ): Promise<CreateAndQueueOutcome | null> {
+    return this.mapCreated(
+      await this.bookmarkRepository.createAndQueue(
+        this.buildCreateData(url, userId, options),
+        budget
+      )
+    );
+  }
+
+  async createPrivateLinkAndQueue(
+    url: string,
+    userId: string,
+    metadata: PrivateLinkMetadata,
+    budget: CreateBudget = defaultBudget()
+  ): Promise<CreateAndQueueOutcome | null> {
+    return this.mapCreated(
+      await this.bookmarkRepository.createAndQueue(
+        this.buildNewPrivateLink(url, userId, metadata),
+        budget
+      )
+    );
+  }
+
+  private mapCreated(
+    result: CreateAndQueueResult | null
+  ): CreateAndQueueOutcome | null {
+    if (!result) return null;
+    return {
+      bookmark: this.mapDatabaseToBookmark(result.bookmark),
+      queued: result.queued,
+    };
+  }
+
+  private buildCreateData(
+    url: string,
+    userId: string,
+    options: CreateBookmarkOptions
+  ): NewBookmark {
     const urlMetadata = this.webScrapingService.extractMetadataFromUrl(url);
     const provisionalTitle = options.title || urlMetadata.title || url;
 
@@ -282,9 +406,7 @@ export class BookmarkServiceImpl implements BookmarkService {
       quick_access: `${provisionalTitle} ${url}`,
     };
 
-    const bookmark = await this.bookmarkRepository.create(newBookmark);
-
-    return this.mapDatabaseToBookmark(bookmark);
+    return newBookmark;
   }
 
   /**
@@ -297,7 +419,8 @@ export class BookmarkServiceImpl implements BookmarkService {
    * place; a pending managed transcript resumes its persisted job.
    */
   async ensureScrapedContent(
-    bookmark: Bookmark
+    bookmark: Bookmark,
+    signal?: AbortSignal
   ): Promise<ScrapedUrlContents | null> {
     const existing = await this.bookmarkRepository.getScrapedUrlContent(
       bookmark.id
@@ -305,8 +428,12 @@ export class BookmarkServiceImpl implements BookmarkService {
     if (existing && !isIncompleteExtraction(existing)) return existing;
 
     const jobId = existing?.metadata?.extraction?.jobId;
-    const scraped = jobId
-      ? await this.webScrapingService.scrape(bookmark.sourceUrl, { transcriptJobId: jobId })
+    const context = {
+      ...(jobId ? { transcriptJobId: jobId } : {}),
+      ...(signal ? { signal } : {}),
+    };
+    const scraped = Object.keys(context).length
+      ? await this.webScrapingService.scrape(bookmark.sourceUrl, context)
       : await this.webScrapingService.scrape(bookmark.sourceUrl);
     if (existing) {
       await this.bookmarkRepository.updateScrapedUrlContents(existing.id, scraped);
@@ -354,6 +481,17 @@ export class BookmarkServiceImpl implements BookmarkService {
     userId: string,
     metadata: PrivateLinkMetadata
   ): Promise<Bookmark> {
+    const bookmark = await this.bookmarkRepository.create(
+      this.buildNewPrivateLink(url, userId, metadata)
+    );
+    return this.mapDatabaseToBookmark(bookmark);
+  }
+
+  private buildNewPrivateLink(
+    url: string,
+    userId: string,
+    metadata: PrivateLinkMetadata
+  ): NewBookmark {
     const newBookmark = this.buildPrivateLinkBookmarkData(
       url,
       userId,
@@ -365,8 +503,7 @@ export class BookmarkServiceImpl implements BookmarkService {
       capture_source: metadata.captureSource ?? null, capture_platform: metadata.capturePlatform ?? "unknown",
       capture_queued_at: metadata.captureQueuedAt ?? null,
     });
-    const bookmark = await this.bookmarkRepository.create(newBookmark);
-    return this.mapDatabaseToBookmark(bookmark);
+    return newBookmark;
   }
 
   async convertToPrivateLink(
@@ -590,7 +727,8 @@ export class BookmarkServiceImpl implements BookmarkService {
   async updateProcessingStatus(
     id: string,
     status: ProcessingStatus,
-    error?: string
+    error?: string,
+    within?: (transaction: Kysely<Database>) => Promise<void>
   ): Promise<Bookmark> {
     const updateData: BookmarkUpdate = {
       processing_status: status,
@@ -615,7 +753,9 @@ export class BookmarkServiceImpl implements BookmarkService {
       updateData.processing_error = error || "Unknown error";
     }
 
-    const bookmark = await this.bookmarkRepository.update(id, updateData);
+    const bookmark = within
+      ? await this.bookmarkRepository.update(id, updateData, within)
+      : await this.bookmarkRepository.update(id, updateData);
     return this.mapDatabaseToBookmark(bookmark);
   }
 

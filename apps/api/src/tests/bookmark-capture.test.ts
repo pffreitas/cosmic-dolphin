@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, afterAll, expect, it, mock } from "bun:test";
 import { sql } from "kysely";
 import Fastify, { type FastifyInstance } from "fastify";
-import { BookmarkRepositoryImpl, BookmarkServiceImpl, WebScrapingServiceImpl, SocialServiceImpl, SocialRepositoryImpl, FeedRepositoryImpl, FeedRankingServiceImpl, CollectionRepositoryImpl, CollectionServiceImpl, ExploreRepositoryImpl, ExploreServiceImpl, type ServiceContainer } from "@cosmic-dolphin/shared";
+import { PgmqRepositoryImpl, QueueServiceImpl, BookmarkRepositoryImpl, BookmarkServiceImpl, WebScrapingServiceImpl, SocialServiceImpl, SocialRepositoryImpl, FeedRepositoryImpl, FeedRankingServiceImpl, CollectionRepositoryImpl, CollectionServiceImpl, ExploreRepositoryImpl, ExploreServiceImpl, type ServiceContainer } from "@cosmic-dolphin/shared";
 import { DatabaseTestUtils, getTestDatabase, closeTestDatabase } from "@cosmic-dolphin/shared/dist/test-utils/database";
 import { registerBookmarkRoutes } from "../routes/bookmarks";
 const db = getTestDatabase();
@@ -9,9 +9,20 @@ const utils = new DatabaseTestUtils(db);
 const scraping = new WebScrapingServiceImpl();
 const scrape = mock(async (_url: string): Promise<never> => { throw new Error("Create must never fetch a page"); });
 scraping.scrape = scrape;
-const bookmark = new BookmarkServiceImpl(new BookmarkRepositoryImpl(db), scraping);
+let failSend = false;
+const bookmark = new BookmarkServiceImpl(new BookmarkRepositoryImpl(db, transaction => {
+  const real = new QueueServiceImpl(new PgmqRepositoryImpl(transaction));
+  return { sendMessage: real.sendMessage.bind(real), sendBookmarkProcessingMessage: async (...args) => {
+    if (failSend) throw new Error("queue unavailable");
+    return real.sendBookmarkProcessingMessage(...args);
+  } };
+}), scraping);
 const collection = new CollectionServiceImpl(new CollectionRepositoryImpl(db), bookmark);
-const send = mock(async () => 1);
+/** Bookmark ids with a message waiting in the real `bookmarks` queue. */
+async function queuedBookmarkIds(): Promise<string[]> {
+  const result = await sql<{ id: string }>`SELECT message->'data'->>'bookmarkId' AS id FROM pgmq.q_bookmarks ORDER BY msg_id`.execute(db);
+  return result.rows.map(row => row.id);
+}
 let app: FastifyInstance;
 const logs: any[] = [];
 let address: string;
@@ -20,12 +31,10 @@ beforeAll(async () => {
   await utils.waitForConnection();
   app = Fastify({ logger: { stream: { write: (line: string) => logs.push(JSON.parse(line)) } } });
   await registerBookmarkRoutes(app, { bookmark, collection, webScraping: scraping,
-    processingBudget: { check: async () => ({ withinBudget: true }) },
-    queue: { sendBookmarkProcessingMessage: send },
   } as unknown as ServiceContainer, async request => { request.userId = request.headers["x-fixture-user"] as string; });
   address = await app.listen({ port: 0, host: "127.0.0.1" });
 });
-beforeEach(async () => { await utils.truncateAll(); userId = crypto.randomUUID(); send.mockClear(); scrape.mockClear(); logs.length = 0; });
+beforeEach(async () => { await utils.truncateAll(); await sql`DELETE FROM pgmq.q_bookmarks`.execute(db); userId = crypto.randomUUID(); failSend = false; scrape.mockClear(); logs.length = 0; });
 afterAll(async () => { await app?.close(); await closeTestDatabase(); });
 async function request(method: string, path: string, body?: any, owner = userId) {
   const result = await fetch(address + path, { method, headers: { "x-fixture-user": owner, "content-type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
@@ -39,7 +48,7 @@ it("concurrent captures share one durable bookmark and job, with source and queu
   const results = await Promise.all([create(body), create(body)]);
   expect(results.map(result => result.statusCode).sort()).toEqual([200, 201]);
   expect(results[0].json().bookmark.id).toBe(results[1].json().bookmark.id);
-  expect(send).toHaveBeenCalledTimes(1);
+  expect(await queuedBookmarkIds()).toHaveLength(1);
   const saved = await bookmark.findByIdAndUser(results[0].json().bookmark.id, userId);
   expect(saved).toMatchObject({ captureSource: "save_sheet", capturePlatform: "ios", captureQueuedAt: new Date(queuedAt) });
 });
@@ -52,7 +61,7 @@ it("duplicate capture fills only a NULL note, replaces explicit timing, preserve
   expect(filled.bookmark).toMatchObject({ userNote: "First note", laterUntil: later, captureSource: "clipboard", capturePlatform: "ios" });
   const cleared = (await create({ source_url: url, user_note: "Must not overwrite", later_until: null })).json().bookmark;
   expect(cleared).toMatchObject({ id: first.id, userNote: "First note", laterUntil: null });
-  expect(send).toHaveBeenCalledTimes(1);
+  expect(await queuedBookmarkIds()).toHaveLength(1);
 });
 it("create and owner PATCH enforce 500-character notes and future-only timing through 60 days", async () => {
   const result = await create({ source_url: "https://example.com/bounds", user_note: "a".repeat(500) });
@@ -84,7 +93,7 @@ it("private capture requires title and description, persists intent, and replay 
   expect(replay.statusCode).toBe(200);
   expect(replay.json().alreadySaved).toBe(true);
   expect(scrape).not.toHaveBeenCalled();
-  expect(send).toHaveBeenCalledTimes(1);
+  expect(await queuedBookmarkIds()).toHaveLength(1);
   for (const invalid of [{ capture_source: "unknown" }, { capture_platform: "other" }, { queued_at: "bad date" }, { user_note: null }, { is_private_link: "false" }]) {
     expect((await create({ source_url: url, ...invalid })).statusCode).toBe(400);
   }
@@ -156,7 +165,7 @@ it("rejects a collection the caller does not own, public or private link, creati
     expect(privateSave.json()).toEqual({ error: "Collection not found" });
   }
   expect(await bookmarkCount()).toBe(0);
-  expect(send).not.toHaveBeenCalled();
+  expect(await queuedBookmarkIds()).toHaveLength(0);
   const own = await seedCollection(userId);
   const saved = await create({ source_url: "https://example.com/mine", collection_id: own });
   expect(saved.statusCode).toBe(201);
@@ -211,4 +220,55 @@ it("valid bodies keep their exact responses for later_until null, future and omi
     expect(duplicate.json()).toMatchObject({ alreadySaved: true, message: "Already in your Library" });
     expect(duplicate.json().bookmark.id).toBe(created.json().bookmark.id);
   }
+});
+
+it("a new public save answers 201, is processing and queues exactly its own message", async () => {
+  const result = await create({ source_url: "https://example.com/fresh" });
+  expect(result.statusCode).toBe(201);
+  expect(Object.keys(result.json())).toEqual(["bookmark", "message"]);
+  expect(result.json().message).toBe("Bookmark created successfully");
+  expect(result.json().bookmark.processingStatus).toBe("processing");
+  expect(await queuedBookmarkIds()).toEqual([result.json().bookmark.id]);
+});
+it("a private link and its duplicate keep their bodies and queue once", async () => {
+  const body = { source_url: "https://example.com/private-fresh", is_private_link: true, title: "Mine", description: "Why" };
+  const first = await create(body);
+  expect(first.statusCode).toBe(201);
+  expect(first.json().message).toBe("Private link saved successfully");
+  expect(first.json().bookmark.processingStatus).toBe("processing");
+  const again = await create(body);
+  expect(again.statusCode).toBe(200);
+  expect(again.json()).toMatchObject({ alreadySaved: true, message: "Already in your Library" });
+  expect(await queuedBookmarkIds()).toEqual([first.json().bookmark.id]);
+});
+it("an over-budget save stands idle with the budget message and queues nothing", async () => {
+  const original = process.env.PROCESSING_BUDGET_DAILY;
+  process.env.PROCESSING_BUDGET_DAILY = "1";
+  try {
+    const within = await create({ source_url: "https://example.com/within" });
+    const over = await create({ source_url: "https://example.com/over" });
+    const overPrivate = await create({ source_url: "https://example.com/over-private", is_private_link: true, title: "T", description: "D" });
+    const message = "Saved. Today's processing budget is spent — use Summarise now when you want this one processed.";
+    expect([within.statusCode, over.statusCode, overPrivate.statusCode]).toEqual([201, 201, 201]);
+    expect(within.json().bookmark.processingStatus).toBe("processing");
+    for (const result of [over, overPrivate]) {
+      expect(result.json().message).toBe(message);
+      expect(result.json().bookmark.processingStatus).toBe("idle");
+    }
+    expect(await queuedBookmarkIds()).toEqual([within.json().bookmark.id]);
+  } finally {
+    if (original === undefined) delete process.env.PROCESSING_BUDGET_DAILY; else process.env.PROCESSING_BUDGET_DAILY = original;
+  }
+});
+it("a failing queue send answers 500 and leaves no bookmark behind", async () => {
+  failSend = true;
+  const result = await create({ source_url: "https://example.com/unlucky" });
+  expect(result.statusCode).toBe(500);
+  expect(result.json()).toEqual({ error: "Internal server error" });
+  expect(await bookmark.findByUserAndUrl(userId, "https://example.com/unlucky")).toBeNull();
+  expect(await queuedBookmarkIds()).toHaveLength(0);
+  failSend = false;
+  const retry = await create({ source_url: "https://example.com/unlucky" });
+  expect(retry.statusCode).toBe(201);
+  expect(await queuedBookmarkIds()).toEqual([retry.json().bookmark.id]);
 });

@@ -233,73 +233,14 @@ type BookmarkTimelineServices = Pick<
   "bookmark" | "bookmarkProcessing"
 >;
 
-const WORKER_START_DEADLINE_MS = 2 * 60 * 1000;
-const WORKER_START_FAILURE_MESSAGE =
-  "Processing could not start because the background worker is unavailable. Please try again.";
-
-type BookmarkQueueServices = Pick<
-  ServiceContainer,
-  "bookmark" | "queue" | "processingBudget"
->;
-
-export interface QueueBookmarkResult {
-  bookmark: Bookmark;
-  /** False when the daily processing budget refused the enqueue. */
-  queued: boolean;
-  /** What to tell the user. Empty when the enqueue was unremarkable. */
-  message?: string;
-}
-
 /**
- * Enqueue a bookmark for processing — unless today's budget says otherwise.
- *
- * The budget is checked **here**, before the message is sent, because a job
- * that will be refused should never enter the queue
- * (docs/functional-spec/03-ai-pipeline.md § Cost). Over budget the save still
+ * What a save says when today's processing budget was spent. The save still
  * stands: the row lands `idle`, which is a legitimate resting state and not a
- * failure, and the client offers **Summarise now** on it.
+ * failure, and the client offers **Summarise now** on it
+ * (docs/functional-spec/03-ai-pipeline.md § Cost).
  */
-export async function queueBookmarkForProcessing(
-  services: BookmarkQueueServices,
-  bookmark: Bookmark,
-  userId: string,
-  onQueueError?: (error: unknown) => void
-): Promise<QueueBookmarkResult> {
-  const budget = await services.processingBudget.check(userId);
-  if (!budget.withinBudget) {
-    const idleBookmark = await services.bookmark.updateProcessingStatus(
-      bookmark.id,
-      "idle"
-    );
-    return {
-      bookmark: idleBookmark,
-      queued: false,
-      message:
-        "Saved. Today's processing budget is spent — use Summarise now when you want this one processed.",
-    };
-  }
-
-  const processingBookmark = await services.bookmark.updateProcessingStatus(
-    bookmark.id,
-    "processing"
-  );
-
-  try {
-    await services.queue.sendBookmarkProcessingMessage(bookmark.id, userId);
-  } catch (queueError) {
-    onQueueError?.(queueError);
-    return {
-      bookmark: await services.bookmark.updateProcessingStatus(
-        bookmark.id,
-        "failed",
-        "Failed to enqueue bookmark processing"
-      ),
-      queued: false,
-    };
-  }
-
-  return { bookmark: processingBookmark, queued: true };
-}
+const OVER_BUDGET_MESSAGE =
+  "Saved. Today's processing budget is spent — use Summarise now when you want this one processed.";
 
 export async function buildBookmarkProcessingTimelineResponse(
   services: BookmarkTimelineServices,
@@ -325,32 +266,12 @@ export async function buildBookmarkProcessingTimelineResponse(
     bookmarkId,
     userId
   );
-  let bookmark = {
+  // Read-only. A `processing` bookmark with no run yet is waiting in the
+  // queue; the worker's own deadline settles one that never finishes.
+  const bookmark = {
     ...result.bookmark,
     isLikedByCurrentUser: result.isLikedByCurrentUser,
   };
-
-  // The worker normally creates a run as its first durable action. If that
-  // never happens, polling is the only API traffic guaranteed to revisit the
-  // bookmark, so reconcile the optimistic `processing` state here instead of
-  // leaving the UI spinning forever.
-  if (
-    !timeline &&
-    bookmark.processingStatus === "processing" &&
-    bookmark.processingStartedAt &&
-    Date.now() - bookmark.processingStartedAt.getTime() >=
-      WORKER_START_DEADLINE_MS
-  ) {
-    const failedBookmark = await services.bookmark.updateProcessingStatus(
-      bookmarkId,
-      "failed",
-      WORKER_START_FAILURE_MESSAGE
-    );
-    bookmark = {
-      ...failedBookmark,
-      isLikedByCurrentUser: result.isLikedByCurrentUser,
-    };
-  }
 
   return {
     body: {
@@ -413,8 +334,7 @@ export async function refileBookmarkForUser(
   return { body: bookmark };
 }
 
-type BookmarkReshareServices = BookmarkQueueServices &
-  Pick<ServiceContainer, "social">;
+type BookmarkReshareServices = Pick<ServiceContainer, "bookmark" | "social">;
 
 /**
  * The feed's **Save** action — docs/functional-spec/06-social.md § Reshare.
@@ -441,8 +361,7 @@ type BookmarkReshareServices = BookmarkQueueServices &
 export async function reshareBookmarkForUser(
   services: BookmarkReshareServices,
   bookmarkId: string,
-  userId: string,
-  onQueueError?: (error: unknown) => void
+  userId: string
 ): Promise<
   | { statusCode: 201 | 200; body: CreateBookmarkResponse }
   | { statusCode: 404; body: { error: string } }
@@ -459,46 +378,50 @@ export async function reshareBookmarkForUser(
     return { statusCode: 404, body: { error: "Bookmark not found" } };
   }
 
-  const existing = await services.bookmark.findByUserAndUrl(
-    userId,
-    original.sourceUrl
-  );
-  if (existing) {
-    return {
-      statusCode: 200,
-      body: {
-        bookmark: existing,
-        alreadySaved: true,
-        message: "Already in your library",
-      },
-    };
-  }
-
   // No `collectionId`: a reshare lands in Inbox like every other save, and the
   // `file` phase decides where it belongs in *this* user's tree. The
   // original's collection belongs to someone else's tree and is not a
   // suggestion about this one.
-  const bookmark = await services.bookmark.create(original.sourceUrl, userId, {
-    savedFromBookmarkId: original.id,
-    title: original.title,
-    originalUrl: original.metadata?.originalUrl ?? original.sourceUrl,
-  });
-
-  // The same budget every other save is subject to, checked against the
-  // *resharer*. Over budget the row still stands, idle, with Summarise now on
-  // it — a save is never refused for the pipeline's sake.
-  const queued = await queueBookmarkForProcessing(
-    services,
-    bookmark,
+  //
+  // One transaction inserts the row, counts the *resharer's* day against the
+  // same budget every other save is subject to, and queues the message. Over
+  // budget the row still stands, idle, with Summarise now on it — a save is
+  // never refused for the pipeline's sake.
+  const created = await services.bookmark.createAndQueue(
+    original.sourceUrl,
     userId,
-    onQueueError
+    {
+      savedFromBookmarkId: original.id,
+      title: original.title,
+      originalUrl: original.metadata?.originalUrl ?? original.sourceUrl,
+    }
   );
+
+  if (!created) {
+    const existing = await services.bookmark.findByUserAndUrl(
+      userId,
+      original.sourceUrl
+    );
+    if (existing) {
+      return {
+        statusCode: 200,
+        body: {
+          bookmark: existing,
+          alreadySaved: true,
+          message: "Already in your library",
+        },
+      };
+    }
+    // The row that blocked the insert was deleted in between. Say so rather
+    // than invent a bookmark.
+    throw new Error("Reshare conflicted with a bookmark that no longer exists");
+  }
 
   return {
     statusCode: 201,
     body: {
-      bookmark: queued.bookmark,
-      message: queued.message ?? "Saved to your library",
+      bookmark: created.bookmark,
+      message: created.queued ? "Saved to your library" : OVER_BUDGET_MESSAGE,
     },
   };
 }
@@ -568,9 +491,6 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
       request: FastifyRequest<{ Body: Omit<CreateBookmarkRequest, "user_id"> }>,
       reply: FastifyReply
     ) => {
-      let normalizedUrlForRaceRecovery: string | undefined;
-      let laterUntilForRaceRecovery: Date | null | undefined;
-      const userIdForRaceRecovery = request.userId!;
       try {
         if (request.shareKeyId) {
           const allowed = z.object({
@@ -606,118 +526,82 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
           collection_id,
           later_until,
         } = parsed.data;
-        laterUntilForRaceRecovery = later_until;
 
         // Ownership first: a save into someone else's collection would file
         // the row there as the user's own choice (`filing_source = 'user'`).
-        // Same answer as refile, and before any duplicate lookup or write.
+        // Same answer as refile, and before any write.
         if (collection_id) {
           const owned = await services.collection.findByIdAndUser(collection_id, user_id);
           if (!owned) return reply.status(404).send({ error: "Collection not found" });
         }
 
         // Normalise once, here, and key everything below off the result. The
-        // dedupe check, the insert and the queue message all have to agree on
-        // one string or the unique index and the "already saved" answer drift
-        // apart.
+        // insert, the unique index and the "already saved" answer all have to
+        // agree on one string.
         const { url: normalizedUrl, originalUrl } = normalizeUrl(source_url);
-        normalizedUrlForRaceRecovery = normalizedUrl;
+
+        // One transaction inserts the row, spends today's budget and queues the
+        // message. `null` means the user already has this URL: nothing was
+        // written or queued, and the unique index settles concurrent saves.
+        // No fetch, no extraction, no model call — every one of those happens
+        // in the worker, on a row the user already has on screen. See
+        // docs/functional-spec/02-capture.md.
+        const created = is_private_link
+          ? await services.bookmark.createPrivateLinkAndQueue(
+              normalizedUrl,
+              user_id,
+              {
+                title,
+                description,
+                tags,
+                collectionId: collection_id,
+                originalUrl,
+                userNote: request.body.user_note,
+                laterUntil: later_until,
+                captureSource: request.body.capture_source, capturePlatform: request.body.capture_platform,
+                captureQueuedAt: request.body.queued_at ? new Date(request.body.queued_at) : undefined,
+              }
+            )
+          : await services.bookmark.createAndQueue(normalizedUrl, user_id, {
+              originalUrl,
+              collectionId: collection_id,
+              userNote: request.body.user_note,
+              laterUntil: later_until,
+              captureSource: request.body.capture_source,
+              capturePlatform: request.body.capture_platform,
+              captureQueuedAt: request.body.queued_at ? new Date(request.body.queued_at) : undefined,
+            });
+
+        if (created) {
+          logCapture(created.bookmark, false);
+          const message = created.queued
+            ? undefined
+            : OVER_BUDGET_MESSAGE;
+          if (is_private_link) {
+            return reply.status(201).send({
+              bookmark: created.bookmark,
+              message: message ?? "Private link saved successfully",
+            });
+          }
+          return reply.status(201).send(request.shareKeyId ? { id: created.bookmark.id, message: message ?? "Bookmark created successfully", alreadySaved: false } : {
+            bookmark: created.bookmark,
+            message: message ?? "Bookmark created successfully",
+          });
+        }
 
         const existingBookmark = await services.bookmark.findByUserAndUrl(
           user_id,
           normalizedUrl
         );
-        if (existingBookmark) {
-          const bookmark = await services.bookmark.mergeCapture(existingBookmark.id, user_id,
-            request.body.user_note, later_until);
-          logCapture(bookmark, true);
-          return reply.status(200).send(request.shareKeyId ? { id: bookmark.id, alreadySaved: true, message: "Already in your Library" } : { bookmark, alreadySaved: true, message: "Already in your Library" });
+        if (!existingBookmark) {
+          throw new Error("Save conflicted with a bookmark that no longer exists");
         }
+        const bookmark = await services.bookmark.mergeCapture(existingBookmark.id, user_id,
+          request.body.user_note, later_until);
+        logCapture(bookmark, true);
+        return reply.status(200).send(request.shareKeyId ? { id: bookmark.id, alreadySaved: true, message: "Already in your Library" } : { bookmark, alreadySaved: true, message: "Already in your Library" });
 
-        if (is_private_link) {
-          const bookmark = await services.bookmark.createPrivateLink(
-            normalizedUrl,
-            user_id,
-            {
-              title,
-              description,
-              tags,
-              collectionId: collection_id,
-              originalUrl,
-              userNote: request.body.user_note,
-              laterUntil: later_until,
-              captureSource: request.body.capture_source, capturePlatform: request.body.capture_platform,
-              captureQueuedAt: request.body.queued_at ? new Date(request.body.queued_at) : undefined,
-            }
-          );
-          const queued = await queueBookmarkForProcessing(
-            services,
-            bookmark,
-            user_id,
-            (queueError) => {
-              fastify.log.error({ queueError }, "Queue post error");
-            }
-          );
-          logCapture(queued.bookmark, false);
-          return reply.status(201).send({
-            bookmark: queued.bookmark,
-            message: queued.message ?? "Private link saved successfully",
-          });
-        }
-
-        // Two writes and a queue message. No fetch, no extraction, no model
-        // call — every one of those happens in the worker, on a row the user
-        // already has on screen. See docs/functional-spec/02-capture.md.
-        const bookmark = await services.bookmark.create(normalizedUrl, user_id, {
-          originalUrl,
-          collectionId: collection_id,
-          userNote: request.body.user_note,
-          laterUntil: later_until,
-          captureSource: request.body.capture_source,
-          capturePlatform: request.body.capture_platform,
-          captureQueuedAt: request.body.queued_at ? new Date(request.body.queued_at) : undefined,
-        });
-
-        const queued = await queueBookmarkForProcessing(
-          services,
-          bookmark,
-          user_id,
-          (queueError) => {
-            fastify.log.error({ queueError }, "Queue post error");
-          }
-        );
-
-        logCapture(queued.bookmark, false);
-        return reply.status(201).send(request.shareKeyId ? { id: queued.bookmark.id, message: queued.message ?? "Bookmark created successfully", alreadySaved: false } : {
-          bookmark: queued.bookmark,
-          message: queued.message ?? "Bookmark created successfully",
-        });
       } catch (error) {
-        // The optimistic lookup above keeps the common duplicate path cheap,
-        // while the database unique index is authoritative under concurrency.
-        // If two requests race, the loser returns the winner's durable row and
-        // never queues a second processing run.
-        if (isUniqueViolation(error) && normalizedUrlForRaceRecovery) {
-          const existingBookmark = await services.bookmark.findByUserAndUrl(
-            userIdForRaceRecovery,
-            normalizedUrlForRaceRecovery
-          );
-          if (existingBookmark) {
-            fastify.log.info(
-              { bookmarkId: existingBookmark.id, userId: userIdForRaceRecovery },
-              "Concurrent duplicate bookmark save recovered"
-            );
-            const bookmark = await services.bookmark.mergeCapture(existingBookmark.id, userIdForRaceRecovery,
-                request.body.user_note, laterUntilForRaceRecovery);
-            logCapture(bookmark, true);
-            return reply.status(200).send(request.shareKeyId ? { id: bookmark.id, message: "Already in your library", alreadySaved: true } : {
-              bookmark,
-              alreadySaved: true,
-              message: "Already in your library",
-            });
-          }
-        }
-
         // The 408 and 422 branches that used to live here mapped scraping
         // failures — a timeout, a bad content type, an unreadable page. This
         // handler no longer scrapes, so an unreachable host is now a failed
@@ -945,43 +829,26 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
           return reply.status(400).send({ error: `Unknown phase: ${phase}` });
         }
 
-        const bookmark = await services.bookmark.findByIdAndUser(id, user_id);
-        if (!bookmark) {
-          return reply.status(404).send({ error: "Bookmark not found" });
-        }
-
         // Deliberately not budget-checked. The budget stops the pipeline
         // spending on its own; a person asking for one bookmark to be
         // processed is the escape hatch it exists to leave open. The
         // reprocess rate limit is what keeps a stuck client from abusing it.
-        const processing = await services.bookmark.updateProcessingStatus(
-          bookmark.id,
-          "processing"
-        );
-
-        try {
-          await services.queue.sendBookmarkProcessingMessage(
-            bookmark.id,
-            user_id,
-            { phase, resume: true }
-          );
-        } catch (queueError) {
-          fastify.log.error({ queueError }, "Reprocess queue post error");
-          await services.bookmark.updateProcessingStatus(
-            bookmark.id,
-            "failed",
-            "Failed to enqueue bookmark processing"
-          );
-          return reply
-            .status(500)
-            .send({ error: "Could not start reprocessing" });
+        // One guarded transaction: a bookmark already `processing` is left
+        // alone and nothing is queued, so a second tap cannot start a second run.
+        const outcome = await services.bookmark.startReprocess(id, user_id, {
+          phase,
+        });
+        if (!outcome) {
+          return reply.status(404).send({ error: "Bookmark not found" });
         }
 
         return reply.status(202).send({
-          bookmark: processing,
-          message: phase
-            ? `Retrying ${phase}`
-            : "Reprocessing this bookmark",
+          bookmark: outcome.bookmark,
+          message: !outcome.queued
+            ? "Already processing"
+            : phase
+              ? `Retrying ${phase}`
+              : "Reprocessing this bookmark",
         });
       } catch (error) {
         fastify.log.error({ error }, "Reprocess bookmark error");
@@ -1010,10 +877,7 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
         const result = await reshareBookmarkForUser(
           services,
           id,
-          user_id,
-          (queueError) => {
-            fastify.log.error({ queueError }, "Reshare queue post error");
-          }
+          user_id
         );
 
         return reply.status(result.statusCode).send(result.body);
@@ -1060,13 +924,8 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
       const parsed = z.object({ text: z.string().min(200).max(100000) }).strict().safeParse(request.body);
       if (!parsed.success) return reply.status(400).send({ error: "Paste between 200 and 100,000 characters" });
       try {
-        const bookmark = await services.bookmark.putContentByOwner(request.params.id, request.userId!, parsed.data.text);
-        try {
-          await services.queue.sendBookmarkProcessingMessage(bookmark.id, request.userId!, { resume: true });
-        } catch {
-          await services.bookmark.updateProcessingStatus(bookmark.id, "failed", "Failed to enqueue bookmark processing");
-          return reply.status(500).send({ error: "Could not start reprocessing" });
-        }
+        const { bookmark, queued } = await services.bookmark.putContentByOwner(request.params.id, request.userId!, parsed.data.text);
+        if (!queued) return reply.status(409).send({ error: "Still processing. Try again when it finishes." });
         return reply.send({ bookmark, message: "Reprocessing this bookmark" });
       } catch (error) {
         if (error instanceof Error && error.message === "Bookmark not found") return reply.status(404).send({ error: "Bookmark not found" });

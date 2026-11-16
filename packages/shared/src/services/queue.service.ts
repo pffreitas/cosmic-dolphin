@@ -10,7 +10,7 @@ export interface BookmarkProcessingMessageOptions {
   /** Append to the bookmark's existing timeline instead of opening a run. */
   resume?: boolean;
 }
-import { SupabaseClient } from "@supabase/supabase-js";
+import { PgmqRepository } from "../repositories/pgmq.repository";
 
 export interface QueueService {
   sendMessage<T extends QueueTaskPayload>(
@@ -26,23 +26,18 @@ export interface QueueService {
 }
 
 export class QueueServiceImpl implements QueueService {
-  constructor(private supabaseClient: SupabaseClient) {}
+  constructor(private pgmq: PgmqRepository) {}
 
   async sendMessage<T extends QueueTaskPayload>(
     queueName: string,
     payload: T,
     delay: number = 0
   ): Promise<void> {
-    const { data, error } = await this.supabaseClient
-      .schema("pgmq_public")
-      .rpc("send", {
-        queue_name: queueName,
-        message: payload,
-        sleep_seconds: delay,
-      });
-
-    if (error) {
-      throw new Error(`Failed to post to queue ${queueName}: ${error.message}`);
+    try {
+      await this.pgmq.send(queueName, payload, delay);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to post to queue ${queueName}: ${message}`);
     }
   }
 
