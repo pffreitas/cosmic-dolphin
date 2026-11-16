@@ -158,33 +158,75 @@ describe("GET /bookmarks/:id/processing-timeline", () => {
     });
   });
 
-  it("continues polling when the timeline run is still running", async () => {
-    const completedBookmark = {
-      ...bookmark,
-      processingStatus: "completed" as const,
-    };
+  it.each(["completed", "failed"] as const)(
+    "does not poll a %s bookmark even if the timeline still shows a running event",
+    async (processingStatus) => {
+      const completedBookmark = {
+        ...bookmark,
+        processingStatus,
+      };
+      const services = createServices({
+        bookmarkResult: {
+          bookmark: completedBookmark,
+          isLikedByCurrentUser: false,
+        },
+        timeline: {
+          run: {
+            id: "run-1",
+            bookmarkId: "bookmark-1",
+            userId: "user-1",
+            status: "running" as const,
+            startedAt: new Date("2026-01-01T00:00:00Z"),
+            inputTokens: 0,
+            outputTokens: 0,
+            totalTokens: 0,
+            reasoningTokens: 0,
+            cachedInputTokens: 0,
+            createdAt: new Date("2026-01-01T00:00:00Z"),
+            updatedAt: new Date("2026-01-01T00:00:00Z"),
+          },
+          events: [
+            {
+              id: "event-1",
+              runId: "run-1",
+              kind: "phase" as const,
+              name: "Summarise",
+              status: "running" as const,
+              sequence: 1,
+              startedAt: new Date("2026-01-01T00:00:00Z"),
+              inputTokens: 0,
+              outputTokens: 0,
+              totalTokens: 0,
+              reasoningTokens: 0,
+              cachedInputTokens: 0,
+              createdAt: new Date("2026-01-01T00:00:00Z"),
+              updatedAt: new Date("2026-01-01T00:00:00Z"),
+            },
+          ],
+        },
+      });
+
+      const response = await buildBookmarkProcessingTimelineResponse(
+        services,
+        "bookmark-1",
+        "user-1"
+      );
+
+      if (response.statusCode) {
+        throw new Error("Expected timeline response");
+      }
+
+      expect(response.body.pollAfterMs).toBe(0);
+    }
+  );
+
+  it("polls while the bookmark is processing", async () => {
     const services = createServices({
       bookmarkResult: {
-        bookmark: completedBookmark,
+        bookmark: { ...bookmark, processingStatus: "processing" as const },
         isLikedByCurrentUser: false,
       },
-      timeline: {
-        run: {
-          id: "run-1",
-          bookmarkId: "bookmark-1",
-          userId: "user-1",
-          status: "running" as const,
-          startedAt: new Date("2026-01-01T00:00:00Z"),
-          inputTokens: 0,
-          outputTokens: 0,
-          totalTokens: 0,
-          reasoningTokens: 0,
-          cachedInputTokens: 0,
-          createdAt: new Date("2026-01-01T00:00:00Z"),
-          updatedAt: new Date("2026-01-01T00:00:00Z"),
-        },
-        events: [],
-      },
+      timeline: null,
     });
 
     const response = await buildBookmarkProcessingTimelineResponse(

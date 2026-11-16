@@ -199,6 +199,19 @@ export class BookmarkProcessingReporter {
     const runEvent = events.find((event) => event.kind === "run");
     this.runEventId = runEvent?.id;
 
+    // A crash leaves the phase and turn it interrupted `running` for good.
+    // Close them now so the timeline can finish; the run event is reopened below.
+    const interruptedAt = this.now();
+    for (const event of events) {
+      if (event.kind === "run" || event.status !== "running") continue;
+      await this.repository.updateEvent(event.id, {
+        status: "failed",
+        endedAt: interruptedAt,
+        durationMs: this.durationSince(event.startedAt, interruptedAt),
+        error: "Interrupted before it finished",
+      });
+    }
+
     await this.repository.updateRun(run.id, { status: "running", error: null });
     if (runEvent) {
       await this.repository.updateEvent(runEvent.id, {

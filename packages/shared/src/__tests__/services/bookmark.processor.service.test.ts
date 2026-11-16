@@ -931,6 +931,159 @@ describe("BookmarkProcessorService", () => {
       });
     });
 
+    describe("closes the run before the bookmark leaves processing", () => {
+      // The timeline endpoint polls on the bookmark's status alone, so a
+      // bookmark must never read `completed`/`failed` while its run is open.
+      function arrange() {
+        mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+        mockBookmarkService.ensureScrapedContent.mockResolvedValue(testScrapedContent);
+        mockBookmarkService.updateProcessingStatus.mockResolvedValue(testBookmark);
+        mockBookmarkService.update.mockResolvedValue(testBookmark);
+        mockAI.newSession.mockResolvedValue({ sessionID: "test-session-id", refID: testBookmark.id });
+      }
+
+      function order() {
+        const runClosed = mockBookmarkProcessingRepository.updateRun.mock.calls
+          .map((call, index) => ({
+            status: (call[1] as any).status,
+            at: mockBookmarkProcessingRepository.updateRun.mock.invocationCallOrder[index],
+          }))
+          .filter(({ status }) => status === "completed" || status === "failed");
+        const statusChanged = mockBookmarkService.updateProcessingStatus.mock.calls
+          .map((call, index) => ({
+            status: call[1],
+            at: mockBookmarkService.updateProcessingStatus.mock.invocationCallOrder[index],
+          }))
+          .filter(({ status }) => status === "completed" || status === "failed");
+        return { runClosed, statusChanged };
+      }
+
+      it("on success", async () => {
+        arrange();
+
+        await service.process(testBookmark.id, testBookmark.userId);
+
+        const { runClosed, statusChanged } = order();
+        expect(runClosed).toHaveLength(1);
+        expect(statusChanged).toEqual([expect.objectContaining({ status: "completed" })]);
+        expect(runClosed[0].status).toBe("completed");
+        expect(runClosed[0].at).toBeLessThan(statusChanged[0].at);
+      });
+
+      it("on a phase failure", async () => {
+        arrange();
+        const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+        mockAI.generateObjectWithUsage.mockImplementation(async (input: any) => {
+          if (input.schema.shape && "overview" in input.schema.shape) {
+            throw new Error("AI service unavailable");
+          }
+          return original(input);
+        });
+
+        await service.process(testBookmark.id, testBookmark.userId);
+
+        const { runClosed, statusChanged } = order();
+        expect(runClosed.map(({ status }) => status)).toEqual(["failed"]);
+        expect(statusChanged.map(({ status }) => status)).toEqual(["failed"]);
+        expect(runClosed[0].at).toBeLessThan(statusChanged[0].at);
+      });
+
+      it("on an unusable source", async () => {
+        arrange();
+        const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+        (mockAI.generateObjectWithUsage as jest.Mock<any>).mockImplementation(async (input: any) => {
+          if (input.schema.shape && "overview" in input.schema.shape) {
+            return {
+              value: {
+                contentStatus: "unusable", unusableReason: "paywall",
+                brief: "", overview: "", keyPoints: [], sections: [],
+              },
+              usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+            };
+          }
+          return original(input);
+        });
+
+        await service.process(testBookmark.id, testBookmark.userId);
+
+        const { runClosed, statusChanged } = order();
+        expect(runClosed.map(({ status }) => status)).toEqual(["failed"]);
+        expect(statusChanged.map(({ status }) => status)).toEqual(["failed"]);
+        expect(runClosed[0].at).toBeLessThan(statusChanged[0].at);
+      });
+
+      it("when processing throws", async () => {
+        arrange();
+        mockBookmarkService.ensureScrapedContent.mockRejectedValue(new Error("fetch exploded"));
+
+        await expect(
+          service.process(testBookmark.id, testBookmark.userId)
+        ).rejects.toThrow("fetch exploded");
+
+        const { runClosed, statusChanged } = order();
+        expect(runClosed.map(({ status }) => status)).toEqual(["failed"]);
+        expect(statusChanged.map(({ status }) => status)).toEqual(["failed"]);
+        expect(runClosed[0].at).toBeLessThan(statusChanged[0].at);
+      });
+
+      it.each([
+        ["completing a successful run", undefined, "completed", undefined],
+        ["failing a run with a phase failure", "phase", "failed", "AI service unavailable"],
+      ] as const)("still changes status when %s fails", async (_label, scenario, status, message) => {
+        arrange();
+        if (scenario === "phase") {
+          const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+          mockAI.generateObjectWithUsage.mockImplementation(async (input: any) => {
+            if (input.schema.shape && "overview" in input.schema.shape) {
+              throw new Error("AI service unavailable");
+            }
+            return original(input);
+          });
+        }
+        // The closing write is the only updateRun carrying a terminal status.
+        mockBookmarkProcessingRepository.updateRun.mockRejectedValueOnce(new Error("db down"));
+
+        await service.process(testBookmark.id, testBookmark.userId).catch(() => undefined);
+
+        // The status the pipeline decided on, not one the thrown close error forced.
+        const calls = mockBookmarkService.updateProcessingStatus.mock.calls;
+        expect(
+          calls.some(
+            (call) => call[1] === status && (message === undefined || String(call[2]).includes(message))
+          )
+        ).toBe(true);
+      });
+
+      it("keeps the original error when closing the run fails after a throw", async () => {
+        arrange();
+        mockBookmarkService.ensureScrapedContent.mockRejectedValue(
+          new ContentExtractionError("Transcript not retrieved", "unavailable", true)
+        );
+        mockBookmarkProcessingRepository.updateRun.mockRejectedValue(new Error("db down"));
+
+        await expect(
+          service.process(testBookmark.id, testBookmark.userId)
+        ).rejects.toMatchObject({ message: "Transcript not retrieved", shouldRetry: true });
+
+        expect(mockBookmarkService.updateProcessingStatus).toHaveBeenLastCalledWith(
+          testBookmark.id, "failed", "Transcript not retrieved"
+        );
+      });
+
+      it("when the run never started there is nothing to close", async () => {
+        arrange();
+        mockBookmarkProcessingRepository.createRun.mockRejectedValueOnce(new Error("timeline unavailable"));
+
+        await expect(
+          service.process(testBookmark.id, testBookmark.userId)
+        ).rejects.toThrow("timeline unavailable");
+
+        const { runClosed, statusChanged } = order();
+        expect(runClosed).toEqual([]);
+        expect(statusChanged.map(({ status }) => status)).toEqual(["failed"]);
+      });
+    });
+
     it("marks the bookmark failed when the durable timeline cannot start", async () => {
       mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
       mockBookmarkService.ensureScrapedContent.mockResolvedValue(

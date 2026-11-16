@@ -315,19 +315,15 @@ export async function buildBookmarkProcessingTimelineResponse(
     };
   }
 
-  const hasRunningTimeline =
-    timeline?.run.status === "running" ||
-    timeline?.events.some((event) => event.status === "running") === true;
-
   return {
     body: {
       bookmark,
       run: timeline?.run,
       events: timeline?.events ?? [],
-      pollAfterMs:
-        bookmark.processingStatus === "processing" || hasRunningTimeline
-          ? 2000
-          : 0,
+      // The bookmark's status alone decides. The worker closes a run before it
+      // moves the bookmark out of `processing`, so an event still marked
+      // `running` on a settled bookmark is stale and must not keep the client polling.
+      pollAfterMs: bookmark.processingStatus === "processing" ? 2000 : 0,
     },
   };
 }

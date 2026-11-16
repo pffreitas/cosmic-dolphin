@@ -294,8 +294,11 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         const unusable = failures.find(failure => failure.unusableCode);
         if (unusable?.unusableCode) {
           await this.bookmarkService.update(id, { cosmicBriefSummary: "", cosmicSummary: "", cosmicKeyPoints: [], processingFailureCode: unusable.unusableCode });
-          await this.bookmarkService.updateProcessingStatus(id, "failed", "Unusable source");
-          await reporter.failRun("Unusable source");
+          try {
+            await reporter.failRun("Unusable source");
+          } finally {
+            await this.bookmarkService.updateProcessingStatus(id, "failed", "Unusable source");
+          }
           console.info("Processing failure classified", { bookmark_id: id, phase: "summarise", code: unusable.unusableCode });
           return;
         }
@@ -375,13 +378,21 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         const message = failures
           .map((failure) => `${failure.phase}: ${failure.error}`)
           .join("; ");
-        await this.bookmarkService.updateProcessingStatus(id, "failed", message);
-        await reporter.failRun(message);
+        try {
+          await reporter.failRun(message);
+        } finally {
+          await this.bookmarkService.updateProcessingStatus(id, "failed", message);
+        }
         return;
       }
 
-      await this.bookmarkService.updateProcessingStatus(id, "completed");
-      await reporter.completeRun();
+      // Close the run first: the timeline polls on the bookmark's status alone,
+      // so the bookmark must not read `completed` while its run is still open.
+      try {
+        await reporter.completeRun();
+      } finally {
+        await this.bookmarkService.updateProcessingStatus(id, "completed");
+      }
     } catch (error) {
       if (error instanceof ContentExtractionError) {
         const code = error.code === "pending" ? "provider" : error.code;
@@ -392,13 +403,24 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       // being unavailable. Everything else was already absorbed by `runPhase`.
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
-      await this.bookmarkService.updateProcessingStatus(
-        id,
-        "failed",
-        errorMessage
-      );
-      if (reporter.hasStarted()) {
-        await reporter.failRun(errorMessage);
+      // Close the run before the bookmark leaves `processing`. A failure to
+      // close it must neither skip the status change nor replace `error`, which
+      // is what the caller needs to see (and to read `shouldRetry` from).
+      try {
+        if (reporter.hasStarted()) {
+          await reporter.failRun(errorMessage);
+        }
+      } catch (closeError) {
+        console.error("Failed to close the processing run", {
+          bookmark_id: id,
+          error: closeError instanceof Error ? closeError.message : String(closeError),
+        });
+      } finally {
+        await this.bookmarkService.updateProcessingStatus(
+          id,
+          "failed",
+          errorMessage
+        );
       }
       // Explicitly classified transient extraction failures can recover on
       // pgmq redelivery. Unknown/terminal failures still require manual retry.

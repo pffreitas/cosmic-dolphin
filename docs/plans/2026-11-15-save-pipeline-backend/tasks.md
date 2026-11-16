@@ -427,7 +427,7 @@ Verified 2026-11-15 on the feature branch: worker 19 passing, shared 432 (jest -
 
 | | |
 |---|---|
-| Status | Todo |
+| Status | Done |
 | Depends on | T-2 |
 | Traces | Finding 8 · PR 1 item 5 |
 | Ships as | User-visible: after a worker crash and recovery, the progress UI stops polling and shows the failed or completed phase it should |
@@ -474,7 +474,7 @@ bun run --cwd packages/shared build && bun run --cwd apps/api build
 
 **Notes**
 
-_For the coordinator: verification results, follow-ups, blockers, commits in other repos._
+Verified 2026-11-15: shared 441 passing (jest -i), API 385, worker 19, builds green, lint 0 errors. Red-first confirmed for resumeRun, run-closed-before-status on all four terminal paths, and the API polling contract. The old test 'continues polling when the timeline run is still running' asserted the previous contract and was replaced by a completed/failed-bookmark case (deliberate, per the task). Decisions: a failure closing the run on the thrown-error path is logged so the original error and its shouldRetry survive; resumeRun skips the run event and already-closed events. Note: a successful run whose completeRun throws still ends failed (unchanged from before).
 
 ### T-4 · Create rejects a collection the caller does not own and unbounded text
 

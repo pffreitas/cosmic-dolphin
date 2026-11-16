@@ -376,6 +376,68 @@ describe("BookmarkProcessingReporter", () => {
     );
   });
 
+  it("resumeRun closes interrupted events", async () => {
+    // A crash leaves the phase and turn it was in the middle of `running`.
+    // Resuming must close them, or the timeline never reads as finished.
+    const repository = createMockRepository();
+    const at = new Date("2026-06-21T10:00:00.000Z");
+    const base = {
+      runId: "run-7",
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
+      reasoningTokens: 0,
+      cachedInputTokens: 0,
+      createdAt: at,
+      updatedAt: at,
+    };
+    repository.findLatestTimeline.mockResolvedValueOnce({
+      run: {
+        id: "run-7",
+        bookmarkId: "bookmark-1",
+        userId: "user-1",
+        status: "running",
+        startedAt: at,
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        reasoningTokens: 0,
+        cachedInputTokens: 0,
+        createdAt: at,
+        updatedAt: at,
+      },
+      events: [
+        { ...base, id: "event-run", kind: "run", name: "Processing run", status: "running", sequence: 1, startedAt: at },
+        { ...base, id: "event-fetch", kind: "phase", phase: "fetch", name: "Fetch", status: "completed", sequence: 2, startedAt: at },
+        { ...base, id: "event-summarise", kind: "phase", phase: "summarise", name: "Summarise", status: "running", sequence: 3, startedAt: at },
+        { ...base, id: "event-turn", kind: "turn", phase: "summarise", name: "Turn", status: "running", sequence: 4, startedAt: at },
+      ],
+    });
+
+    const endedAt = new Date("2026-06-21T10:00:05.000Z");
+    const reporter = new BookmarkProcessingReporter(repository, () => endedAt);
+    await reporter.resumeRun("bookmark-1", "user-1");
+
+    for (const id of ["event-summarise", "event-turn"]) {
+      expect(repository.updateEvent).toHaveBeenCalledWith(
+        id,
+        expect.objectContaining({
+          status: "failed",
+          error: "Interrupted before it finished",
+          endedAt,
+          durationMs: 5000,
+        })
+      );
+    }
+    const touched = repository.updateEvent.mock.calls.map(([id]) => id);
+    expect(touched).not.toContain("event-fetch");
+
+    await reporter.trackPhase("tag", "Tags", async () => "ok");
+    expect(repository.createEvent).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sequence: 5 })
+    );
+  });
+
   it("opens a run when there is nothing to resume", async () => {
     const repository = createMockRepository();
     const reporter = new BookmarkProcessingReporter(repository, () => new Date());
