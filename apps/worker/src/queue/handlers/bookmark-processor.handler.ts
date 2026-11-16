@@ -1,5 +1,5 @@
 import { Injectable, Logger, Inject } from "@nestjs/common";
-import { MessageHandler } from "../interfaces/message-handler.interface";
+import { MessageContext, MessageHandler } from "../interfaces/message-handler.interface";
 import { QueueMessage } from "../../types/queue.types";
 import type {
   BookmarkQueuePayload,
@@ -27,7 +27,10 @@ export class BookmarkProcessorHandler implements MessageHandler {
     return messageType === "bookmark_process";
   }
 
-  async handle(message: QueueMessage): Promise<void> {
+  async handle(
+    message: QueueMessage,
+    context?: MessageContext,
+  ): Promise<void> {
     this.logger.log(`Processing bookmark`, {
       msg_id: message.msg_id,
       message_type: message.message?.type,
@@ -47,6 +50,7 @@ export class BookmarkProcessorHandler implements MessageHandler {
       await this.bookmarkProcessorService.process(bookmarkId, userId, {
         phase,
         resume: resume || message.read_ct > 1,
+        finalAttempt: context?.finalAttempt,
       });
 
       this.logger.log(`Successfully processed bookmark ${message.msg_id}`, {

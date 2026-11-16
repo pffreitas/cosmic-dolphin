@@ -557,7 +557,7 @@ describe("BookmarkProcessorService", () => {
       mockBookmarkService.updateProcessingStatus.mockResolvedValue(testBookmark);
       mockAI.newSession.mockResolvedValue({ sessionID: "test", refID: testBookmark.id });
       mockBookmarkService.ensureScrapedContent.mockRejectedValue(new ContentExtractionError("Transcript not retrieved", "unavailable", retryable));
-      await expect(service.process(testBookmark.id, testBookmark.userId)).rejects.toMatchObject({ shouldRetry: retryable });
+      await expect(service.process(testBookmark.id, testBookmark.userId, { finalAttempt: true })).rejects.toMatchObject({ shouldRetry: retryable });
       expect(mockAI.generateObjectWithUsage).not.toHaveBeenCalled();
       expect(mockBookmarkService.updateProcessingStatus).toHaveBeenLastCalledWith(testBookmark.id, "failed", "Transcript not retrieved");
     });
@@ -1064,12 +1064,62 @@ describe("BookmarkProcessorService", () => {
         mockBookmarkProcessingRepository.updateRun.mockRejectedValue(new Error("db down"));
 
         await expect(
-          service.process(testBookmark.id, testBookmark.userId)
+          service.process(testBookmark.id, testBookmark.userId, { finalAttempt: true })
         ).rejects.toMatchObject({ message: "Transcript not retrieved", shouldRetry: true });
 
         expect(mockBookmarkService.updateProcessingStatus).toHaveBeenLastCalledWith(
           testBookmark.id, "failed", "Transcript not retrieved"
         );
+      });
+
+      it("retryable failure with attempts left keeps the bookmark processing and the run open", async () => {
+        arrange();
+        mockBookmarkService.ensureScrapedContent.mockRejectedValue(
+          new ContentExtractionError("Transcript not retrieved", "unavailable", true)
+        );
+
+        await expect(
+          service.process(testBookmark.id, testBookmark.userId, { finalAttempt: false })
+        ).rejects.toMatchObject({ message: "Transcript not retrieved", shouldRetry: true });
+
+        const { runClosed, statusChanged } = order();
+        expect(runClosed).toEqual([]);
+        expect(statusChanged).toEqual([]);
+        expect(mockBookmarkProcessingRepository.updateEvent).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.objectContaining({ status: "failed", error: "Transcript not retrieved" })
+        );
+      });
+
+      it("final attempt fails the bookmark after closing the run", async () => {
+        arrange();
+        mockBookmarkService.ensureScrapedContent.mockRejectedValue(
+          new ContentExtractionError("Transcript not retrieved", "unavailable", true)
+        );
+
+        await expect(
+          service.process(testBookmark.id, testBookmark.userId, { finalAttempt: true })
+        ).rejects.toMatchObject({ shouldRetry: true });
+
+        const { runClosed, statusChanged } = order();
+        expect(runClosed.map(({ status }) => status)).toEqual(["failed"]);
+        expect(statusChanged.map(({ status }) => status)).toEqual(["failed"]);
+        expect(runClosed[0].at).toBeLessThan(statusChanged[0].at);
+      });
+
+      it("a non-retryable error fails the bookmark even with attempts left", async () => {
+        arrange();
+        mockBookmarkService.ensureScrapedContent.mockRejectedValue(
+          new ContentExtractionError("Blocked", "blocked", false)
+        );
+
+        await expect(
+          service.process(testBookmark.id, testBookmark.userId, { finalAttempt: false })
+        ).rejects.toMatchObject({ shouldRetry: false });
+
+        const { runClosed, statusChanged } = order();
+        expect(runClosed.map(({ status }) => status)).toEqual(["failed"]);
+        expect(statusChanged.map(({ status }) => status)).toEqual(["failed"]);
       });
 
       it("when the run never started there is nothing to close", async () => {

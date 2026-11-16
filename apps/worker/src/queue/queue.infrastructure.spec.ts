@@ -88,12 +88,14 @@ describe("queue configuration", () => {
 
 describe("terminal message failures", () => {
   test("leaves transient extraction failures available for bounded pgmq retry", async () => {
-    const queue = { deleteMessage: async () => undefined, archiveMessage: async () => undefined };
+    const queue = { deleteMessage: async () => undefined, archiveMessage: async () => undefined, setVisibility: async (..._args: unknown[]) => undefined };
     const archive = spyOn(queue, "archiveMessage");
+    const visibility = spyOn(queue, "setVisibility");
     const handler = { canHandle: () => true, handle: async () => { throw Object.assign(new Error("Public page blocked"), { shouldRetry: true }); } };
     const processor = new QueueProcessor(queue as never, configService({}) as never, [handler] as never);
     await (processor as any).processMessage({ msg_id: 44, read_ct: 1, message: { type: "bookmark_process", data: {} } }, { name: "bookmarks", maxRetries: 3 });
     expect(archive).not.toHaveBeenCalled();
+    expect(visibility).toHaveBeenCalledWith("bookmarks", 44, 30);
   });
 
   test("resumes the bookmark timeline on redelivery", async () => {

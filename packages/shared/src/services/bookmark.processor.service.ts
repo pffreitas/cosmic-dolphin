@@ -48,6 +48,13 @@ export interface BookmarkProcessOptions {
    * True for every reprocess — see `BookmarkProcessingReporter.resumeRun`.
    */
   resume?: boolean;
+  /**
+   * No delivery is left after this one. A retryable failure then ends the run
+   * and fails the bookmark; with attempts left it leaves both as they are, so
+   * the bookmark reads `processing` (queued) rather than `failed` while the
+   * queue redelivers it.
+   */
+  finalAttempt?: boolean;
 }
 
 /**
@@ -429,6 +436,16 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         await this.bookmarkService.updateProcessingStatus(id, "completed");
       }
     } catch (error) {
+      const willRetry =
+        error instanceof ContentExtractionError &&
+        error.shouldRetry &&
+        !options.finalAttempt;
+      if (willRetry) {
+        // The failed phase is already on the timeline. Leave the run `running`
+        // and the bookmark `processing`: the message is delayed and the next
+        // delivery resumes this run.
+        throw error;
+      }
       if (error instanceof ContentExtractionError) {
         const code = error.code === "pending" ? "provider" : error.code;
         await this.bookmarkService.update(id, { processingFailureCode: code });
