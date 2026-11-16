@@ -1953,6 +1953,145 @@ describe("BookmarkProcessorService", () => {
     expect(summary).toContain('null when contentStatus is "ok"');
   });
 
+  describe("terminal disposal of the queue message", () => {
+    const trx = { id: "trx" } as any;
+    let log: string[];
+    let dispose: jest.Mock<any>;
+
+    function build() {
+      return new BookmarkProcessorServiceImpl(
+        mockBookmarkService,
+        mockContentChunkRepository,
+        mockCollectionRepository,
+        mockAI,
+        mockBookmarkProcessingRepository,
+        mockChunkingService,
+        mockEmbeddingService,
+        (transaction: any) => {
+          log.push(`repo-for:${transaction.id}`);
+          return mockBookmarkProcessingRepository;
+        }
+      );
+    }
+
+    beforeEach(() => {
+      log = [];
+      dispose = jest.fn(async (_trx: any, how: string) => {
+        log.push(`dispose:${how}`);
+      });
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(testScrapedContent);
+      mockBookmarkService.update.mockResolvedValue(testBookmark);
+      mockAI.newSession.mockResolvedValue({ sessionID: "s", refID: testBookmark.id });
+      mockBookmarkProcessingRepository.updateRun.mockImplementation(
+        (async (id: string, data: any) => {
+          if (data.status === "completed" || data.status === "failed") log.push(`run:${data.status}`);
+          return { id } as any;
+        }) as any
+      );
+      // The terminal write: status, then whatever runs `within` the transaction.
+      mockBookmarkService.updateProcessingStatus.mockImplementation((async (
+        _id: string,
+        status: string,
+        _error?: string,
+        within?: (t: any) => Promise<void>
+      ) => {
+        if (!within) return testBookmark;
+        log.push(`status:${status}`);
+        await within(trx);
+        log.push("commit");
+        return testBookmark;
+      }) as any);
+    });
+
+    it("closes the run, sets the status and deletes the message in one transaction on success", async () => {
+      await build().process(testBookmark.id, testBookmark.userId, { dispose });
+      // The first status write ("processing") has no transaction work.
+      expect(log).toEqual([
+        "status:completed",
+        "repo-for:trx",
+        "run:completed",
+        "dispose:delete",
+        "commit",
+      ]);
+      expect(dispose).toHaveBeenCalledWith(trx, "delete");
+    });
+
+    it("archives the message in the same transaction as a terminal failure", async () => {
+      mockBookmarkService.ensureScrapedContent.mockRejectedValue(
+        new ContentExtractionError("Blocked", "blocked", false)
+      );
+      await expect(
+        build().process(testBookmark.id, testBookmark.userId, { dispose })
+      ).rejects.toMatchObject({ shouldRetry: false, terminalNotPersisted: false });
+      expect(log).toEqual(["status:failed", "repo-for:trx", "run:failed", "dispose:archive", "commit"]);
+    });
+
+    it("deletes the message with a soft phase failure, in the same transaction", async () => {
+      const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+      mockAI.generateObjectWithUsage.mockImplementation(async (input: any) => {
+        if (input.schema.shape && "overview" in input.schema.shape) throw new Error("AI down");
+        return original(input);
+      });
+      await build().process(testBookmark.id, testBookmark.userId, { dispose });
+      expect(log).toEqual(["status:failed", "repo-for:trx", "run:failed", "dispose:delete", "commit"]);
+    });
+
+    it("does not touch the message for a retryable failure with attempts left", async () => {
+      mockBookmarkService.ensureScrapedContent.mockRejectedValue(
+        new ContentExtractionError("Transcript not retrieved", "unavailable", true)
+      );
+      await expect(
+        build().process(testBookmark.id, testBookmark.userId, { dispose, finalAttempt: false })
+      ).rejects.toMatchObject({ shouldRetry: true });
+      expect(dispose).not.toHaveBeenCalled();
+    });
+
+    it("flags the failure as unpersisted when the terminal write fails, so the message is kept", async () => {
+      mockBookmarkService.updateProcessingStatus.mockImplementation((async (
+        _id: string,
+        status: string,
+        _e?: string,
+        within?: unknown
+      ) => {
+        if (within) throw new Error("status write failed");
+        return testBookmark;
+      }) as any);
+      mockBookmarkService.ensureScrapedContent.mockRejectedValue(
+        new ContentExtractionError("Transcript not retrieved", "unavailable", true)
+      );
+      await expect(
+        build().process(testBookmark.id, testBookmark.userId, { dispose, finalAttempt: true })
+      ).rejects.toMatchObject({ message: "status write failed", terminalNotPersisted: true });
+      expect(dispose).not.toHaveBeenCalled();
+    });
+
+    it("flags the failure as unpersisted when the disposal itself fails", async () => {
+      dispose.mockRejectedValue(new Error("pgmq down"));
+      await expect(
+        build().process(testBookmark.id, testBookmark.userId, { dispose })
+      ).rejects.toMatchObject({ terminalNotPersisted: true });
+    });
+  });
+
+  describe("deadline disposal", () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("clears the deadline timer when the initial status write throws", async () => {
+      jest.useFakeTimers();
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.updateProcessingStatus.mockRejectedValue(new Error("db down"));
+
+      await expect(
+        service.process(testBookmark.id, testBookmark.userId)
+      ).rejects.toThrow("db down");
+
+      expect(jest.getTimerCount()).toBe(0);
+    });
+  });
+
   describe("run deadline", () => {
     const originalDeadline = process.env.RUN_DEADLINE_MS;
 

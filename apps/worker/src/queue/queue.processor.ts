@@ -100,7 +100,7 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       await Promise.race([
-        Promise.all([...this.processingPromises, ...this.inFlightPromises]),
+        this.drain(),
         new Promise((_, reject) => {
           timer = setTimeout(
             () => reject(new Error("Graceful shutdown timeout")),
@@ -121,6 +121,14 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
 
     this.processingPromises = [];
     this.logger.log("Queue processor stopped");
+  }
+
+  /** Wait for the read loops, then for whatever work they or the loops left. */
+  private async drain(): Promise<void> {
+    await Promise.all(this.processingPromises);
+    while (this.inFlightPromises.size > 0) {
+      await Promise.all([...this.inFlightPromises]);
+    }
   }
 
   /** Make every message still in flight readable at once by another worker. */
@@ -172,8 +180,15 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
         this.reserved -= count;
       }
 
+      if (!this.isProcessing) {
+        // Stopped while the read was in flight: nothing may start now, and the
+        // messages it claimed must not sit hidden for the visibility timeout.
+        await this.releaseRead(messages, config);
+        break;
+      }
+
       if (failed || messages.length === 0) {
-        if (this.isProcessing) await this.sleep(config.pollInterval);
+        await this.sleep(config.pollInterval);
         continue;
       }
 
@@ -181,6 +196,24 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
         this.startMessage(message, config);
       }
     }
+  }
+
+  private async releaseRead(
+    messages: QueueMessage[],
+    config: QueueConfig,
+  ): Promise<void> {
+    await Promise.all(
+      messages.map(async (message) => {
+        try {
+          await this.queueService.setVisibility(config.name, message.msg_id, 0);
+        } catch (error) {
+          this.logger.error(
+            `Failed to release message ${message.msg_id} of queue ${config.name}`,
+            error,
+          );
+        }
+      }),
+    );
   }
 
   private startMessage(message: QueueMessage, config: QueueConfig): void {
@@ -213,6 +246,9 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
     message: QueueMessage,
     config: QueueConfig,
   ): Promise<void> {
+    // Set once the handler has deleted or archived the message on the same
+    // transaction as the run's terminal write: nothing is left to dispose of.
+    let disposed = false;
     try {
       const handler = this.findHandler(message);
       if (!handler) {
@@ -249,17 +285,33 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
         finalAttempt: message.read_ct > config.maxRetries,
         signal: this.inFlight.get(`${config.name}-${message.msg_id}`)?.abort
           .signal ?? new AbortController().signal,
+        dispose: async (transaction, how) => {
+          // A released message belongs to another worker now; its run must not
+          // close it. Refusing aborts the terminal transaction.
+          if (this.isReleased(message, config)) {
+            throw new Error(`Message ${message.msg_id} was released at shutdown`);
+          }
+          await this.queueService.disposeIn(
+            transaction,
+            config.name,
+            message.msg_id,
+            how,
+          );
+          disposed = true;
+        },
       });
 
       // Successfully processed (or acknowledged by the handler), remove it
       if (this.isReleased(message, config)) return;
-      await this.queueService.deleteMessage(config.name, message.msg_id);
+      if (!disposed) {
+        await this.queueService.deleteMessage(config.name, message.msg_id);
+      }
 
       this.logger.debug(
         `Successfully processed message ${message.msg_id} from queue ${config.name}`,
       );
     } catch (error) {
-      await this.handleError(message, config, error);
+      await this.handleError(message, config, error, disposed);
     }
   }
 
@@ -267,6 +319,7 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
     message: QueueMessage,
     config: QueueConfig,
     error: any,
+    disposed = false,
   ): Promise<void> {
     // pgmq owns the durable delivery count, so it survives deploys.
     // `read_ct` includes the current delivery.
@@ -285,6 +338,9 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
     });
 
     if (this.isReleased(message, config)) return;
+    // Archived together with the terminal write. If that transaction then failed
+    // to commit, it rolled back and the message simply reappears.
+    if (disposed) return;
 
     try {
       if (shouldRetry) {
@@ -296,6 +352,17 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
           config.name,
           message.msg_id,
           delay,
+        );
+        return;
+      }
+
+      if (error?.terminalNotPersisted === true) {
+        // The bookmark is still `processing`: archiving now would leave it with
+        // no message to recover it. Keep the message; pgmq redelivers it after
+        // the visibility timeout and the exhausted-delivery guard fails the
+        // bookmark.
+        this.logger.error(
+          `Terminal state of message ${message.msg_id} was not persisted; leaving it for redelivery`,
         );
         return;
       }

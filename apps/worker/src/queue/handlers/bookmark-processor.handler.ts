@@ -52,6 +52,7 @@ export class BookmarkProcessorHandler implements MessageHandler {
         resume: resume || message.read_ct > 1,
         finalAttempt: context?.finalAttempt,
         signal: context?.signal,
+        dispose: context?.dispose,
       });
 
       this.logger.log(`Successfully processed bookmark ${message.msg_id}`, {

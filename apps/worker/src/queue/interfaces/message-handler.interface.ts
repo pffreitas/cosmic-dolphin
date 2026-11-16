@@ -1,3 +1,5 @@
+import type { Kysely } from "kysely";
+import type { Database } from "@cosmic-dolphin/shared";
 import { QueueMessage } from "../../types/queue.types";
 
 export interface MessageContext {
@@ -8,6 +10,16 @@ export interface MessageContext {
    * passes it down so the run ends instead of lingering past its message.
    */
   signal: AbortSignal;
+  /**
+   * Delete or archive this message on `transaction`: the handler calls it inside
+   * the transaction that writes the run's terminal state, so the two commit
+   * together. Once it has run, the processor does not dispose of the message
+   * again. Rejects when the message was already released at shutdown.
+   */
+  dispose: (
+    transaction: Kysely<Database>,
+    how: "delete" | "archive",
+  ) => Promise<void>;
 }
 
 export interface MessageHandler {

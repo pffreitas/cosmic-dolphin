@@ -52,6 +52,9 @@ function fakeQueue(waiting: ReturnType<typeof msg>[]) {
     async setVisibility(_n: string, id: number, seconds: number) {
       calls.push(`vis:${id}:${seconds}`);
     },
+    async disposeIn(_trx: unknown, _n: string, id: number, how: string) {
+      calls.push(`dispose:${how}:${id}`);
+    },
   };
 }
 
@@ -186,6 +189,43 @@ describe("dispositions", () => {
     expect(queue.calls).toEqual(["archive:5"]);
   });
 
+  test("a disposal made inside the terminal transaction is not repeated on success", async () => {
+    const { queue, processor } = setup(async (_m, ctx) => {
+      await ctx.dispose({}, "delete");
+    });
+    await run(processor, msg(7));
+    expect(queue.calls).toEqual(["dispose:delete:7"]);
+  });
+
+  test("a disposal made inside the terminal transaction is not repeated after a terminal failure", async () => {
+    const { queue, processor } = setup(async (_m, ctx) => {
+      await ctx.dispose({}, "archive");
+      throw Object.assign(new Error("boom"), { shouldRetry: true });
+    });
+    await run(processor, msg(8, 4));
+    expect(queue.calls).toEqual(["dispose:archive:8"]);
+  });
+
+  test("a final failure whose terminal state was not persisted keeps the message", async () => {
+    const { queue, processor } = setup(async () => {
+      throw Object.assign(new Error("status write failed"), {
+        shouldRetry: true,
+        terminalNotPersisted: true,
+      });
+    });
+    await run(processor, msg(9, 4));
+    // No archive: pgmq redelivers it and the exhausted-delivery guard fails the bookmark.
+    expect(queue.calls).toEqual([]);
+  });
+
+  test("an unpersisted terminal state with attempts left is still delayed", async () => {
+    const { queue, processor } = setup(async () => {
+      throw Object.assign(new Error("status write failed"), { terminalNotPersisted: true });
+    });
+    await run(processor, msg(10, 1));
+    expect(queue.calls).toEqual(["vis:10:30"]);
+  });
+
   test("the handler is told when this is the final attempt", async () => {
     const seen: boolean[] = [];
     const { processor } = setup(async (_m, ctx) => {
@@ -197,6 +237,91 @@ describe("dispositions", () => {
 });
 
 describe("shutdown", () => {
+  test("a disposal after the message was released is refused", async () => {
+    const queue = fakeQueue([msg(1)]);
+    const gate = deferred();
+    let outcome: unknown;
+    const processor = build(
+      queue,
+      async (_m, ctx) => {
+        await gate.promise;
+        outcome = await ctx.dispose({}, "delete").then(() => "disposed", (e: Error) => e.message);
+      },
+      { QUEUE_GRACEFUL_SHUTDOWN_TIMEOUT: "20" },
+    );
+    await processor.startProcessing();
+    await tick();
+    await processor.stopProcessing();
+    gate.resolve();
+    await tick();
+    expect(outcome).not.toBe("disposed");
+    expect(queue.calls).toEqual(["vis:1:0"]);
+  });
+
+  test("a read that completes during the grace period is released, not started", async () => {
+    const read = deferred();
+    const started: number[] = [];
+    const queue = fakeQueue([]);
+    const late = [msg(1), msg(2)];
+    queue.popMessages = async (_n: string, count: number) => {
+      queue.reads.push(count);
+      if (queue.reads.length === 1) {
+        await read.promise;
+        return late;
+      }
+      return [];
+    };
+    const processor = build(
+      queue,
+      async (m) => {
+        started.push(m.msg_id);
+      },
+      { QUEUE_GRACEFUL_SHUTDOWN_TIMEOUT: "1000" },
+    );
+    await processor.startProcessing();
+    await tick();
+
+    const stopping = processor.stopProcessing();
+    await tick();
+    read.resolve();
+    await stopping;
+
+    expect(started).toEqual([]);
+    expect([...queue.calls].sort()).toEqual(["vis:1:0", "vis:2:0"]);
+  });
+
+  test("a read that completes after the grace period is released, not started", async () => {
+    const read = deferred();
+    const started: number[] = [];
+    const queue = fakeQueue([]);
+    queue.popMessages = async (_n: string, count: number) => {
+      queue.reads.push(count);
+      if (queue.reads.length === 1) {
+        await read.promise;
+        return [msg(1)];
+      }
+      return [];
+    };
+    const processor = build(
+      queue,
+      async (m) => {
+        started.push(m.msg_id);
+      },
+      { QUEUE_GRACEFUL_SHUTDOWN_TIMEOUT: "20" },
+    );
+    await processor.startProcessing();
+    await tick();
+
+    await processor.stopProcessing(); // times out waiting for the read
+    expect(started).toEqual([]);
+
+    read.resolve();
+    await tick();
+    await tick();
+    expect(started).toEqual([]);
+    expect(queue.calls).toEqual(["vis:1:0"]);
+  });
+
   test("shutdown returns unfinished messages to the queue", async () => {
     const queue = fakeQueue([msg(1), msg(2), msg(3)]);
     const gates: ReturnType<typeof deferred>[] = [];

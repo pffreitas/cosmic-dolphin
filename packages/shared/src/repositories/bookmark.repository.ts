@@ -200,7 +200,8 @@ export interface BookmarkRepository {
    */
   update(
     id: string,
-    data: Omit<BookmarkUpdate, "collection_id" | "filing_source">
+    data: Omit<BookmarkUpdate, "collection_id" | "filing_source">,
+    within?: (transaction: Kysely<Database>) => Promise<void>
   ): Promise<Bookmark>;
   /**
    * Replace a placeholder title with the one the page declared.
@@ -718,7 +719,8 @@ export class BookmarkRepositoryImpl
 
   async update(
     id: string,
-    data: Omit<BookmarkUpdate, "collection_id" | "filing_source">
+    data: Omit<BookmarkUpdate, "collection_id" | "filing_source">,
+    within?: (transaction: Kysely<Database>) => Promise<void>
   ): Promise<Bookmark> {
     return this.executeQuery(async () => {
       const updateData: BookmarkUpdate = { ...data };
@@ -743,14 +745,22 @@ export class BookmarkRepositoryImpl
         );
       }
 
-      const result = await this.db
-        .updateTable("bookmarks")
-        .set(updateData)
-        .where("id", "=", id)
-        .returningAll()
-        .executeTakeFirstOrThrow();
+      const write = (db: Kysely<Database>) =>
+        db
+          .updateTable("bookmarks")
+          .set(updateData)
+          .where("id", "=", id)
+          .returningAll()
+          .executeTakeFirstOrThrow();
 
-      return result;
+      if (!within) return write(this.db);
+      // `within` commits or rolls back with the row: the worker closes the run
+      // and disposes of its queue message in the same transaction.
+      return this.db.transaction().execute(async (transaction) => {
+        const result = await write(transaction);
+        await within(transaction);
+        return result;
+      });
     }, "update");
   }
 

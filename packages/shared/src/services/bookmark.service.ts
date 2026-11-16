@@ -20,7 +20,8 @@ import {
   SearchOptions,
 } from "../repositories";
 import { WebScrapingService } from "./web-scraping.service";
-import { NewBookmark, BookmarkUpdate } from "../database/schema";
+import { NewBookmark, BookmarkUpdate, Database } from "../database/schema";
+import type { Kysely } from "kysely";
 import { ContentExtractionError, isIncompleteExtraction } from "./content-extraction";
 import { dailyProcessingBudget } from "./processing-budget.service";
 import { bookmarkContentBlocks, limitBookmarkContent, type BookmarkContent } from "./bookmark-content-blocks";
@@ -182,10 +183,15 @@ export interface BookmarkService {
   ): Promise<Bookmark | null>;
   /** The user's most-used tags — candidates for the `tag` phase. */
   getTopTags(userId: string, limit?: number): Promise<string[]>;
+  /**
+   * `within` runs on the same transaction as the status write, after it: what
+   * it writes commits or rolls back together with the new status.
+   */
   updateProcessingStatus(
     id: string,
     status: ProcessingStatus,
-    error?: string
+    error?: string,
+    within?: (transaction: Kysely<Database>) => Promise<void>
   ): Promise<Bookmark>;
   share(bookmarkId: string, userId: string): Promise<ShareBookmarkResponse>;
   unshare(bookmarkId: string, userId: string): Promise<ShareBookmarkResponse>;
@@ -721,7 +727,8 @@ export class BookmarkServiceImpl implements BookmarkService {
   async updateProcessingStatus(
     id: string,
     status: ProcessingStatus,
-    error?: string
+    error?: string,
+    within?: (transaction: Kysely<Database>) => Promise<void>
   ): Promise<Bookmark> {
     const updateData: BookmarkUpdate = {
       processing_status: status,
@@ -746,7 +753,9 @@ export class BookmarkServiceImpl implements BookmarkService {
       updateData.processing_error = error || "Unknown error";
     }
 
-    const bookmark = await this.bookmarkRepository.update(id, updateData);
+    const bookmark = within
+      ? await this.bookmarkRepository.update(id, updateData, within)
+      : await this.bookmarkRepository.update(id, updateData);
     return this.mapDatabaseToBookmark(bookmark);
   }
 

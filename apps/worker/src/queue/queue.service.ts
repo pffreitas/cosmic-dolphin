@@ -60,6 +60,22 @@ export class QueueService {
     }
   }
 
+  /**
+   * Delete or archive a message on `transaction`, so it commits or rolls back
+   * with the bookmark's terminal write made on the same transaction.
+   */
+  async disposeIn(
+    transaction: Kysely<Database>,
+    queueName: string,
+    msgId: number,
+    how: "delete" | "archive",
+  ): Promise<void> {
+    const pgmq = new PgmqRepositoryImpl(transaction);
+    await (how === "delete"
+      ? pgmq.delete(queueName, msgId)
+      : pgmq.archive(queueName, msgId));
+  }
+
   async setVisibility(
     queueName: string,
     msgId: number,
