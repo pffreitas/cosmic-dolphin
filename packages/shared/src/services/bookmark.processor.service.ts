@@ -20,7 +20,6 @@ import {
   renderSummaryMarkdown,
 } from "./bookmark.summary";
 import { ContentChunkRepository } from "../repositories/content-chunk.repository";
-import { HttpClient, CosmicHttpClient } from "./http-client";
 import {
   BookmarkFilingService,
   BookmarkFilingServiceImpl,
@@ -51,12 +50,33 @@ export interface BookmarkProcessOptions {
   resume?: boolean;
 }
 
+/**
+ * The bookmark a message refers to does not exist for that user, typically
+ * because it was deleted while the message was queued. No retry can fix this.
+ */
+export class BookmarkNotFoundError extends Error {
+  constructor(public readonly bookmarkId: string) {
+    super(`Bookmark not found: ${bookmarkId}`);
+    this.name = "BookmarkNotFoundError";
+  }
+}
+
 export interface BookmarkProcessorService {
   process(
     id: string,
     userId: string,
     options?: BookmarkProcessOptions
   ): Promise<void>;
+  /**
+   * Record that a message was delivered too often to run again.
+   *
+   * Closes the bookmark's open run (and any event an interrupted attempt left
+   * `running`) and then marks the bookmark `failed`, so the timeline and the
+   * status agree and clients stop polling. Returns `false`, having done
+   * nothing, when the bookmark does not exist for that user. Errors propagate:
+   * the caller must not discard the message while this has not been recorded.
+   */
+  failExhausted(id: string, userId: string, message: string): Promise<boolean>;
 }
 
 const PRIVATE_LINK_ENRICHMENT_PROMPT = `You are creating a private link quick-access record.
@@ -72,6 +92,22 @@ Return:
 - description: A polished 1-2 sentence description based only on the user's description.
 - tags: 3-6 lowercase tags. Use hyphens for multi-word tags.
 - quickAccessKeywords: 3-8 phrases the user might search for later.`;
+
+/** The columns a processing run may write, and nothing else. */
+type ProducedFields = Partial<
+  Pick<
+    Bookmark,
+    | "cosmicImages"
+    | "cosmicSummary"
+    | "cosmicBriefSummary"
+    | "cosmicKeyPoints"
+    | "cosmicTags"
+    | "searchDocument"
+    | "title"
+    | "quickAccess"
+    | "metadata"
+  >
+>;
 
 interface ChunkingResult {
   textChunkIds: string[];
@@ -113,7 +149,6 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     private collectionRepository: CollectionRepository,
     private ai: AI,
     private bookmarkProcessingRepository: BookmarkProcessingRepository,
-    private httpClient: HttpClient = new CosmicHttpClient(),
     chunkingService?: ChunkingService,
     embeddingService?: EmbeddingService
   ) {
@@ -124,6 +159,31 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     );
     this.chunkingService = chunkingService ?? new ChunkingServiceImpl();
     this.embeddingService = embeddingService ?? new EmbeddingServiceImpl();
+  }
+
+  async failExhausted(
+    id: string,
+    userId: string,
+    message: string
+  ): Promise<boolean> {
+    const bookmark = await this.bookmarkService.findByIdAndUser(id, userId);
+    if (!bookmark) return false;
+    // Only a bookmark still `processing` was stranded. If the final attempt
+    // finished (or the bookmark was already failed or reset) before the worker
+    // died, that outcome stands: the message is archived and nothing is touched.
+    if (bookmark.processingStatus !== "processing") return true;
+
+    const reporter = new BookmarkProcessingReporter(
+      this.bookmarkProcessingRepository
+    );
+    // Close the run without reopening it, then flip the status: clients stop
+    // polling on the status, so it must not change while the timeline still
+    // reads as running. No `finally`: if closing throws, the bookmark stays
+    // `processing` so the redelivered message retries the closure; if the status
+    // write throws, the retry finds a closed run and repeats only the write.
+    await reporter.closeLatestRun(id, userId, message);
+    await this.bookmarkService.updateProcessingStatus(id, "failed", message);
+    return true;
   }
 
   /**
@@ -151,7 +211,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       userId
     );
     if (!existingBookmark) {
-      throw new Error(`Bookmark not found: ${id}`);
+      throw new BookmarkNotFoundError(id);
     }
 
     let bookmark = existingBookmark;
@@ -167,6 +227,10 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       this.bookmarkProcessingRepository
     );
     const failures: PhaseFailure[] = [];
+    // Only what a phase of this run produced. The row was read before the run
+    // started, so writing `bookmark` back would undo anything the owner changed
+    // in the meantime (archive, favourite, retitle).
+    const patch: ProducedFields = {};
 
     try {
       if (options.resume) {
@@ -184,7 +248,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
           bookmark,
           reporter,
           inScope,
-          failures
+          failures,
+          patch
         );
       } else {
         // Fetching the page is the pipeline's first phase, not the API's.
@@ -222,7 +287,10 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
                     phaseReporter
                   )
           );
-          if (images) bookmark.cosmicImages = images;
+          if (images) {
+            bookmark.cosmicImages = images;
+            patch.cosmicImages = images;
+          }
         }
 
         let processable: ProcessableContent | undefined;
@@ -247,19 +315,25 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
               !options.resume
             ) {
               bookmark.cosmicSummary = summarised.summary ?? "";
+              patch.cosmicSummary = bookmark.cosmicSummary;
             }
             if (summarised.briefSummary !== undefined) {
               bookmark.cosmicBriefSummary = summarised.briefSummary;
+              patch.cosmicBriefSummary = summarised.briefSummary;
             }
             bookmark.cosmicKeyPoints = summarised.keyPoints;
+            patch.cosmicKeyPoints = summarised.keyPoints;
           }
         }
 
         const unusable = failures.find(failure => failure.unusableCode);
         if (unusable?.unusableCode) {
           await this.bookmarkService.update(id, { cosmicBriefSummary: "", cosmicSummary: "", cosmicKeyPoints: [], processingFailureCode: unusable.unusableCode });
-          await this.bookmarkService.updateProcessingStatus(id, "failed", "Unusable source");
-          await reporter.failRun("Unusable source");
+          try {
+            await reporter.failRun("Unusable source");
+          } finally {
+            await this.bookmarkService.updateProcessingStatus(id, "failed", "Unusable source");
+          }
           console.info("Processing failure classified", { bookmark_id: id, phase: "summarise", code: unusable.unusableCode });
           return;
         }
@@ -278,7 +352,10 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
                 phaseReporter
               )
           );
-          if (tags) bookmark.cosmicTags = tags;
+          if (tags) {
+            bookmark.cosmicTags = tags;
+            patch.cosmicTags = tags;
+          }
         }
 
         if (inScope("file")) {
@@ -317,31 +394,40 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
           scrapedContent,
           processable?.text
         );
+        patch.searchDocument = bookmark.searchDocument;
       }
 
       // One write for everything the run produced. Fields a failed phase never
       // filled in keep whatever the bookmark already had — a failure subtracts
       // nothing from the row.
       //
-      // Filing is not in it. `collectionId` and `filingSource` are destructured
-      // away rather than merely ignored downstream, so that the object handed
-      // to `update` cannot express a move at all. The `file` phase has already
-      // written its decision through the guarded path; this write must not be
-      // able to undo a manual refile as a side effect of saving a summary.
-      const { collectionId, filingSource, ...writableFields } = bookmark;
-      await this.bookmarkService.update(id, writableFields);
+      // Filing is not in it, and neither is anything the owner can edit
+      // (`isArchived`, `isFavorite`, `title`): the patch holds only columns a
+      // phase of this run wrote. The `file` phase has already written its
+      // decision through the guarded path.
+      if (Object.keys(patch).length > 0) {
+        await this.bookmarkService.update(id, patch);
+      }
 
       if (failures.length > 0) {
         const message = failures
           .map((failure) => `${failure.phase}: ${failure.error}`)
           .join("; ");
-        await this.bookmarkService.updateProcessingStatus(id, "failed", message);
-        await reporter.failRun(message);
+        try {
+          await reporter.failRun(message);
+        } finally {
+          await this.bookmarkService.updateProcessingStatus(id, "failed", message);
+        }
         return;
       }
 
-      await this.bookmarkService.updateProcessingStatus(id, "completed");
-      await reporter.completeRun();
+      // Close the run first: the timeline polls on the bookmark's status alone,
+      // so the bookmark must not read `completed` while its run is still open.
+      try {
+        await reporter.completeRun();
+      } finally {
+        await this.bookmarkService.updateProcessingStatus(id, "completed");
+      }
     } catch (error) {
       if (error instanceof ContentExtractionError) {
         const code = error.code === "pending" ? "provider" : error.code;
@@ -352,13 +438,24 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       // being unavailable. Everything else was already absorbed by `runPhase`.
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
-      await this.bookmarkService.updateProcessingStatus(
-        id,
-        "failed",
-        errorMessage
-      );
-      if (reporter.hasStarted()) {
-        await reporter.failRun(errorMessage);
+      // Close the run before the bookmark leaves `processing`. A failure to
+      // close it must neither skip the status change nor replace `error`, which
+      // is what the caller needs to see (and to read `shouldRetry` from).
+      try {
+        if (reporter.hasStarted()) {
+          await reporter.failRun(errorMessage);
+        }
+      } catch (closeError) {
+        console.error("Failed to close the processing run", {
+          bookmark_id: id,
+          error: closeError instanceof Error ? closeError.message : String(closeError),
+        });
+      } finally {
+        await this.bookmarkService.updateProcessingStatus(
+          id,
+          "failed",
+          errorMessage
+        );
       }
       // Explicitly classified transient extraction failures can recover on
       // pgmq redelivery. Unknown/terminal failures still require manual retry.
@@ -424,7 +521,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     bookmark: Bookmark,
     reporter: BookmarkProcessingReporter,
     inScope: (phase: BookmarkProcessingPhaseName) => boolean,
-    failures: PhaseFailure[]
+    failures: PhaseFailure[],
+    patch: ProducedFields
   ): Promise<Bookmark> {
     const context = bookmark.metadata?.privateLink;
     const userDescription =
@@ -495,6 +593,11 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
             },
           },
         };
+        patch.title = enriched.title;
+        patch.cosmicBriefSummary = enriched.cosmicBriefSummary;
+        patch.cosmicTags = enriched.cosmicTags;
+        patch.quickAccess = enriched.quickAccess;
+        patch.metadata = enriched.metadata;
       }
     }
 
@@ -812,93 +915,50 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     content: ScrapedUrlContents,
     phaseReporter: BookmarkProcessingPhaseReporter
   ): Promise<BookmarkImage[]> {
-    const images: BookmarkImage[] = [];
-
     if (!content.images || content.images.length === 0) {
-      return images;
+      return [];
     }
 
+    // The model only chooses which of the page's images belong to the article.
+    // Nothing is downloaded or stored: the client loads the image from its own
+    // URL, and the page text sent here is budgeted like every other model call.
+    const relevantImages = await phaseReporter.trackTurn(
+      "Select relevant images",
+      BOOKMARK_MODEL_IDS.small,
+      async () =>
+        this.ai.generateObjectWithUsage({
+          sessionID: session.sessionID,
+          modelId: BOOKMARK_MODEL_IDS.small,
+          prompt: FILTER_IMAGES_PROMPT.replace(
+            "{{CONTENT}}",
+            budgetText(content.content ?? "").text
+          ),
+          schema: z.object({
+            images: z
+              .array(
+                z.object({
+                  url: z.string().describe("The image URL"),
+                  title: z.string().describe("The image title"),
+                  description: z.string().describe("The image description"),
+                })
+              )
+              .describe("The array of image URLs"),
+          }),
+        })
+    );
+
+    // Relative and non-http(s) URLs cannot be loaded by a client.
+    return relevantImages.images
+      .filter((image) => this.isHttpUrl(image.url))
+      .map(({ url, title, description }) => ({ url, title, description }));
+  }
+
+  private isHttpUrl(value: string): boolean {
     try {
-      const relevantImages = await phaseReporter.trackTurn(
-        "Select relevant images",
-        BOOKMARK_MODEL_IDS.small,
-        async () =>
-          this.ai.generateObjectWithUsage({
-            sessionID: session.sessionID,
-            modelId: BOOKMARK_MODEL_IDS.small,
-            prompt: FILTER_IMAGES_PROMPT.replace(
-              "{{CONTENT}}",
-              content.content ?? ""
-            ),
-            schema: z.object({
-              images: z
-                .array(
-                  z.object({
-                    url: z.string().describe("The image URL"),
-                    title: z.string().describe("The image title"),
-                    description: z.string().describe("The image description"),
-                  })
-                )
-                .describe("The array of image URLs"),
-            }),
-          })
-      );
-
-      const imageProcessingPromises = relevantImages.images.map(
-        async (image, index) => {
-          try {
-            // Skip relative/invalid URLs — got retries these indefinitely and blocks the queue
-            let parsedUrl: URL;
-            try {
-              parsedUrl = new URL(image.url);
-            } catch {
-              return null;
-            }
-            if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
-              return null;
-            }
-
-            const response = await this.httpClient.fetch(image.url);
-            if (!response.ok) {
-              throw new Error(
-                `Failed to download image: ${response.statusText}`
-              );
-            }
-
-            const imageBuffer = await response.arrayBuffer();
-            const imageByteArray = Buffer.from(imageBuffer);
-            const mimeType =
-              response.headers.get("content-type") || "image/jpeg";
-            const imageSize = imageByteArray.length;
-
-            await this.contentChunkRepository.createImageChunk({
-              scrapedContentId: content.id,
-              imageData: imageByteArray,
-              mimeType: mimeType,
-              altText: image.title,
-              originalUrl: image.url,
-              index: index,
-              size: imageSize,
-              startPosition: 0,
-              endPosition: imageSize,
-            });
-
-            return {
-              url: image.url,
-              title: image.title,
-              description: image.description,
-            };
-          } catch (error) {
-            return null;
-          }
-        }
-      );
-
-      const processedImages = await Promise.all(imageProcessingPromises);
-      images.push(...processedImages.filter((img) => img !== null));
-    } catch (error) {
-      throw error;
+      const { protocol } = new URL(value);
+      return protocol === "http:" || protocol === "https:";
+    } catch {
+      return false;
     }
-    return images;
   }
 }

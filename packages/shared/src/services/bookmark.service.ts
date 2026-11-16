@@ -324,13 +324,18 @@ export class BookmarkServiceImpl implements BookmarkService {
     };
     const title = scraped.title || bookmark.title || bookmark.sourceUrl;
 
-    await this.bookmarkRepository.update(bookmark.id, {
+    await this.bookmarkRepository.update(bookmark.id, { metadata });
+    // The scraped title replaces only the placeholder this call started from.
+    // If the owner retitled while the fetch was in flight, the write is
+    // refused in SQL and their title stands.
+    const titleReplaced = await this.bookmarkRepository.replaceProvisionalTitle(
+      bookmark.id,
+      bookmark.title ?? null,
       title,
-      metadata,
-      quick_access: `${title} ${bookmark.sourceUrl}`,
-    });
+      `${title} ${bookmark.sourceUrl}`
+    );
 
-    bookmark.title = title;
+    if (titleReplaced) bookmark.title = title;
     bookmark.metadata = metadata;
 
     if (isIncompleteExtraction(scraped)) {

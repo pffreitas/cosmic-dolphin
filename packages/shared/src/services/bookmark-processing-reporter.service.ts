@@ -199,6 +199,19 @@ export class BookmarkProcessingReporter {
     const runEvent = events.find((event) => event.kind === "run");
     this.runEventId = runEvent?.id;
 
+    // A crash leaves the phase and turn it interrupted `running` for good.
+    // Close them now so the timeline can finish; the run event is reopened below.
+    const interruptedAt = this.now();
+    for (const event of events) {
+      if (event.kind === "run" || event.status !== "running") continue;
+      await this.repository.updateEvent(event.id, {
+        status: "failed",
+        endedAt: interruptedAt,
+        durationMs: this.durationSince(event.startedAt, interruptedAt),
+        error: "Interrupted before it finished",
+      });
+    }
+
     await this.repository.updateRun(run.id, { status: "running", error: null });
     if (runEvent) {
       await this.repository.updateEvent(runEvent.id, {
@@ -206,6 +219,60 @@ export class BookmarkProcessingReporter {
         error: null,
       });
     }
+  }
+
+  /**
+   * Close the bookmark's latest run as failed without reopening anything.
+   *
+   * For a delivery that ran out of attempts: whatever the worker was doing is
+   * over. A run still `running` is failed together with every event it left
+   * `running` (phase, turn and the run event); token totals stay as stored. A
+   * run already `completed` or `failed` is left exactly as it is, and a
+   * bookmark with no run needs nothing. Idempotent, so a redelivery after a
+   * partial failure can call it again.
+   */
+  async closeLatestRun(
+    bookmarkId: string,
+    userId: string,
+    error: unknown
+  ): Promise<void> {
+    const timeline = await this.repository.findLatestTimeline(
+      bookmarkId,
+      userId
+    );
+    if (!timeline || timeline.run.status !== "running") return;
+
+    const { run, events } = timeline;
+    const message = this.getErrorMessage(error);
+    const endedAt = this.now();
+
+    for (const event of events) {
+      if (event.kind === "run" || event.status !== "running") continue;
+      await this.repository.updateEvent(event.id, {
+        status: "failed",
+        endedAt,
+        durationMs: this.durationSince(event.startedAt, endedAt),
+        error: "Interrupted before it finished",
+      });
+    }
+    for (const event of events) {
+      if (event.kind !== "run" || event.status !== "running") continue;
+      await this.repository.updateEvent(event.id, {
+        status: "failed",
+        endedAt,
+        durationMs: this.durationSince(event.startedAt, endedAt),
+        error: message,
+      });
+    }
+
+    // The run is written last: it is what a retry checks, so a crash before
+    // this write leaves the run `running` and the remaining events get closed.
+    await this.repository.updateRun(run.id, {
+      status: "failed",
+      endedAt,
+      durationMs: this.durationSince(run.startedAt, endedAt),
+      error: message,
+    });
   }
 
   hasStarted(): boolean {

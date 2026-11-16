@@ -24,21 +24,8 @@ export interface CreateTextChunkData {
   endPosition: number;
 }
 
-export interface CreateImageChunkData {
-  scrapedContentId: string;
-  imageData: Buffer;
-  mimeType: string;
-  altText?: string;
-  originalUrl?: string;
-  index: number;
-  size: number;
-  startPosition: number;
-  endPosition: number;
-}
-
 export interface ContentChunkRepository {
   createTextChunk(data: CreateTextChunkData): Promise<TypeScriptTextChunk>;
-  createImageChunk(data: CreateImageChunkData): Promise<TypeScriptImageChunk>;
   updateTextChunkEmbedding(
     chunkId: string,
     embedding: number[]
@@ -107,56 +94,6 @@ export class ContentChunkRepositoryImpl
         };
       });
     }, "createTextChunk");
-  }
-
-  async createImageChunk(
-    data: CreateImageChunkData
-  ): Promise<TypeScriptImageChunk> {
-    return this.executeQuery(async () => {
-      return await this.db.transaction().execute(async (trx) => {
-        // Insert base chunk
-        const baseChunk = await trx
-          .insertInto("content_chunks")
-          .values({
-            scraped_content_id: data.scrapedContentId,
-            chunk_type: "image",
-            index: data.index,
-            size: data.size,
-            start_position: data.startPosition,
-            end_position: data.endPosition,
-          })
-          .returningAll()
-          .executeTakeFirstOrThrow();
-
-        // Insert image-specific data
-        await trx
-          .insertInto("image_chunks")
-          .values({
-            chunk_id: baseChunk.id,
-            image_data: data.imageData,
-            mime_type: data.mimeType,
-            alt_text: data.altText || null,
-            original_url: data.originalUrl || null,
-          })
-          .execute();
-
-        return {
-          id: baseChunk.id,
-          createdAt: baseChunk.created_at,
-          updatedAt: baseChunk.updated_at,
-          scrapedContentId: data.scrapedContentId,
-          chunkType: "image" as const,
-          index: data.index,
-          size: data.size,
-          startPosition: data.startPosition,
-          endPosition: data.endPosition,
-          imageData: data.imageData,
-          mimeType: data.mimeType,
-          altText: data.altText,
-          originalUrl: data.originalUrl,
-        };
-      });
-    }, "createImageChunk");
   }
 
   async updateTextChunkEmbedding(

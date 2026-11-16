@@ -9,7 +9,6 @@ import { AI } from "../../ai";
 import { ContentChunkRepository } from "../../repositories/content-chunk.repository";
 import { CollectionRepositoryImpl } from "../../repositories/collection.repository";
 import { BookmarkProcessingRepositoryImpl } from "../../repositories/bookmark-processing.repository";
-import { HttpClient } from "../../services/http-client";
 import { ChunkingService } from "../../services/chunking.service";
 import { EmbeddingService } from "../../services/embedding.service";
 
@@ -21,7 +20,6 @@ describe("Bookmark Content Refactor Integration", () => {
   let mockWebScrapingService: jest.Mocked<WebScrapingService>;
   let mockContentChunkRepository: jest.Mocked<ContentChunkRepository>;
   let mockAI: jest.Mocked<AI>;
-  let mockHttpClient: jest.Mocked<HttpClient>;
   let mockChunkingService: jest.Mocked<ChunkingService>;
   let mockEmbeddingService: jest.Mocked<EmbeddingService>;
   let testUserId: string;
@@ -29,17 +27,6 @@ describe("Bookmark Content Refactor Integration", () => {
   beforeEach(() => {
     const db = getTestDatabase();
 
-    mockHttpClient = {
-      fetch: jest.fn(),
-    };
-    (mockHttpClient.fetch as any).mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      headers: { get: (_name: string) => "image/jpeg" },
-      body: "",
-      arrayBuffer: () => Promise.resolve(new ArrayBuffer(100)),
-    });
     repository = new BookmarkRepositoryImpl(db);
     collectionRepository = new CollectionRepositoryImpl(db);
 
@@ -52,7 +39,6 @@ describe("Bookmark Content Refactor Integration", () => {
 
     mockContentChunkRepository = {
       createTextChunk: jest.fn(),
-      createImageChunk: jest.fn(),
       updateTextChunkEmbedding: jest.fn(),
       findByScrapedContentId: jest.fn(),
       findTextChunksByScrapedContentId: jest.fn(),
@@ -139,11 +125,116 @@ describe("Bookmark Content Refactor Integration", () => {
       collectionRepository,
       mockAI,
       new BookmarkProcessingRepositoryImpl(db),
-      mockHttpClient,
       mockChunkingService,
       mockEmbeddingService
     );
     testUserId = TestDataFactory.generateUserId();
+  });
+
+  describe("first fetch and the title", () => {
+    const scraped = {
+      title: "Scraped title",
+      content: "Body text of the page.",
+      metadata: { wordCount: 4 },
+    };
+
+    it("keeps the title the owner set while the first fetch was in flight", async () => {
+      const row = await repository.create(TestDataFactory.createBookmark({
+        user_id: testUserId, source_url: "https://example.com/slow", title: "example.com",
+      }));
+      const bookmark = (await service.findByIdAndUser(row.id, testUserId))!;
+      let release!: () => void;
+      const held = new Promise<void>((resolve) => { release = resolve; });
+      mockWebScrapingService.scrape.mockImplementationOnce(async () => {
+        await held;
+        return scraped;
+      });
+
+      const fetching = service.ensureScrapedContent(bookmark);
+      await repository.update(row.id, { title: "My own title", quick_access: "My own title" });
+      release();
+      await fetching;
+
+      const after = (await service.findByIdAndUser(row.id, testUserId))!;
+      expect(after.title).toBe("My own title");
+      expect(after.quickAccess).toBe("My own title");
+      expect(after.metadata?.wordCount).toBe(4);
+      expect(bookmark.title).toBe("example.com");
+    });
+
+    it("keeps the owner's title in memory unchanged when the guarded write is refused", async () => {
+      const row = await repository.create(TestDataFactory.createBookmark({
+        user_id: testUserId, source_url: "https://example.com/slow2", title: "example.com",
+      }));
+      const bookmark = (await service.findByIdAndUser(row.id, testUserId))!;
+      await repository.update(row.id, { title: "Retitled before the write" });
+      mockWebScrapingService.scrape.mockResolvedValueOnce(scraped);
+
+      await service.ensureScrapedContent(bookmark);
+
+      expect(bookmark.title).toBe("example.com");
+      expect((await service.findByIdAndUser(row.id, testUserId))!.title).toBe("Retitled before the write");
+    });
+
+    it("still replaces the provisional title when nobody retitled", async () => {
+      const row = await repository.create(TestDataFactory.createBookmark({
+        user_id: testUserId, source_url: "https://example.com/quiet", title: "example.com",
+      }));
+      const bookmark = (await service.findByIdAndUser(row.id, testUserId))!;
+      mockWebScrapingService.scrape.mockResolvedValueOnce(scraped);
+
+      await service.ensureScrapedContent(bookmark);
+
+      const after = (await service.findByIdAndUser(row.id, testUserId))!;
+      expect(after.title).toBe("Scraped title");
+      expect(after.quickAccess).toBe("Scraped title https://example.com/quiet");
+      expect(bookmark.title).toBe("Scraped title");
+    });
+  });
+
+  describe("failExhausted", () => {
+    const seed = async (runStatus: "running" | "completed") => {
+      const db = getTestDatabase();
+      const row = await repository.create(TestDataFactory.createBookmark({
+        user_id: testUserId, source_url: `https://example.com/exhausted-${runStatus}`, processing_status: "processing",
+      }));
+      const processing = new BookmarkProcessingRepositoryImpl(db);
+      const run = await processing.createRun({
+        bookmarkId: row.id, userId: testUserId, status: runStatus, startedAt: new Date(Date.now() - 5000),
+      });
+      await processing.updateRun(run.id, { inputTokens: 11, totalTokens: 15 });
+      const status = runStatus;
+      await processing.createEvent({ runId: run.id, kind: "run", name: "Processing run", status, sequence: 1, startedAt: new Date(Date.now() - 5000) });
+      const phase = await processing.createEvent({ runId: run.id, kind: "phase", phase: "summarise", name: "Summarise", status, sequence: 2, startedAt: new Date(Date.now() - 4000) });
+      await processing.createEvent({ runId: run.id, parentEventId: phase.id, kind: "turn", phase: "summarise", name: "Turn", status, sequence: 3, startedAt: new Date(Date.now() - 3000) });
+      return { row, processing };
+    };
+
+    it("fails a stranded run in place and then the bookmark", async () => {
+      const { row, processing } = await seed("running");
+
+      await expect(processorService.failExhausted(row.id, testUserId, "Stopped")).resolves.toBe(true);
+
+      const timeline = (await processing.findLatestTimeline(row.id, testUserId))!;
+      expect(timeline.run).toMatchObject({ status: "failed", error: "Stopped", inputTokens: 11, totalTokens: 15 });
+      expect(timeline.run.endedAt).toBeInstanceOf(Date);
+      expect(timeline.events.map((event) => event.status)).toEqual(["failed", "failed", "failed"]);
+      expect(timeline.events.map((event) => event.error)).toEqual([
+        "Stopped", "Interrupted before it finished", "Interrupted before it finished",
+      ]);
+      expect(timeline.events.every((event) => event.endedAt instanceof Date)).toBe(true);
+      expect((await service.findByIdAndUser(row.id, testUserId))!.processingStatus).toBe("failed");
+    });
+
+    it("leaves a completed run alone and still fails the processing bookmark", async () => {
+      const { row, processing } = await seed("completed");
+      const before = (await processing.findLatestTimeline(row.id, testUserId))!;
+
+      await processorService.failExhausted(row.id, testUserId, "Stopped");
+
+      expect(await processing.findLatestTimeline(row.id, testUserId)).toEqual(before);
+      expect((await service.findByIdAndUser(row.id, testUserId))!.processingStatus).toBe("failed");
+    });
   });
 
   describe("content separation and retrieval", () => {
@@ -396,6 +487,55 @@ describe("Bookmark Content Refactor Integration", () => {
           content: "Fetched content",
         })
       );
+    });
+
+    it("run keeps owner edits made while processing", async () => {
+      const bookmark = await repository.create(
+        TestDataFactory.createBookmark({
+          user_id: testUserId,
+          source_url: "https://example.com/edited-while-processing",
+          title: "Original title",
+          is_archived: false,
+          is_favorite: false,
+        })
+      );
+      const scraped = TestDataFactory.createScrapedUrlContent({
+        bookmark_id: bookmark.id,
+        content: "Content that takes a while to summarise.",
+      });
+      await repository.insertScrapedUrlContents(bookmark.id, {
+        title: scraped.title,
+        content: scraped.content,
+        metadata: scraped.metadata,
+        images: scraped.images,
+        links: scraped.links,
+      });
+      mockAI.newSession.mockResolvedValue({ sessionID: "s", refID: bookmark.id });
+
+      // The owner acts during the model call, after the run read the row and
+      // before it writes its result.
+      const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+      let edited = false;
+      mockAI.generateObjectWithUsage.mockImplementation(async (input: any) => {
+        if (!edited) {
+          edited = true;
+          await service.update(bookmark.id, {
+            isArchived: true,
+            isFavorite: true,
+            title: "Owner retitled",
+          });
+        }
+        return original(input);
+      });
+
+      await processorService.process(bookmark.id, testUserId);
+
+      const after = await service.findByIdAndUser(bookmark.id, testUserId);
+      expect(edited).toBe(true);
+      expect(after!.isArchived).toBe(true);
+      expect(after!.isFavorite).toBe(true);
+      expect(after!.title).toBe("Owner retitled");
+      expect(after!.cosmicBriefSummary).toBe("Generated brief summary");
     });
 
     it("should support updating bookmark metadata without affecting scraped content", async () => {

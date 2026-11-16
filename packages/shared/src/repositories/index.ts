@@ -29,10 +29,7 @@ export {
   BookmarkProcessingRepository,
   BookmarkProcessingRepositoryImpl,
 } from "./bookmark-processing.repository";
-export type {
-  CreateTextChunkData,
-  CreateImageChunkData,
-} from "./content-chunk.repository";
+export type { CreateTextChunkData } from "./content-chunk.repository";
 export {
   ProfileRepository,
   ProfileRepositoryImpl,
