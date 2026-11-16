@@ -233,10 +233,6 @@ type BookmarkTimelineServices = Pick<
   "bookmark" | "bookmarkProcessing"
 >;
 
-const WORKER_START_DEADLINE_MS = 2 * 60 * 1000;
-const WORKER_START_FAILURE_MESSAGE =
-  "Processing could not start because the background worker is unavailable. Please try again.";
-
 /**
  * What a save says when today's processing budget was spent. The save still
  * stands: the row lands `idle`, which is a legitimate resting state and not a
@@ -270,32 +266,12 @@ export async function buildBookmarkProcessingTimelineResponse(
     bookmarkId,
     userId
   );
-  let bookmark = {
+  // Read-only. A `processing` bookmark with no run yet is waiting in the
+  // queue; the worker's own deadline settles one that never finishes.
+  const bookmark = {
     ...result.bookmark,
     isLikedByCurrentUser: result.isLikedByCurrentUser,
   };
-
-  // The worker normally creates a run as its first durable action. If that
-  // never happens, polling is the only API traffic guaranteed to revisit the
-  // bookmark, so reconcile the optimistic `processing` state here instead of
-  // leaving the UI spinning forever.
-  if (
-    !timeline &&
-    bookmark.processingStatus === "processing" &&
-    bookmark.processingStartedAt &&
-    Date.now() - bookmark.processingStartedAt.getTime() >=
-      WORKER_START_DEADLINE_MS
-  ) {
-    const failedBookmark = await services.bookmark.updateProcessingStatus(
-      bookmarkId,
-      "failed",
-      WORKER_START_FAILURE_MESSAGE
-    );
-    bookmark = {
-      ...failedBookmark,
-      isLikedByCurrentUser: result.isLikedByCurrentUser,
-    };
-  }
 
   return {
     body: {
@@ -853,43 +829,26 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
           return reply.status(400).send({ error: `Unknown phase: ${phase}` });
         }
 
-        const bookmark = await services.bookmark.findByIdAndUser(id, user_id);
-        if (!bookmark) {
-          return reply.status(404).send({ error: "Bookmark not found" });
-        }
-
         // Deliberately not budget-checked. The budget stops the pipeline
         // spending on its own; a person asking for one bookmark to be
         // processed is the escape hatch it exists to leave open. The
         // reprocess rate limit is what keeps a stuck client from abusing it.
-        const processing = await services.bookmark.updateProcessingStatus(
-          bookmark.id,
-          "processing"
-        );
-
-        try {
-          await services.queue.sendBookmarkProcessingMessage(
-            bookmark.id,
-            user_id,
-            { phase, resume: true }
-          );
-        } catch (queueError) {
-          fastify.log.error({ queueError }, "Reprocess queue post error");
-          await services.bookmark.updateProcessingStatus(
-            bookmark.id,
-            "failed",
-            "Failed to enqueue bookmark processing"
-          );
-          return reply
-            .status(500)
-            .send({ error: "Could not start reprocessing" });
+        // One guarded transaction: a bookmark already `processing` is left
+        // alone and nothing is queued, so a second tap cannot start a second run.
+        const outcome = await services.bookmark.startReprocess(id, user_id, {
+          phase,
+        });
+        if (!outcome) {
+          return reply.status(404).send({ error: "Bookmark not found" });
         }
 
         return reply.status(202).send({
-          bookmark: processing,
-          message: phase
-            ? `Retrying ${phase}`
-            : "Reprocessing this bookmark",
+          bookmark: outcome.bookmark,
+          message: !outcome.queued
+            ? "Already processing"
+            : phase
+              ? `Retrying ${phase}`
+              : "Reprocessing this bookmark",
         });
       } catch (error) {
         fastify.log.error({ error }, "Reprocess bookmark error");
@@ -965,13 +924,8 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
       const parsed = z.object({ text: z.string().min(200).max(100000) }).strict().safeParse(request.body);
       if (!parsed.success) return reply.status(400).send({ error: "Paste between 200 and 100,000 characters" });
       try {
-        const bookmark = await services.bookmark.putContentByOwner(request.params.id, request.userId!, parsed.data.text);
-        try {
-          await services.queue.sendBookmarkProcessingMessage(bookmark.id, request.userId!, { resume: true });
-        } catch {
-          await services.bookmark.updateProcessingStatus(bookmark.id, "failed", "Failed to enqueue bookmark processing");
-          return reply.status(500).send({ error: "Could not start reprocessing" });
-        }
+        const { bookmark, queued } = await services.bookmark.putContentByOwner(request.params.id, request.userId!, parsed.data.text);
+        if (!queued) return reply.status(409).send({ error: "Still processing. Try again when it finishes." });
         return reply.send({ bookmark, message: "Reprocessing this bookmark" });
       } catch (error) {
         if (error instanceof Error && error.message === "Bookmark not found") return reply.status(404).send({ error: "Bookmark not found" });

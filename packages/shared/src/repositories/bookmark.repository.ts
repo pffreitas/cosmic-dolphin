@@ -7,7 +7,7 @@ import {
   BookmarkUpdate,
   NewScrapedUrlContent,
 } from "../database/schema";
-import { ScrapedUrlContents } from "../types";
+import { BookmarkProcessingPhase, ScrapedUrlContents } from "../types";
 import { PgmqRepositoryImpl } from "./pgmq.repository";
 import { QueueService, QueueServiceImpl } from "../services/queue.service";
 import { startOfUtcDay } from "../services/processing-budget.service";
@@ -21,6 +21,18 @@ export interface CreateBudget {
 export interface CreateAndQueueResult {
   bookmark: Bookmark;
   /** False when the daily budget was spent: the row stands `idle`, nothing is queued. */
+  queued: boolean;
+}
+
+export interface StartReprocessResult {
+  bookmark: Bookmark;
+  /** False when the bookmark was already `processing`: nothing changed, nothing queued. */
+  queued: boolean;
+}
+
+export interface StorePastedContentResult {
+  bookmark: Bookmark;
+  /** False when the bookmark was already `processing`: nothing was stored or queued. */
   queued: boolean;
 }
 
@@ -137,7 +149,21 @@ export interface BookmarkRepository {
   ): Promise<void>;
   getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
   getOwnedScrapedUrlContent(bookmarkId: string, userId: string): Promise<ScrapedUrlContents | null>;
-  storePastedContent(bookmarkId: string, userId: string, content: string): Promise<Bookmark>;
+  /**
+   * Move the bookmark to `processing` and queue one message, in one
+   * transaction, only if it was not already `processing`. `null` when the
+   * bookmark does not exist for this user.
+   */
+  startReprocess(
+    id: string,
+    userId: string,
+    options?: { phase?: BookmarkProcessingPhase }
+  ): Promise<StartReprocessResult | null>;
+  /**
+   * Store pasted article text, start processing and queue one message in one
+   * transaction. A bookmark that is already `processing` stores nothing.
+   */
+  storePastedContent(bookmarkId: string, userId: string, content: string): Promise<StorePastedContentResult>;
   updateScrapedUrlContents(
     id: string,
     contents: Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">
@@ -470,16 +496,64 @@ export class BookmarkRepositoryImpl
     }, "getScrapedUrlContent");
   }
 
-  async storePastedContent(bookmarkId: string, userId: string, content: string): Promise<Bookmark> {
+  async startReprocess(
+    id: string,
+    userId: string,
+    options: { phase?: BookmarkProcessingPhase } = {}
+  ): Promise<StartReprocessResult | null> {
+    return this.executeQuery(
+      () =>
+        this.db.transaction().execute(async (transaction) => {
+          // The guard is in the UPDATE, so two concurrent calls cannot both win.
+          const started = await transaction
+            .updateTable("bookmarks")
+            .set({
+              processing_status: "processing",
+              processing_failure_code: null,
+              processing_started_at: new Date(),
+              processing_completed_at: null,
+              processing_error: null,
+              updated_at: new Date(),
+            })
+            .where("id", "=", id)
+            .where("user_id", "=", userId)
+            .where("processing_status", "<>", "processing")
+            .returningAll()
+            .executeTakeFirst();
+
+          if (!started) {
+            const current = await transaction
+              .selectFrom("bookmarks")
+              .selectAll()
+              .where("id", "=", id)
+              .where("user_id", "=", userId)
+              .executeTakeFirst();
+            return current ? { bookmark: current, queued: false } : null;
+          }
+
+          await this.queueFor(transaction).sendBookmarkProcessingMessage(id, userId, {
+            phase: options.phase,
+            resume: true,
+          });
+          return { bookmark: started, queued: true };
+        }),
+      "startReprocess"
+    );
+  }
+
+  async storePastedContent(bookmarkId: string, userId: string, content: string): Promise<StorePastedContentResult> {
     return this.db.transaction().execute(async transaction => {
       const bookmark = await transaction.selectFrom("bookmarks").selectAll().where("id", "=", bookmarkId).where("user_id", "=", userId).forUpdate().executeTakeFirst();
       if (!bookmark) throw new Error("Bookmark not found");
       if (bookmark.is_private_link) throw new Error("Private links cannot accept article text");
+      if (bookmark.processing_status === "processing") return { bookmark, queued: false };
       const existing = await transaction.selectFrom("scraped_url_contents").select("id").where("bookmark_id", "=", bookmarkId).executeTakeFirst();
       const data = { title: bookmark.title || bookmark.source_url, content, metadata: { extraction: { status: "complete", provider: "user_paste" } }, images: null, links: null, updated_at: new Date() };
       if (existing) await transaction.updateTable("scraped_url_contents").set(data).where("id", "=", existing.id).execute();
       else await transaction.insertInto("scraped_url_contents").values({ ...data, bookmark_id: bookmarkId }).execute();
-      return transaction.updateTable("bookmarks").set({ processing_failure_code: null, processing_status: "processing", processing_error: null, processing_started_at: new Date(), processing_completed_at: null, updated_at: new Date() }).where("id", "=", bookmarkId).returningAll().executeTakeFirstOrThrow();
+      const updated = await transaction.updateTable("bookmarks").set({ processing_failure_code: null, processing_status: "processing", processing_error: null, processing_started_at: new Date(), processing_completed_at: null, updated_at: new Date() }).where("id", "=", bookmarkId).returningAll().executeTakeFirstOrThrow();
+      await this.queueFor(transaction).sendBookmarkProcessingMessage(bookmarkId, userId, { resume: true });
+      return { bookmark: updated, queued: true };
     });
   }
 

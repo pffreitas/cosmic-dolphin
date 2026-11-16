@@ -7,6 +7,7 @@ import {
   ShareBookmarkResponse,
   ProcessingStatus,
   CollectionPathItem,
+  BookmarkProcessingPhase,
 } from "../types";
 import { nanoid } from "nanoid";
 import {
@@ -66,6 +67,12 @@ export interface CreateAndQueueOutcome {
   queued: boolean;
 }
 
+export interface ReprocessOutcome {
+  bookmark: Bookmark;
+  /** False when the bookmark was already `processing`: nothing changed, nothing queued. */
+  queued: boolean;
+}
+
 export type OwnerBookmarkUpdate = Pick<Partial<Bookmark>, "title" | "isArchived" | "cosmicTags" | "cosmicSummary" | "userNote" | "laterUntil">;
 
 export interface BookmarkService {
@@ -89,7 +96,20 @@ export interface BookmarkService {
   ): Promise<{ bookmark: Bookmark; isLikedByCurrentUser: boolean } | null>;
   getScrapedUrlContent(bookmarkId: string): Promise<ScrapedUrlContents | null>;
   getContentByOwner(bookmarkId: string, userId: string): Promise<BookmarkContent | null>;
-  putContentByOwner(bookmarkId: string, userId: string, text: string): Promise<Bookmark>;
+  /**
+   * Store pasted text and start processing in one transaction. `queued: false`
+   * means the bookmark was already `processing` and nothing was stored.
+   */
+  putContentByOwner(bookmarkId: string, userId: string, text: string): Promise<ReprocessOutcome>;
+  /**
+   * Move to `processing` and queue one message atomically, unless already
+   * processing. `null` when the bookmark is not the user's.
+   */
+  startReprocess(
+    id: string,
+    userId: string,
+    options?: { phase?: BookmarkProcessingPhase }
+  ): Promise<ReprocessOutcome | null>;
   create(
     url: string,
     userId: string,
@@ -184,10 +204,24 @@ export class BookmarkServiceImpl implements BookmarkService {
     private collectionRepository?: CollectionRepository
   ) {}
 
-  async putContentByOwner(bookmarkId: string, userId: string, text: string): Promise<Bookmark> {
+  async startReprocess(
+    id: string,
+    userId: string,
+    options: { phase?: BookmarkProcessingPhase } = {}
+  ): Promise<ReprocessOutcome | null> {
+    const result = await this.bookmarkRepository.startReprocess(id, userId, options);
+    if (!result) return null;
+    return {
+      bookmark: await this.enrichWithCollectionPath(this.mapDatabaseToBookmark(result.bookmark)),
+      queued: result.queued,
+    };
+  }
+
+  async putContentByOwner(bookmarkId: string, userId: string, text: string): Promise<ReprocessOutcome> {
     const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     const content = escaped.split(/\r?\n\s*\r?\n/).map(paragraph => `<p>${paragraph}</p>`).join("\n");
-    return this.mapDatabaseToBookmark(await this.bookmarkRepository.storePastedContent(bookmarkId, userId, content));
+    const result = await this.bookmarkRepository.storePastedContent(bookmarkId, userId, content);
+    return { bookmark: this.mapDatabaseToBookmark(result.bookmark), queued: result.queued };
   }
 
   async getContentByOwner(bookmarkId: string, userId: string): Promise<BookmarkContent | null> {

@@ -239,13 +239,13 @@ describe("GET /bookmarks/:id/processing-timeline", () => {
     expect(response.body.pollAfterMs).toBe(2000);
   });
 
-  it("fails processing when no worker run starts within two minutes", async () => {
-    const staleBookmark = {
+  it("timeline of a long-waiting processing bookmark is unchanged and read-only", async () => {
+    const waiting = {
       ...bookmark,
-      processingStartedAt: new Date(Date.now() - 2 * 60 * 1000 - 1),
+      processingStartedAt: new Date(Date.now() - 60 * 60 * 1000),
     };
     const services = createServices({
-      bookmarkResult: { bookmark: staleBookmark, isLikedByCurrentUser: true },
+      bookmarkResult: { bookmark: waiting, isLikedByCurrentUser: true },
     });
 
     const response = await buildBookmarkProcessingTimelineResponse(
@@ -255,16 +255,13 @@ describe("GET /bookmarks/:id/processing-timeline", () => {
     );
     if (response.statusCode) throw new Error("Expected timeline response");
 
-    expect(services.bookmark.updateProcessingStatus).toHaveBeenCalledWith(
-      "bookmark-1",
-      "failed",
-      "Processing could not start because the background worker is unavailable. Please try again."
-    );
-    expect(response.body.bookmark.processingStatus).toBe("failed");
-    expect(response.body.pollAfterMs).toBe(0);
+    expect(services.bookmark.updateProcessingStatus).not.toHaveBeenCalled();
+    expect(response.body.bookmark).toEqual({ ...waiting, isLikedByCurrentUser: true });
+    expect(response.body.bookmark.processingStatus).toBe("processing");
+    expect(response.body.pollAfterMs).toBe(2000);
   });
 
-  it("keeps polling before the worker-start deadline", async () => {
+  it("keeps polling a recently started processing bookmark", async () => {
     const recentBookmark = {
       ...bookmark,
       processingStartedAt: new Date(Date.now() - 60 * 1000),

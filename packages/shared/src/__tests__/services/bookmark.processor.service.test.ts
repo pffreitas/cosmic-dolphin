@@ -55,6 +55,7 @@ describe("BookmarkProcessorService", () => {
       getScrapedUrlContent: jest.fn(),
       getContentByOwner: jest.fn(),
       putContentByOwner: jest.fn(),
+      startReprocess: jest.fn(),
       ensureScrapedContent: jest.fn(),
       countLibrary: jest.fn(),
       update: jest.fn(),
@@ -225,7 +226,6 @@ describe("BookmarkProcessorService", () => {
         updatedAt: new Date(),
       })),
       findLatestTimeline: jest.fn(async () => null),
-      countRunsSince: jest.fn(async () => 0),
     } as any;
 
     mockContentChunkRepository = {

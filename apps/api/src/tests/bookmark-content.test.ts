@@ -1,6 +1,7 @@
 /** Isolated fictional owner authentication; real stored content and HTTP routes. */
 import { afterAll, beforeAll, beforeEach, expect, it } from "bun:test";
 import Fastify, { type FastifyInstance } from "fastify";
+import { sql } from "kysely";
 import { BookmarkRepositoryImpl, BookmarkServiceImpl, WebScrapingServiceImpl, BookmarkProcessorServiceImpl, ContentChunkRepositoryImpl, CollectionRepositoryImpl, BookmarkProcessingRepositoryImpl, type AI, type ServiceContainer } from "@cosmic-dolphin/shared";
 import { DatabaseTestUtils, getTestDatabase, closeTestDatabase } from "@cosmic-dolphin/shared/dist/test-utils/database";
 import { registerBookmarkRoutes } from "../routes/bookmarks";
@@ -12,16 +13,21 @@ const bookmark = new BookmarkServiceImpl(repository, new WebScrapingServiceImpl(
 let app: FastifyInstance;
 let address: string;
 let owner: string;
-const jobs: { id: string; user: string; options: any }[] = [];
+
 beforeAll(async () => {
   await utils.waitForConnection();
   app = Fastify();
-  await registerBookmarkRoutes(app, { bookmark, queue: { sendBookmarkProcessingMessage: async (id: string, user: string, options: any) => { jobs.push({ id, user, options }); } }, feed: { recordOpen: async () => {} } } as unknown as ServiceContainer,
+  await registerBookmarkRoutes(app, { bookmark, feed: { recordOpen: async () => {} } } as unknown as ServiceContainer,
     async request => { request.userId = request.headers["x-fixture-owner"] as string; });
   address = await app.listen({ port: 0, host: "127.0.0.1" });
 });
-beforeEach(async () => { await utils.truncateAll(); owner = crypto.randomUUID(); jobs.length = 0; });
-afterAll(async () => { await app?.close(); await closeTestDatabase(); });
+async function drainJobs() {
+  const rows = await sql<{ message: { data: { bookmarkId: string; userId: string; resume?: boolean } } }>`SELECT message FROM pgmq.q_bookmarks ORDER BY msg_id`.execute(db);
+  await sql`DELETE FROM pgmq.q_bookmarks`.execute(db);
+  return rows.rows.map(row => ({ id: row.message.data.bookmarkId, user: row.message.data.userId, options: { ...(row.message.data.resume ? { resume: true } : {}) } }));
+}
+beforeEach(async () => { await utils.truncateAll(); await sql`DELETE FROM pgmq.q_bookmarks`.execute(db); owner = crypto.randomUUID(); });
+afterAll(async () => { await sql`DELETE FROM pgmq.q_bookmarks`.execute(db); await app?.close(); await closeTestDatabase(); });
 async function request(path: string, method = "GET", user = owner, body?: unknown) {
   const response = await fetch(address + path, { method, headers: { "x-fixture-owner": user, ...(body ? { "content-type": "application/json" } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
   return { status: response.status, body: await response.json() as any };
@@ -137,6 +143,7 @@ it("T9 recovers a paywall with 200 pasted characters through the full stored-con
   const paste = await request(`/bookmarks/${saved.id}/content`, "PUT", owner, { text });
   expect(paste.status).toBe(200);
   expect(paste.body.bookmark).toMatchObject({ id: saved.id, processingStatus: "processing", processingFailureCode: null });
+  const jobs = await drainJobs();
   expect(jobs).toEqual([{ id: saved.id, user: owner, options: { resume: true } }]);
   const { processor, turns, sources } = pipeline(true);
   // Isolated deterministic pgmq registration/drain; actual service and repository consume the stored extraction.
@@ -182,10 +189,12 @@ it("T9 clears a previous failure at actual run start before new model work", asy
 it("T9 enforces paste length and ownership, escapes markup, and refuses private article content", async () => {
   const saved = await stored();
   for (const length of [199, 200, 100000, 100001]) {
+    await db.updateTable("bookmarks").set({ processing_status: "failed" }).where("id", "=", saved.id).execute();
     const result = await request(`/bookmarks/${saved.id}/content`, "PUT", owner, { text: "x".repeat(length) });
     expect(result.status).toBe(length === 200 || length === 100000 ? 200 : 400);
   }
   const injection = '<script>alert("key")</script> & <h1>Keep this inert</h1>\n\n' + "article ".repeat(25);
+  await db.updateTable("bookmarks").set({ processing_status: "failed" }).where("id", "=", saved.id).execute();
   expect((await request(`/bookmarks/${saved.id}/content`, "PUT", owner, { text: injection })).status).toBe(200);
   const persisted = (await repository.getScrapedUrlContent(saved.id))!;
   expect(persisted.content).toContain("&lt;script&gt;alert(&quot;key&quot;)&lt;/script&gt; &amp;");

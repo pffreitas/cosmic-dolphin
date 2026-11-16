@@ -670,7 +670,7 @@ export class BookmarksApi extends runtime.BaseAPI {
     }
 
     /**
-     * Store owner-supplied article text and enqueue a full reprocess. Private links cannot accept article text.
+     * Store owner-supplied article text and enqueue a full reprocess, in one transaction. Answers 409 and stores nothing when the bookmark is private (`Private links cannot accept article text`) or is still processing (`Still processing. Try again when it finishes.`).
      */
     async bookmarksPutContentRaw(requestParameters: BookmarksPutContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ReprocessBookmarkResponse>> {
         if (requestParameters['id'] == null) {
@@ -713,7 +713,7 @@ export class BookmarksApi extends runtime.BaseAPI {
     }
 
     /**
-     * Store owner-supplied article text and enqueue a full reprocess. Private links cannot accept article text.
+     * Store owner-supplied article text and enqueue a full reprocess, in one transaction. Answers 409 and stores nothing when the bookmark is private (`Private links cannot accept article text`) or is still processing (`Still processing. Try again when it finishes.`).
      */
     async bookmarksPutContent(requestParameters: BookmarksPutContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ReprocessBookmarkResponse> {
         const response = await this.bookmarksPutContentRaw(requestParameters, initOverrides);
@@ -813,7 +813,7 @@ export class BookmarksApi extends runtime.BaseAPI {
     }
 
     /**
-     * Start a fresh processing run for a bookmark, optionally scoped to one phase. Appends to the existing timeline rather than replacing it, so the run the user already watched stays on screen. Also the **Summarise now** action on a bookmark left `idle` by the daily processing budget: an explicit request is never refused for budget.
+     * Start a fresh processing run for a bookmark, optionally scoped to one phase. Appends to the existing timeline rather than replacing it, so the run the user already watched stays on screen. Also the **Summarise now** action on a bookmark left `idle` by the daily processing budget: an explicit request is never refused for budget. A bookmark that is already `processing` is left alone: the answer is 202 with the current bookmark and the message `Already processing`, and nothing is queued.
      */
     async bookmarksReprocessRaw(requestParameters: BookmarksReprocessRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ReprocessBookmarkResponse>> {
         if (requestParameters['id'] == null) {
@@ -856,7 +856,7 @@ export class BookmarksApi extends runtime.BaseAPI {
     }
 
     /**
-     * Start a fresh processing run for a bookmark, optionally scoped to one phase. Appends to the existing timeline rather than replacing it, so the run the user already watched stays on screen. Also the **Summarise now** action on a bookmark left `idle` by the daily processing budget: an explicit request is never refused for budget.
+     * Start a fresh processing run for a bookmark, optionally scoped to one phase. Appends to the existing timeline rather than replacing it, so the run the user already watched stays on screen. Also the **Summarise now** action on a bookmark left `idle` by the daily processing budget: an explicit request is never refused for budget. A bookmark that is already `processing` is left alone: the answer is 202 with the current bookmark and the message `Already processing`, and nothing is queued.
      */
     async bookmarksReprocess(requestParameters: BookmarksReprocessRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ReprocessBookmarkResponse> {
         const response = await this.bookmarksReprocessRaw(requestParameters, initOverrides);

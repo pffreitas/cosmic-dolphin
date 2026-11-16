@@ -34,7 +34,7 @@ export interface ReprocessBookmarkResponse {
      */
     bookmark: Bookmark;
     /**
-     * 
+     * `Reprocessing this bookmark` or `Retrying <phase>` when a run was queued; `Already processing` when the bookmark was already processing, in which case nothing was queued.
      * @type {string}
      * @memberof ReprocessBookmarkResponse
      */

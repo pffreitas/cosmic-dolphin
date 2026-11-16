@@ -9,6 +9,8 @@ export type {
   BookmarkScope,
   CreateAndQueueResult,
   CreateBudget,
+  StartReprocessResult,
+  StorePastedContentResult,
   BookmarkSort,
   FindByUserOptions,
   SearchOptions,
