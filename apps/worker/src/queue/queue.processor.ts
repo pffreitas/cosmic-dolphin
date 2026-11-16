@@ -7,7 +7,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { QueueService } from "./queue.service";
-import type { MessageHandler } from "./interfaces/message-handler.interface";
+import type { MessageContext, MessageHandler } from "./interfaces/message-handler.interface";
 import type {
   QueueMessage,
   QueueConfig,
@@ -25,6 +25,17 @@ interface InFlightMessage {
   released: boolean;
   /** Aborted at shutdown, once the grace period has passed. */
   abort: AbortController;
+  /**
+   * The run's terminal transaction has begun disposing of the message. Set in
+   * the same synchronous step that checks `released`, so a message is either
+   * released or disposing, never both. Shutdown leaves a disposing message to
+   * that transaction and waits for it.
+   */
+  disposing: boolean;
+  /** The terminal transaction, disposal included, is known to have committed. */
+  committed: boolean;
+  /** Settles when the message's processing has ended. */
+  finished?: Promise<void>;
 }
 
 @Injectable()
@@ -134,9 +145,20 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
   /** Make every message still in flight readable at once by another worker. */
   private async releaseUnfinished(): Promise<void> {
     const unfinished = [...this.inFlight.values()];
-    for (const entry of unfinished) entry.released = true;
+    // Synchronously claim every message not yet disposing: from here its
+    // disposal is refused. A disposing message belongs to its terminal
+    // transaction, which would otherwise commit after another worker took it.
+    const claimed = unfinished.filter((entry) => !entry.disposing);
+    for (const entry of claimed) entry.released = true;
     await Promise.all(
-      unfinished.map(async ({ config, message }) => {
+      unfinished.map(async (entry) => {
+        const { config, message } = entry;
+        if (entry.disposing) {
+          await entry.finished;
+          // Committed: the message is gone. Rolled back: it is still ours.
+          if (entry.committed) return;
+          entry.released = true;
+        }
         try {
           await this.queueService.setVisibility(config.name, message.msg_id, 0);
         } catch (error) {
@@ -223,6 +245,8 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
       message,
       released: false,
       abort: new AbortController(),
+      disposing: false,
+      committed: false,
     });
     const promise = this.processMessage(message, config)
       .catch((error) =>
@@ -234,6 +258,7 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
         this.wakeSlotWaiters();
       });
     this.inFlightPromises.add(promise);
+    this.inFlight.get(key)!.finished = promise;
   }
 
   private isReleased(message: QueueMessage, config: QueueConfig): boolean {
@@ -246,9 +271,36 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
     message: QueueMessage,
     config: QueueConfig,
   ): Promise<void> {
+    const entry = this.inFlight.get(`${config.name}-${message.msg_id}`);
     // Set once the handler has deleted or archived the message on the same
     // transaction as the run's terminal write: nothing is left to dispose of.
+    // It says the disposal ran, not that the transaction committed: only a
+    // normal return, a resolved `onExhausted` or `terminalPersisted` says that.
     let disposed = false;
+    const dispose: MessageContext["dispose"] = async (
+      transaction,
+      how,
+    ) => {
+      // A released message belongs to another worker now; its run must not
+      // close it. Refusing aborts the terminal transaction. Checking and
+      // claiming happen in one synchronous step, so shutdown cannot release the
+      // message between them (see `releaseUnfinished`).
+      if (entry?.released) {
+        throw new Error(`Message ${message.msg_id} was released at shutdown`);
+      }
+      if (entry) entry.disposing = true;
+      await this.queueService.disposeIn(
+        transaction,
+        config.name,
+        message.msg_id,
+        how,
+      );
+      disposed = true;
+    };
+    const confirm = () => {
+      if (entry) entry.committed = true;
+    };
+    let ownsTerminalState = false;
     try {
       const handler = this.findHandler(message);
       if (!handler) {
@@ -256,6 +308,7 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
         await this.queueService.archiveMessage(config.name, message.msg_id);
         return;
       }
+      ownsTerminalState = handler.ownsTerminalState === true;
 
       // The last allowed run is read_ct = maxRetries + 1. A delivery past that
       // has already crashed the worker too often to be tried again: a crash
@@ -265,7 +318,7 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
           `Message ${message.msg_id} was delivered ${message.read_ct} times; failing it without running`,
         );
         try {
-          await handler.onExhausted?.(message);
+          await handler.onExhausted?.(message, { dispose });
         } catch (exhaustedError) {
           // The failure is not recorded, and archiving now would leave the
           // bookmark `processing` with no message to recover it. Keep the
@@ -277,41 +330,41 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
           );
           return;
         }
+        if (disposed) {
+          confirm();
+          return;
+        }
         await this.queueService.archiveMessage(config.name, message.msg_id);
         return;
       }
 
       await handler.handle(message, {
         finalAttempt: message.read_ct > config.maxRetries,
-        signal: this.inFlight.get(`${config.name}-${message.msg_id}`)?.abort
-          .signal ?? new AbortController().signal,
-        dispose: async (transaction, how) => {
-          // A released message belongs to another worker now; its run must not
-          // close it. Refusing aborts the terminal transaction.
-          if (this.isReleased(message, config)) {
-            throw new Error(`Message ${message.msg_id} was released at shutdown`);
-          }
-          await this.queueService.disposeIn(
-            transaction,
-            config.name,
-            message.msg_id,
-            how,
-          );
-          disposed = true;
-        },
+        signal: entry?.abort.signal ?? new AbortController().signal,
+        dispose,
       });
 
       // Successfully processed (or acknowledged by the handler), remove it
-      if (this.isReleased(message, config)) return;
-      if (!disposed) {
+      if (disposed) {
+        confirm();
+      } else {
+        if (this.isReleased(message, config)) return;
         await this.queueService.deleteMessage(config.name, message.msg_id);
       }
 
       this.logger.debug(
         `Successfully processed message ${message.msg_id} from queue ${config.name}`,
       );
-    } catch (error) {
-      await this.handleError(message, config, error, disposed);
+    } catch (error: any) {
+      if (disposed && error?.terminalPersisted === true) {
+        // The terminal transaction committed, message disposal included.
+        confirm();
+        this.logger.error(`Error processing message ${message.msg_id}`, {
+          error: error?.message,
+        });
+        return;
+      }
+      await this.handleError(message, config, error, ownsTerminalState);
     }
   }
 
@@ -319,7 +372,7 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
     message: QueueMessage,
     config: QueueConfig,
     error: any,
-    disposed = false,
+    ownsTerminalState: boolean,
   ): Promise<void> {
     // pgmq owns the durable delivery count, so it survives deploys.
     // `read_ct` includes the current delivery.
@@ -338,9 +391,6 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
     });
 
     if (this.isReleased(message, config)) return;
-    // Archived together with the terminal write. If that transaction then failed
-    // to commit, it rolled back and the message simply reappears.
-    if (disposed) return;
 
     try {
       if (shouldRetry) {
@@ -356,13 +406,14 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
         return;
       }
 
-      if (error?.terminalNotPersisted === true) {
-        // The bookmark is still `processing`: archiving now would leave it with
-        // no message to recover it. Keep the message; pgmq redelivers it after
-        // the visibility timeout and the exhausted-delivery guard fails the
-        // bookmark.
+      if (ownsTerminalState) {
+        // The handler commits the terminal state and the disposal together, and
+        // this failure did not report that commit. Archiving now could leave the
+        // bookmark `processing` with no message to recover it. Keep the message:
+        // pgmq redelivers it after the visibility timeout and the
+        // exhausted-delivery guard fails the bookmark.
         this.logger.error(
-          `Terminal state of message ${message.msg_id} was not persisted; leaving it for redelivery`,
+          `Terminal state of message ${message.msg_id} was not confirmed; leaving it for redelivery`,
         );
         return;
       }

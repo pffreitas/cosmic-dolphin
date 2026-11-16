@@ -70,8 +70,10 @@ export interface BookmarkProcessOptions {
    * Dispose of the run's queue message in the same transaction as the terminal
    * write (the run's closure and the bookmark's final status): `delete` when the
    * run ended without throwing, `archive` when it ends by throwing. A failure of
-   * that transaction leaves everything as it was and rejects with
-   * `terminalNotPersisted: true`, so the caller keeps the message.
+   * that transaction leaves everything as it was and
+   * rejects, so the caller keeps the message. A run that ends by throwing
+   * after that transaction committed carries `terminalPersisted: true`: only
+   * that, or a normal return, tells the caller the message is already disposed of.
    */
   dispose?: (transaction: Kysely<Database>, how: "delete" | "archive") => Promise<void>;
 }
@@ -101,8 +103,15 @@ export interface BookmarkProcessorService {
    * status agree and clients stop polling. Returns `false`, having done
    * nothing, when the bookmark does not exist for that user. Errors propagate:
    * the caller must not discard the message while this has not been recorded.
+   * With `options.dispose`, the closure, the status and the message's archival
+   * are one transaction.
    */
-  failExhausted(id: string, userId: string, message: string): Promise<boolean>;
+  failExhausted(
+    id: string,
+    userId: string,
+    message: string,
+    options?: Pick<BookmarkProcessOptions, "dispose">
+  ): Promise<boolean>;
 }
 
 const PRIVATE_LINK_ENRICHMENT_PROMPT = `You are creating a private link quick-access record.
@@ -194,7 +203,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
   async failExhausted(
     id: string,
     userId: string,
-    message: string
+    message: string,
+    options: Pick<BookmarkProcessOptions, "dispose"> = {}
   ): Promise<boolean> {
     const bookmark = await this.bookmarkService.findByIdAndUser(id, userId);
     if (!bookmark) return false;
@@ -202,6 +212,25 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     // finished (or the bookmark was already failed or reset) before the worker
     // died, that outcome stands: the message is archived and nothing is touched.
     if (bookmark.processingStatus !== "processing") return true;
+
+    const { dispose } = options;
+    if (dispose) {
+      // One transaction: closing the run, the terminal status and archiving the
+      // message commit together or not at all, so a failure anywhere leaves the
+      // bookmark `processing` with its one live message.
+      await this.bookmarkService.updateProcessingStatus(
+        id,
+        "failed",
+        message,
+        async (transaction) => {
+          await new BookmarkProcessingReporter(
+            this.processingRepositoryFor(transaction)
+          ).closeLatestRun(id, userId, message);
+          await dispose(transaction, "archive");
+        }
+      );
+      return true;
+    }
 
     const reporter = new BookmarkProcessingReporter(
       this.bookmarkProcessingRepository
@@ -251,22 +280,15 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     }
 
     const { dispose } = options;
-    try {
-      await this.bookmarkService.updateProcessingStatus(
-        id,
-        status,
-        message,
-        async (transaction) => {
-          if (closeRun) await close(this.processingRepositoryFor(transaction));
-          await dispose(transaction, outcome.how);
-        }
-      );
-    } catch (error) {
-      throw Object.assign(
-        error instanceof Error ? error : new Error(String(error)),
-        { terminalNotPersisted: true }
-      );
-    }
+    await this.bookmarkService.updateProcessingStatus(
+      id,
+      status,
+      message,
+      async (transaction) => {
+        if (closeRun) await close(this.processingRepositoryFor(transaction));
+        await dispose(transaction, outcome.how);
+      }
+    );
   }
 
   /**
@@ -593,7 +615,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       const terminalError =
         error instanceof Error ? error : new Error(errorMessage);
       Object.assign(terminalError, {
-        terminalNotPersisted: false,
+        terminalPersisted: true,
         shouldRetry:
           error instanceof RunDeadlineError ||
           (error instanceof ContentExtractionError && error.shouldRetry),

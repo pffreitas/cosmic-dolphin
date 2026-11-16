@@ -207,8 +207,22 @@ describe("exhausted deliveries", () => {
       BOOKMARK_ID,
       USER_ID,
       "Processing stopped after repeated worker failures",
+      { dispose: expect.any(Function) },
     );
     expect(archive).toHaveBeenCalledWith("bookmarks", 50);
+  });
+
+  test("an exhausted delivery archived inside the handler's transaction is not archived again", async () => {
+    const { processor, archive, exhausted } = setup();
+    (processor as any).queueService.disposeIn = async () => undefined;
+    exhausted.mockImplementationOnce((async (_b: string, _u: string, _m: string, options: any) => {
+      await options.dispose({}, "archive");
+      return true;
+    }) as never);
+
+    await (processor as any).processMessage(message(5), config);
+
+    expect(archive).not.toHaveBeenCalled();
   });
 
   test("exhausted delivery with an unreadable payload is still archived", async () => {

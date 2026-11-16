@@ -2023,7 +2023,7 @@ describe("BookmarkProcessorService", () => {
       );
       await expect(
         build().process(testBookmark.id, testBookmark.userId, { dispose })
-      ).rejects.toMatchObject({ shouldRetry: false, terminalNotPersisted: false });
+      ).rejects.toMatchObject({ shouldRetry: false, terminalPersisted: true });
       expect(log).toEqual(["status:failed", "repo-for:trx", "run:failed", "dispose:archive", "commit"]);
     });
 
@@ -2047,7 +2047,7 @@ describe("BookmarkProcessorService", () => {
       expect(dispose).not.toHaveBeenCalled();
     });
 
-    it("flags the failure as unpersisted when the terminal write fails, so the message is kept", async () => {
+    it("does not mark a failure persisted when the terminal write fails, so the message is kept", async () => {
       mockBookmarkService.updateProcessingStatus.mockImplementation((async (
         _id: string,
         status: string,
@@ -2062,15 +2062,63 @@ describe("BookmarkProcessorService", () => {
       );
       await expect(
         build().process(testBookmark.id, testBookmark.userId, { dispose, finalAttempt: true })
-      ).rejects.toMatchObject({ message: "status write failed", terminalNotPersisted: true });
+      ).rejects.toThrow("status write failed");
       expect(dispose).not.toHaveBeenCalled();
     });
 
-    it("flags the failure as unpersisted when the disposal itself fails", async () => {
+    it("does not mark a failure persisted when the disposal itself fails", async () => {
       dispose.mockRejectedValue(new Error("pgmq down"));
       await expect(
         build().process(testBookmark.id, testBookmark.userId, { dispose })
-      ).rejects.toMatchObject({ terminalNotPersisted: true });
+      ).rejects.not.toHaveProperty("terminalPersisted");
+    });
+
+    it("does not mark an initial lookup failure persisted", async () => {
+      mockBookmarkService.findByIdAndUser.mockRejectedValue(new Error("db down"));
+      await expect(
+        build().process(testBookmark.id, testBookmark.userId, { dispose, finalAttempt: true })
+      ).rejects.not.toHaveProperty("terminalPersisted");
+      expect(dispose).not.toHaveBeenCalled();
+    });
+
+    it("does not mark a failure persisted when writing the failure code fails", async () => {
+      mockBookmarkService.ensureScrapedContent.mockRejectedValue(
+        new ContentExtractionError("Blocked", "blocked", false)
+      );
+      mockBookmarkService.update.mockRejectedValue(new Error("code write failed"));
+      await expect(
+        build().process(testBookmark.id, testBookmark.userId, { dispose, finalAttempt: true })
+      ).rejects.not.toHaveProperty("terminalPersisted");
+      expect(dispose).not.toHaveBeenCalled();
+    });
+
+    it("fails an exhausted bookmark, closes its run and archives the message in one transaction", async () => {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue({ ...testBookmark, processingStatus: "processing" });
+      mockBookmarkProcessingRepository.findLatestTimeline.mockResolvedValue({
+        run: { id: "run-1", status: "running", startedAt: new Date() },
+        events: [],
+      } as any);
+      await expect(
+        build().failExhausted(testBookmark.id, testBookmark.userId, "stopped", { dispose })
+      ).resolves.toBe(true);
+      expect(log).toEqual(["status:failed", "repo-for:trx", "run:failed", "dispose:archive", "commit"]);
+    });
+
+    it("leaves the exhausted bookmark untouched when the archival fails", async () => {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue({ ...testBookmark, processingStatus: "processing" });
+      dispose.mockRejectedValue(new Error("pgmq down"));
+      await expect(
+        build().failExhausted(testBookmark.id, testBookmark.userId, "stopped", { dispose })
+      ).rejects.toThrow("pgmq down");
+      expect(log).not.toContain("commit");
+    });
+
+    it("does not dispose when the exhausted bookmark is no longer processing", async () => {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue({ ...testBookmark, processingStatus: "failed" });
+      await expect(
+        build().failExhausted(testBookmark.id, testBookmark.userId, "stopped", { dispose })
+      ).resolves.toBe(true);
+      expect(dispose).not.toHaveBeenCalled();
     });
   });
 

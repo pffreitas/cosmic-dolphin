@@ -60,10 +60,16 @@ function fakeQueue(waiting: ReturnType<typeof msg>[]) {
 
 const config = { name: "bookmarks", pollInterval: 1000, maxRetries: 3, batchSize: 10 };
 
-function build(queue: unknown, handle: (m: any, ctx: any) => Promise<void>, values = {}) {
+function build(
+  queue: unknown,
+  handle: (m: any, ctx: any) => Promise<void>,
+  values = {},
+  extra: Record<string, unknown> = {},
+) {
   const handler = {
     canHandle: () => true,
     handle,
+    ...extra,
     getMessageType: () => "bookmark",
   };
   return new QueueProcessor(
@@ -200,27 +206,38 @@ describe("dispositions", () => {
   test("a disposal made inside the terminal transaction is not repeated after a terminal failure", async () => {
     const { queue, processor } = setup(async (_m, ctx) => {
       await ctx.dispose({}, "archive");
-      throw Object.assign(new Error("boom"), { shouldRetry: true });
+      throw Object.assign(new Error("boom"), { shouldRetry: true, terminalPersisted: true });
     });
     await run(processor, msg(8, 4));
     expect(queue.calls).toEqual(["dispose:archive:8"]);
   });
 
-  test("a final failure whose terminal state was not persisted keeps the message", async () => {
-    const { queue, processor } = setup(async () => {
-      throw Object.assign(new Error("status write failed"), {
-        shouldRetry: true,
-        terminalNotPersisted: true,
-      });
+  const owning = (handle: (m: any, ctx: any) => Promise<void>) => {
+    const queue = fakeQueue([]);
+    return { queue, processor: build(queue, handle, {}, { ownsTerminalState: true }) };
+  };
+
+  test("a final failure that did not report a committed terminal state keeps the message", async () => {
+    const { queue, processor } = owning(async () => {
+      throw Object.assign(new Error("lookup failed"), { shouldRetry: false });
     });
     await run(processor, msg(9, 4));
     // No archive: pgmq redelivers it and the exhausted-delivery guard fails the bookmark.
     expect(queue.calls).toEqual([]);
   });
 
-  test("an unpersisted terminal state with attempts left is still delayed", async () => {
-    const { queue, processor } = setup(async () => {
-      throw Object.assign(new Error("status write failed"), { terminalNotPersisted: true });
+  test("a disposal that ran but whose transaction failed to commit keeps the message", async () => {
+    const { queue, processor } = owning(async (_m, ctx) => {
+      await ctx.dispose({}, "archive");
+      throw new Error("commit failed");
+    });
+    await run(processor, msg(9, 4));
+    expect(queue.calls).toEqual(["dispose:archive:9"]);
+  });
+
+  test("an unconfirmed terminal state with attempts left is still delayed", async () => {
+    const { queue, processor } = owning(async () => {
+      throw new Error("status write failed");
     });
     await run(processor, msg(10, 1));
     expect(queue.calls).toEqual(["vis:10:30"]);
@@ -256,6 +273,90 @@ describe("shutdown", () => {
     await tick();
     expect(outcome).not.toBe("disposed");
     expect(queue.calls).toEqual(["vis:1:0"]);
+  });
+
+  test("shutdown waits for a terminal transaction that has begun disposing instead of releasing its message", async () => {
+    const queue = fakeQueue([msg(1)]);
+    const dispose = deferred();
+    const queueDispose = queue.disposeIn;
+    queue.disposeIn = async (...args: [unknown, string, number, string]) => {
+      await dispose.promise;
+      return queueDispose(...args);
+    };
+    const processor = build(
+      queue,
+      async (_m, ctx) => {
+        await ctx.dispose({}, "delete");
+      },
+      { QUEUE_GRACEFUL_SHUTDOWN_TIMEOUT: "20" },
+      { ownsTerminalState: true },
+    );
+    await processor.startProcessing();
+    await tick();
+
+    let stopped = false;
+    const stopping = processor.stopProcessing().then(() => {
+      stopped = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    // Not released while its transaction is in flight, and shutdown still waits.
+    expect(queue.calls).toEqual([]);
+    expect(stopped).toBe(false);
+
+    dispose.resolve();
+    await stopping;
+    expect(queue.calls).toEqual(["dispose:delete:1"]);
+  });
+
+  test("a disposing message whose transaction fails is released after it", async () => {
+    const queue = fakeQueue([msg(1)]);
+    const dispose = deferred();
+    queue.disposeIn = async () => {
+      await dispose.promise;
+      throw new Error("pgmq down");
+    };
+    const processor = build(
+      queue,
+      async (_m, ctx) => {
+        await ctx.dispose({}, "delete");
+      },
+      { QUEUE_GRACEFUL_SHUTDOWN_TIMEOUT: "20" },
+      { ownsTerminalState: true },
+    );
+    await processor.startProcessing();
+    await tick();
+    const stopping = processor.stopProcessing();
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    dispose.resolve();
+    await stopping;
+    // The failure's own backoff, then the shutdown release that wins.
+    expect(queue.calls.at(-1)).toBe("vis:1:0");
+  });
+
+  test("a second consumer cannot take a message whose disposal is in flight, and a released message cannot start disposal", async () => {
+    const queue = fakeQueue([msg(1)]);
+    const dispose = deferred();
+    const queueDispose = queue.disposeIn;
+    queue.disposeIn = async (...args: [unknown, string, number, string]) => {
+      await dispose.promise;
+      return queueDispose(...args);
+    };
+    const processor = build(
+      queue,
+      async (_m, ctx) => {
+        await ctx.dispose({}, "delete");
+      },
+      { QUEUE_GRACEFUL_SHUTDOWN_TIMEOUT: "20" },
+    );
+    await processor.startProcessing();
+    await tick();
+    const stopping = processor.stopProcessing();
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    // No setVisibility(0) was issued, so a second consumer reading now gets nothing.
+    expect(queue.calls.filter((c) => c.startsWith("vis:"))).toEqual([]);
+    dispose.resolve();
+    await stopping;
+    expect(queue.calls).toEqual(["dispose:delete:1"]);
   });
 
   test("a read that completes during the grace period is released, not started", async () => {

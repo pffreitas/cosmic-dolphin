@@ -15,6 +15,10 @@ export interface MessageContext {
    * the transaction that writes the run's terminal state, so the two commit
    * together. Once it has run, the processor does not dispose of the message
    * again. Rejects when the message was already released at shutdown.
+   *
+   * A failure that reaches the processor is treated as not committed unless the
+   * handler's error carries `terminalPersisted: true`; a normal return counts
+   * as committed.
    */
   dispose: (
     transaction: Kysely<Database>,
@@ -30,9 +34,20 @@ export interface MessageHandler {
   ): Promise<void>;
   /**
    * Called instead of `handle` when the message has been delivered more times
-   * than the retry limit allows. The processor archives it afterwards, unless
-   * this throws: then the message is left for redelivery.
+   * than the retry limit allows. The processor archives it afterwards (unless
+   * `context.dispose` already did, in the handler's transaction), or leaves it
+   * for redelivery when this throws.
    */
-  onExhausted?(message: QueueMessage): Promise<void>;
+  onExhausted?(
+    message: QueueMessage,
+    context?: Pick<MessageContext, "dispose">,
+  ): Promise<void>;
+  /**
+   * The handler writes the message's terminal state and disposes of the message
+   * in one transaction. The processor then never archives a failed message by
+   * itself: only that transaction's commit does, so any other failure keeps the
+   * message for redelivery.
+   */
+  readonly ownsTerminalState?: boolean;
   getMessageType(): string;
 }

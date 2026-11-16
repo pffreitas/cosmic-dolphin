@@ -226,6 +226,38 @@ describe("Bookmark Content Refactor Integration", () => {
       expect((await service.findByIdAndUser(row.id, testUserId))!.processingStatus).toBe("failed");
     });
 
+    it("rolls everything back when archiving fails, so a Retry cannot queue a second message", async () => {
+      const { row, processing } = await seed("running");
+
+      await expect(
+        processorService.failExhausted(row.id, testUserId, "Stopped", {
+          dispose: async () => {
+            throw new Error("pgmq down");
+          },
+        })
+      ).rejects.toThrow("pgmq down");
+
+      expect((await service.findByIdAndUser(row.id, testUserId))!.processingStatus).toBe("processing");
+      expect((await processing.findLatestTimeline(row.id, testUserId))!.run.status).toBe("running");
+      // The message is still the one live message: a Retry is refused.
+      expect(await repository.startReprocess(row.id, testUserId)).toMatchObject({ queued: false });
+    });
+
+    it("commits the closure, the status and the disposal together", async () => {
+      const { row, processing } = await seed("running");
+      let disposed = 0;
+
+      await processorService.failExhausted(row.id, testUserId, "Stopped", {
+        dispose: async () => {
+          disposed++;
+        },
+      });
+
+      expect(disposed).toBe(1);
+      expect((await service.findByIdAndUser(row.id, testUserId))!.processingStatus).toBe("failed");
+      expect((await processing.findLatestTimeline(row.id, testUserId))!.run.status).toBe("failed");
+    });
+
     it("leaves a completed run alone and still fails the processing bookmark", async () => {
       const { row, processing } = await seed("completed");
       const before = (await processing.findLatestTimeline(row.id, testUserId))!;
