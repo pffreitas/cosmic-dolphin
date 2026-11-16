@@ -101,3 +101,8 @@ export type {
 
 export { ShareKeyRepositoryImpl } from "./share-key.repository";
 export * from "./picks.repository";
+export {
+  PgmqRepositoryImpl,
+  QUEUE_VISIBILITY_TIMEOUT_SECONDS,
+} from "./pgmq.repository";
+export type { PgmqRepository, PgmqMessage } from "./pgmq.repository";

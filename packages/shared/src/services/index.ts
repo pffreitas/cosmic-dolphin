@@ -1,5 +1,6 @@
 export * from "./share-key.service";
 import { ShareKeyServiceImpl } from "./share-key.service";
+import { PgmqRepositoryImpl } from "../repositories/pgmq.repository";
 import { ShareKeyRepositoryImpl } from "../repositories/share-key.repository";
 export * from "./lightpanda.service";
 export * from "./web-scraping.service";
@@ -105,7 +106,7 @@ export interface ServiceContainer {
  *   without moving production — see `docs/functional-spec/05-feed.md`.
  */
 export function createServiceContainer(
-  supabaseClient: SupabaseClient,
+  _supabaseClient: SupabaseClient,
   db: Kysely<Database>,
   environment: string = process.env.NODE_ENV ?? "development"
 ): ServiceContainer {
@@ -138,7 +139,7 @@ export function createServiceContainer(
     picks: new PicksServiceImpl(new PicksRepositoryImpl(db), feed),
     shareKey: new ShareKeyServiceImpl(new ShareKeyRepositoryImpl(db)),
     webScraping: webScrapingService,
-    queue: new QueueServiceImpl(supabaseClient),
+    queue: new QueueServiceImpl(new PgmqRepositoryImpl(db)),
     bookmark: bookmarkService,
     bookmarkLike: new BookmarkLikeServiceImpl(bookmarkLikeRepository),
     // Accepting a collection suggestion creates the collection *and* moves its

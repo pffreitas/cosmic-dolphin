@@ -1,7 +1,7 @@
-import { describe, expect, spyOn, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
+import { createDatabase } from "@cosmic-dolphin/shared";
 import { QueueProcessor } from "./queue.processor";
 import { QueueService } from "./queue.service";
-import { SupabaseClientService } from "./supabase-client.service";
 import { BookmarkProcessorHandler } from "./handlers/bookmark-processor.handler";
 import { BookmarkNotFoundError } from "@cosmic-dolphin/shared";
 
@@ -354,81 +354,54 @@ describe("graceful shutdown", () => {
   });
 });
 
-describe("pgmq RPC contracts", () => {
-  test("archives with the deployed message_id argument", async () => {
-    const supabase = {
-      getClient: () => ({
-        schema: (schemaName: string) => ({
-          rpc: async (functionName: string, args: Record<string, unknown>) => ({
-            data: null,
-            error:
-              schemaName === "pgmq_public" &&
-              functionName === "archive" &&
-              args.queue_name === "bookmarks" &&
-              args.message_id === 42 &&
-              !("msg_id" in args)
-                ? null
-                : { message: "RPC signature mismatch" },
-          }),
-        }),
-      }),
-    };
-    const queue = new QueueService(supabase as never);
+describe("pgmq over the database connection", () => {
+  const url =
+    process.env.DATABASE_URL ??
+    "postgres://postgres:postgres@127.0.0.1:5433/postgres";
+  const db = createDatabase(url);
+  const queue = new QueueService(db as never);
+  // An existing local queue no other test writes to.
+  const NAME = "notifications";
 
-    await expect(
-      queue.archiveMessage("bookmarks", 42),
-    ).resolves.toBeUndefined();
+  beforeAll(async () => {
+    for (const m of await queue.popMessages(NAME, 100)) {
+      await queue.deleteMessage(NAME, m.msg_id);
+    }
+  });
+  afterAll(async () => {
+    await db.destroy();
   });
 
-  test("sends a JSON object rather than a stringified payload", async () => {
+  test("sends a JSON object and reads it back as an object", async () => {
     const payload = {
       type: "digest_generate",
       data: { userId: "user-1" },
       metadata: { source: "scheduler" },
     };
-    const supabase = {
-      getClient: () => ({
-        schema: () => ({
-          rpc: async (functionName: string, args: Record<string, unknown>) => ({
-            data: 7,
-            error:
-              functionName === "send" && args.message === payload
-                ? null
-                : { message: "Payload was not passed as JSON" },
-          }),
-        }),
-      }),
-    };
-    const queue = new QueueService(supabase as never);
+    const id = await queue.sendMessage(NAME, payload);
 
-    await expect(queue.sendMessage("digests", payload)).resolves.toBe(7);
+    const [message] = await queue.popMessages(NAME, 10);
+
+    expect(message.msg_id).toBe(id);
+    expect(message.message).toEqual(payload);
+    expect(message.read_ct).toBe(1);
+    expect(message.enqueued_at).toBeInstanceOf(Date);
+    expect(message.vt).toBeInstanceOf(Date);
+    await queue.deleteMessage(NAME, id);
   });
 
-  test("connection check uses a non-mutating read against an existing queue", async () => {
-    const client = {
-      schema: () => ({
-        rpc: async (functionName: string, args: Record<string, unknown>) => ({
-          data: [],
-          error:
-            functionName === "read" &&
-            args.queue_name === "bookmarks" &&
-            args.sleep_seconds === 0 &&
-            args.n === 0
-              ? null
-              : { message: "Unexpected connection probe" },
-        }),
-      }),
-    };
-    const service = Object.create(
-      SupabaseClientService.prototype,
-    ) as SupabaseClientService;
-    const internals = service as unknown as {
-      client: typeof client;
-      logger: { log(): void; error(): void };
-    };
-    internals.client = client;
-    internals.logger = { log() {}, error() {} };
+  test("archives a message and setVisibility(0) makes one readable at once", async () => {
+    const archived = await queue.sendMessage(NAME, { n: "archive" });
+    await queue.archiveMessage(NAME, archived);
+    expect(await queue.popMessages(NAME, 10)).toHaveLength(0);
 
-    await expect(service.testConnection()).resolves.toBe(true);
+    const hidden = await queue.sendMessage(NAME, { n: "vt" });
+    expect(await queue.popMessages(NAME, 10)).toHaveLength(1);
+    expect(await queue.popMessages(NAME, 10)).toHaveLength(0);
+    await queue.setVisibility(NAME, hidden, 0);
+    const [again] = await queue.popMessages(NAME, 10);
+    expect(again.msg_id).toBe(hidden);
+    expect(again.read_ct).toBe(2);
+    await queue.deleteMessage(NAME, hidden);
   });
 });

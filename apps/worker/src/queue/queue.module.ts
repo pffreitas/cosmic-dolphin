@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import { SupabaseClientService } from "./supabase-client.service";
 import { QueueService } from "./queue.service";
 import { QueueProcessor } from "./queue.processor";
 import { DefaultMessageHandler } from "./handlers/default-message.handler";
@@ -40,7 +39,6 @@ import { Kysely } from "kysely";
 @Module({
   imports: [ConfigModule],
   providers: [
-    SupabaseClientService,
     {
       provide: AI,
       useFactory: () => new AI(),
