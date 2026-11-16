@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, afterAll, expect, it, mock } from "bun:test";
 import { sql } from "kysely";
 import Fastify, { type FastifyInstance } from "fastify";
-import { BookmarkRepositoryImpl, BookmarkServiceImpl, WebScrapingServiceImpl, SocialServiceImpl, SocialRepositoryImpl, FeedRepositoryImpl, FeedRankingServiceImpl, ExploreRepositoryImpl, ExploreServiceImpl, type ServiceContainer } from "@cosmic-dolphin/shared";
+import { BookmarkRepositoryImpl, BookmarkServiceImpl, WebScrapingServiceImpl, SocialServiceImpl, SocialRepositoryImpl, FeedRepositoryImpl, FeedRankingServiceImpl, CollectionRepositoryImpl, CollectionServiceImpl, ExploreRepositoryImpl, ExploreServiceImpl, type ServiceContainer } from "@cosmic-dolphin/shared";
 import { DatabaseTestUtils, getTestDatabase, closeTestDatabase } from "@cosmic-dolphin/shared/dist/test-utils/database";
 import { registerBookmarkRoutes } from "../routes/bookmarks";
 const db = getTestDatabase();
@@ -10,6 +10,7 @@ const scraping = new WebScrapingServiceImpl();
 const scrape = mock(async (_url: string): Promise<never> => { throw new Error("Create must never fetch a page"); });
 scraping.scrape = scrape;
 const bookmark = new BookmarkServiceImpl(new BookmarkRepositoryImpl(db), scraping);
+const collection = new CollectionServiceImpl(new CollectionRepositoryImpl(db), bookmark);
 const send = mock(async () => 1);
 let app: FastifyInstance;
 const logs: any[] = [];
@@ -18,7 +19,7 @@ let userId: string;
 beforeAll(async () => {
   await utils.waitForConnection();
   app = Fastify({ logger: { stream: { write: (line: string) => logs.push(JSON.parse(line)) } } });
-  await registerBookmarkRoutes(app, { bookmark, webScraping: scraping,
+  await registerBookmarkRoutes(app, { bookmark, collection, webScraping: scraping,
     processingBudget: { check: async () => ({ withinBudget: true }) },
     queue: { sendBookmarkProcessingMessage: send },
   } as unknown as ServiceContainer, async request => { request.userId = request.headers["x-fixture-user"] as string; });
@@ -136,5 +137,78 @@ it("legacy omission stays NULL with unknown platform and capture logs carry attr
 it("malformed private title and description are client errors rather than server crashes", async () => {
   for (const fields of [{ title: 5, description: "Description" }, { title: "Title", description: 5 }]) {
     expect((await create({ source_url: "https://example.com/malformed", is_private_link: true, ...fields })).statusCode).toBe(400);
+  }
+});
+async function seedCollection(owner: string) {
+  return (await db.insertInto("collections").values({ name: "Mine", user_id: owner }).returningAll().executeTakeFirstOrThrow()).id;
+}
+async function bookmarkCount() {
+  return Number((await db.selectFrom("bookmarks").select(db.fn.countAll().as("count")).executeTakeFirstOrThrow()).count);
+}
+it("rejects a collection the caller does not own, public or private link, creating and queueing nothing", async () => {
+  const foreign = await seedCollection(crypto.randomUUID());
+  for (const collection_id of [foreign, crypto.randomUUID()]) {
+    const publicSave = await create({ source_url: "https://example.com/not-mine", collection_id });
+    expect(publicSave.statusCode).toBe(404);
+    expect(publicSave.json()).toEqual({ error: "Collection not found" });
+    const privateSave = await create({ source_url: "https://example.com/not-mine-private", collection_id, is_private_link: true, title: "T", description: "D" });
+    expect(privateSave.statusCode).toBe(404);
+    expect(privateSave.json()).toEqual({ error: "Collection not found" });
+  }
+  expect(await bookmarkCount()).toBe(0);
+  expect(send).not.toHaveBeenCalled();
+  const own = await seedCollection(userId);
+  const saved = await create({ source_url: "https://example.com/mine", collection_id: own });
+  expect(saved.statusCode).toBe(201);
+  expect(saved.json().bookmark.collectionId).toBe(own);
+});
+it("rejects a non-UUID collection id as a client error naming collection_id", async () => {
+  for (const collection_id of ["not-a-uuid", "", 5]) {
+    const result = await create({ source_url: "https://example.com/bad-collection", collection_id });
+    expect(result.statusCode).toBe(400);
+    expect(result.json().error).toContain("collection_id");
+  }
+  expect(await bookmarkCount()).toBe(0);
+});
+const limitCases: [string, Record<string, unknown>, string][] = [
+  ["title over 300", { title: "t".repeat(301) }, "title must be at most 300 characters"],
+  ["description over 2000", { description: "d".repeat(2001) }, "description must be at most 2000 characters"],
+  ["more than 50 tags", { tags: Array.from({ length: 51 }, (_, index) => `tag-${index}`) }, "at most 50 tags"],
+  ["tag over 64 characters", { tags: ["x".repeat(65)] }, "a tag must be at most 64 characters"],
+  ["blank tag", { tags: ["ok", "   "] }, "a tag cannot be blank"],
+];
+for (const [name, fields, message] of limitCases) {
+  for (const privateLink of [false, true]) {
+    it(`rejects ${name} (${privateLink ? "private" : "public"} link) with its message`, async () => {
+      const base = privateLink ? { is_private_link: true, title: "Title", description: "Description" } : {};
+      const result = await create({ source_url: "https://example.com/limits", ...base, ...fields });
+      expect(result.statusCode).toBe(400);
+      expect(result.json()).toEqual({ error: message });
+      expect(await bookmarkCount()).toBe(0);
+    });
+  }
+}
+it("accepts bodies exactly at the limits and trims the title", async () => {
+  const result = await create({ source_url: "https://example.com/at-limits", is_private_link: true, title: ` ${"t".repeat(300)} `, description: "d".repeat(2000), tags: [` ${"x".repeat(64)} `, ...Array.from({ length: 49 }, (_, index) => `tag-${index}`)] });
+  expect(result.statusCode).toBe(201);
+  expect(result.json().bookmark.title).toBe("t".repeat(300));
+});
+it("valid bodies keep their exact responses for later_until null, future and omitted, and for duplicates", async () => {
+  const future = new Date(Date.now() + 86400000).toISOString();
+  const cases: [string, Record<string, unknown>, string | null][] = [
+    ["null", { later_until: null }, null],
+    ["future", { later_until: future }, future],
+    ["omitted", {}, null],
+  ];
+  for (const [name, fields, expected] of cases) {
+    const url = `https://example.com/exact-${name}`;
+    const created = await create({ source_url: url, ...fields });
+    expect(created.statusCode).toBe(201);
+    expect(created.json().message).toBe("Bookmark created successfully");
+    expect(created.json().bookmark.laterUntil).toBe(expected);
+    const duplicate = await create({ source_url: url, ...fields });
+    expect(duplicate.statusCode).toBe(200);
+    expect(duplicate.json()).toMatchObject({ alreadySaved: true, message: "Already in your Library" });
+    expect(duplicate.json().bookmark.id).toBe(created.json().bookmark.id);
   }
 });

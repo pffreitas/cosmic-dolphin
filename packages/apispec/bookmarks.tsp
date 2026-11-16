@@ -214,16 +214,19 @@ model CreateBookmarkRequest {
     @doc("The source URL to bookmark")
     source_url: string;
 
-    @doc("Optional collection ID to add the bookmark to")
+    @doc("Optional collection ID to add the bookmark to. A UUID. Must be the ID of a collection the caller owns; anything else is a 404.")
     collection_id?: string;
 
-    @doc("Optional title for the bookmark")
+    @doc("Optional title for the bookmark. Trimmed; at most 300 characters.")
+    @maxLength(300)
     title?: string;
 
-    @doc("Optional description for the bookmark")
+    @doc("Optional description for the bookmark. At most 2000 characters.")
+    @maxLength(2000)
     description?: string;
 
-    @doc("Optional tags for the bookmark")
+    @doc("Optional tags for the bookmark. At most 50, each trimmed, not blank and at most 64 characters.")
+    @maxItems(50)
     tags?: string[];
 
     @doc("Whether this is a private link that cannot be scraped")
@@ -636,9 +639,16 @@ interface Bookmarks {
               @body body: BookmarkCreateResponse;
           }
         | {
-              @doc("Malformed URL, or a private link with no description.")
+              @doc("Malformed URL, a private link with no description, a `collection_id` that is not a UUID, or a title, description or tag over its limit.")
               @statusCode
               statusCode: 400;
+
+              @body body: BookmarkError;
+          }
+        | {
+              @doc("`collection_id` names a collection that does not exist or belongs to someone else. Nothing is created or queued.")
+              @statusCode
+              statusCode: 404;
 
               @body body: BookmarkError;
           }

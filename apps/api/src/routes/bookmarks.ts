@@ -133,8 +133,33 @@ const captureBodySchema = z.object({
   capture_source: z.enum(["ios_share_extension", "android_share", "save_sheet", "clipboard"]).optional(),
   capture_platform: z.enum(["ios", "android", "web", "unknown"]).optional(),
   queued_at: z.string().datetime().optional(),
-  is_private_link: z.boolean().optional(), title: z.string().optional(), description: z.string().optional(),
+  is_private_link: z.boolean().optional(),
 });
+
+/**
+ * The whole `POST /bookmarks` body, in one place. `later_until` leaves here as
+ * a `Date` (or null), so no handler branch converts it again.
+ */
+const createBookmarkBodySchema = captureBodySchema.extend({
+  source_url: z.string(),
+  later_until: laterUntilSchema.transform((value) =>
+    value == null ? value : new Date(value)
+  ),
+  collection_id: z.string("collection_id must be a valid UUID").uuid("collection_id must be a valid UUID").nullish().transform((value) => value ?? undefined),
+  title: z.string().trim().max(300, "title must be at most 300 characters").optional(),
+  description: z.string().max(2000, "description must be at most 2000 characters").optional(),
+  tags: z
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1, "a tag cannot be blank")
+        .max(64, "a tag must be at most 64 characters")
+    )
+    .max(50, "at most 50 tags")
+    .optional(),
+});
+export type ParsedCreateBookmarkBody = z.infer<typeof createBookmarkBodySchema>;
 export const updateBookmarkSchema = z
   .object({
     userNote: z.string().max(500).nullable().optional(),
@@ -165,10 +190,14 @@ export type CreateBookmarkValidationResult =
   | { ok: true }
   | { ok: false; status: 400; error: string };
 
-export function validateCreateBookmarkBody(
+export type ParsedCreateBookmarkResult =
+  | { ok: true; data: ParsedCreateBookmarkBody }
+  | { ok: false; status: 400; error: string };
+
+export function parseCreateBookmarkBody(
   body: Partial<Omit<CreateBookmarkRequest, "user_id">>,
   isValidUrl: (url: string) => boolean
-): CreateBookmarkValidationResult {
+): ParsedCreateBookmarkResult {
   if (!body.source_url) {
     return { ok: false, status: 400, error: "source_url is required" };
   }
@@ -186,9 +215,17 @@ export function validateCreateBookmarkBody(
   }
 
   if (body.is_private_link && (typeof body.title !== "string" || !body.title.trim())) return { ok: false, status: 400, error: "title is required for private links" };
-  const capture = captureBodySchema.safeParse(body);
-  if (!capture.success) return { ok: false, status: 400, error: firstZodMessage(capture.error) };
-  return { ok: true };
+  const parsed = createBookmarkBodySchema.safeParse(body);
+  if (!parsed.success) return { ok: false, status: 400, error: firstZodMessage(parsed.error) };
+  return { ok: true, data: parsed.data };
+}
+
+export function validateCreateBookmarkBody(
+  body: Partial<Omit<CreateBookmarkRequest, "user_id">>,
+  isValidUrl: (url: string) => boolean
+): CreateBookmarkValidationResult {
+  const parsed = parseCreateBookmarkBody(body, isValidUrl);
+  return parsed.ok ? { ok: true } : parsed;
 }
 
 type BookmarkTimelineServices = Pick<
@@ -532,6 +569,7 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
       reply: FastifyReply
     ) => {
       let normalizedUrlForRaceRecovery: string | undefined;
+      let laterUntilForRaceRecovery: Date | null | undefined;
       const userIdForRaceRecovery = request.userId!;
       try {
         if (request.shareKeyId) {
@@ -543,6 +581,22 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
           }).strict().safeParse(request.body);
           if (!allowed.success) return reply.status(400).send({ error: "Share saves accept URL and capture fields only" });
         }
+        const user_id = request.userId!;
+
+        fastify.log.info(
+          { source_url: request.body.source_url, user_id, is_private_link: request.body.is_private_link },
+          "Create bookmark request"
+        );
+
+        const parsed = parseCreateBookmarkBody(
+          request.body,
+          services.webScraping.isValidUrl.bind(services.webScraping)
+        );
+        if (!parsed.ok) {
+          return reply.status(parsed.status).send({
+            error: parsed.error,
+          });
+        }
         const {
           source_url,
           is_private_link,
@@ -550,19 +604,16 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
           description,
           tags,
           collection_id,
-        } = request.body as Omit<CreateBookmarkRequest, "user_id">;
-        const user_id = request.userId!;
+          later_until,
+        } = parsed.data;
+        laterUntilForRaceRecovery = later_until;
 
-        fastify.log.info({ source_url, user_id, is_private_link }, "Create bookmark request");
-
-        const validation = validateCreateBookmarkBody(
-          request.body,
-          services.webScraping.isValidUrl.bind(services.webScraping)
-        );
-        if (!validation.ok) {
-          return reply.status(validation.status).send({
-            error: validation.error,
-          });
+        // Ownership first: a save into someone else's collection would file
+        // the row there as the user's own choice (`filing_source = 'user'`).
+        // Same answer as refile, and before any duplicate lookup or write.
+        if (collection_id) {
+          const owned = await services.collection.findByIdAndUser(collection_id, user_id);
+          if (!owned) return reply.status(404).send({ error: "Collection not found" });
         }
 
         // Normalise once, here, and key everything below off the result. The
@@ -578,7 +629,7 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
         );
         if (existingBookmark) {
           const bookmark = await services.bookmark.mergeCapture(existingBookmark.id, user_id,
-            request.body.user_note, request.body.later_until == null ? request.body.later_until : new Date(request.body.later_until));
+            request.body.user_note, later_until);
           logCapture(bookmark, true);
           return reply.status(200).send(request.shareKeyId ? { id: bookmark.id, alreadySaved: true, message: "Already in your Library" } : { bookmark, alreadySaved: true, message: "Already in your Library" });
         }
@@ -594,7 +645,7 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
               collectionId: collection_id,
               originalUrl,
               userNote: request.body.user_note,
-              laterUntil: request.body.later_until == null ? request.body.later_until : new Date(request.body.later_until),
+              laterUntil: later_until,
               captureSource: request.body.capture_source, capturePlatform: request.body.capture_platform,
               captureQueuedAt: request.body.queued_at ? new Date(request.body.queued_at) : undefined,
             }
@@ -621,7 +672,7 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
           originalUrl,
           collectionId: collection_id,
           userNote: request.body.user_note,
-          laterUntil: request.body.later_until == null ? request.body.later_until : new Date(request.body.later_until),
+          laterUntil: later_until,
           captureSource: request.body.capture_source,
           capturePlatform: request.body.capture_platform,
           captureQueuedAt: request.body.queued_at ? new Date(request.body.queued_at) : undefined,
@@ -657,7 +708,7 @@ export async function registerBookmarkRoutes(fastify: FastifyInstance, services:
               "Concurrent duplicate bookmark save recovered"
             );
             const bookmark = await services.bookmark.mergeCapture(existingBookmark.id, userIdForRaceRecovery,
-                request.body.user_note, request.body.later_until == null ? request.body.later_until : new Date(request.body.later_until));
+                request.body.user_note, laterUntilForRaceRecovery);
             logCapture(bookmark, true);
             return reply.status(200).send(request.shareKeyId ? { id: bookmark.id, message: "Already in your library", alreadySaved: true } : {
               bookmark,

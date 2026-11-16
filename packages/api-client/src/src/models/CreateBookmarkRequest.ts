@@ -71,25 +71,25 @@ export interface CreateBookmarkRequest {
      */
     sourceUrl: string;
     /**
-     * Optional collection ID to add the bookmark to
+     * Optional collection ID to add the bookmark to. A UUID. Must be the ID of a collection the caller owns; anything else is a 404.
      * @type {string}
      * @memberof CreateBookmarkRequest
      */
     collectionId?: string;
     /**
-     * Optional title for the bookmark
+     * Optional title for the bookmark. Trimmed; at most 300 characters.
      * @type {string}
      * @memberof CreateBookmarkRequest
      */
     title?: string;
     /**
-     * Optional description for the bookmark
+     * Optional description for the bookmark. At most 2000 characters.
      * @type {string}
      * @memberof CreateBookmarkRequest
      */
     description?: string;
     /**
-     * Optional tags for the bookmark
+     * Optional tags for the bookmark. At most 50, each trimmed, not blank and at most 64 characters.
      * @type {Array<string>}
      * @memberof CreateBookmarkRequest
      */

@@ -480,7 +480,7 @@ Verified 2026-11-15: shared 441 passing (jest -i), API 385, worker 19, builds gr
 
 | | |
 |---|---|
-| Status | Todo |
+| Status | Done |
 | Depends on | T-3 |
 | Traces | Finding 11 · PR 1 item 7 |
 | Ships as | User-visible: `POST /bookmarks` answers 404 for a collection the caller does not own, 400 for a non-UUID collection id or oversized title, description or tags |
@@ -529,7 +529,7 @@ git diff --stat -- packages/api-client packages/apispec
 
 **Notes**
 
-_For the coordinator: verification results, follow-ups, blockers, commits in other repos._
+Verified 2026-11-15: API 399 passing, shared 441 (jest -i), worker 19, builds green, api lint 0 errors, web typecheck passes, api-contract test passes. Contract regenerated with `bun run apispec`; the only generated change is doc comments in CreateBookmarkRequest.ts. Red-first confirmed for the ownership, UUID and limit cases; the valid-body responses test is a regression pin that was never red. Decisions: `collection_id: null` is still accepted and treated as unset; title and tag trimming applies on public links too; `parseCreateBookmarkBody` is new and `validateCreateBookmarkBody` delegates to it with the same signature. Out of scope, noticed: create does not persist `tags` for public links, and ignores title and description there; the generated client has no per-operation 404 type.
 
 ## Implementation review
 
