@@ -7,12 +7,12 @@
 | Generated with | `/Users/paulo.freitas/.claude/skills/spec-breakdown` · SKILL.md sha256 `f7d0c27c94c9` |
 | Readiness | No open questions: D-5 was answered by the production check recorded as D-6; the numbers the plan left open are D-7 to D-9 (chosen by the breakdown, listed for the user's approval). |
 | Prototype | N/A: no UI |
-| Status | Draft |
+| Status | Approved |
 | Date | 2026-11-16 |
 | Feature flag | N/A: no flag. The queue messages and their payloads do not change, so old and new API and worker versions interoperate during the deploy (see Rollout). |
 | Integration | Feature branch `feature/save-pipeline-2` → GitHub PR → `main` on `origin`; one complete package |
 | Delivery | github-pr |
-| Authorization | Requested: the user wrote "Full send it to prod" on 2026-11-15 and chose sequential packages (D-3); on 2026-11-16 they said "Continue where you left off" after package 1 was verified in production. Scope: implement, review, open the PR and merge this package after the full gate. A merge to `main` deploys the API and worker to production automatically. It does not cover manual rollout (R-1 to R-3), packages 3 to 5, or any production data change. Plan approval is pending. |
+| Authorization | Requested: the user wrote "Full send it to prod" on 2026-11-15 and chose sequential packages (D-3); on 2026-11-16 they said "Continue where you left off" after package 1 was verified in production. Scope: implement, review, open the PR and merge this package after the full gate. A merge to `main` deploys the API and worker to production automatically. It does not cover manual rollout (R-1 to R-3), packages 3 to 5, or any production data change. Plan approved by the user on 2026-11-16: "approved. full send package 2". |
 | Plan | 5 tasks · critical path T-1 → T-2 → T-3 → T-4 → T-5 · 1 lane (every task shares files with the next) |
 
 ## Repos
