@@ -7,7 +7,7 @@
 | Generated with | `/Users/paulo.freitas/.claude/skills/spec-breakdown` · SKILL.md sha256 `f7d0c27c94c9` |
 | Readiness | No open questions: D-5 was answered by the production check recorded as D-6; the numbers the plan left open are D-7 to D-9 (chosen by the breakdown, listed for the user's approval). |
 | Prototype | N/A: no UI |
-| Status | Approved |
+| Status | Done |
 | Date | 2026-11-16 |
 | Feature flag | N/A: no flag. The queue messages and their payloads do not change, so old and new API and worker versions interoperate during the deploy (see Rollout). |
 | Integration | Feature branch `feature/save-pipeline-2` → GitHub PR → `main` on `origin`; one complete package |
@@ -640,3 +640,15 @@ Spec items are the numbered findings and the PR 2 items in the spec. Packages 1,
 | B-4 | A paste or Retry on a bookmark already processing. | Retry answers 202 "Already processing"; paste answers 409 (D-9). | Breakdown owner, within the spec's rule that `processing` means one live message |
 | B-5 | Where a task file for a second package lives. | `tasks-2.md` beside `tasks.md`, because `tasks.md` is package 1's merged record. | Breakdown owner |
 | B-6 | `createServiceContainer` still takes a Supabase client. | Left unused here; package 4 removes it with the per-route containers. | Breakdown owner, per the spec's PR 4 item 1 |
+
+## Review ledger
+
+Reviewer: Sol (`gpt-6.1-sol`, high), whole-feature, 3 of 5 rounds.
+
+| Round | Reviewed SHA | Verdict | Findings |
+|---|---|---|---|
+| 1 | c1bfe492 | Changes requested | F1 terminal write and message disposal in separate transactions (Critical); F2 final delivery archived without durable terminal state (Critical); F3 reads completing after shutdown start handlers (Critical); F4 browser-slot wait ignored cancellation (High); F5 deadline timer leak on initial write failure (Medium) |
+| 2 | f9d82d7a | Changes requested | F1 still open for the exhaustion path; F2 still open for failures before `settle()`; F3-F5 resolved; F6 shutdown release during in-flight disposal (Critical) |
+| 3 | bc11e95c | Approve | F1, F2, F6 resolved; no new findings |
+
+All findings fixed (commits 19c60fdb, f9d82d7a, bc11e95c). Reviewer caveat: an API benchmark test timed out under load in the review session; it passes in isolation and in the coordinator's full run (API 406).
