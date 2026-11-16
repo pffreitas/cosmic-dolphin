@@ -8,6 +8,24 @@ import {
   NewScrapedUrlContent,
 } from "../database/schema";
 import { ScrapedUrlContents } from "../types";
+import { PgmqRepositoryImpl } from "./pgmq.repository";
+import { QueueService, QueueServiceImpl } from "../services/queue.service";
+import { startOfUtcDay } from "../services/processing-budget.service";
+
+/** Today's processing budget, as the creating transaction needs it. */
+export interface CreateBudget {
+  dailyLimit: number;
+  now: Date;
+}
+
+export interface CreateAndQueueResult {
+  bookmark: Bookmark;
+  /** False when the daily budget was spent: the row stands `idle`, nothing is queued. */
+  queued: boolean;
+}
+
+/** Builds the queue a transaction sends through, so a send commits or rolls back with it. */
+export type QueueForTransaction = (transaction: Kysely<Database>) => QueueService;
 
 /**
  * Library ordering — docs/functional-spec/04-library.md § Ordering.
@@ -83,6 +101,14 @@ export interface VectorSearchResult {
 }
 
 export interface BookmarkRepository {
+  /**
+   * Insert a bookmark and queue its processing message in one transaction.
+   * `null` when the user already has this URL (nothing is written or queued).
+   */
+  createAndQueue(
+    data: NewBookmark,
+    budget: CreateBudget
+  ): Promise<CreateAndQueueResult | null>;
   findByUserAndUrl(userId: string, sourceUrl: string): Promise<Bookmark | null>;
   findByIdAndUser(id: string, userId: string): Promise<Bookmark | null>;
   /**
@@ -254,8 +280,54 @@ export class BookmarkRepositoryImpl
   extends BaseRepository
   implements BookmarkRepository
 {
-  constructor(db: Kysely<Database>) {
+  constructor(
+    db: Kysely<Database>,
+    private queueFor: QueueForTransaction = (transaction) =>
+      new QueueServiceImpl(new PgmqRepositoryImpl(transaction))
+  ) {
     super(db);
+  }
+
+  async createAndQueue(
+    data: NewBookmark,
+    budget: CreateBudget
+  ): Promise<CreateAndQueueResult | null> {
+    return this.executeQuery(
+      () =>
+        this.db.transaction().execute(async (transaction) => {
+          // D-7: the budget is the bookmarks created today, counted before this
+          // insert. No lock: concurrent saves may overshoot by their own number.
+          const dayStart = startOfUtcDay(budget.now);
+          const created = await transaction
+            .selectFrom("bookmarks")
+            .select(({ fn }) => fn.countAll<string>().as("count"))
+            .where("user_id", "=", data.user_id)
+            .where("created_at", ">=", dayStart)
+            .executeTakeFirstOrThrow();
+          const queued = Number(created.count) < budget.dailyLimit;
+
+          const bookmark = await transaction
+            .insertInto("bookmarks")
+            .values({
+              ...data,
+              processing_status: queued ? "processing" : "idle",
+              processing_started_at: queued ? budget.now : null,
+            })
+            .onConflict((conflict) => conflict.columns(["user_id", "source_url"]).doNothing())
+            .returningAll()
+            .executeTakeFirst();
+          if (!bookmark) return null;
+
+          if (queued) {
+            await this.queueFor(transaction).sendBookmarkProcessingMessage(
+              bookmark.id,
+              data.user_id
+            );
+          }
+          return { bookmark, queued };
+        }),
+      "createAndQueue"
+    );
   }
 
   async findByUserAndUrl(

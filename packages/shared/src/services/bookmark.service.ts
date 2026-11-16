@@ -13,12 +13,15 @@ import {
   BookmarkLibraryCounts,
   BookmarkRepository,
   CollectionRepository,
+  CreateAndQueueResult,
+  CreateBudget,
   FindByUserOptions,
   SearchOptions,
 } from "../repositories";
 import { WebScrapingService } from "./web-scraping.service";
 import { NewBookmark, BookmarkUpdate } from "../database/schema";
 import { ContentExtractionError, isIncompleteExtraction } from "./content-extraction";
+import { dailyProcessingBudget } from "./processing-budget.service";
 import { bookmarkContentBlocks, limitBookmarkContent, type BookmarkContent } from "./bookmark-content-blocks";
 
 export interface PrivateLinkMetadata extends CaptureFields {
@@ -57,6 +60,12 @@ export interface CreateBookmarkOptions extends CaptureFields {
   title?: string;
 }
 
+export interface CreateAndQueueOutcome {
+  bookmark: Bookmark;
+  /** False when today's processing budget was spent: the row stands `idle`, nothing is queued. */
+  queued: boolean;
+}
+
 export type OwnerBookmarkUpdate = Pick<Partial<Bookmark>, "title" | "isArchived" | "cosmicTags" | "cosmicSummary" | "userNote" | "laterUntil">;
 
 export interface BookmarkService {
@@ -86,6 +95,23 @@ export interface BookmarkService {
     userId: string,
     options?: CreateBookmarkOptions
   ): Promise<Bookmark>;
+  /**
+   * Create the bookmark and queue its processing in one transaction, within
+   * today's budget. `null` when the user already has this URL.
+   */
+  createAndQueue(
+    url: string,
+    userId: string,
+    options?: CreateBookmarkOptions,
+    budget?: CreateBudget
+  ): Promise<CreateAndQueueOutcome | null>;
+  /** `createAndQueue` for a private link. */
+  createPrivateLinkAndQueue(
+    url: string,
+    userId: string,
+    metadata: PrivateLinkMetadata,
+    budget?: CreateBudget
+  ): Promise<CreateAndQueueOutcome | null>;
   ensureScrapedContent(bookmark: Bookmark): Promise<ScrapedUrlContents | null>;
   createPrivateLink(
     url: string,
@@ -145,6 +171,11 @@ export interface BookmarkService {
   findByShareSlug(slug: string): Promise<Bookmark | null>;
   delete(id: string, userId: string): Promise<void>;
 }
+
+const defaultBudget = (): CreateBudget => ({
+  dailyLimit: dailyProcessingBudget(),
+  now: new Date(),
+});
 
 export class BookmarkServiceImpl implements BookmarkService {
   constructor(
@@ -248,6 +279,56 @@ export class BookmarkServiceImpl implements BookmarkService {
     userId: string,
     options: CreateBookmarkOptions = {}
   ): Promise<Bookmark> {
+    const bookmark = await this.bookmarkRepository.create(
+      this.buildCreateData(url, userId, options)
+    );
+
+    return this.mapDatabaseToBookmark(bookmark);
+  }
+
+  async createAndQueue(
+    url: string,
+    userId: string,
+    options: CreateBookmarkOptions = {},
+    budget: CreateBudget = defaultBudget()
+  ): Promise<CreateAndQueueOutcome | null> {
+    return this.mapCreated(
+      await this.bookmarkRepository.createAndQueue(
+        this.buildCreateData(url, userId, options),
+        budget
+      )
+    );
+  }
+
+  async createPrivateLinkAndQueue(
+    url: string,
+    userId: string,
+    metadata: PrivateLinkMetadata,
+    budget: CreateBudget = defaultBudget()
+  ): Promise<CreateAndQueueOutcome | null> {
+    return this.mapCreated(
+      await this.bookmarkRepository.createAndQueue(
+        this.buildNewPrivateLink(url, userId, metadata),
+        budget
+      )
+    );
+  }
+
+  private mapCreated(
+    result: CreateAndQueueResult | null
+  ): CreateAndQueueOutcome | null {
+    if (!result) return null;
+    return {
+      bookmark: this.mapDatabaseToBookmark(result.bookmark),
+      queued: result.queued,
+    };
+  }
+
+  private buildCreateData(
+    url: string,
+    userId: string,
+    options: CreateBookmarkOptions
+  ): NewBookmark {
     const urlMetadata = this.webScrapingService.extractMetadataFromUrl(url);
     const provisionalTitle = options.title || urlMetadata.title || url;
 
@@ -282,9 +363,7 @@ export class BookmarkServiceImpl implements BookmarkService {
       quick_access: `${provisionalTitle} ${url}`,
     };
 
-    const bookmark = await this.bookmarkRepository.create(newBookmark);
-
-    return this.mapDatabaseToBookmark(bookmark);
+    return newBookmark;
   }
 
   /**
@@ -354,6 +433,17 @@ export class BookmarkServiceImpl implements BookmarkService {
     userId: string,
     metadata: PrivateLinkMetadata
   ): Promise<Bookmark> {
+    const bookmark = await this.bookmarkRepository.create(
+      this.buildNewPrivateLink(url, userId, metadata)
+    );
+    return this.mapDatabaseToBookmark(bookmark);
+  }
+
+  private buildNewPrivateLink(
+    url: string,
+    userId: string,
+    metadata: PrivateLinkMetadata
+  ): NewBookmark {
     const newBookmark = this.buildPrivateLinkBookmarkData(
       url,
       userId,
@@ -365,8 +455,7 @@ export class BookmarkServiceImpl implements BookmarkService {
       capture_source: metadata.captureSource ?? null, capture_platform: metadata.capturePlatform ?? "unknown",
       capture_queued_at: metadata.captureQueuedAt ?? null,
     });
-    const bookmark = await this.bookmarkRepository.create(newBookmark);
-    return this.mapDatabaseToBookmark(bookmark);
+    return newBookmark;
   }
 
   async convertToPrivateLink(

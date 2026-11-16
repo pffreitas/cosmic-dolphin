@@ -53,10 +53,6 @@ import {
   FeedRankingServiceImpl,
 } from "./feed-ranking.service";
 import { DigestService, DigestServiceImpl } from "./digest.service";
-import {
-  ProcessingBudgetService,
-  ProcessingBudgetServiceImpl,
-} from "./processing-budget.service";
 import { EmbeddingServiceImpl } from "./embedding.service";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Kysely } from "kysely";
@@ -91,7 +87,6 @@ export interface ServiceContainer {
   profile: ProfileService;
   search: SearchService;
   bookmarkProcessing: BookmarkProcessingRepository;
-  processingBudget: ProcessingBudgetService;
   reading: ReadingService;
   social: SocialService;
   comment: CommentService;
@@ -156,9 +151,6 @@ export function createServiceContainer(
       collectionRepository
     ),
     bookmarkProcessing: bookmarkProcessingRepository,
-    processingBudget: new ProcessingBudgetServiceImpl(
-      bookmarkProcessingRepository
-    ),
     reading: new ReadingServiceImpl(bookmarkReadingRepository),
     social: socialService,
     comment: new CommentServiceImpl(commentRepository),

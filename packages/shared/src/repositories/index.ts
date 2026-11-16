@@ -7,6 +7,8 @@ export type {
   BookmarkKeyset,
   BookmarkLibraryCounts,
   BookmarkScope,
+  CreateAndQueueResult,
+  CreateBudget,
   BookmarkSort,
   FindByUserOptions,
   SearchOptions,

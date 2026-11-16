@@ -13,6 +13,7 @@ describe("BookmarkService", () => {
 
   beforeEach(() => {
     mockRepository = {
+      createAndQueue: jest.fn(),
       updateOwned: jest.fn(),
       replaceProvisionalTitle: jest.fn(),
       mergeCapture: jest.fn(),

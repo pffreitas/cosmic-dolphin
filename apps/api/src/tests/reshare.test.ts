@@ -82,50 +82,30 @@ class FakeLibrary {
             ) ?? null
           );
         }),
-        create: mock(async (url: string, userId: string, options: any = {}) => {
-          // The unique index, not politeness. A second insert of the same
-          // (user, url) is what the constraint exists to stop.
-          if (
-            this.rows.some(
-              (row) => row.userId === userId && row.sourceUrl === url
-            )
-          ) {
-            throw new Error(
-              "duplicate key value violates unique constraint bookmarks_user_id_source_url_key"
-            );
-          }
-          return this.add({
-            sourceUrl: url,
-            userId,
-            title: options.title,
-            collectionId: options.collectionId ?? undefined,
-            savedFromBookmarkId: options.savedFromBookmarkId ?? undefined,
-            processingStatus: "idle",
-          });
-        }),
-        updateProcessingStatus: mock(
-          async (id: string, status: Bookmark["processingStatus"]) => {
-            const row = this.rows.find((candidate) => candidate.id === id)!;
-            row.processingStatus = status;
-            return row;
+        createAndQueue: mock(
+          async (url: string, userId: string, options: any = {}) => {
+            // The unique index, not politeness: a second insert of the same
+            // (user, url) is refused by the data and answers `null`.
+            if (
+              this.rows.some(
+                (row) => row.userId === userId && row.sourceUrl === url
+              )
+            ) {
+              return null;
+            }
+            const queued = this.withinBudget;
+            const bookmark = this.add({
+              sourceUrl: url,
+              userId,
+              title: options.title,
+              collectionId: options.collectionId ?? undefined,
+              savedFromBookmarkId: options.savedFromBookmarkId ?? undefined,
+              processingStatus: queued ? "processing" : "idle",
+            });
+            if (queued) this.queued.push({ bookmarkId: bookmark.id, userId });
+            return { bookmark, queued };
           }
         ),
-      },
-      queue: {
-        sendBookmarkProcessingMessage: mock(
-          async (bookmarkId: string, userId: string) => {
-            this.queued.push({ bookmarkId, userId });
-            return 1;
-          }
-        ),
-      },
-      processingBudget: {
-        check: mock(async () => ({
-          withinBudget: this.withinBudget,
-          used: this.withinBudget ? 1 : 200,
-          limit: 200,
-          resetsAt: new Date("2026-01-02T00:00:00Z"),
-        })),
       },
       social,
     } as any;
@@ -176,12 +156,12 @@ describe("POST /bookmarks/:id/reshare", () => {
     // Inbox. The author's collection is the author's tree, and copying it
     // would file a stranger's judgement into this user's library.
     expect(saved.collectionId).toBeUndefined();
-    expect(services.bookmark.create).toHaveBeenCalledWith(
+    expect(services.bookmark.createAndQueue).toHaveBeenCalledWith(
       original.sourceUrl,
       "resharer",
       expect.objectContaining({ savedFromBookmarkId: original.id })
     );
-    expect(services.bookmark.create.mock.calls[0][2].collectionId).toBeUndefined();
+    expect(services.bookmark.createAndQueue.mock.calls[0][2].collectionId).toBeUndefined();
   });
 
   it("runs the pipeline for the new owner, so the summary is theirs", async () => {
@@ -201,7 +181,6 @@ describe("POST /bookmarks/:id/reshare", () => {
     expect(library.queued).toEqual([
       { bookmarkId: saved.id, userId: "resharer" },
     ]);
-    expect(services.processingBudget.check).toHaveBeenCalledWith("resharer");
     expect(saved.processingStatus).toBe("processing");
 
     // Nothing of the original's own output was copied forward — it is the
@@ -264,7 +243,9 @@ describe("POST /bookmarks/:id/reshare", () => {
     );
     // Nothing re-queued: a second press must not spend the budget again.
     expect(library.queued).toHaveLength(1);
-    expect(services.bookmark.create).toHaveBeenCalledTimes(1);
+    // Both presses went through the one transaction; the second wrote and
+    // queued nothing.
+    expect(services.bookmark.createAndQueue).toHaveBeenCalledTimes(2);
   });
 
   it("is a no-op when the URL is already in the library from a plain save", async () => {
@@ -288,7 +269,8 @@ describe("POST /bookmarks/:id/reshare", () => {
     expect(result.statusCode).toBe(200);
     expect((result.body as any).bookmark.id).toBe(own.id);
     expect((result.body as any).alreadySaved).toBe(true);
-    expect(services.bookmark.create).not.toHaveBeenCalled();
+    expect(library.queued).toEqual([]);
+    expect(library.rows.filter((row) => row.userId === "resharer")).toHaveLength(1);
   });
 
   it("answers already-saved rather than duplicating when the caller reshares their own bookmark", async () => {
@@ -330,7 +312,7 @@ describe("POST /bookmarks/:id/reshare", () => {
       statusCode: 404,
       body: { error: "Bookmark not found" },
     });
-    expect(services.bookmark.create).not.toHaveBeenCalled();
+    expect(services.bookmark.createAndQueue).not.toHaveBeenCalled();
   });
 
   it("404s when either party has blocked the other", async () => {
@@ -352,7 +334,7 @@ describe("POST /bookmarks/:id/reshare", () => {
       body: { error: "Bookmark not found" },
     });
     expect(blocked.canInteract).toHaveBeenCalledWith("resharer", "author");
-    expect(services.bookmark.create).not.toHaveBeenCalled();
+    expect(services.bookmark.createAndQueue).not.toHaveBeenCalled();
   });
 
   it("404s on a bookmark that no longer exists", async () => {

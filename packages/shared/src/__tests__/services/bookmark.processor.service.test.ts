@@ -45,6 +45,8 @@ describe("BookmarkProcessorService", () => {
 
   beforeEach(() => {
     mockBookmarkService = {
+      createAndQueue: jest.fn(),
+      createPrivateLinkAndQueue: jest.fn(),
       updateByOwner: jest.fn(),
       mergeCapture: jest.fn(),
       findByIdAndUser: jest.fn(),
