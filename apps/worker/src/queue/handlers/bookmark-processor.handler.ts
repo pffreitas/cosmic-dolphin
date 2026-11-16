@@ -4,8 +4,10 @@ import { QueueMessage } from "../../types/queue.types";
 import type {
   BookmarkQueuePayload,
   BookmarkProcessorService,
+  BookmarkService,
 } from "@cosmic-dolphin/shared";
-import { BOOKMARK_PROCESSOR_SERVICE } from "../tokens";
+import { BookmarkNotFoundError } from "@cosmic-dolphin/shared";
+import { BOOKMARK_PROCESSOR_SERVICE, BOOKMARK_SERVICE } from "../tokens";
 
 @Injectable()
 export class BookmarkProcessorHandler implements MessageHandler {
@@ -14,6 +16,8 @@ export class BookmarkProcessorHandler implements MessageHandler {
   constructor(
     @Inject(BOOKMARK_PROCESSOR_SERVICE)
     private readonly bookmarkProcessorService: BookmarkProcessorService,
+    @Inject(BOOKMARK_SERVICE)
+    private readonly bookmarkService: BookmarkService,
   ) {}
 
   canHandle(messageType: string): boolean {
@@ -47,12 +51,45 @@ export class BookmarkProcessorHandler implements MessageHandler {
         userId: payload.data.userId,
       });
     } catch (error) {
+      if (error instanceof BookmarkNotFoundError) {
+        // Deleted while queued: nothing can succeed later, so acknowledge the
+        // message by returning instead of spending retries on it.
+        this.logger.log(
+          `Bookmark ${error.bookmarkId} no longer exists; dropping message ${message.msg_id}`,
+        );
+        return;
+      }
       this.logger.error(`Failed to process bookmark ${message.msg_id}`, {
         error: error instanceof Error ? error.message : error,
         stack: error instanceof Error ? error.stack : undefined,
         message: message.message,
       });
       throw error;
+    }
+  }
+
+  async onExhausted(message: QueueMessage): Promise<void> {
+    const payload = message.message as BookmarkQueuePayload | undefined;
+    const bookmarkId = payload?.data?.bookmarkId;
+    if (!bookmarkId) {
+      this.logger.warn(
+        `Exhausted bookmark message ${message.msg_id} has no bookmark to fail`,
+      );
+      return;
+    }
+
+    try {
+      await this.bookmarkService.updateProcessingStatus(
+        bookmarkId,
+        "failed",
+        "Processing stopped after repeated worker failures",
+      );
+    } catch (error) {
+      // The bookmark may have been deleted while the message kept crashing.
+      this.logger.warn(
+        `Could not mark bookmark ${bookmarkId} failed for exhausted message ${message.msg_id}`,
+        { error: error instanceof Error ? error.message : error },
+      );
     }
   }
 

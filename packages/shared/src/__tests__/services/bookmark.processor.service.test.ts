@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
-import { BookmarkProcessorServiceImpl } from "../../services/bookmark.processor.service";
+import { BookmarkProcessorServiceImpl, BookmarkNotFoundError } from "../../services/bookmark.processor.service";
 import { SUMMARY_SCHEMA, BRIEF_ONLY_SCHEMA, clampText, normaliseKeyPoints, renderSummaryMarkdown } from "../../services/bookmark.summary";
 import { BOOKMARK_MODEL_IDS, summaryProviderOptions } from "../../services/bookmark.model-ids";
 import { budgetText, MAX_MODEL_CONTENT_CHARS } from "../../services/chunking.service";
@@ -450,6 +450,9 @@ describe("BookmarkProcessorService", () => {
       await expect(
         service.process("non-existent-id", "user-id")
       ).rejects.toThrow("Bookmark not found: non-existent-id");
+      await expect(
+        service.process("non-existent-id", "user-id")
+      ).rejects.toBeInstanceOf(BookmarkNotFoundError);
 
       expect(mockBookmarkService.ensureScrapedContent).not.toHaveBeenCalled();
       expect(mockAI.newSession).not.toHaveBeenCalled();

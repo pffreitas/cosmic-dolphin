@@ -371,7 +371,7 @@ Verified 2026-11-15 on the feature branch: shared 432 passing (jest -i), API 383
 
 | | |
 |---|---|
-| Status | Todo |
+| Status | Done |
 | Depends on | T-1 |
 | Traces | Finding 3 (crash-loop half) · Finding 10 · Finding 6 · PR 1 items 3, 4 and 6 |
 | Ships as | User-visible: a bookmark whose processing keeps killing the worker ends `failed` instead of looping; a bookmark deleted while queued costs no retries; deploys stop the worker cleanly |
@@ -421,7 +421,7 @@ cd apps/worker && bunx eslint "src/**/*.ts"
 
 **Notes**
 
-_For the coordinator: verification results, follow-ups, blockers, commits in other repos._
+Verified 2026-11-15 on the feature branch: worker 19 passing, shared 432 (jest -i), API 383, builds green, worker lint 0 errors. Red-first confirmed for exhausted-delivery, BookmarkNotFoundError, stopProcessing timer and shutdown hooks; characterization tests (read_ct 4 still runs, other errors still retry) passed immediately by design. Decisions: setup moved into new `apps/worker/src/app.setup.ts` (main.ts runs bootstrap on import, so it was untestable); `updateProcessingStatus` is not user scoped so onExhausted fails the bookmark by id; the shutdown test uses a stub app and does not send a real SIGTERM.
 
 ### T-3 · The timeline stops polling when processing has ended
 

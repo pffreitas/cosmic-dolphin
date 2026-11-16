@@ -79,18 +79,21 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
       30000,
     );
 
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       await Promise.race([
         Promise.all(this.processingPromises),
-        new Promise((_, reject) =>
-          setTimeout(
+        new Promise((_, reject) => {
+          timer = setTimeout(
             () => reject(new Error("Graceful shutdown timeout")),
             timeout,
-          ),
-        ),
+          );
+        }),
       ]);
     } catch (error) {
       this.logger.warn("Graceful shutdown timeout reached, forcing stop");
+    } finally {
+      clearTimeout(timer);
     }
 
     this.processingPromises = [];
@@ -141,6 +144,26 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
       if (!handler) {
         this.logger.error(`No handler found for message ${message.msg_id}`);
         await this.queueService.archiveMessage(config.name, message.msg_id);
+        return;
+      }
+
+      // The last allowed run is read_ct = maxRetries + 1. A delivery past that
+      // has already crashed the worker too often to be tried again: a crash
+      // never reaches handleError, so pgmq would redeliver it forever.
+      if (message.read_ct > config.maxRetries + 1) {
+        this.logger.warn(
+          `Message ${message.msg_id} was delivered ${message.read_ct} times; failing it without running`,
+        );
+        try {
+          await handler.onExhausted?.(message);
+        } catch (exhaustedError) {
+          this.logger.error(
+            `Failed to record exhaustion of message ${message.msg_id}`,
+            exhaustedError,
+          );
+        }
+        await this.queueService.archiveMessage(config.name, message.msg_id);
+        this.retryAttempts.delete(messageKey);
         return;
       }
 

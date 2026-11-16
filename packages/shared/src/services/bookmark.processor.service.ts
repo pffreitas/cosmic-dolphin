@@ -50,6 +50,17 @@ export interface BookmarkProcessOptions {
   resume?: boolean;
 }
 
+/**
+ * The bookmark a message refers to does not exist for that user, typically
+ * because it was deleted while the message was queued. No retry can fix this.
+ */
+export class BookmarkNotFoundError extends Error {
+  constructor(public readonly bookmarkId: string) {
+    super(`Bookmark not found: ${bookmarkId}`);
+    this.name = "BookmarkNotFoundError";
+  }
+}
+
 export interface BookmarkProcessorService {
   process(
     id: string,
@@ -165,7 +176,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       userId
     );
     if (!existingBookmark) {
-      throw new Error(`Bookmark not found: ${id}`);
+      throw new BookmarkNotFoundError(id);
     }
 
     let bookmark = existingBookmark;
