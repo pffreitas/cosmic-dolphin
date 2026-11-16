@@ -1910,7 +1910,7 @@ describe("BookmarkProcessorService", () => {
     } as any);
 
     it("closes the interrupted run before the bookmark is marked failed", async () => {
-      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.findByIdAndUser.mockResolvedValue({ ...testBookmark, processingStatus: "processing" });
       mockBookmarkService.updateProcessingStatus.mockResolvedValue(testBookmark);
       mockBookmarkProcessingRepository.findLatestTimeline.mockResolvedValue(interruptedTimeline());
       mockBookmarkProcessingRepository.updateRun.mockResolvedValue({} as any);
@@ -1941,7 +1941,7 @@ describe("BookmarkProcessorService", () => {
     });
 
     it("still marks the bookmark failed when closing the run fails", async () => {
-      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.findByIdAndUser.mockResolvedValue({ ...testBookmark, processingStatus: "processing" });
       mockBookmarkService.updateProcessingStatus.mockResolvedValue(testBookmark);
       mockBookmarkProcessingRepository.findLatestTimeline.mockResolvedValue(interruptedTimeline());
       mockBookmarkProcessingRepository.updateRun
@@ -1964,6 +1964,22 @@ describe("BookmarkProcessorService", () => {
       expect(mockBookmarkProcessingRepository.findLatestTimeline).not.toHaveBeenCalled();
       expect(mockBookmarkService.updateProcessingStatus).not.toHaveBeenCalled();
     });
+
+    it.each(["completed", "failed", "idle"] as const)(
+      "leaves a %s bookmark and its run alone",
+      async (status) => {
+        mockBookmarkService.findByIdAndUser.mockResolvedValue({ ...testBookmark, processingStatus: status });
+
+        await expect(
+          service.failExhausted(testBookmark.id, testBookmark.userId, "stopped")
+        ).resolves.toBe(true);
+
+        expect(mockBookmarkService.updateProcessingStatus).not.toHaveBeenCalled();
+        expect(mockBookmarkProcessingRepository.findLatestTimeline).not.toHaveBeenCalled();
+        expect(mockBookmarkProcessingRepository.updateRun).not.toHaveBeenCalled();
+        expect(mockBookmarkProcessingRepository.updateEvent).not.toHaveBeenCalled();
+      }
+    );
   });
 
   describe("structured summary output", () => {

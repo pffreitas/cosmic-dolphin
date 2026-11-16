@@ -168,6 +168,10 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
   ): Promise<boolean> {
     const bookmark = await this.bookmarkService.findByIdAndUser(id, userId);
     if (!bookmark) return false;
+    // Only a bookmark still `processing` was stranded. If the final attempt
+    // finished (or the bookmark was already failed or reset) before the worker
+    // died, that outcome stands: the message is archived and nothing is touched.
+    if (bookmark.processingStatus !== "processing") return true;
 
     const reporter = new BookmarkProcessingReporter(
       this.bookmarkProcessingRepository

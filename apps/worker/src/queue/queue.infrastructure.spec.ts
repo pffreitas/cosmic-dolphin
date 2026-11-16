@@ -173,7 +173,9 @@ describe("terminal message failures", () => {
 
 describe("exhausted deliveries", () => {
   const config = { name: "bookmarks", pollInterval: 5000, maxRetries: 3, batchSize: 10 };
-  const message = (read_ct: number, payload: unknown = { type: "bookmark_process", data: { bookmarkId: "bookmark-1", userId: "user-1" } }) =>
+  const BOOKMARK_ID = "0b0e6c1a-3f4d-4e5a-8b6c-7d8e9f0a1b2c";
+  const USER_ID = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d";
+  const message = (read_ct: number, payload: unknown = { type: "bookmark_process", data: { bookmarkId: BOOKMARK_ID, userId: USER_ID } }) =>
     ({ msg_id: 50, read_ct, enqueued_at: new Date(), vt: new Date(), message: payload }) as never;
 
   function setup() {
@@ -200,18 +202,36 @@ describe("exhausted deliveries", () => {
 
     expect(run).not.toHaveBeenCalled();
     expect(exhausted).toHaveBeenCalledWith(
-      "bookmark-1",
-      "user-1",
+      BOOKMARK_ID,
+      USER_ID,
       "Processing stopped after repeated worker failures",
     );
     expect(archive).toHaveBeenCalledWith("bookmarks", 50);
   });
 
   test("exhausted delivery with an unreadable payload is still archived", async () => {
-    for (const payload of [null, {}, { type: "bookmark_process" }, { type: "bookmark_process", data: { bookmarkId: "bookmark-1" } }]) {
+    for (const payload of [null, {}, { type: "bookmark_process" }, { type: "bookmark_process", data: { bookmarkId: BOOKMARK_ID } }]) {
       const { processor, archive, exhausted } = setup();
 
       await (processor as any).processMessage(message(5, payload), config);
+
+      expect(exhausted).not.toHaveBeenCalled();
+      expect(archive).toHaveBeenCalledWith("bookmarks", 50);
+    }
+  });
+
+  test("exhausted delivery with malformed identifiers is archived without failing anything", async () => {
+    const bad = [
+      { bookmarkId: "bookmark-1", userId: USER_ID },
+      { bookmarkId: BOOKMARK_ID, userId: "user-1" },
+      { bookmarkId: 42, userId: USER_ID },
+      { bookmarkId: BOOKMARK_ID, userId: { id: USER_ID } },
+      { bookmarkId: [BOOKMARK_ID], userId: USER_ID },
+    ];
+    for (const data of bad) {
+      const { processor, archive, exhausted } = setup();
+
+      await (processor as any).processMessage(message(5, { type: "bookmark_process", data }), config);
 
       expect(exhausted).not.toHaveBeenCalled();
       expect(archive).toHaveBeenCalledWith("bookmarks", 50);

@@ -8,6 +8,12 @@ import type {
 import { BookmarkNotFoundError } from "@cosmic-dolphin/shared";
 import { BOOKMARK_PROCESSOR_SERVICE } from "../tokens";
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const isUuid = (value: unknown): value is string =>
+  typeof value === "string" && UUID_PATTERN.test(value);
+
 @Injectable()
 export class BookmarkProcessorHandler implements MessageHandler {
   private readonly logger = new Logger(BookmarkProcessorHandler.name);
@@ -68,7 +74,7 @@ export class BookmarkProcessorHandler implements MessageHandler {
   /**
    * Record that the message was delivered too often to run again.
    *
-   * A payload that names no bookmark, or a bookmark that no longer exists for
+   * A payload that names no bookmark (or malformed ids), or a bookmark that no longer exists for
    * that user, leaves nothing to record: return and let the message be
    * archived. Any other failure propagates, so the processor keeps the message
    * and pgmq redelivers it once the database is back.
@@ -77,9 +83,11 @@ export class BookmarkProcessorHandler implements MessageHandler {
     const payload = message.message as BookmarkQueuePayload | undefined;
     const bookmarkId = payload?.data?.bookmarkId;
     const userId = payload?.data?.userId;
-    if (!bookmarkId || !userId) {
+    if (!isUuid(bookmarkId) || !isUuid(userId)) {
+      // Malformed ids would make the database raise a permanent error, which
+      // would keep the message forever; archive it like an unreadable payload.
       this.logger.warn(
-        `Exhausted bookmark message ${message.msg_id} has no bookmark to fail`,
+        `Exhausted bookmark message ${message.msg_id} has no valid bookmark to fail`,
       );
       return;
     }
