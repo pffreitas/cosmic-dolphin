@@ -109,7 +109,7 @@ function pipeline(usable = false, onStart?: () => Promise<void>) {
       throw new Error("Unexpected fictional turn");
     },
   } as unknown as AI;
-  const processor = new BookmarkProcessorServiceImpl(bookmark, new ContentChunkRepositoryImpl(db), new CollectionRepositoryImpl(db), ai, new BookmarkProcessingRepositoryImpl(db), undefined, undefined,
+  const processor = new BookmarkProcessorServiceImpl(bookmark, new ContentChunkRepositoryImpl(db), new CollectionRepositoryImpl(db), ai, new BookmarkProcessingRepositoryImpl(db), undefined,
     { getModelId: () => "fictional-embedding", embedTextsWithUsage: async (texts: string[]) => ({ value: texts.map(() => Array(1536).fill(0)) }) } as any);
   return { processor, turns, sources };
 }

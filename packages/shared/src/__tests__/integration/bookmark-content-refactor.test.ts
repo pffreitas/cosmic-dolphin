@@ -9,7 +9,6 @@ import { AI } from "../../ai";
 import { ContentChunkRepository } from "../../repositories/content-chunk.repository";
 import { CollectionRepositoryImpl } from "../../repositories/collection.repository";
 import { BookmarkProcessingRepositoryImpl } from "../../repositories/bookmark-processing.repository";
-import { HttpClient } from "../../services/http-client";
 import { ChunkingService } from "../../services/chunking.service";
 import { EmbeddingService } from "../../services/embedding.service";
 
@@ -21,7 +20,6 @@ describe("Bookmark Content Refactor Integration", () => {
   let mockWebScrapingService: jest.Mocked<WebScrapingService>;
   let mockContentChunkRepository: jest.Mocked<ContentChunkRepository>;
   let mockAI: jest.Mocked<AI>;
-  let mockHttpClient: jest.Mocked<HttpClient>;
   let mockChunkingService: jest.Mocked<ChunkingService>;
   let mockEmbeddingService: jest.Mocked<EmbeddingService>;
   let testUserId: string;
@@ -29,17 +27,6 @@ describe("Bookmark Content Refactor Integration", () => {
   beforeEach(() => {
     const db = getTestDatabase();
 
-    mockHttpClient = {
-      fetch: jest.fn(),
-    };
-    (mockHttpClient.fetch as any).mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      headers: { get: (_name: string) => "image/jpeg" },
-      body: "",
-      arrayBuffer: () => Promise.resolve(new ArrayBuffer(100)),
-    });
     repository = new BookmarkRepositoryImpl(db);
     collectionRepository = new CollectionRepositoryImpl(db);
 
@@ -52,7 +39,6 @@ describe("Bookmark Content Refactor Integration", () => {
 
     mockContentChunkRepository = {
       createTextChunk: jest.fn(),
-      createImageChunk: jest.fn(),
       updateTextChunkEmbedding: jest.fn(),
       findByScrapedContentId: jest.fn(),
       findTextChunksByScrapedContentId: jest.fn(),
@@ -139,7 +125,6 @@ describe("Bookmark Content Refactor Integration", () => {
       collectionRepository,
       mockAI,
       new BookmarkProcessingRepositoryImpl(db),
-      mockHttpClient,
       mockChunkingService,
       mockEmbeddingService
     );
@@ -396,6 +381,55 @@ describe("Bookmark Content Refactor Integration", () => {
           content: "Fetched content",
         })
       );
+    });
+
+    it("run keeps owner edits made while processing", async () => {
+      const bookmark = await repository.create(
+        TestDataFactory.createBookmark({
+          user_id: testUserId,
+          source_url: "https://example.com/edited-while-processing",
+          title: "Original title",
+          is_archived: false,
+          is_favorite: false,
+        })
+      );
+      const scraped = TestDataFactory.createScrapedUrlContent({
+        bookmark_id: bookmark.id,
+        content: "Content that takes a while to summarise.",
+      });
+      await repository.insertScrapedUrlContents(bookmark.id, {
+        title: scraped.title,
+        content: scraped.content,
+        metadata: scraped.metadata,
+        images: scraped.images,
+        links: scraped.links,
+      });
+      mockAI.newSession.mockResolvedValue({ sessionID: "s", refID: bookmark.id });
+
+      // The owner acts during the model call, after the run read the row and
+      // before it writes its result.
+      const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+      let edited = false;
+      mockAI.generateObjectWithUsage.mockImplementation(async (input: any) => {
+        if (!edited) {
+          edited = true;
+          await service.update(bookmark.id, {
+            isArchived: true,
+            isFavorite: true,
+            title: "Owner retitled",
+          });
+        }
+        return original(input);
+      });
+
+      await processorService.process(bookmark.id, testUserId);
+
+      const after = await service.findByIdAndUser(bookmark.id, testUserId);
+      expect(edited).toBe(true);
+      expect(after!.isArchived).toBe(true);
+      expect(after!.isFavorite).toBe(true);
+      expect(after!.title).toBe("Owner retitled");
+      expect(after!.cosmicBriefSummary).toBe("Generated brief summary");
     });
 
     it("should support updating bookmark metadata without affecting scraped content", async () => {

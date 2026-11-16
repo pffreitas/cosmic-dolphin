@@ -3,8 +3,69 @@ import {
   NewCollection,
   NewScrapedUrlContent,
 } from "../database/schema";
-import { BookmarkMetadata, OpenGraphMetadata } from "../types";
-import { CreateTextChunkData, CreateImageChunkData } from "../repositories/content-chunk.repository";
+import { BookmarkMetadata, OpenGraphMetadata, ImageChunk } from "../types";
+import { CreateTextChunkData } from "../repositories/content-chunk.repository";
+import { getTestDatabase } from "./database";
+
+/**
+ * Image chunks are no longer written by the product (nothing reads them), so
+ * only tests create them, to exercise the read paths over legacy rows.
+ */
+export interface CreateImageChunkData {
+  scrapedContentId: string;
+  imageData: Buffer;
+  mimeType: string;
+  altText?: string;
+  originalUrl?: string;
+  index: number;
+  size: number;
+  startPosition: number;
+  endPosition: number;
+}
+
+export async function insertImageChunk(
+  data: CreateImageChunkData
+): Promise<ImageChunk> {
+  return getTestDatabase().transaction().execute(async (trx) => {
+    const baseChunk = await trx
+      .insertInto("content_chunks")
+      .values({
+        scraped_content_id: data.scrapedContentId,
+        chunk_type: "image",
+        index: data.index,
+        size: data.size,
+        start_position: data.startPosition,
+        end_position: data.endPosition,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    await trx
+      .insertInto("image_chunks")
+      .values({
+        chunk_id: baseChunk.id,
+        image_data: data.imageData,
+        mime_type: data.mimeType,
+        alt_text: data.altText || null,
+        original_url: data.originalUrl || null,
+      })
+      .execute();
+    return {
+      id: baseChunk.id,
+      createdAt: baseChunk.created_at,
+      updatedAt: baseChunk.updated_at,
+      scrapedContentId: data.scrapedContentId,
+      chunkType: "image" as const,
+      index: data.index,
+      size: data.size,
+      startPosition: data.startPosition,
+      endPosition: data.endPosition,
+      imageData: data.imageData,
+      mimeType: data.mimeType,
+      altText: data.altText,
+      originalUrl: data.originalUrl,
+    };
+  });
+}
 
 export class TestDataFactory {
   static createCollection(

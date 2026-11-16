@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import { BookmarkProcessorServiceImpl } from "../../services/bookmark.processor.service";
 import { SUMMARY_SCHEMA, BRIEF_ONLY_SCHEMA, clampText, normaliseKeyPoints, renderSummaryMarkdown } from "../../services/bookmark.summary";
 import { BOOKMARK_MODEL_IDS, summaryProviderOptions } from "../../services/bookmark.model-ids";
-import { budgetText } from "../../services/chunking.service";
+import { budgetText, MAX_MODEL_CONTENT_CHARS } from "../../services/chunking.service";
 import { NoObjectGeneratedError } from "ai";
 import { BookmarkService } from "../../services/bookmark.service";
 import { ContentChunkRepository } from "../../repositories/content-chunk.repository";
@@ -12,10 +12,9 @@ import { Session, Task } from "../../ai/types";
 import { BookmarkProcessingRepository } from "../../repositories/bookmark-processing.repository";
 import { TestDataFactory } from "../../test-utils/factories";
 import { Bookmark, ScrapedUrlContents } from "../../types";
-import { HttpClient } from "../../services/http-client";
 import { ChunkingService } from "../../services/chunking.service";
 import { EmbeddingService } from "../../services/embedding.service";
-import { buildSummarisePrompt, buildTagsPrompt } from "../../services/bookmark.processor.prompt";
+import { buildSummarisePrompt, buildTagsPrompt, FILTER_IMAGES_PROMPT } from "../../services/bookmark.processor.prompt";
 import { ContentExtractionError } from "../../services/content-extraction";
 
 describe("summaryProviderOptions", () => {
@@ -39,29 +38,12 @@ describe("BookmarkProcessorService", () => {
   let mockCollectionRepository: jest.Mocked<CollectionRepository>;
   let mockAI: jest.Mocked<AI>;
   let mockBookmarkProcessingRepository: jest.Mocked<BookmarkProcessingRepository>;
-  let mockHttpClient: jest.Mocked<HttpClient>;
   let mockChunkingService: jest.Mocked<ChunkingService>;
   let mockEmbeddingService: jest.Mocked<EmbeddingService>;
   let testBookmark: Bookmark;
   let testScrapedContent: ScrapedUrlContents;
 
   beforeEach(() => {
-    // Mock HTTP client for image processing
-    mockHttpClient = {
-      fetch: jest.fn(),
-    };
-
-    (mockHttpClient.fetch as any).mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      headers: {
-        get: (name: string) => "image/jpeg",
-      },
-      body: "",
-      arrayBuffer: () => Promise.resolve(new ArrayBuffer(100)),
-    });
-
     mockBookmarkService = {
       updateByOwner: jest.fn(),
       mergeCapture: jest.fn(),
@@ -246,7 +228,6 @@ describe("BookmarkProcessorService", () => {
 
     mockContentChunkRepository = {
       createTextChunk: jest.fn(),
-      createImageChunk: jest.fn(),
       updateTextChunkEmbedding: jest.fn(),
       findByScrapedContentId: jest.fn(),
       findTextChunksByScrapedContentId: jest.fn(),
@@ -308,7 +289,6 @@ describe("BookmarkProcessorService", () => {
       mockCollectionRepository,
       mockAI,
       mockBookmarkProcessingRepository,
-      mockHttpClient,
       mockChunkingService,
       mockEmbeddingService
     );
@@ -516,7 +496,6 @@ describe("BookmarkProcessorService", () => {
       mockBookmarkService.ensureScrapedContent.mockResolvedValue(testScrapedContent);
       mockAI.newSession.mockResolvedValue({ sessionID: "fictional", refID: testBookmark.id });
       mockBookmarkService.getTopTags.mockRejectedValue(new Error("SECRET NOTE KEY ARTICLE"));
-      mockHttpClient.fetch.mockRejectedValue(new Error("SECRET NOTE KEY ARTICLE"));
       const log = jest.spyOn(console, "error").mockImplementation(() => {});
       try { await service.process(testBookmark.id, testBookmark.userId); expect(log).not.toHaveBeenCalled(); }
       finally { log.mockRestore(); }
@@ -1253,7 +1232,8 @@ describe("BookmarkProcessorService", () => {
       await service.process(existing.id, existing.userId, { phase: "summarise", resume: true });
 
       const updated = mockBookmarkService.update.mock.calls.at(-1)![1];
-      expect(updated.cosmicSummary).toBe("Existing full summary");
+      // The existing full summary is kept by not being written at all.
+      expect(updated.cosmicSummary).toBeUndefined();
       expect(updated.cosmicBriefSummary).toBe("A concise generated brief.");
       expect(updated.cosmicKeyPoints).toEqual(["First finding", "Second finding"]);
       expect(mockBookmarkService.updateProcessingStatus).toHaveBeenLastCalledWith(
@@ -1484,6 +1464,190 @@ describe("BookmarkProcessorService", () => {
         .find((input) => input.schema.shape && "overview" in input.schema.shape)!;
       expect(summaryCall.prompt).toContain(`Kind: ${kind}`);
       expect(mockChunkingService.stripHtml).not.toHaveBeenCalled();
+    });
+
+    describe("final write contains only produced fields", () => {
+      let owned: Bookmark;
+      const writtenKeys = () => {
+        const calls = mockBookmarkService.update.mock.calls;
+        expect(calls).toHaveLength(1);
+        return Object.keys(calls[0][1]).sort();
+      };
+      const failTurn = (matches: (input: any) => boolean) => {
+        const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+        (mockAI.generateObjectWithUsage as jest.Mock<any>).mockImplementation(
+          async (input: any) => {
+            if (matches(input)) throw new Error("AI service unavailable");
+            return original(input);
+          }
+        );
+      };
+
+      beforeEach(() => {
+        // Values the owner may have changed since the run read the row.
+        owned = { ...testBookmark, isArchived: true, isFavorite: true, title: "Owner title" };
+        mockBookmarkService.findByIdAndUser.mockResolvedValue(owned);
+        mockBookmarkService.ensureScrapedContent.mockResolvedValue(testScrapedContent);
+        mockBookmarkService.updateProcessingStatus.mockResolvedValue(owned);
+        mockBookmarkService.update.mockResolvedValue(owned);
+        mockAI.newSession.mockResolvedValue({ sessionID: "test-session-id", refID: owned.id });
+      });
+
+      it("writes exactly what a fully successful run produced", async () => {
+        await service.process(owned.id, owned.userId);
+
+        expect(writtenKeys()).toEqual([
+          "cosmicBriefSummary",
+          "cosmicImages",
+          "cosmicKeyPoints",
+          "cosmicSummary",
+          "cosmicTags",
+          "searchDocument",
+        ]);
+      });
+
+      it("leaves summary, brief and key points untouched when summarise fails", async () => {
+        failTurn((input) => input.schema.shape && "overview" in input.schema.shape);
+
+        await service.process(owned.id, owned.userId);
+
+        expect(writtenKeys()).toEqual(["cosmicImages", "cosmicTags", "searchDocument"]);
+      });
+
+      it("leaves tags untouched when tagging fails", async () => {
+        failTurn((input) => input.schema.shape && "tags" in input.schema.shape);
+
+        await service.process(owned.id, owned.userId);
+
+        expect(writtenKeys()).toEqual([
+          "cosmicBriefSummary",
+          "cosmicImages",
+          "cosmicKeyPoints",
+          "cosmicSummary",
+          "searchDocument",
+        ]);
+      });
+
+      it("writes only the enrichment of a private link", async () => {
+        const privateLink: Bookmark = {
+          ...owned,
+          isPrivateLink: true,
+          metadata: { openGraph: {}, privateLink: { userDescription: "A note" } } as any,
+        };
+        mockBookmarkService.findByIdAndUser.mockResolvedValue(privateLink);
+        mockBookmarkService.updateProcessingStatus.mockResolvedValue(privateLink);
+        const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+        (mockAI.generateObjectWithUsage as jest.Mock<any>).mockImplementation(
+          async (input: any) =>
+            input.prompt.includes("private link quick-access record")
+              ? {
+                  value: {
+                    title: "Enriched",
+                    description: "Enriched description.",
+                    tags: ["one"],
+                    quickAccessKeywords: ["two"],
+                  },
+                  usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+                }
+              : original(input)
+        );
+
+        await service.process(privateLink.id, privateLink.userId);
+
+        expect(mockBookmarkService.update).toHaveBeenCalledTimes(1);
+        expect(Object.keys(mockBookmarkService.update.mock.calls[0][1]).sort()).toEqual([
+          "cosmicBriefSummary",
+          "cosmicTags",
+          "metadata",
+          "quickAccess",
+          "title",
+        ]);
+      });
+
+      it("clears prose and writes nothing else for an unusable source", async () => {
+        const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+        (mockAI.generateObjectWithUsage as jest.Mock<any>).mockImplementation(
+          async (input: any) =>
+            input.schema.shape && "overview" in input.schema.shape
+              ? {
+                  value: {
+                    contentStatus: "unusable", unusableReason: "paywall",
+                    brief: "", overview: "", keyPoints: [], sections: [],
+                  },
+                  usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+                }
+              : original(input)
+        );
+
+        await service.process(owned.id, owned.userId);
+
+        expect(writtenKeys()).toEqual([
+          "cosmicBriefSummary",
+          "cosmicKeyPoints",
+          "cosmicSummary",
+          "processingFailureCode",
+        ]);
+      });
+    });
+
+    describe("extract selects images without any network or storage", () => {
+      const imageTurns = () =>
+        mockAI.generateObjectWithUsage.mock.calls.filter(
+          ([input]: any[]) => input.schema.shape && "images" in input.schema.shape
+        );
+
+      beforeEach(() => {
+        mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+        mockBookmarkService.updateProcessingStatus.mockResolvedValue(testBookmark);
+        mockBookmarkService.update.mockResolvedValue(testBookmark);
+        mockAI.newSession.mockResolvedValue({ sessionID: "test-session-id", refID: testBookmark.id });
+      });
+
+      it("sends one budgeted prompt, downloads and stores nothing, and keeps only http(s) URLs", async () => {
+        const hugePage = `<p>${"x".repeat(500_000)}</p>`;
+        mockBookmarkService.ensureScrapedContent.mockResolvedValue({
+          ...testScrapedContent,
+          content: hugePage,
+        });
+        const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+        (mockAI.generateObjectWithUsage as jest.Mock<any>).mockImplementation(
+          async (input: any) =>
+            input.schema.shape && "images" in input.schema.shape
+              ? {
+                  value: {
+                    images: [
+                      { url: "https://example.com/a.jpg", title: "A", description: "First" },
+                      { url: "/relative/b.jpg", title: "B", description: "Relative" },
+                      { url: "data:image/png;base64,AAAA", title: "C", description: "Data" },
+                      { url: "http://example.com/d.png", title: "D", description: "Plain http" },
+                    ],
+                  },
+                  usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+                }
+              : original(input)
+        );
+        const updates: any[] = [];
+        mockBookmarkService.update.mockImplementation(async (_id, data) => {
+          updates.push(data);
+          return testBookmark;
+        });
+
+        const globalFetch = jest.spyOn(globalThis, "fetch");
+        try {
+          await service.process(testBookmark.id, testBookmark.userId);
+        } finally {
+          globalFetch.mockRestore();
+        }
+
+        expect(imageTurns()).toHaveLength(1);
+        const prompt: string = (imageTurns()[0][0] as any).prompt;
+        expect(prompt.length).toBeLessThan(MAX_MODEL_CONTENT_CHARS + FILTER_IMAGES_PROMPT.length);
+        expect(globalFetch).not.toHaveBeenCalled();
+        expect(updates.at(-1).cosmicImages).toEqual([
+          { url: "https://example.com/a.jpg", title: "A", description: "First" },
+          { url: "http://example.com/d.png", title: "D", description: "Plain http" },
+        ]);
+      });
     });
 
     it("persists sections when the model omits an overview", async () => {

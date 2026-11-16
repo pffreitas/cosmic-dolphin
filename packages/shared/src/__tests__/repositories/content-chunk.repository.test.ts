@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "@jest/globals";
 import { ContentChunkRepositoryImpl } from "../../repositories/content-chunk.repository";
 import { BookmarkRepositoryImpl } from "../../repositories/bookmark.repository";
 import { getTestDatabase } from "../../test-utils/database";
-import { TestDataFactory } from "../../test-utils/factories";
+import { TestDataFactory, insertImageChunk } from "../../test-utils/factories";
 import { TextChunk, ImageChunk } from "../../types";
 
 describe("ContentChunkRepository", () => {
@@ -94,59 +94,6 @@ describe("ContentChunkRepository", () => {
     });
   });
 
-  describe("createImageChunk", () => {
-    it("should create a new image chunk", async () => {
-      const imageChunkData = TestDataFactory.createImageChunk({
-        scrapedContentId: testScrapedContentId,
-      });
-
-      const result = await repository.createImageChunk(imageChunkData);
-
-      expect(result).toBeDefined();
-      expect(result.id).toBeDefined();
-      expect(result.chunkType).toBe("image");
-      expect(result.scrapedContentId).toBe(testScrapedContentId);
-      expect(result.imageData).toEqual(imageChunkData.imageData);
-      expect(result.mimeType).toBe(imageChunkData.mimeType);
-      expect(result.altText).toBe(imageChunkData.altText);
-      expect(result.originalUrl).toBe(imageChunkData.originalUrl);
-      expect(result.index).toBe(imageChunkData.index);
-      expect(result.size).toBe(imageChunkData.size);
-      expect(result.createdAt).toBeDefined();
-      expect(result.updatedAt).toBeDefined();
-    });
-
-    it("should create image chunk without optional fields", async () => {
-      const imageChunkData = TestDataFactory.createImageChunk({
-        scrapedContentId: testScrapedContentId,
-        altText: undefined,
-        originalUrl: undefined,
-      });
-
-      const result = await repository.createImageChunk(imageChunkData);
-
-      expect(result.mimeType).toBe("image/png");
-      expect(result.altText).toBeUndefined();
-      expect(result.originalUrl).toBeUndefined();
-      expect(result.chunkType).toBe("image");
-    });
-
-    it("should handle different image types", async () => {
-      const jpegImageData = TestDataFactory.createImageChunk({
-        scrapedContentId: testScrapedContentId,
-        mimeType: "image/jpeg",
-        altText: "JPEG test image",
-        originalUrl: "https://example.com/test.jpg",
-      });
-
-      const result = await repository.createImageChunk(jpegImageData);
-
-      expect(result.mimeType).toBe("image/jpeg");
-      expect(result.altText).toBe("JPEG test image");
-      expect(result.originalUrl).toBe("https://example.com/test.jpg");
-    });
-  });
-
   describe("findByScrapedContentId", () => {
     it("should find all chunks for a scraped content", async () => {
       const textChunks = TestDataFactory.createMultipleTextChunks(2, testScrapedContentId);
@@ -163,7 +110,7 @@ describe("ContentChunkRepository", () => {
 
       for (let i = 0; i < imageChunks.length; i++) {
         imageChunks[i].index = i * 2 + 1;
-        const created = await repository.createImageChunk(imageChunks[i]);
+        const created = await insertImageChunk(imageChunks[i]);
         createdIds.push(created.id);
       }
 
@@ -203,7 +150,7 @@ describe("ContentChunkRepository", () => {
         createdTextIds.push(created.id);
       }
       for (const chunk of imageChunks) {
-        await repository.createImageChunk(chunk);
+        await insertImageChunk(chunk);
       }
 
       const found = await repository.findTextChunksByScrapedContentId(testScrapedContentId);
@@ -223,7 +170,7 @@ describe("ContentChunkRepository", () => {
     it("should return empty array when no text chunks exist", async () => {
       const imageChunks = TestDataFactory.createMultipleImageChunks(2, testScrapedContentId);
       for (const chunk of imageChunks) {
-        await repository.createImageChunk(chunk);
+        await insertImageChunk(chunk);
       }
 
       const found = await repository.findTextChunksByScrapedContentId(testScrapedContentId);
@@ -240,7 +187,7 @@ describe("ContentChunkRepository", () => {
         await repository.createTextChunk(chunk);
       }
       for (const chunk of imageChunks) {
-        await repository.createImageChunk(chunk);
+        await insertImageChunk(chunk);
       }
 
       const found = await repository.findImageChunksByScrapedContentId(testScrapedContentId);
@@ -269,7 +216,7 @@ describe("ContentChunkRepository", () => {
       const imageChunk = TestDataFactory.createImageChunk({
         scrapedContentId: testScrapedContentId,
       });
-      await repository.createImageChunk(imageChunk);
+      await insertImageChunk(imageChunk);
 
       const found = await repository.findImageChunksByScrapedContentId(testScrapedContentId);
 
@@ -298,7 +245,7 @@ describe("ContentChunkRepository", () => {
       const imageChunkData = TestDataFactory.createImageChunk({
         scrapedContentId: testScrapedContentId,
       });
-      const created = await repository.createImageChunk(imageChunkData);
+      const created = await insertImageChunk(imageChunkData);
 
       const found = await repository.findById(created.id);
 
@@ -328,7 +275,7 @@ describe("ContentChunkRepository", () => {
         createdText.push(await repository.createTextChunk(chunk));
       }
       for (const chunk of imageChunks) {
-        createdImages.push(await repository.createImageChunk(chunk));
+        createdImages.push(await insertImageChunk(chunk));
       }
 
       // Verify chunks exist before deletion
@@ -406,7 +353,7 @@ describe("ContentChunkRepository", () => {
       const imageChunkData = TestDataFactory.createImageChunk({
         scrapedContentId: testScrapedContentId,
       });
-      const created = await repository.createImageChunk(imageChunkData);
+      const created = await insertImageChunk(imageChunkData);
 
       await repository.delete(created.id);
 
@@ -464,7 +411,7 @@ describe("ContentChunkRepository", () => {
         scrapedContentId: "00000000-0000-0000-0000-000000000000",
       });
 
-      await expect(invalidRepository.createImageChunk(invalidImageChunk)).rejects.toThrow();
+      await expect(insertImageChunk(invalidImageChunk)).rejects.toThrow();
 
       // Verify no orphaned data exists
       const allChunks = await repository.findByScrapedContentId(testScrapedContentId);
@@ -489,7 +436,7 @@ describe("ContentChunkRepository", () => {
           const created = await repository.createTextChunk(chunk);
           createdIds.push(created.id);
         } else {
-          const created = await repository.createImageChunk(chunk);
+          const created = await insertImageChunk(chunk);
           createdIds.push(created.id);
         }
       }
@@ -533,7 +480,7 @@ describe("ContentChunkRepository", () => {
         promises.push(repository.createTextChunk(chunk));
       }
       for (const chunk of imageChunks) {
-        promises.push(repository.createImageChunk(chunk));
+        promises.push(insertImageChunk(chunk));
       }
 
       await Promise.all(promises);

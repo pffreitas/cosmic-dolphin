@@ -315,7 +315,7 @@ graph LR
 
 | | |
 |---|---|
-| Status | Todo |
+| Status | Done |
 | Depends on | none |
 | Traces | Finding 1 · Finding 17 · PR 1 items 1 and 2 |
 | Ships as | User-visible: archiving, favouriting or retitling a bookmark while it is processing is no longer undone |
@@ -365,7 +365,7 @@ bun run --cwd packages/shared build && bun run --cwd apps/worker build
 
 **Notes**
 
-_For the coordinator: verification results, follow-ups, blockers, commits in other repos._
+Verified 2026-11-15 on the feature branch: shared 432 passing (jest -i), API 383, worker 10, builds green, lint 0 errors. Tests written first, mutation-checked. Decisions: the image prompt receives `budgetText` of the page HTML (not stripped text) because the model needs the img URLs; the patch is skipped when empty; the `httpClient` constructor parameter was removed; image-chunk seed helpers moved to `test-utils/factories.ts`; one existing test now expects the summary to be left unwritten instead of written back. Touched `apps/api/src/tests/bookmark-content.test.ts` (constructor argument) and `repositories/index.ts`, outside the listed Touches but required by the removal. Test database: the in-RAM compose database crashed twice with SIGBUS (VM memory), so verification used a disk-backed container `save-pipeline-1-db` on port 5433.
 
 ### T-2 · The worker never loops on, or retries, a message that cannot succeed
 
