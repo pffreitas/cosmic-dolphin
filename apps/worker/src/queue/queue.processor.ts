@@ -157,10 +157,15 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
         try {
           await handler.onExhausted?.(message);
         } catch (exhaustedError) {
+          // The failure is not recorded, and archiving now would leave the
+          // bookmark `processing` with no message to recover it. Keep the
+          // message: pgmq redelivers it after the visibility timeout and only
+          // this terminal write is retried.
           this.logger.error(
-            `Failed to record exhaustion of message ${message.msg_id}`,
+            `Failed to record exhaustion of message ${message.msg_id}; leaving it for redelivery`,
             exhaustedError,
           );
+          return;
         }
         await this.queueService.archiveMessage(config.name, message.msg_id);
         this.retryAttempts.delete(messageKey);

@@ -4,10 +4,9 @@ import { QueueMessage } from "../../types/queue.types";
 import type {
   BookmarkQueuePayload,
   BookmarkProcessorService,
-  BookmarkService,
 } from "@cosmic-dolphin/shared";
 import { BookmarkNotFoundError } from "@cosmic-dolphin/shared";
-import { BOOKMARK_PROCESSOR_SERVICE, BOOKMARK_SERVICE } from "../tokens";
+import { BOOKMARK_PROCESSOR_SERVICE } from "../tokens";
 
 @Injectable()
 export class BookmarkProcessorHandler implements MessageHandler {
@@ -16,8 +15,6 @@ export class BookmarkProcessorHandler implements MessageHandler {
   constructor(
     @Inject(BOOKMARK_PROCESSOR_SERVICE)
     private readonly bookmarkProcessorService: BookmarkProcessorService,
-    @Inject(BOOKMARK_SERVICE)
-    private readonly bookmarkService: BookmarkService,
   ) {}
 
   canHandle(messageType: string): boolean {
@@ -68,27 +65,33 @@ export class BookmarkProcessorHandler implements MessageHandler {
     }
   }
 
+  /**
+   * Record that the message was delivered too often to run again.
+   *
+   * A payload that names no bookmark, or a bookmark that no longer exists for
+   * that user, leaves nothing to record: return and let the message be
+   * archived. Any other failure propagates, so the processor keeps the message
+   * and pgmq redelivers it once the database is back.
+   */
   async onExhausted(message: QueueMessage): Promise<void> {
     const payload = message.message as BookmarkQueuePayload | undefined;
     const bookmarkId = payload?.data?.bookmarkId;
-    if (!bookmarkId) {
+    const userId = payload?.data?.userId;
+    if (!bookmarkId || !userId) {
       this.logger.warn(
         `Exhausted bookmark message ${message.msg_id} has no bookmark to fail`,
       );
       return;
     }
 
-    try {
-      await this.bookmarkService.updateProcessingStatus(
-        bookmarkId,
-        "failed",
-        "Processing stopped after repeated worker failures",
-      );
-    } catch (error) {
-      // The bookmark may have been deleted while the message kept crashing.
+    const recorded = await this.bookmarkProcessorService.failExhausted(
+      bookmarkId,
+      userId,
+      "Processing stopped after repeated worker failures",
+    );
+    if (!recorded) {
       this.logger.warn(
-        `Could not mark bookmark ${bookmarkId} failed for exhausted message ${message.msg_id}`,
-        { error: error instanceof Error ? error.message : error },
+        `Bookmark ${bookmarkId} no longer exists; archiving exhausted message ${message.msg_id}`,
       );
     }
   }

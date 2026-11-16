@@ -131,6 +131,67 @@ describe("Bookmark Content Refactor Integration", () => {
     testUserId = TestDataFactory.generateUserId();
   });
 
+  describe("first fetch and the title", () => {
+    const scraped = {
+      title: "Scraped title",
+      content: "Body text of the page.",
+      metadata: { wordCount: 4 },
+    };
+
+    it("keeps the title the owner set while the first fetch was in flight", async () => {
+      const row = await repository.create(TestDataFactory.createBookmark({
+        user_id: testUserId, source_url: "https://example.com/slow", title: "example.com",
+      }));
+      const bookmark = (await service.findByIdAndUser(row.id, testUserId))!;
+      let release!: () => void;
+      const held = new Promise<void>((resolve) => { release = resolve; });
+      mockWebScrapingService.scrape.mockImplementationOnce(async () => {
+        await held;
+        return scraped;
+      });
+
+      const fetching = service.ensureScrapedContent(bookmark);
+      await repository.update(row.id, { title: "My own title", quick_access: "My own title" });
+      release();
+      await fetching;
+
+      const after = (await service.findByIdAndUser(row.id, testUserId))!;
+      expect(after.title).toBe("My own title");
+      expect(after.quickAccess).toBe("My own title");
+      expect(after.metadata?.wordCount).toBe(4);
+      expect(bookmark.title).toBe("example.com");
+    });
+
+    it("keeps the owner's title in memory unchanged when the guarded write is refused", async () => {
+      const row = await repository.create(TestDataFactory.createBookmark({
+        user_id: testUserId, source_url: "https://example.com/slow2", title: "example.com",
+      }));
+      const bookmark = (await service.findByIdAndUser(row.id, testUserId))!;
+      await repository.update(row.id, { title: "Retitled before the write" });
+      mockWebScrapingService.scrape.mockResolvedValueOnce(scraped);
+
+      await service.ensureScrapedContent(bookmark);
+
+      expect(bookmark.title).toBe("example.com");
+      expect((await service.findByIdAndUser(row.id, testUserId))!.title).toBe("Retitled before the write");
+    });
+
+    it("still replaces the provisional title when nobody retitled", async () => {
+      const row = await repository.create(TestDataFactory.createBookmark({
+        user_id: testUserId, source_url: "https://example.com/quiet", title: "example.com",
+      }));
+      const bookmark = (await service.findByIdAndUser(row.id, testUserId))!;
+      mockWebScrapingService.scrape.mockResolvedValueOnce(scraped);
+
+      await service.ensureScrapedContent(bookmark);
+
+      const after = (await service.findByIdAndUser(row.id, testUserId))!;
+      expect(after.title).toBe("Scraped title");
+      expect(after.quickAccess).toBe("Scraped title https://example.com/quiet");
+      expect(bookmark.title).toBe("Scraped title");
+    });
+  });
+
   describe("content separation and retrieval", () => {
     it("recovers a pending video in place across separate processing attempts", async () => {
       const row = await repository.create(TestDataFactory.createBookmark({

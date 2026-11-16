@@ -14,6 +14,7 @@ describe("BookmarkService", () => {
   beforeEach(() => {
     mockRepository = {
       updateOwned: jest.fn(),
+      replaceProvisionalTitle: jest.fn(),
       mergeCapture: jest.fn(),
       create: jest.fn(),
       findByUserAndUrl: jest.fn(),
@@ -268,7 +269,7 @@ describe("BookmarkService", () => {
       mockWebScrapingService.scrape.mockResolvedValue(pending);
       await expect(service.ensureScrapedContent({ ...bookmark })).rejects.toMatchObject({ code: "pending", shouldRetry: true });
       expect(mockRepository.insertScrapedUrlContents).toHaveBeenCalledWith(bookmark.id, pending);
-      expect(mockRepository.update).toHaveBeenCalledWith(bookmark.id, expect.objectContaining({ title: "Saved video" }));
+      expect(mockRepository.replaceProvisionalTitle).toHaveBeenCalledWith(bookmark.id, bookmark.title, "Saved video", expect.any(String));
       const metadata = mockRepository.update.mock.calls[0][1].metadata;
       expect(metadata).not.toHaveProperty("extraction");
     });
@@ -313,6 +314,7 @@ describe("BookmarkService", () => {
         .mockResolvedValueOnce(persisted);
       mockWebScrapingService.scrape.mockResolvedValue(scraped);
       mockRepository.update.mockResolvedValue({} as any);
+      mockRepository.replaceProvisionalTitle.mockResolvedValue(true);
 
       const target = { ...bookmark };
       const result = await service.ensureScrapedContent(target);
@@ -324,11 +326,11 @@ describe("BookmarkService", () => {
         bookmark.id,
         scraped
       );
-      expect(mockRepository.update).toHaveBeenCalledWith(
+      expect(mockRepository.replaceProvisionalTitle).toHaveBeenCalledWith(
         bookmark.id,
-        expect.objectContaining({
-          title: "How agent memory actually works",
-        })
+        bookmark.title,
+        "How agent memory actually works",
+        expect.any(String)
       );
       expect(target.title).toBe("How agent memory actually works");
       expect(result).toBe(persisted);

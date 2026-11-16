@@ -99,7 +99,7 @@ describe("terminal message failures", () => {
   test("resumes the bookmark timeline on redelivery", async () => {
     const service = { process: async () => undefined };
     const process = spyOn(service, "process");
-    const handler = new BookmarkProcessorHandler(service as never, {} as never);
+    const handler = new BookmarkProcessorHandler(service as never);
     await handler.handle({ msg_id: 44, read_ct: 2, message: { type: "bookmark_process", data: { bookmarkId: "bookmark-1", userId: "user-1" } } } as never);
     expect(process).toHaveBeenCalledWith("bookmark-1", "user-1", { phase: undefined, resume: true });
   });
@@ -178,72 +178,92 @@ describe("exhausted deliveries", () => {
 
   function setup() {
     const queue = { deleteMessage: async () => undefined, archiveMessage: async () => undefined };
-    const bookmarkService = { updateProcessingStatus: async () => ({}) };
-    const processorService = { process: async () => undefined };
-    const handler = new BookmarkProcessorHandler(processorService as never, bookmarkService as never);
+    const processorService = {
+      process: async () => undefined,
+      failExhausted: async (..._args: unknown[]) => true,
+    };
+    const handler = new BookmarkProcessorHandler(processorService as never);
     const processor = new QueueProcessor(queue as never, configService({}) as never, [handler]);
     return {
       processor,
       archive: spyOn(queue, "archiveMessage"),
       del: spyOn(queue, "deleteMessage"),
       run: spyOn(processorService, "process"),
-      status: spyOn(bookmarkService, "updateProcessingStatus"),
+      exhausted: spyOn(processorService, "failExhausted"),
     };
   }
 
   test("exhausted delivery is failed and archived without running", async () => {
-    const { processor, archive, run, status } = setup();
+    const { processor, archive, run, exhausted } = setup();
 
     await (processor as any).processMessage(message(5), config);
 
     expect(run).not.toHaveBeenCalled();
-    expect(status).toHaveBeenCalledWith(
+    expect(exhausted).toHaveBeenCalledWith(
       "bookmark-1",
-      "failed",
+      "user-1",
       "Processing stopped after repeated worker failures",
     );
     expect(archive).toHaveBeenCalledWith("bookmarks", 50);
   });
 
   test("exhausted delivery with an unreadable payload is still archived", async () => {
-    for (const payload of [null, {}, { type: "bookmark_process" }]) {
-      const { processor, archive, status } = setup();
+    for (const payload of [null, {}, { type: "bookmark_process" }, { type: "bookmark_process", data: { bookmarkId: "bookmark-1" } }]) {
+      const { processor, archive, exhausted } = setup();
 
       await (processor as any).processMessage(message(5, payload), config);
 
-      expect(status).not.toHaveBeenCalled();
+      expect(exhausted).not.toHaveBeenCalled();
       expect(archive).toHaveBeenCalledWith("bookmarks", 50);
     }
   });
 
-  test("exhausted delivery for a deleted bookmark is still archived", async () => {
-    const { processor, archive, status } = setup();
-    status.mockRejectedValueOnce(new Error("Bookmark not found"));
+  test("exhausted delivery for a missing bookmark is still archived", async () => {
+    const { processor, archive, exhausted } = setup();
+    exhausted.mockResolvedValueOnce(false);
 
     await (processor as any).processMessage(message(5), config);
 
     expect(archive).toHaveBeenCalledWith("bookmarks", 50);
   });
 
-  test("the bookmark handler tolerates an unreadable payload or a missing bookmark", async () => {
-    const bookmarkService = {
-      updateProcessingStatus: async () => {
-        throw new Error("Bookmark not found");
+  test("a failure to record exhaustion keeps the message for redelivery, which then archives it", async () => {
+    const { processor, archive, del, run, exhausted } = setup();
+    exhausted.mockRejectedValueOnce(new Error("connection reset"));
+    const handleError = spyOn(processor as any, "handleError");
+
+    await (processor as any).processMessage(message(5), config);
+
+    expect(archive).not.toHaveBeenCalled();
+    expect(del).not.toHaveBeenCalled();
+    expect(handleError).not.toHaveBeenCalled();
+
+    await (processor as any).processMessage(message(6), config);
+
+    expect(exhausted).toHaveBeenCalledTimes(2);
+    expect(archive).toHaveBeenCalledWith("bookmarks", 50);
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  test("the bookmark handler leaves an unreadable payload alone and propagates persistence failures", async () => {
+    const processorService = {
+      failExhausted: async (..._args: unknown[]) => {
+        throw new Error("connection reset");
       },
     };
-    const handler = new BookmarkProcessorHandler({} as never, bookmarkService as never);
+    const handler = new BookmarkProcessorHandler(processorService as never);
 
     await expect(handler.onExhausted(message(5, null))).resolves.toBeUndefined();
-    await expect(handler.onExhausted(message(5))).resolves.toBeUndefined();
+    await expect(handler.onExhausted(message(5))).rejects.toThrow("connection reset");
   });
 
   test("the final allowed delivery still runs", async () => {
-    const { processor, run, status, del } = setup();
+    const { processor, run, exhausted, del } = setup();
 
     await (processor as any).processMessage(message(4), config);
 
     expect(run).toHaveBeenCalledTimes(1);
-    expect(status).not.toHaveBeenCalled();
+    expect(exhausted).not.toHaveBeenCalled();
     expect(del).toHaveBeenCalledWith("bookmarks", 50);
   });
 });
@@ -255,7 +275,7 @@ describe("a bookmark that no longer exists", () => {
   function setup(failure: Error) {
     const queue = { deleteMessage: async () => undefined, archiveMessage: async () => undefined };
     const processorService = { process: async () => { throw failure; } };
-    const handler = new BookmarkProcessorHandler(processorService as never, {} as never);
+    const handler = new BookmarkProcessorHandler(processorService as never);
     const processor = new QueueProcessor(queue as never, configService({}) as never, [handler]);
     return { processor, del: spyOn(queue, "deleteMessage"), archive: spyOn(queue, "archiveMessage") };
   }

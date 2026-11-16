@@ -1896,6 +1896,76 @@ describe("BookmarkProcessorService", () => {
     expect(summary).toContain('null when contentStatus is "ok"');
   });
 
+  describe("failExhausted", () => {
+    const interruptedTimeline = () => ({
+      run: {
+        id: "run-1", bookmarkId: "test-bookmark-id", userId: "test-user-id", status: "running",
+        startedAt: new Date(), inputTokens: 0, outputTokens: 0, totalTokens: 0,
+        reasoningTokens: 0, cachedInputTokens: 0, createdAt: new Date(), updatedAt: new Date(),
+      },
+      events: [
+        { id: "run-event", runId: "run-1", kind: "run", name: "Processing run", status: "running", sequence: 1, startedAt: new Date() },
+        { id: "phase-event", runId: "run-1", kind: "phase", phase: "summarise", name: "Summarise content", status: "running", sequence: 2, startedAt: new Date() },
+      ],
+    } as any);
+
+    it("closes the interrupted run before the bookmark is marked failed", async () => {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(testBookmark);
+      mockBookmarkProcessingRepository.findLatestTimeline.mockResolvedValue(interruptedTimeline());
+      mockBookmarkProcessingRepository.updateRun.mockResolvedValue({} as any);
+
+      await expect(
+        service.failExhausted(testBookmark.id, testBookmark.userId, "Stopped after repeated failures")
+      ).resolves.toBe(true);
+
+      expect(mockBookmarkProcessingRepository.updateEvent).toHaveBeenCalledWith(
+        "phase-event",
+        expect.objectContaining({ status: "failed" })
+      );
+      expect(mockBookmarkProcessingRepository.updateEvent).toHaveBeenLastCalledWith(
+        "run-event",
+        expect.objectContaining({ status: "failed", error: "Stopped after repeated failures" })
+      );
+      expect(mockBookmarkProcessingRepository.updateRun).toHaveBeenLastCalledWith(
+        "run-1",
+        expect.objectContaining({ status: "failed", error: "Stopped after repeated failures" })
+      );
+      expect(mockBookmarkService.updateProcessingStatus).toHaveBeenCalledWith(
+        testBookmark.id, "failed", "Stopped after repeated failures"
+      );
+      const lastRunWrite = Math.max(
+        ...mockBookmarkProcessingRepository.updateRun.mock.invocationCallOrder
+      );
+      expect(mockBookmarkService.updateProcessingStatus.mock.invocationCallOrder[0]).toBeGreaterThan(lastRunWrite);
+    });
+
+    it("still marks the bookmark failed when closing the run fails", async () => {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(testBookmark);
+      mockBookmarkProcessingRepository.findLatestTimeline.mockResolvedValue(interruptedTimeline());
+      mockBookmarkProcessingRepository.updateRun
+        .mockResolvedValueOnce({} as any)
+        .mockRejectedValueOnce(new Error("db down"));
+
+      await expect(
+        service.failExhausted(testBookmark.id, testBookmark.userId, "stopped")
+      ).rejects.toThrow("db down");
+
+      expect(mockBookmarkService.updateProcessingStatus).toHaveBeenCalledWith(testBookmark.id, "failed", "stopped");
+    });
+
+    it("does nothing and returns false when the bookmark is not the user's", async () => {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(null);
+
+      await expect(service.failExhausted("gone", "someone", "stopped")).resolves.toBe(false);
+
+      expect(mockBookmarkService.findByIdAndUser).toHaveBeenCalledWith("gone", "someone");
+      expect(mockBookmarkProcessingRepository.findLatestTimeline).not.toHaveBeenCalled();
+      expect(mockBookmarkService.updateProcessingStatus).not.toHaveBeenCalled();
+    });
+  });
+
   describe("structured summary output", () => {
     it("normalises findings rather than parsing markdown", () => {
       const long = "word ".repeat(60).trim();

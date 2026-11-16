@@ -151,6 +151,21 @@ export interface BookmarkRepository {
     data: Omit<BookmarkUpdate, "collection_id" | "filing_source">
   ): Promise<Bookmark>;
   /**
+   * Replace a placeholder title with the one the page declared.
+   *
+   * `WHERE title IS NOT DISTINCT FROM provisional` is the rule, as a predicate
+   * on the write: an owner who retitles while the first fetch is in flight
+   * changed the title away from the placeholder this call read, so the write
+   * matches nothing. Returns `false` when it was refused; that is not an error.
+   * `quick_access` is derived from the title, so it moves with it or not at all.
+   */
+  replaceProvisionalTitle(
+    id: string,
+    provisionalTitle: string | null,
+    title: string,
+    quickAccess: string
+  ): Promise<boolean>;
+  /**
    * File a bookmark from the pipeline.
    *
    * `WHERE filing_source = 'ai'` **is** the override rule
@@ -591,6 +606,25 @@ export class BookmarkRepositoryImpl
 
       return result;
     }, "update");
+  }
+
+  async replaceProvisionalTitle(
+    id: string,
+    provisionalTitle: string | null,
+    title: string,
+    quickAccess: string
+  ): Promise<boolean> {
+    return this.executeQuery(async () => {
+      const result = await this.db
+        .updateTable("bookmarks")
+        .set({ title, quick_access: quickAccess })
+        .where("id", "=", id)
+        .where("title", "is not distinct from", provisionalTitle)
+        .returning("id")
+        .executeTakeFirst();
+
+      return result !== undefined;
+    }, "replaceProvisionalTitle");
   }
 
   async markRead(id: string, userId: string): Promise<Bookmark | null> {

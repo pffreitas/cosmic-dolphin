@@ -67,6 +67,16 @@ export interface BookmarkProcessorService {
     userId: string,
     options?: BookmarkProcessOptions
   ): Promise<void>;
+  /**
+   * Record that a message was delivered too often to run again.
+   *
+   * Closes the bookmark's open run (and any event an interrupted attempt left
+   * `running`) and then marks the bookmark `failed`, so the timeline and the
+   * status agree and clients stop polling. Returns `false`, having done
+   * nothing, when the bookmark does not exist for that user. Errors propagate:
+   * the caller must not discard the message while this has not been recorded.
+   */
+  failExhausted(id: string, userId: string, message: string): Promise<boolean>;
 }
 
 const PRIVATE_LINK_ENRICHMENT_PROMPT = `You are creating a private link quick-access record.
@@ -149,6 +159,29 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     );
     this.chunkingService = chunkingService ?? new ChunkingServiceImpl();
     this.embeddingService = embeddingService ?? new EmbeddingServiceImpl();
+  }
+
+  async failExhausted(
+    id: string,
+    userId: string,
+    message: string
+  ): Promise<boolean> {
+    const bookmark = await this.bookmarkService.findByIdAndUser(id, userId);
+    if (!bookmark) return false;
+
+    const reporter = new BookmarkProcessingReporter(
+      this.bookmarkProcessingRepository
+    );
+    try {
+      await reporter.resumeRun(id, userId);
+      await reporter.failRun(message);
+    } finally {
+      // The run is closed before the status changes, as everywhere else in the
+      // pipeline: clients stop polling on the status, so it must not flip while
+      // the timeline still reads as running.
+      await this.bookmarkService.updateProcessingStatus(id, "failed", message);
+    }
+    return true;
   }
 
   /**

@@ -5,7 +5,8 @@ export interface MessageHandler {
   handle(message: QueueMessage): Promise<void>;
   /**
    * Called instead of `handle` when the message has been delivered more times
-   * than the retry limit allows. The processor archives it afterwards.
+   * than the retry limit allows. The processor archives it afterwards, unless
+   * this throws: then the message is left for redelivery.
    */
   onExhausted?(message: QueueMessage): Promise<void>;
   getMessageType(): string;
