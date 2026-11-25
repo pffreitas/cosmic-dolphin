@@ -36,6 +36,7 @@ Build the monitoring Dockerfile from the repository root in an isolated Docker c
 - The emulated Linux CLI test needed a bounded 20-second timeout for ten cold subprocesses. Its assertions were retained.
 - Strict typechecking exposed mocks depending on Bun fetch's unused `preconnect` member. HTTP dependencies now use the callable fetch signature; the suite and strict check pass.
 - Two Linux migration-loader attempts in the shared 2 GB Docker context exited 137 without output. Shared infrastructure was left untouched. The identical pinned Linux loader passed in the task's isolated build context, with a fresh owned database and no container memory cap. Host fresh-loader and all real-SQL checks passed independently.
+- The first GitHub proof reached the migration loader while the container's temporary initialization server accepted Unix-socket connections but its TCP server was unavailable. A fresh-container reproduction observed socket readiness at 1.07 seconds, TCP unavailable, and loader exit 2; TCP became ready at 1.85 seconds. CI now checks TCP explicitly before loading migrations. No timeout was increased.
 
 ## Activation gaps
 

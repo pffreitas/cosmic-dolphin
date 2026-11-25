@@ -3,7 +3,7 @@
 | Current state | Value |
 |---|---|
 | Outcome | Prepared monitoring is complete and approved by Sol. Host and pinned Linux checks pass: 144 offline tests, 14 SQL tests, and all 36 migrations loaded from scratch. Production queue diagnosis remains unconfirmed. |
-| Next gate | Review the monitoring PR. After merge, configure the new Free stack and follow manual activation plus live verification. |
+| Next gate | Pass GitHub verification on the current PR head, then review the monitoring PR. After merge, configure the new Free stack and follow manual activation plus live verification. |
 | Owner | This thread owns PR delivery; the operator owns Cloud configuration and manual activation. |
 | Blocker | None for prepared assets. Live activation needs a new Grafana stack, an existing verified receiver, secrets, and production connectivity proof. |
 | Scope | Grafana Cloud alerts and an independent read-only save-journey checker. |
@@ -32,6 +32,8 @@ See [verification.md](verification.md) for the final checks, corrections, and ac
 ## Implementation history
 
 The initial candidate comparison selected the stateless Opus checker and Sol's stricter boundary handling. Parent checks reran both candidates' SQL, including the selected candidate's 59 tests. Opus began integration but stopped at its usage limit. The user selected Sol to finish; Sol preserved the partial implementation and completed assets, packaging, and verification. Parent review then removed 44 narrative comment lines, made the stable queue clock and sample-size parameter explicit, and fixed the fetch mock type without changing runtime behavior.
+
+The first GitHub proof failed at database startup. Parent reproduced the socket/TCP readiness race and changed the CI readiness probe to TCP. The current head needs a green GitHub proof before merge.
 
 ## Source decisions
 

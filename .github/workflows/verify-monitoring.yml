@@ -31,7 +31,7 @@ jobs:
         run: |
           docker run -d --name save-monitor-ci-db -p 127.0.0.1:49960:5432 -e POSTGRES_PASSWORD=postgres supabase/postgres:15.19.0.004
           for attempt in $(seq 1 60); do
-            if docker exec save-monitor-ci-db pg_isready -U postgres; then exit 0; fi
+            if docker exec save-monitor-ci-db pg_isready -h 127.0.0.1 -U postgres; then exit 0; fi
             sleep 1
           done
           exit 1
