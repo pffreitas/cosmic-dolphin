@@ -2,10 +2,10 @@
 
 | Current state | Value |
 | --- | --- |
-| Outcome | Receiver `20e573b4-5222-42c2-ab23-63eb5b6f18d5` is ACTIVE on reviewed commit `7b245306`, with health, auth rejection, and direct Loki heartbeats verified. All four native destinations are configured with image versions and other fields preserved. Native API records are readable in Loki. Worker, web, and save-monitor receipts remain open. |
-| Next gate | Merge verified release hooks through PR checks, complete the normal deployment gates, and verify native records from every source. |
+| Outcome | PR #261 merged as `a533a2c326d1e120af6c85a488666fa4b520a2d6`; backend and web releases passed. Native API and worker records are readable in Loki. A missing `message` in native web events caused batch rejection; the compatibility fix has final Sol approval and pinned Linux proof. |
+| Next gate | Deploy the reviewed compatibility fix, verify native web/save-monitor records, and land its independently verified follow-up PR. |
 | Owner | This thread owns configuration, delivery, and live verification. |
-| Blocker | No access blocker. Native source coverage remains partial until the other components emit new runtime logs. |
+| Blocker | Native web/save-monitor delivery remains unverified until the compatibility rollout. No access blocker; all five allowed code-review rounds are complete. |
 | Starting state | Branch `activate-save-monitoring`, base and live `origin/main` `08bef9224c8cbdedf4f14ca75c866eb04c62b94a`. Existing monitoring activation/incident documentation changes are preserved. |
 | Delivery branch | `integrate-digitalocean-logs`, updated without conflicts to live main `f312e01dc0a871221e7d99b27ad0f80267cdad57` before review. |
 
@@ -29,27 +29,42 @@ The data shape is `authenticated source → bounded Datadog batch → normalized
 4. Configure Grafana log searches/dashboard and bridge health visibility.
 5. Activate and verify live delivery, source coverage, and failure/recovery behavior. Record exact deployed versions and remaining gaps.
 
-## Current evidence
+## Implementation and initial activation evidence
 
 - The four production apps are `ACTIVE`. Their existing image versions were recorded before configuration changes. API, worker, and web use `0a0784e1cbb5c81c287eaa69442f23d43d59f568`; save-monitor uses `08bef9224c8cbdedf4f14ca75c866eb04c62b94a`.
 - The existing worker's retained logs show both queues starting with concurrency 5 and order `default`, then `bookmarks`, without a recorded queue-read error. This supports the separate dispatcher diagnosis; logging rollout does not repair it.
 - The bridge passed 23 tests and 224 assertions inside its exact pinned Bun 1.3.11 Linux image. The actual Dockerfile CMD and `/health` smoke passed with external network disabled. Deployment/source-overlay tests passed on pinned Bun separately.
 - Grafana accepted a labeled setup log and returned it through `grafanacloud-logs`. Resource labels normalize to `service_name` and `deployment_environment_name`.
-- Grafana has the new 12-panel dashboard. Its heartbeat rule remains staged until a real receiver heartbeat arrives.
+- Grafana has the new 12-panel dashboard. The heartbeat rule was initially staged, then enabled after a real receiver heartbeat arrived at 21:51 UTC.
 - The new `log-observability-production` environment holds the publisher and source-key map. Four matching source-key repository secrets are configured. No keys are recorded here.
 - Primary `godo` source confirms the bridge update field is `update_all_source_versions`. It refreshes only the owned receiver's source. Live source-app log overlays preserve their image versions.
 - The DigitalOcean API accepted the new receiver proposal and reports a $5 monthly app cost. This is separate from the existing Grafana stack. The receiver is now deployed; native source coverage remains a separate gate.
-- All 71 host tests pass with 884 assertions. The Grafana suite also passes on pinned Linux Bun 1.3.11. All eleven generated dashboard queries execute against Cloud Loki; source results are currently empty because native forwarding is not enabled.
+- Before compatibility corrections, 71 host tests passed with 884 assertions. The Grafana suite also passed on pinned Linux Bun 1.3.11. All eleven generated dashboard queries execute against Cloud Loki. Native API records subsequently confirmed real forwarding.
+
+## Merged release
+
+- Independent Shipping verification posted [PASS+NOTES](https://github.com/pffreitas/cosmic-dolphin/pull/261#issuecomment-7175818756) for exact head `8eda4bb719d6c8c6cfa9bae584e962b161c08bb6`: 76 tests / 911 assertions; both base/head monitoring replays 144 tests / 591 assertions; real HTTP and all four source CLI overlays. Linux/Cloud evidence remained the parent's gate.
+- All three PR checks passed. PR #261 merged at 22:01:34 UTC as `a533a2c326d1e120af6c85a488666fa4b520a2d6`. `git diff` between the reviewed PR head and merged tree is empty. No unrelated application behavior was changed.
+- Exact merged-SHA backend release: [45709625464](https://github.com/pffreitas/cosmic-dolphin/actions/runs/45709625464), SUCCESS: backend build/tests, pinned Supabase migration gate, actual Linux API/worker image builds/pushes, packaged browser extraction proof, source overlays, and both waited App Platform deployments. Web release: [45709625579](https://github.com/pffreitas/cosmic-dolphin/actions/runs/45709625579), SUCCESS: generation, typecheck/lint/tests/build, Docker build/push, overlay, and deployment.
+- Bridge update from `main`: [45709964586](https://github.com/pffreitas/cosmic-dolphin/actions/runs/45709964586). Offline tests, native Linux image, packaged runtime suite, actual CMD health smoke, and deployment request passed. Actual App Platform rollout/readback is a separate gate.
+- Scheduled checker invocation `032dcbed-6f45-4aa7-b9eb-d1dbf43af080` ran at 22:04 UTC and reported metric delivery `ok`. An alerting checker exits 1, so DigitalOcean's job phase `FAILED` alone is not evidence that observation or publishing failed.
+- At 22:10 UTC, API, worker, and web were ACTIVE on image tag `a533a2c3`, with `cosmic-grafana-logs` preserved. Loki returned 12 API and 17 worker records in the 30-minute window, including one actual `Starting to process queue: bookmarks` marker. Native startup output does not prove queue progress.
+- Live Grafana readback at 22:08 UTC confirmed 12 panels and one heartbeat rule routed to `Cosmic save email`, no-data Alerting, execution errors Error, pending 2m. Actual evaluation was inactive with health `ok`.
+- Round-4 diagnostic source `384f02a3bd2c859f3632009cb6bcfb11c3b0882a` was independently approved, then passed 28 tests / 292 assertions inside pinned Linux Bun 1.3.11 (local amd64 emulation). Controlled bridge rollout reached ACTIVE at 22:12 UTC. Only the bridge's source changed; source image tags, bookmark state, and worker code remain untouched. Web restart `b1a39d65-d727-4614-9650-b3e96ff0e9c3` triggers fresh native startup logs to identify the structural mismatch.
+
+- At 22:12 UTC, the bridge heartbeat recorded an authenticated gzip web rejection with `batchCause: missing_message`. The compatibility fix retains such native events as scrubbed structured JSON instead of rejecting the whole batch. Non-object events, supplied non-string messages, and all byte/count/time/concurrency/ACK bounds remain enforced. No rejected payload contents were captured.
 
 ## Review ledger
 
-The standalone Sol review cap is three rounds across implementation and activation fixes. Comment cleanup precedes review. Existing monitoring implementation reviews belong to the earlier merged feature; they are not approval of this extension.
+The standalone Sol review cap started at three rounds across implementation and activation fixes. At 22:06 UTC, actual authenticated gzip web batches failed as `invalid_batch`, proving a native log delivery/data-loss blocker. Under sol-loop's explicit data-loss exception, the same ledger extends to five total rounds; it is not reset. Comment cleanup precedes review. Existing monitoring implementation reviews belong to the earlier merged feature; they are not approval of this extension.
 
 | Round | Model | Scope | Outcome |
 | --- | --- | --- | --- |
 | 1 | GPT-6.1 Sol | Full log integration on base `f312e01d`, including uncommitted files | CHANGES. S1 monitoring tests ran after template mutation; S2 existing secret-bearing templates retained 0644 permissions. Both fixed; recheck pending |
 | 2 | GPT-6.1 Sol | Changed monitoring gate order and private spec writer | APPROVE. S1 and S2 independently resolved. Candidate approved for controlled activation; native delivery remains open |
 | 3 | GPT-6.1 Sol | Root-path intake, bounded gzip, and safe rejection metadata | APPROVE. No blocker/should finding. Documentation nit S3 fixed. Three-round review cap exhausted; real native receipts remain required |
+| 4 | GPT-6.1 Sol | Fixed structural diagnostics for rejected native batches | APPROVE. Reviewer independently ran 77 tests / 959 assertions. No findings; HTTP validation/ACK behavior unchanged. Diagnostic red test failed before the implementation. One further round remains under the data-loss extension |
+| 5 | GPT-6.1 Sol | Preserve native events that omit `message` as redacted structured records | APPROVE, no findings. Reviewer independently ran 78 tests / 964 assertions. Actual web heartbeat identifies `missing_message`. Real gzip regression failed 400 before the fix and passes 202 afterwards. Pinned Linux: 29 tests / 297 assertions. Existing held-ACK and whole-event byte-limit proofs cover missing-message records too. Five-round cap exhausted |
 
 Comment review removed 16 narrative blocks without changing runtime behavior. Its two accepted design findings are encoded by one named request ceiling shared with the native parser, and an explicit `stageAssets` factory. The staging factory keeps canonical enabled/staged assets distinct without adding mutable mode state or a bypass option to the provisioner.
 

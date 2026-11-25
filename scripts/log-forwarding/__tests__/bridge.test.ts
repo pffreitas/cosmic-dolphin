@@ -104,7 +104,7 @@ describe("authenticated real HTTP intake", () => {
     const json = await f.post(undefined, { body: '{"message": "private-json-error"' });
     expect(json.status).toBe(400);
     expect(await json.text()).toBe('{"error":"invalid_json"}');
-    for (const payload of [[], null, 2, "private", {}, [{ message: "valid" }, { message: 123 }]]) {
+    for (const payload of [[], null, 2, "private", [{ message: "valid" }, { message: 123 }]]) {
       const result = await f.post(payload);
       expect(result.status).toBe(400);
       expect(await result.json()).toEqual({ error: "invalid_batch" });
@@ -122,6 +122,30 @@ describe("authenticated real HTTP intake", () => {
     expect(result.status).toBe(202);
     expect(record(f.captured[1]).body.stringValue).toBe("compressed café");
     expect(labels(f.captured[1])["service.name"]).toBe("cosmic-dolphin-api");
+  });
+
+  test("native gzip batches retain events without message and redact their structured fields", async () => {
+    const f = fixture();
+    const bytes = Bun.gzipSync(JSON.stringify([
+      { message: "Ready" },
+      { timestamp: NOW, hostname: "fixture-host", service: "spoofed", password: TOKEN,
+        url: "https://private.example", user_id: "private-owner", content: "private text" },
+      {},
+    ]));
+    const result = await f.post(undefined, { body: bytes, headers: {
+      "DD-API-KEY": KEY, "content-type": "application/json", "content-encoding": "gzip",
+    } });
+    expect(result.status).toBe(202);
+    expect(await result.json()).toEqual({ accepted: 3 });
+    expect(record(f.captured[0]).body.stringValue).toBe("Ready");
+    expect(JSON.parse(record(f.captured[0], 1).body.stringValue)).toEqual({ timestamp: NOW, hostname: "fixture-host",
+      service: "spoofed", password: "[REDACTED]", url: "[REDACTED]", user_id: "[REDACTED]", content: "[REDACTED]" });
+    expect(record(f.captured[0], 2).body.stringValue).toBe("{}");
+    expect(record(f.captured[0], 1).timeUnixNano).toBe(String(BigInt(NOW) * 1_000_000n));
+    expect(labels(f.captured[0])["service.name"]).toBe("cosmic-dolphin-api");
+    expect(record(f.captured[0], 1).attributes).toBeUndefined();
+    for (const secret of [KEY, TOKEN, "private.example", "private-owner", "private text"])
+      expect(JSON.stringify(f.captured[0].body)).not.toContain(secret);
   });
 
   test("gzip wire and expanded byte limits reject before publishing and allow recovery", async () => {
@@ -161,6 +185,28 @@ describe("authenticated real HTTP intake", () => {
     expect(text).not.toContain(KEY);
     expect(text).not.toContain("private body");
   });
+
+  test("invalid batch diagnostics disclose only a fixed structural category", async () => {
+    const f = fixture();
+    for (const [payload, cause] of [
+      [[], "empty_batch"],
+      [["private event"], "invalid_event"],
+      [[{ message: null }], "null_message"],
+      [[{ message: { privateField: TOKEN } }], "object_message"],
+      [[{ message: 123 }], "other_message"],
+    ] as const) {
+      const result = await f.post(undefined, { body: Bun.gzipSync(JSON.stringify(payload)), headers: {
+        "DD-API-KEY": KEY, "content-type": "application/json", "content-encoding": "gzip",
+      } });
+      expect(result.status).toBe(400);
+      expect(await result.json()).toEqual({ error: "invalid_batch" });
+      expect(await f.bridge.heartbeat()).toEqual({ ok: true });
+      const text = record(f.captured.at(-1)!).body.stringValue;
+      expect(JSON.parse(text).lastRejection).toEqual({ status: 400, reason: "invalid_batch",
+        route: "/api/v2/logs", encoding: "gzip", source: "api", batchCause: cause });
+      for (const secret of [KEY, TOKEN, "private event", "privateField"]) expect(text).not.toContain(secret);
+    }
+  });
 });
 
 describe("bounds across the HTTP boundary", () => {
@@ -196,6 +242,7 @@ describe("bounds across the HTTP boundary", () => {
     expect((await f.post([{ message: "one" }, { message: "two" }, { message: "three" }])).status).toBe(413);
     expect((await f.post({ message: "é".repeat(40) })).status).toBe(413);
     expect((await f.post({ message: "small", stack: "x".repeat(100) })).status).toBe(413);
+    expect((await f.post({ content: "x".repeat(100) })).status).toBe(413);
     expect(f.captured).toHaveLength(1);
   });
 
@@ -329,11 +376,13 @@ describe("OTLP acknowledgement and failure behavior", () => {
     const release = deferred<Response>();
     const f = fixture({ upstream: () => { started.resolve(); return release.promise; } });
     let acknowledged = false;
-    const pending = f.post([{ message: "one" }, { message: "two" }]).then((value) => { acknowledged = true; return value; });
+    const pending = f.post([{ message: "one" }, { message: "two" }, {}]).then((value) => { acknowledged = true; return value; });
     await started.promise;
     expect(acknowledged).toBe(false);
     release.resolve(Response.json({ partialSuccess: { rejectedLogRecords: "0" } }));
-    expect((await pending).status).toBe(202);
+    const result = await pending;
+    expect(result.status).toBe(202);
+    expect(await result.json()).toEqual({ accepted: 3 });
   });
 
   test("partial rejection, malformed/oversized ACK and HTTP failure return fixed retryable failures", async () => {

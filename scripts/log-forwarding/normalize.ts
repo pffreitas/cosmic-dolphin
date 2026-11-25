@@ -73,20 +73,23 @@ export interface LogRecord {
   body: { stringValue: string };
 }
 
-export type Normalization = { ok: true; records: LogRecord[] } | { ok: false; error: "invalid_batch" | "payload_too_large" };
+export type BatchCause = "empty_batch" | "invalid_event" | "null_message" | "object_message" | "other_message";
+export type Normalization = { ok: true; records: LogRecord[] } | { ok: false; error: "invalid_batch" | "payload_too_large"; batchCause?: BatchCause };
 
-/** Datadog v2 array and v1 single-event JSON; every event must carry message. */
+/** Native Datadog events may omit message; retain their redacted structured record. */
 export function normalizeBatch(payload: unknown, config: Config, nowMs: number): Normalization {
   const events = Array.isArray(payload) ? payload : [payload];
-  if (!events.length) return { ok: false, error: "invalid_batch" };
+  if (!events.length) return { ok: false, error: "invalid_batch", batchCause: "empty_batch" };
   if (events.length > config.limits.records) return { ok: false, error: "payload_too_large" };
   const observedTimeUnixNano = (BigInt(Math.round(nowMs)) * 1_000_000n).toString();
   const records: LogRecord[] = [];
   for (const event of events) {
-    if (!isRecord(event) || typeof event.message !== "string") return { ok: false, error: "invalid_batch" };
+    if (!isRecord(event)) return { ok: false, error: "invalid_batch", batchCause: "invalid_event" };
+    if (event.message !== undefined && typeof event.message !== "string") return { ok: false, error: "invalid_batch", batchCause:
+      event.message === null ? "null_message" : typeof event.message === "object" ? "object_message" : "other_message" };
     if (encoder.encode(JSON.stringify(event)).byteLength > config.limits.lineBytes) return { ok: false, error: "payload_too_large" };
-    const plain = event.message.replace(ANSI, "");
-    let embedded: Record<string, unknown> | null = null;
+    const plain = typeof event.message === "string" ? event.message.replace(ANSI, "") : "";
+    let embedded: Record<string, unknown> | null = event.message === undefined ? event : null;
     try { const parsed: unknown = JSON.parse(plain); if (isRecord(parsed)) embedded = parsed; } catch { }
     const [severityNumber, severityText] = severity(event, embedded, plain);
     const timeUnixNano = [event.timestamp, event["@timestamp"], event.time, embedded?.timestamp, embedded?.time]

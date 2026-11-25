@@ -1,5 +1,5 @@
 import { authenticate, isRecord, type Config, type Source } from "./config";
-import { normalizeBatch, otlpPayload, type LogRecord } from "./normalize";
+import { normalizeBatch, otlpPayload, type BatchCause, type LogRecord } from "./normalize";
 
 export type HttpFetch = typeof fetch;
 type ReadResult = { ok: true; text: string } | { ok: false; error: "payload_too_large" | "timeout" | "invalid_body" };
@@ -96,7 +96,7 @@ export function createBridge(config: Config, options: { fetchImpl?: HttpFetch; n
   let active = 0;
   let heartbeatActive = false;
   const totals = { acceptedBatches: 0, acceptedRecords: 0, rejectedBatches: 0, deliveryFailures: 0 };
-  let lastRejection: { status: number; reason: string; route: string; encoding: string; source: Source | "unknown" } | undefined;
+  let lastRejection: { status: number; reason: string; route: string; encoding: string; source: Source | "unknown"; batchCause?: BatchCause } | undefined;
   const increment = (key: keyof typeof totals, n = 1) => { totals[key] = Math.min(Number.MAX_SAFE_INTEGER, totals[key] + n); };
 
   async function handle(request: Request): Promise<Response> {
@@ -106,10 +106,10 @@ export function createBridge(config: Config, options: { fetchImpl?: HttpFetch; n
       ? Response.json({ status: "process_up" }) : response(405, "method_not_allowed");
     const encoding = (request.headers.get("content-encoding") ?? "identity").trim().toLowerCase();
     let intakeSource: Source | "unknown" = "unknown";
-    const reject = (status: number, reason: string) => {
+    const reject = (status: number, reason: string, batchCause?: BatchCause) => {
       increment("rejectedBatches");
       lastRejection = { status, reason, route: url.pathname === "/" ? "/" : url.pathname === "/api/v2/logs" ? "/api/v2/logs" : url.pathname.startsWith("/v1/input") ? "/v1/input" : "other",
-        encoding: ["identity", "gzip"].includes(encoding) ? encoding : "other", source: intakeSource };
+        encoding: ["identity", "gzip"].includes(encoding) ? encoding : "other", source: intakeSource, ...(batchCause ? { batchCause } : {}) };
       return response(status, reason);
     };
     if (url.pathname !== "/" && url.pathname !== "/api/v2/logs" && url.pathname !== "/v1/input" && !/^\/v1\/input\/[^/]+$/.test(url.pathname)) return reject(404, "not_found");
@@ -147,7 +147,7 @@ export function createBridge(config: Config, options: { fetchImpl?: HttpFetch; n
       let normalized;
       try { normalized = normalizeBatch(payload, config, now()); } catch { return reject(400, "invalid_batch"); }
       if (!normalized.ok) {
-        return reject(normalized.error === "payload_too_large" ? 413 : 400, normalized.error);
+        return reject(normalized.error === "payload_too_large" ? 413 : 400, normalized.error, normalized.batchCause);
       }
       const result = await deliver(normalized.records, source, config, fetchImpl);
       if (!result.ok) {
