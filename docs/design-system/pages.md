@@ -156,6 +156,25 @@ The examples require no account or API calls. Audio and video start on request. 
 a time-compressed excerpt of Ernie Wright’s spacecraft visualization with the original photograph and a narrated brief.
 [Original article and image comparison](https://science.nasa.gov/earth/earth-observatory/earthrise-revisited-82693/) · [Bill Anders photograph](https://science.nasa.gov/resource/apollo-8s-iconic-earthrise/) · [NASA Scientific Visualization Studio footage](https://svs.gsfc.nasa.gov/4129/)
 
+### Landing analytics
+
+The production Google tag sends page views. For landing-page analysis, filter GA4 Explorations
+to the homepage and break down sessions by source / medium or campaign. Use these events to see
+which interactions lead visitors to the signup form.
+
+| Event | Trigger | Parameter |
+| --- | --- | --- |
+| `landing_signup_click` | Click through to signup | `cta_placement` = header, hero or closing |
+| `landing_sample_open` | Save the sample and open its brief | — |
+| `landing_sample_read` | Mark the brief read | — |
+| `landing_library_search` | Leave the sample search after editing a nonempty query | `result_count` = 0 or 1 |
+| `landing_format_select` | Switch sample formats | `sample_format` = visual, audio, short_video or infographic |
+| `landing_media_play` | Start or resume audio or video | `sample_format` = audio or short_video |
+
+To report on the parameters, register `cta_placement` and `sample_format` as event-scoped
+custom dimensions in the GA4 property. Signup clicks measure intent. Count completed
+registrations separately. The custom events omit search text, saved URLs and account identifiers.
+
 ### Positioning evidence
 
 The product model treats marking a save read as success. Home ranks candidates using topic affinity,

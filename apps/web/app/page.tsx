@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowDownRight, ArrowRight } from "lucide-react";
+import { ArrowDownRight } from "lucide-react";
 
+import { homepage, searchDescription, searchTitle, siteName } from "@/lib/landing-seo";
+import { LandingSignupButton } from "@/components/marketing/landing-analytics";
 import { Brandmark } from "@/components/brand/logo";
 import { FormatStudio, SampleLibrary, SampleSave } from "@/components/marketing/sample-save";
 import styles from "@/components/marketing/landing.module.css";
@@ -12,9 +14,28 @@ import { PublicHeader } from "@/components/shell/public-header";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/server";
 
+const shareImage = new URL("reading/bookmark-manager.jpg", homepage).href;
+const imageAlt = "Cosmic Dolphin — Close the tabs. Keep the ideas.";
+
 export const metadata: Metadata = {
-  title: "Cosmic Dolphin — Close the tabs. Keep the ideas.",
-  description: "Turn saved links into sourced briefs, find them again by the ideas you remember, and explore visual, audio, video and infographic versions of one save.",
+  title: searchTitle,
+  description: searchDescription,
+  alternates: { canonical: homepage },
+  openGraph: {
+    type: "website", url: homepage, siteName, title: searchTitle, description: searchDescription,
+    images: [{ url: shareImage, width: 1200, height: 630, alt: imageAlt }],
+  },
+  twitter: {
+    card: "summary_large_image", title: searchTitle, description: searchDescription,
+    images: [{ url: shareImage, alt: imageAlt }],
+  },
+};
+
+const website = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: siteName,
+  url: homepage,
 };
 
 export default async function Index() {
@@ -24,13 +45,14 @@ export default async function Index() {
 
   return (
     <div className={styles.page}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(website) }} />
       <SkipLink />
       <PublicHeader action={
         <>
           <Button variant="ghost" asChild className="hidden min-h-11 md:inline-flex"><a href="#knowledge">How it works</a></Button>
           <Button variant="ghost" asChild className="hidden min-h-11 sm:inline-flex"><a href="#formats">Formats</a></Button>
           <Button variant="ghost" asChild className="min-h-11"><Link href="/sign-in">Sign in</Link></Button>
-          <Button variant="primary" asChild className="min-h-11"><Link href="/sign-up">Get started <ArrowRight aria-hidden /></Link></Button>
+          <LandingSignupButton placement="header" className="min-h-11" />
         </>
       } />
       <main id="main" tabIndex={-1} className="outline-none">
@@ -40,7 +62,7 @@ export default async function Index() {
             <h1 id="landing-title">Close the tabs.<br />Keep the ideas.</h1>
             <p>Bookmark any link with Cosmic Dolphin. Get the key ideas, find them again in your own words, and explore them in the format that suits you.</p>
             <div className={styles.actions}>
-              <Button variant="primary" size="lg" asChild className={styles.whiteButton}><Link href="/sign-up">Save your first link <ArrowRight aria-hidden /></Link></Button>
+              <LandingSignupButton placement="hero" className={styles.whiteButton} />
               <Button variant="ghost" size="lg" asChild className={styles.heroLink}><a href="#knowledge">Try a sample <ArrowDownRight aria-hidden /></a></Button>
             </div>
           </div>
@@ -76,7 +98,7 @@ export default async function Index() {
         <section className={styles.closing}>
           <h2>Which tab are you<br />keeping open?</h2>
           <p>Give the idea a place in your library.</p>
-          <Button variant="primary" size="lg" asChild className="min-h-12"><Link href="/sign-up">Save your first link <ArrowRight aria-hidden /></Link></Button>
+          <LandingSignupButton placement="closing" className="min-h-12" />
         </section>
       </main>
       <footer className={styles.footer}><Brandmark /><span>© {new Date().getFullYear()} Cosmic Dolphin</span></footer>

@@ -1,13 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowUpRight, Bookmark, Check, FileChartColumn, Film, Headphones, Image as ImageIcon, Library, Search } from "lucide-react";
 import { CosmicBrief } from "@/components/bookmark/detail/cosmic-brief";
 import { LibraryRow } from "@/components/bookmark/library-row";
 import { Button } from "@/components/ui/button";
 import { focusRing } from "@/components/ui/focus-ring";
 import { Input } from "@/components/ui/input";
+import { trackLandingEvent } from "./landing-analytics";
 import styles from "./landing.module.css";
 
 const source = "https://science.nasa.gov/earth/earth-observatory/earthrise-revisited-82693/";
@@ -30,10 +31,16 @@ export function SampleSave() {
         ) : (
           <>
             <p className={styles.teaser}>How did NASA pinpoint where an astronaut took a photograph 45 years earlier?</p>
-            <Button variant="primary" className="min-h-11" onClick={() => setSaved(true)}><Bookmark aria-hidden /> Save &amp; open brief</Button>
+            <Button variant="primary" className="min-h-11" onClick={() => {
+              setSaved(true);
+              trackLandingEvent("landing_sample_open");
+            }}><Bookmark aria-hidden /> Save &amp; open brief</Button>
           </>
         )}
-        {saved && <Button variant="ghost" className="mt-3 min-h-11" aria-pressed={read} onClick={() => setRead(!read)}><Check aria-hidden />{read ? "Marked as read" : "Mark as read"}</Button>}
+        {saved && <Button variant="ghost" className="mt-3 min-h-11" aria-pressed={read} onClick={() => {
+          setRead(!read);
+          if (!read) trackLandingEvent("landing_sample_read");
+        }}><Check aria-hidden />{read ? "Marked as read" : "Mark as read"}</Button>}
         <span className="sr-only" role="status">{saved ? "Sample saved. Cosmic brief available." : ""}</span>
       </div>
     </div>
@@ -44,6 +51,7 @@ const searchTerms = "earthrise revisited nasa apollo 8 eight moon lunar earth sp
 
 export function SampleLibrary() {
   const [query, setQuery] = useState("photo from the Moon");
+  const queryEdited = useRef(false);
   const words = query.toLowerCase().match(/[a-z0-9]+/g) ?? [];
   const match = words.length === 0 || words.some(word => searchTerms.split(" ").includes(word));
   return (
@@ -51,7 +59,13 @@ export function SampleLibrary() {
       <div className={styles.sampleBar}><span><Library size={16} aria-hidden /> Sample library</span><span>1 save</span></div>
       <div className={styles.searchField}>
         <Search size={17} aria-hidden />
-        <Input aria-label="Search the sample library" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search by an idea or title" />
+        <Input aria-label="Search the sample library" type="search" value={query} onChange={event => {
+          queryEdited.current = true;
+          setQuery(event.target.value);
+        }} onBlur={() => {
+          if (queryEdited.current && query.trim()) trackLandingEvent("landing_library_search", { result_count: Number(match) });
+          queryEdited.current = false;
+        }} placeholder="Search by an idea or title" />
       </div>
       <span className="sr-only" role="status">{match ? "1 matching save" : "No matching saves"}</span>
       {match ? <LibraryRow title={title} href={source} summary="Reconstructing the Apollo 8 photograph from lunar maps and the crew’s film." collectionPath={[{id:"space", name:"Space & exploration"}]} domain="science.nasa.gov" thumbnailUrl={photo} className="px-5 pb-6" /> :
@@ -74,7 +88,12 @@ export function FormatStudio() {
     <div className={styles.formatStudio}>
       <div role="group" aria-label="Choose a sample format" className={styles.switcher}>
         {formats.map(({name, Icon}) => (
-          <Button key={name} variant="ghost" aria-pressed={format === name} aria-controls="format-preview" onClick={() => setFormat(name)}>
+          <Button key={name} variant="ghost" aria-pressed={format === name} aria-controls="format-preview" onClick={() => {
+            if (name !== format) {
+              setFormat(name);
+              trackLandingEvent("landing_format_select", { sample_format: name.toLowerCase().replace(" ", "_") });
+            }
+          }}>
             <Icon aria-hidden />{name}
           </Button>
         ))}
@@ -94,13 +113,13 @@ export function FormatStudio() {
           <div className={styles.audio}>
             <Image src="/reading/earthrise-wave.webp" width={1000} height={140} alt="" />
             <h3>The Earthrise audio brief</h3>
-            <audio controls preload="metadata" aria-label="Play the Earthrise audio brief" src="/reading/earthrise-audio.mp3" />
+            <audio onPlay={() => trackLandingEvent("landing_media_play", { sample_format: "audio" })} controls preload="metadata" aria-label="Play the Earthrise audio brief" src="/reading/earthrise-audio.mp3" />
             <details><summary className={focusRing}>Read transcript</summary><p>{transcript}</p></details>
           </div>
         )}
         {format === "Short video" && (
           <div className={styles.movie}>
-            <video playsInline controls preload="metadata" poster="/reading/earthrise-video-poster.webp" aria-label="How Apollo 8 saw Earthrise">
+            <video onPlay={() => trackLandingEvent("landing_media_play", { sample_format: "short_video" })} playsInline controls preload="metadata" poster="/reading/earthrise-video-poster.webp" aria-label="How Apollo 8 saw Earthrise">
               <source src="/reading/earthrise-film.mp4" type="video/mp4" />
               <track kind="captions" src="/reading/earthrise-en.vtt" srcLang="en" label="English" default />
             </video>

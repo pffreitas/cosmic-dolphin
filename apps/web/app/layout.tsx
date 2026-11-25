@@ -1,3 +1,4 @@
+import Script from "next/script";
 import { Inter, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 import Body from "./body";
@@ -103,20 +104,24 @@ export default async function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         {/* cd-tokens-allow: a meta tag cannot read a CSS custom property */}
         <meta name="theme-color" content="#ffffff" />
-        <script
-          async
-          src="https://www.googletagmanager.com/gtag/js?id=G-Z7RBS9TF0F"
-        ></script>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', 'G-Z7RBS9TF0F');
-        `,
-          }}
-        />
+        {process.env.NODE_ENV === "production" && (
+          <>
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', 'G-Z7RBS9TF0F');
+                `,
+              }}
+            />
+            <Script
+              src="https://www.googletagmanager.com/gtag/js?id=G-Z7RBS9TF0F"
+              strategy="afterInteractive"
+            />
+          </>
+        )}
       </head>
       <body className="bg-bg text-fg">
         <ReduxProvider>
