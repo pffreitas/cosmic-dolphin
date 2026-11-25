@@ -142,46 +142,36 @@ primary button.
 
 ## Landing · `/`
 
-Signed out only — a signed-in reader is redirected to Home. Draws its own frame: the public header,
-then six beats, then a footer. The order is the pitch: what it is and what you get, why it exists,
-then one benefit per beat, each proved by a product view rather than described.
+Signed out only. Signed-in readers go straight to Home.
 
-**Light only.** The landing does not follow the reader's theme or the OS: `ThemeProvider`
-(`components/providers/theme-provider.tsx`) forces light on `/`, before first paint, and leaves the
-stored preference alone for every other route.
+“Close the tabs. Keep the ideas.” leads into three chapters built around the same source.
+A full-width Earthrise photograph opens the page. Large sans-serif display type handles the marketing promise,
+while Source Serif distinguishes the saved article and its adaptations.
 
-**Header and footer on the brand ground.** Both are `--cd-brand-ground` edge to edge, the colour of
-the dolphin artwork's own background, so the icon and its light wordmark sit on them with no
-frame. They carry the `dark` class, which resolves every token inside them to the dark set: light
-nav links and a light **Get started** pill. The page between them stays light. The closing lockup
-is the one place the logo sits on a light surface, so there it carries the ground with it as a
-badge at `--cd-radius-brand`.
+- **Understand.** Save the sample NASA article, open its sourced Cosmic brief, and mark it read.
+- **Retrieve.** Search a one-item sample library using the detail you remember. The Library row shows the matching article, its source and its suggested collection. The sample uses local keyword matching.
+- **Adapt.** Switch between a visual comparison, a narrated audio brief with transcript, a captioned short film and an infographic. These are locally prepared samples. The signed-in product generates written briefs.
 
-1. **Hero** — a split. Left: a two-line headline that states the offer ("Actually read / what you
-   save."), its second line in `--cd-fg-secondary`; one 19px sentence naming what goes in and what
-   comes back; **Get started** (primary, large) and a **See how it works** text link. Right: one
-   pasted link becoming a saved item — the URL field, staged AI progress, then the Cosmic brief
-   with key points, sources and a suggested collection. On load it replays the save in the order
-   it happens; under reduced motion everything is simply in place.
-2. **Why it exists** — one centred headline and two lines. No illustration.
-3. **The brief** (`#how-it-works`) — on `--cd-bg-subtle`: a left-aligned heading over the reading
-   demo. Three tabs (video, article, post), each showing *What you saved* beside *What you get
-   back*. A radio group and `:has()` do the switching; there is no client script.
-4. **The morning edition** — text left, Home in an app window right: greeting, a `lead`, two `row`s
-   and the closing line.
-5. **The Library** — mirrored: Library search in an app window left, text right.
-6. **Principles, then closing** — three hairline-ruled promises; then the brand lockup, the brand
-   line ("Less later. / More wonder.") and **Get started**.
+The examples require no account or API calls. Audio and video start on request. The film pairs
+a time-compressed excerpt of Ernie Wright’s spacecraft visualization with the original photograph and a narrated brief.
+[Original article and image comparison](https://science.nasa.gov/earth/earth-observatory/earthrise-revisited-82693/) · [Bill Anders photograph](https://science.nasa.gov/resource/apollo-8s-iconic-earthrise/) · [NASA Scientific Visualization Studio footage](https://svs.gsfc.nasa.gov/4129/)
 
-Headlines here are the sans at 600, not the serif `display` role: the page keeps serif for the
-saved content inside the product views, so the campaign voice and the content voice stay distinct.
-The headline says what the product does; the brand line belongs to the closing, never the hero.
+### Positioning evidence
 
-Every illustration is built like a vignette from `components/marketing/vignettes.tsx`: the product's
-own components on illustrative content, marked `inert` and labelled with what they depict. Never a
-screenshot, never a mock drawn to look like the app. The landing's three views live in
-`components/marketing/landing-visuals.tsx`. Examples are real public links with hand-written
-briefs, and the page says so; it shows no feature, count or duration the product does not have.
+The product model treats marking a save read as success. Home ranks candidates using topic affinity,
+source affinity, effort and other signals. The bookmark detail exposes a brief and its source, while
+the Library keeps the collection editable. Together these support a promise about choosing a next read.
+
+| Competitor | What its landing page leads with | Implication for this page |
+| --- | --- | --- |
+| [Raindrop.io](https://raindrop.io/) | Bookmark management, collections and retrieval | Filing supports the story after the visitor saves something. |
+| [Readwise Reader](https://readwise.io/read) | A unified reading and annotation environment for power readers | Show the decision immediately before reading an original. |
+| [mymind](https://mymind.com/) | Private recall and automatic organization | Make the content of a brief inspectable before signup. |
+
+These are observations about public positioning. The visual alternatives considered were a
+photo-led editorial spread, a capture-to-reading walkthrough and a library tour. The walkthrough
+lets visitors test the product promise in a few actions, while the editorial photograph gives the
+example a recognizable subject.
 
 ---
 
