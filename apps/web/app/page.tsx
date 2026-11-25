@@ -1,16 +1,14 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowDownRight } from "lucide-react";
 
 import { homepage, searchDescription, searchTitle, siteName } from "@/lib/landing-seo";
 import { LandingSignupButton } from "@/components/marketing/landing-analytics";
-import { Brandmark } from "@/components/brand/logo";
+import { LandingFooter, LandingHeader } from "@/components/marketing/landing-frame";
 import { FormatStudio, SampleLibrary, SampleSave } from "@/components/marketing/sample-save";
 import styles from "@/components/marketing/landing.module.css";
 import { SkipLink } from "@/components/shell/app-shell";
-import { PublicHeader } from "@/components/shell/public-header";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/server";
 
@@ -44,17 +42,10 @@ export default async function Index() {
   if (user) redirect("/my/dashboard");
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} id="top">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(website) }} />
       <SkipLink />
-      <PublicHeader action={
-        <>
-          <Button variant="ghost" asChild className="hidden min-h-11 md:inline-flex"><a href="#knowledge">How it works</a></Button>
-          <Button variant="ghost" asChild className="hidden min-h-11 sm:inline-flex"><a href="#formats">Formats</a></Button>
-          <Button variant="ghost" asChild className="min-h-11"><Link href="/sign-in">Sign in</Link></Button>
-          <LandingSignupButton placement="header" className="min-h-11" />
-        </>
-      } />
+      <LandingHeader />
       <main id="main" tabIndex={-1} className="outline-none">
         <section aria-labelledby="landing-title" className={styles.hero}>
           <Image src="/reading/earthrise.webp" width={1280} height={1280} priority sizes="100vw" className={styles.heroPhoto} alt="Earth seen over the lunar horizon from Apollo 8." />
@@ -101,7 +92,7 @@ export default async function Index() {
           <LandingSignupButton placement="closing" className="min-h-12" />
         </section>
       </main>
-      <footer className={styles.footer}><Brandmark /><span>© {new Date().getFullYear()} Cosmic Dolphin</span></footer>
+      <LandingFooter />
     </div>
   );
 }

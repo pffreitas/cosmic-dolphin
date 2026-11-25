@@ -146,7 +146,9 @@ Signed out only. Signed-in readers go straight to Home.
 
 “Close the tabs. Keep the ideas.” leads into three chapters built around the same source.
 A full-width Earthrise photograph opens the page. Large sans-serif display type handles the marketing promise,
-while Source Serif distinguishes the saved article and its adaptations.
+while Source Serif distinguishes the saved article and its adaptations. The header and footer use the
+continuous dark treatment. Both link to all three chapters. On mobile the header keeps the product name
+and signup action visible, with chapter links and sign-in in a navigation menu.
 
 - **Understand.** Save the sample NASA article, open its sourced Cosmic brief, and mark it read.
 - **Retrieve.** Search a one-item sample library using the detail you remember. The Library row shows the matching article, its source and its suggested collection. The sample uses local keyword matching.
@@ -164,7 +166,7 @@ which interactions lead visitors to the signup form.
 
 | Event | Trigger | Parameter |
 | --- | --- | --- |
-| `landing_signup_click` | Click through to signup | `cta_placement` = header, hero or closing |
+| `landing_signup_click` | Click through to signup | `cta_placement` = header, hero, closing or footer |
 | `landing_sample_open` | Save the sample and open its brief | — |
 | `landing_sample_read` | Mark the brief read | — |
 | `landing_library_search` | Leave the sample search after editing a nonempty query | `result_count` = 0 or 1 |

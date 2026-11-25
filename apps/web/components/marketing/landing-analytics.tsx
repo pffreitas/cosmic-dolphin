@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-type SignupPlacement = "header" | "hero" | "closing";
+type SignupPlacement = "header" | "hero" | "closing" | "footer";
 
 type LandingEvent =
   | ["landing_signup_click", { cta_placement: SignupPlacement }]
@@ -30,9 +30,9 @@ export function LandingSignupButton({
   className: string;
 }) {
   return (
-    <Button variant="primary" size={placement === "header" ? "default" : "lg"} asChild className={className}>
+    <Button variant={placement === "footer" ? "link" : "primary"} size={placement === "header" ? "default" : "lg"} asChild className={className}>
       <Link href="/sign-up" onClick={() => trackLandingEvent("landing_signup_click", { cta_placement: placement })}>
-        {placement === "header" ? "Get started" : "Save your first link"} <ArrowRight aria-hidden />
+        {placement === "header" ? "Sign up" : placement === "footer" ? "Create an account" : <>Save your first link <ArrowRight aria-hidden /></>}
       </Link>
     </Button>
   );
