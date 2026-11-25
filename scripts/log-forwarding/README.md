@@ -39,7 +39,9 @@ modules, installs no dependencies and runs as the image's `bun` user.
 
 ## Intake and acknowledgement
 
-`POST /`, `POST /api/v2/logs` accepts a JSON list or one JSON event with a string `message`.
+`POST /`, `POST /api/v2/logs` accepts a JSON list or one JSON event. A supplied
+`message` must be a string. Native events without `message`, including blank-line
+events, retain their redacted structured JSON body instead of rejecting the batch.
 `POST /v1/input/<key>` and `/v1/input` accept the same shapes. Keys can be supplied
 via the case-insensitive `DD-API-KEY` header; legacy `api_key` and `dd-api-key`
 query spellings are supported. Every supplied credential must map to the same
@@ -49,7 +51,7 @@ the bridge's control. Keys are compared using fixed-size SHA-256 digests and
 constant-time comparisons across all configured sources.
 
 Only `application/json` with optional UTF-8 charset is accepted. Unsupported encodings,
-NDJSON, Datadog object envelopes without a `message`, malformed UTF-8, invalid JSON,
+NDJSON, non-object events, non-string supplied messages, malformed UTF-8, invalid JSON,
 empty batches and any invalid event fail the whole request. Byte, event count,
 serialized event size, request deadline and concurrency limits apply before OTLP
 delivery. Body timeout/size errors request connection closure.

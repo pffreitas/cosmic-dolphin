@@ -2,10 +2,10 @@
 
 | Current state | Value |
 | --- | --- |
-| Outcome | PR #261 merged as `a533a2c326d1e120af6c85a488666fa4b520a2d6`; its tree matches reviewed head `8eda4bb7`. The bridge is ACTIVE from `main`. Web release passed. Native API records are readable in Loki. Native web batches reach the bridge but fail event validation. Worker and save-monitor receipts remain open. |
-| Next gate | Diagnose and fix the native event shape, complete the backend release gate, and verify native records from every source. |
+| Outcome | PR #261 merged as `a533a2c326d1e120af6c85a488666fa4b520a2d6`; backend and web releases passed. Native API and worker records are readable in Loki. A missing `message` in native web events caused batch rejection; the compatibility fix has final Sol approval and pinned Linux proof. |
+| Next gate | Deploy the reviewed compatibility fix, verify native web/save-monitor records, and land its independently verified follow-up PR. |
 | Owner | This thread owns configuration, delivery, and live verification. |
-| Blocker | Native web delivery is rejected as `invalid_batch`; the fixed heartbeat category does not yet distinguish the invalid event shape. No access blocker. |
+| Blocker | Native web/save-monitor delivery remains unverified until the compatibility rollout. No access blocker; all five allowed code-review rounds are complete. |
 | Starting state | Branch `activate-save-monitoring`, base and live `origin/main` `08bef9224c8cbdedf4f14ca75c866eb04c62b94a`. Existing monitoring activation/incident documentation changes are preserved. |
 | Delivery branch | `integrate-digitalocean-logs`, updated without conflicts to live main `f312e01dc0a871221e7d99b27ad0f80267cdad57` before review. |
 
@@ -45,9 +45,14 @@ The data shape is `authenticated source → bounded Datadog batch → normalized
 
 - Independent Shipping verification posted [PASS+NOTES](https://github.com/pffreitas/cosmic-dolphin/pull/261#issuecomment-7175818756) for exact head `8eda4bb719d6c8c6cfa9bae584e962b161c08bb6`: 76 tests / 911 assertions; both base/head monitoring replays 144 tests / 591 assertions; real HTTP and all four source CLI overlays. Linux/Cloud evidence remained the parent's gate.
 - All three PR checks passed. PR #261 merged at 22:01:34 UTC as `a533a2c326d1e120af6c85a488666fa4b520a2d6`. `git diff` between the reviewed PR head and merged tree is empty. No unrelated application behavior was changed.
-- Exact merged-SHA backend release: [45709625464](https://github.com/pffreitas/cosmic-dolphin/actions/runs/45709625464). Web release: [45709625579](https://github.com/pffreitas/cosmic-dolphin/actions/runs/45709625579).
+- Exact merged-SHA backend release: [45709625464](https://github.com/pffreitas/cosmic-dolphin/actions/runs/45709625464), SUCCESS: backend build/tests, pinned Supabase migration gate, actual Linux API/worker image builds/pushes, packaged browser extraction proof, source overlays, and both waited App Platform deployments. Web release: [45709625579](https://github.com/pffreitas/cosmic-dolphin/actions/runs/45709625579), SUCCESS: generation, typecheck/lint/tests/build, Docker build/push, overlay, and deployment.
 - Bridge update from `main`: [45709964586](https://github.com/pffreitas/cosmic-dolphin/actions/runs/45709964586). Offline tests, native Linux image, packaged runtime suite, actual CMD health smoke, and deployment request passed. Actual App Platform rollout/readback is a separate gate.
 - Scheduled checker invocation `032dcbed-6f45-4aa7-b9eb-d1dbf43af080` ran at 22:04 UTC and reported metric delivery `ok`. An alerting checker exits 1, so DigitalOcean's job phase `FAILED` alone is not evidence that observation or publishing failed.
+- At 22:10 UTC, API, worker, and web were ACTIVE on image tag `a533a2c3`, with `cosmic-grafana-logs` preserved. Loki returned 12 API and 17 worker records in the 30-minute window, including one actual `Starting to process queue: bookmarks` marker. Native startup output does not prove queue progress.
+- Live Grafana readback at 22:08 UTC confirmed 12 panels and one heartbeat rule routed to `Cosmic save email`, no-data Alerting, execution errors Error, pending 2m. Actual evaluation was inactive with health `ok`.
+- Round-4 diagnostic source `384f02a3bd2c859f3632009cb6bcfb11c3b0882a` was independently approved, then passed 28 tests / 292 assertions inside pinned Linux Bun 1.3.11 (local amd64 emulation). Controlled bridge rollout reached ACTIVE at 22:12 UTC. Only the bridge's source changed; source image tags, bookmark state, and worker code remain untouched. Web restart `b1a39d65-d727-4614-9650-b3e96ff0e9c3` triggers fresh native startup logs to identify the structural mismatch.
+
+- At 22:12 UTC, the bridge heartbeat recorded an authenticated gzip web rejection with `batchCause: missing_message`. The compatibility fix retains such native events as scrubbed structured JSON instead of rejecting the whole batch. Non-object events, supplied non-string messages, and all byte/count/time/concurrency/ACK bounds remain enforced. No rejected payload contents were captured.
 
 ## Review ledger
 
@@ -59,6 +64,7 @@ The standalone Sol review cap started at three rounds across implementation and 
 | 2 | GPT-6.1 Sol | Changed monitoring gate order and private spec writer | APPROVE. S1 and S2 independently resolved. Candidate approved for controlled activation; native delivery remains open |
 | 3 | GPT-6.1 Sol | Root-path intake, bounded gzip, and safe rejection metadata | APPROVE. No blocker/should finding. Documentation nit S3 fixed. Three-round review cap exhausted; real native receipts remain required |
 | 4 | GPT-6.1 Sol | Fixed structural diagnostics for rejected native batches | APPROVE. Reviewer independently ran 77 tests / 959 assertions. No findings; HTTP validation/ACK behavior unchanged. Diagnostic red test failed before the implementation. One further round remains under the data-loss extension |
+| 5 | GPT-6.1 Sol | Preserve native events that omit `message` as redacted structured records | APPROVE, no findings. Reviewer independently ran 78 tests / 964 assertions. Actual web heartbeat identifies `missing_message`. Real gzip regression failed 400 before the fix and passes 202 afterwards. Pinned Linux: 29 tests / 297 assertions. Existing held-ACK and whole-event byte-limit proofs cover missing-message records too. Five-round cap exhausted |
 
 Comment review removed 16 narrative blocks without changing runtime behavior. Its two accepted design findings are encoded by one named request ceiling shared with the native parser, and an explicit `stageAssets` factory. The staging factory keeps canonical enabled/staged assets distinct without adding mutable mode state or a bypass option to the provisioner.
 

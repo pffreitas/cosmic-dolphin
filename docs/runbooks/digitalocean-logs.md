@@ -34,6 +34,8 @@ The receiver acknowledges a batch only after Grafana accepts it. Upstream HTTP e
 
 If source records are missing while heartbeats continue, inspect the heartbeat's `lastRejection`. Its fixed reason, route, encoding, and source identify intake errors without exposing credentials or payloads. The custom endpoint accepts plain or gzip JSON at its root and Datadog paths. Both compressed and expanded bodies have byte caps.
 
+An `invalid_batch` rejection includes a fixed `batchCause` for the structural failure. Native events can omit `message`; those are retained as redacted structured JSON, including `{}` for a blank event. A supplied non-string message is invalid. No raw rejected payload is recorded.
+
 ## Deploy or update the bridge
 
 1. Complete the verification workflow and code review for the intended version.
