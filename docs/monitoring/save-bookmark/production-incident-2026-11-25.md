@@ -1,6 +1,10 @@
 # Production bookmark queue diagnosis, 2026-11-25
 
-The strongest supported cause is a missing wake-up in the worker dispatcher. The bug reproduces with the production queue order and concurrency. Current DigitalOcean process status and logs are unavailable, so runtime confirmation remains open. No production code, process, bookmark, or queue message was changed during diagnosis.
+The strongest supported cause is a missing wake-up in the worker dispatcher. The bug reproduces with the production queue order and concurrency. DigitalOcean access and Grafana log forwarding are now available; current worker ACTIVE/startup evidence supports the configured queue order, while the missing wake-up itself remains demonstrated by the local dispatcher reproduction. No worker repair or manual bookmark/queue mutation was performed.
+
+## Current observability
+
+The [log activation receipt](../digitalocean-logs/activation-2026-11-25.md) confirms native worker records in Grafana, including the actual `bookmarks` queue startup. Worker image `a533a2c3` has the same dispatcher source as `0a0784e1`; the release changed no dispatcher behavior. The real scheduled snapshot at 23:33:34 UTC reports six processing bookmarks and six visible queue items, API/database healthy, and `queue_visible_backlog`/`processing_overdue` alerts. These are current inventory counts; no repair is implied. Use the [production log dashboard](https://tenderlimpet2779.grafana.net/d/cosmic-production-logs) with the incident time range for runtime context.
 
 ## Production observations
 
@@ -8,7 +12,7 @@ The collector repeatedly sees four processing bookmarks and four visible, owner-
 
 The latest successful [backend deployment](https://github.com/pffreitas/cosmic-dolphin/actions/runs/43901840613) deployed SHA `0a0784e1cbb5c81c287eaa69442f23d43d59f568` on November 16. Startup logs show two queues, concurrency 5, and polling starting in the order `default`, then `bookmarks`. The current dispatcher source is unchanged from that deployed SHA. The [worker app spec](../../../.do/worker-app.yml) also sets `QUEUE_NAMES=default,bookmarks`.
 
-Those startup logs describe November 16. They do not prove the worker is currently running. The user declined the read-only DigitalOcean credential request; no further credential request or access workaround was attempted.
+Those initial startup logs describe November 16. At initial diagnosis, current DigitalOcean access was unavailable after a declined credential request. The user later explicitly authorized DigitalOcean login and log integration; current ACTIVE/startup receipts are recorded above. They establish process/configuration state, not queue progress.
 
 ## Dispatcher failure
 
