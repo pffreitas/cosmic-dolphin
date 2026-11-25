@@ -128,6 +128,12 @@ jobs:
           docker push registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME:$GITHUB_SHA
           docker push registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME:latest
 
+      - name: Preserve configured native log forwarding
+        env:
+          GRAFANA_LOG_BRIDGE_URL: ${{ vars.GRAFANA_LOG_BRIDGE_URL }}
+          LOG_FORWARDING_KEY: ${{ secrets.LOG_FORWARDING_WEB_KEY }}
+        run: bun --no-env-file scripts/log-forwarding/app-spec.ts --file .do/web-app.yml --source web
+
       - name: Deploy to DigitalOcean App Platform
         uses: digitalocean/app_action/deploy@v2
         env:

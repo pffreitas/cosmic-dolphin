@@ -1,0 +1,79 @@
+name: Deploy DigitalOcean log bridge manually
+on:
+  workflow_dispatch:
+    inputs:
+      activation:
+        description: Create the isolated bridge app or update its configured ID
+        required: true
+        type: choice
+        options: [update, create]
+permissions:
+  contents: read
+concurrency:
+  group: deploy-log-forwarding
+  cancel-in-progress: false
+jobs:
+  activate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: log-observability-production
+    env:
+      LOG_BRIDGE_BRANCH: main
+      LOG_BRIDGE_DO_APP_ID: ${{ inputs.activation == 'update' && vars.LOG_BRIDGE_DO_APP_ID || '' }}
+      LOG_BRIDGE_DO_CREATE: ${{ inputs.activation == 'create' && 'true' || 'false' }}
+      GRAFANA_OTLP_ENDPOINT: ${{ vars.GRAFANA_OTLP_ENDPOINT }}
+      GRAFANA_OTLP_INSTANCE_ID: ${{ vars.GRAFANA_OTLP_INSTANCE_ID }}
+      GRAFANA_OTLP_TOKEN: ${{ secrets.GRAFANA_OTLP_TOKEN }}
+      LOG_SOURCE_KEYS_JSON: ${{ secrets.LOG_SOURCE_KEYS_JSON }}
+      LOG_BRIDGE_PROOF_IMAGE: log-bridge-deployment-proof:${{ github.sha }}
+      LOG_BRIDGE_TEST_CONTAINER: log-bridge-tests-${{ github.run_id }}-${{ github.run_attempt }}
+      LOG_BRIDGE_START_CONTAINER: log-bridge-start-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.11"
+      - name: Validate and privately render before any deployment request
+        run: |
+          if [ "${{ inputs.activation }}" = update ] && [ -z "$LOG_BRIDGE_DO_APP_ID" ]; then
+            echo 'LOG_BRIDGE_DO_APP_ID is required for update' >&2
+            exit 1
+          fi
+          bun --no-env-file scripts/log-forwarding/deployment.ts --check-config
+          bun --no-env-file scripts/log-forwarding/deployment.ts --render "$RUNNER_TEMP/log-bridge-resolved.json"
+      - name: Verify offline bridge, deployment and source overlays
+        run: bun --no-env-file test scripts/log-forwarding/__tests__
+      - name: Build exact Linux image and test its packaged runtime
+        run: |
+          docker build --platform linux/amd64 -f scripts/log-forwarding/Dockerfile -t "$LOG_BRIDGE_PROOF_IMAGE" .
+          docker create --name "$LOG_BRIDGE_TEST_CONTAINER" --network none "$LOG_BRIDGE_PROOF_IMAGE" bun --no-env-file test /app/__tests__/bridge.test.ts
+          docker cp scripts/log-forwarding/__tests__ "$LOG_BRIDGE_TEST_CONTAINER:/app/__tests__"
+          docker start --attach "$LOG_BRIDGE_TEST_CONTAINER"
+          test "$(docker inspect --format '{{.State.ExitCode}}' "$LOG_BRIDGE_TEST_CONTAINER")" = 0
+      - name: Smoke-test the actual CMD and process health without external network
+        run: |
+          docker create --name "$LOG_BRIDGE_START_CONTAINER" --network none \
+            -e GRAFANA_OTLP_ENDPOINT=https://otlp-gateway-fictional.grafana.net/otlp \
+            -e GRAFANA_OTLP_INSTANCE_ID=123456 -e GRAFANA_OTLP_TOKEN=fictional-publisher \
+            -e 'LOG_SOURCE_KEYS_JSON={"api":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' "$LOG_BRIDGE_PROOF_IMAGE"
+          docker start "$LOG_BRIDGE_START_CONTAINER"
+          for _attempt in $(seq 1 30); do
+            if docker exec "$LOG_BRIDGE_START_CONTAINER" bun -e 'try { const r = await fetch("http://127.0.0.1:8080/health"); process.exit(r.status === 200 && JSON.stringify(await r.json()) === JSON.stringify({status:"process_up"}) ? 0 : 1); } catch { process.exit(1); }'; then exit 0; fi
+            sleep 1
+          done
+          echo 'Packaged CMD did not become healthy' >&2
+          exit 1
+      - name: Request create or update of only the isolated bridge app
+        shell: bash
+        env:
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        run: |
+          bun --no-env-file scripts/log-forwarding/deployment.ts --deploy | tee "$RUNNER_TEMP/log-bridge-requested.json"
+          printf '%s\n' 'Deployment requested. Independently verify the actual source commit, ACTIVE deployment, and native forwarding before treating this as live.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Remove private rendered spec and only this job's proof containers
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/log-bridge-resolved.json"
+          for container in "$LOG_BRIDGE_TEST_CONTAINER" "$LOG_BRIDGE_START_CONTAINER"; do
+            if docker inspect "$container" > /dev/null 2>&1; then docker rm -f "$container"; fi
+          done

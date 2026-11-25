@@ -34,6 +34,15 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.3.11"
+      - name: Verify offline behavior
+        run: |
+          bun --no-env-file test scripts/monitoring/__tests__/save-bookmarks.test.ts scripts/monitoring/__tests__/telemetry.test.ts scripts/monitoring/__tests__/grafana.test.ts scripts/monitoring/__tests__/deployment.test.ts scripts/monitoring/__tests__/cli.test.ts
+          bun --no-env-file scripts/monitoring/grafana.ts --check docs/monitoring/save-bookmark/grafana/assets.v1.json
+      - name: Preserve configured native log forwarding
+        env:
+          GRAFANA_LOG_BRIDGE_URL: ${{ vars.GRAFANA_LOG_BRIDGE_URL }}
+          LOG_FORWARDING_KEY: ${{ secrets.LOG_FORWARDING_SAVE_MONITOR_KEY }}
+        run: bun --no-env-file scripts/log-forwarding/app-spec.ts --file .do/monitoring-app.yml --source save-monitor
       - name: Validate config without network or secret output
         run: |
           if [ "${{ inputs.activation }}" = update ] && [ -z "$MONITOR_DO_APP_ID" ]; then
@@ -42,10 +51,6 @@ jobs:
           fi
           bun --no-env-file scripts/monitoring/deployment.ts --check-config
           bun --no-env-file scripts/monitoring/monitor.ts --check-config --publish
-      - name: Verify offline behavior
-        run: |
-          bun --no-env-file test scripts/monitoring/__tests__/save-bookmarks.test.ts scripts/monitoring/__tests__/telemetry.test.ts scripts/monitoring/__tests__/grafana.test.ts scripts/monitoring/__tests__/deployment.test.ts scripts/monitoring/__tests__/cli.test.ts
-          bun --no-env-file scripts/monitoring/grafana.ts --check docs/monitoring/save-bookmark/grafana/assets.v1.json
       - uses: digitalocean/action-doctl@v2
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}

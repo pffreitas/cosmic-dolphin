@@ -172,6 +172,15 @@ jobs:
           docker push registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME_WORKER:$GITHUB_SHA
           docker push registry.digitalocean.com/$REGISTRY_NAME/$IMAGE_NAME_WORKER:latest
 
+      - name: Preserve configured native log forwarding
+        env:
+          GRAFANA_LOG_BRIDGE_URL: ${{ vars.GRAFANA_LOG_BRIDGE_URL }}
+          LOG_FORWARDING_API_KEY: ${{ secrets.LOG_FORWARDING_API_KEY }}
+          LOG_FORWARDING_WORKER_KEY: ${{ secrets.LOG_FORWARDING_WORKER_KEY }}
+        run: |
+          LOG_FORWARDING_KEY="$LOG_FORWARDING_API_KEY" bun --no-env-file scripts/log-forwarding/app-spec.ts --file .do/api-app.yml --source api
+          LOG_FORWARDING_KEY="$LOG_FORWARDING_WORKER_KEY" bun --no-env-file scripts/log-forwarding/app-spec.ts --file .do/worker-app.yml --source worker
+
       - name: Deploy API to DigitalOcean App Platform
         uses: digitalocean/app_action/deploy@v2
         env:

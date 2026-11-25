@@ -54,6 +54,8 @@ The database fence requires the production project `qsqbcqkpqmkuywunxbut`, its e
 
 Activation requires a CA PEM and uses certificate verification. Do not disable TLS to make a failing run green. The query uses `prepare: false` for pooler compatibility. Supavisor behavior, the actual production URL format, TLS trust, network access, and production grants remain first-live-run checks. The observer role needs SELECT access to the referenced public bookmark columns and `pgmq.q_bookmarks`. It does not need queue claim or write access. Read-only transactions limit the observer's behavior even when existing credentials have wider privileges.
 
+The production CA download used by [Supabase Studio](https://github.com/supabase/supabase/blob/master/apps/studio/hooks/custom-content/custom-content.json) was verified on 2026-11-25: [Supabase Root 2021 CA](https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt). Prefer the current certificate from the project's Database Settings if Supabase changes its CA. Validate the certificate before storing it; a successful download alone does not prove production TLS connectivity.
+
 Validate configuration without database or Grafana calls.
 
 ```sh
@@ -84,6 +86,12 @@ Successful observations publish fixed zeros for healthy database rules. Query er
 An ingest timeout, redirect, HTTP failure, malformed response, or OTLP partial rejection exits nonzero. Missing-heartbeat detection later catches scheduler or delivery outages. Exit codes are 0 for healthy observations, 1 for product alerts, 2 for observer failure, and 3 for delivery failure. A product alert can produce a failed DigitalOcean invocation while its metric delivery succeeds.
 
 Terminal failure gauges cover 60 minutes, longer than the collection cadence and drift. Completion timing measures `created_at` to completion and includes budget deferral and reprocessing. It is context, with no latency alert.
+
+Verify that the configured inbox receives a real firing alert. Verify recovery delivery separately, with recovery messages enabled on the contact point. A test endpoint returning success proves sender acceptance; it does not prove inbox receipt. Grafana 13.4 uses `POST /apis/notifications.alerting.grafana.app/v1beta1/namespaces/{namespace}/receivers/{name}/test`. Read the Receiver resource to obtain `{name}`. The older Alertmanager contact-point test endpoint returns HTTP 410 on this stack.
+
+For a controlled firing and recovery check, use a temporary rule with distinct setup labels and a constant math expression. Change the expression from 1 to 0 after firing delivery. Confirm the resolved email, then delete the temporary rule. Do not publish fabricated production gauges or change bookmarks to test notifications.
+
+The production activation record and remaining limits are in [verification.md](../monitoring/save-bookmark/verification.md#production-activation-on-2026-11-25). The active collector app ID is stored in the `monitoring-production` environment. Use `activation=update` for later collector deployments.
 
 ### Monitoring failed
 

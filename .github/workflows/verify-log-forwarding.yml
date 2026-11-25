@@ -1,0 +1,59 @@
+name: Verify DigitalOcean log forwarding
+on:
+  pull_request:
+    paths:
+      - "scripts/log-forwarding/**"
+      - "docs/monitoring/digitalocean-logs/**"
+      - ".do/log-forwarding-app.yml"
+      - ".do/api-app.yml"
+      - ".do/worker-app.yml"
+      - ".do/web-app.yml"
+      - ".do/monitoring-app.yml"
+      - ".github/workflows/verify-log-forwarding.yml"
+      - ".github/workflows/deploy-log-forwarding.yml"
+      - ".github/workflows/deploy-backend.yml"
+      - ".github/workflows/deploy-web.yml"
+      - ".github/workflows/deploy-monitoring.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    env:
+      LOG_BRIDGE_PROOF_IMAGE: log-bridge-proof:${{ github.sha }}
+      LOG_BRIDGE_TEST_CONTAINER: log-bridge-tests-${{ github.run_id }}-${{ github.run_attempt }}
+      LOG_BRIDGE_START_CONTAINER: log-bridge-start-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.11"
+      - name: Verify offline bridge, deployment and source overlays
+        run: bun --no-env-file test scripts/log-forwarding/__tests__
+      - name: Build exact Linux image and test its packaged runtime
+        run: |
+          docker build --platform linux/amd64 -f scripts/log-forwarding/Dockerfile -t "$LOG_BRIDGE_PROOF_IMAGE" .
+          docker create --name "$LOG_BRIDGE_TEST_CONTAINER" --network none "$LOG_BRIDGE_PROOF_IMAGE" bun --no-env-file test /app/__tests__/bridge.test.ts
+          docker cp scripts/log-forwarding/__tests__ "$LOG_BRIDGE_TEST_CONTAINER:/app/__tests__"
+          docker start --attach "$LOG_BRIDGE_TEST_CONTAINER"
+          test "$(docker inspect --format '{{.State.ExitCode}}' "$LOG_BRIDGE_TEST_CONTAINER")" = 0
+      - name: Smoke-test the actual CMD and process health without external network
+        run: |
+          docker create --name "$LOG_BRIDGE_START_CONTAINER" --network none \
+            -e GRAFANA_OTLP_ENDPOINT=https://otlp-gateway-fictional.grafana.net/otlp \
+            -e GRAFANA_OTLP_INSTANCE_ID=123456 -e GRAFANA_OTLP_TOKEN=fictional-publisher \
+            -e 'LOG_SOURCE_KEYS_JSON={"api":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' "$LOG_BRIDGE_PROOF_IMAGE"
+          docker start "$LOG_BRIDGE_START_CONTAINER"
+          for _attempt in $(seq 1 30); do
+            if docker exec "$LOG_BRIDGE_START_CONTAINER" bun -e 'try { const r = await fetch("http://127.0.0.1:8080/health"); process.exit(r.status === 200 && JSON.stringify(await r.json()) === JSON.stringify({status:"process_up"}) ? 0 : 1); } catch { process.exit(1); }'; then exit 0; fi
+            sleep 1
+          done
+          echo 'Packaged CMD did not become healthy' >&2
+          exit 1
+      - name: Remove only this job's proof containers
+        if: always()
+        run: |
+          for container in "$LOG_BRIDGE_TEST_CONTAINER" "$LOG_BRIDGE_START_CONTAINER"; do
+            if docker inspect "$container" > /dev/null 2>&1; then docker rm -f "$container"; fi
+          done
