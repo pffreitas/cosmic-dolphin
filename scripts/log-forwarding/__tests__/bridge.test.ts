@@ -161,6 +161,29 @@ describe("authenticated real HTTP intake", () => {
     expect(text).not.toContain(KEY);
     expect(text).not.toContain("private body");
   });
+
+  test("invalid batch diagnostics disclose only a fixed structural category", async () => {
+    const f = fixture();
+    for (const [payload, cause] of [
+      [[], "empty_batch"],
+      [["private event"], "invalid_event"],
+      [[{ privateField: TOKEN }], "missing_message"],
+      [[{ message: null }], "null_message"],
+      [[{ message: { privateField: TOKEN } }], "object_message"],
+      [[{ message: 123 }], "other_message"],
+    ] as const) {
+      const result = await f.post(undefined, { body: Bun.gzipSync(JSON.stringify(payload)), headers: {
+        "DD-API-KEY": KEY, "content-type": "application/json", "content-encoding": "gzip",
+      } });
+      expect(result.status).toBe(400);
+      expect(await result.json()).toEqual({ error: "invalid_batch" });
+      expect(await f.bridge.heartbeat()).toEqual({ ok: true });
+      const text = record(f.captured.at(-1)!).body.stringValue;
+      expect(JSON.parse(text).lastRejection).toEqual({ status: 400, reason: "invalid_batch",
+        route: "/api/v2/logs", encoding: "gzip", source: "api", batchCause: cause });
+      for (const secret of [KEY, TOKEN, "private event", "privateField"]) expect(text).not.toContain(secret);
+    }
+  });
 });
 
 describe("bounds across the HTTP boundary", () => {

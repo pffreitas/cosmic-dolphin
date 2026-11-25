@@ -73,17 +73,20 @@ export interface LogRecord {
   body: { stringValue: string };
 }
 
-export type Normalization = { ok: true; records: LogRecord[] } | { ok: false; error: "invalid_batch" | "payload_too_large" };
+export type BatchCause = "empty_batch" | "invalid_event" | "missing_message" | "null_message" | "object_message" | "other_message";
+export type Normalization = { ok: true; records: LogRecord[] } | { ok: false; error: "invalid_batch" | "payload_too_large"; batchCause?: BatchCause };
 
 /** Datadog v2 array and v1 single-event JSON; every event must carry message. */
 export function normalizeBatch(payload: unknown, config: Config, nowMs: number): Normalization {
   const events = Array.isArray(payload) ? payload : [payload];
-  if (!events.length) return { ok: false, error: "invalid_batch" };
+  if (!events.length) return { ok: false, error: "invalid_batch", batchCause: "empty_batch" };
   if (events.length > config.limits.records) return { ok: false, error: "payload_too_large" };
   const observedTimeUnixNano = (BigInt(Math.round(nowMs)) * 1_000_000n).toString();
   const records: LogRecord[] = [];
   for (const event of events) {
-    if (!isRecord(event) || typeof event.message !== "string") return { ok: false, error: "invalid_batch" };
+    if (!isRecord(event)) return { ok: false, error: "invalid_batch", batchCause: "invalid_event" };
+    if (typeof event.message !== "string") return { ok: false, error: "invalid_batch", batchCause:
+      event.message === undefined ? "missing_message" : event.message === null ? "null_message" : typeof event.message === "object" ? "object_message" : "other_message" };
     if (encoder.encode(JSON.stringify(event)).byteLength > config.limits.lineBytes) return { ok: false, error: "payload_too_large" };
     const plain = event.message.replace(ANSI, "");
     let embedded: Record<string, unknown> | null = null;
