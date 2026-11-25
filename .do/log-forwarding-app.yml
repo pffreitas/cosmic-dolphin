@@ -1,0 +1,46 @@
+name: cosmic-log-bridge
+region: nyc
+ingress:
+  rules:
+    - component:
+        name: log-bridge
+      match:
+        path:
+          prefix: /
+services:
+  - name: log-bridge
+    git:
+      repo_clone_url: https://github.com/pffreitas/cosmic-dolphin.git
+      branch: ${LOG_BRIDGE_BRANCH}
+    source_dir: /
+    dockerfile_path: scripts/log-forwarding/Dockerfile
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    health_check:
+      http_path: /health
+    envs:
+      - key: PORT
+        scope: RUN_TIME
+        type: GENERAL
+        value: "8080"
+      - key: LOG_BRIDGE_ENVIRONMENT
+        scope: RUN_TIME
+        type: GENERAL
+        value: production
+      - key: GRAFANA_OTLP_ENDPOINT
+        scope: RUN_TIME
+        type: GENERAL
+        value: ${GRAFANA_OTLP_ENDPOINT}
+      - key: GRAFANA_OTLP_INSTANCE_ID
+        scope: RUN_TIME
+        type: GENERAL
+        value: ${GRAFANA_OTLP_INSTANCE_ID}
+      - key: GRAFANA_OTLP_TOKEN
+        scope: RUN_TIME
+        type: SECRET
+        value: ${GRAFANA_OTLP_TOKEN}
+      - key: LOG_SOURCE_KEYS_JSON
+        scope: RUN_TIME
+        type: SECRET
+        value: ${LOG_SOURCE_KEYS_JSON}

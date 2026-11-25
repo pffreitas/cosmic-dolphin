@@ -1,6 +1,6 @@
 # Save-bookmark monitoring verification
 
-The delivered change prepares alerts for server-accepted saves. It creates no Cloud account, production deployment, or recipient notification. The original production queue incident remains unconfirmed because production database access was unavailable.
+PR #260 prepared alerts for server-accepted saves. The user authorized production activation after merging it. The separate collector and Grafana resources are now active, and real production backlog alerts reached the configured inbox. Production observation confirms four stuck saves; the worker's underlying failure remains under investigation.
 
 ## Local checks
 
@@ -40,8 +40,22 @@ Build the monitoring Dockerfile from the repository root in an isolated Docker c
 - Two Linux migration-loader attempts in the shared 2 GB Docker context exited 137 without output. Shared infrastructure was left untouched. The identical pinned Linux loader passed in the task's isolated build context, with a fresh owned database and no container memory cap. Host fresh-loader and all real-SQL checks passed independently.
 - The first GitHub proof reached the migration loader while the container's temporary initialization server accepted Unix-socket connections but its TCP server was unavailable. A fresh-container reproduction observed socket readiness at 1.07 seconds, TCP unavailable, and loader exit 2; TCP became ready at 1.85 seconds. CI now checks TCP explicitly before loading migrations. No timeout was increased.
 
-## Activation gaps
+## Production activation on 2026-11-25
 
-Grafana Cloud Free account/namespace behavior, production Supabase URL/TLS trust/Supavisor/grants/RLS, DigitalOcean deployment and scheduled invocation, a real accepted client save, and notification/recovery delivery need live verification. Follow the activation runbook before treating the setup as active production monitoring.
+| Check | Result |
+| --- | --- |
+| Merged-main verification | [Run 45609493011](https://github.com/pffreitas/cosmic-dolphin/actions/runs/45609493011) passed on `08bef9224c8cbdedf4f14ca75c866eb04c62b94a` |
+| Separate collector activation | [Run 45662881565](https://github.com/pffreitas/cosmic-dolphin/actions/runs/45662881565) passed; app `457df394-b764-477d-8461-f190bbe474da` created with the exact merged image |
+| Production database/API connection | Two delivered snapshots report observer health 1 and API health 1 using the configured production CA and connection |
+| Recurring invocation and Cloud ingestion | Heartbeats advanced from 17:33:37.016 to 17:48:07.943 UTC; both snapshots are readable through the Cloud Prometheus data source |
+| Cloud provisioning | Grafana 13.4 accepts namespace `stacks-1939091`; dashboard has 16 panels. Final readback at 18:00:20 UTC confirms exactly eight owned rules, matching queries, a one-minute pending period, no-data alerting, error alerting, the intended receiver, and removal of the temporary rule. All eight production rules evaluate with health `ok` |
+| Actual production incident | Four processing saves and four visible messages; no delayed/leased messages, invalid messages, or redeliveries. Oldest wait 624,084 seconds in the second snapshot |
+| Real firing delivery | Both production backlog-alert emails received in the configured inbox at 17:39:40 and 17:40:25 UTC |
+| Contact-point test | Old endpoint returned HTTP 410. Discovered Receiver test subresource returned success; the setup test email was received |
+| Recovery delivery | Separate labeled temporary math rule produced firing and resolved emails at 17:54:50 and 17:57:50 UTC. The rule was removed; no fabricated production gauges or bookmark writes |
+
+## Remaining limits
+
+A new accepted client save remains unverified. The successful database reads prove the configured observer connection works, not that a dedicated read-only role was provisioned or that a negative production TLS test passed. Current worker status/logs remain unavailable. The [incident diagnosis](production-incident-2026-11-25.md) reproduces a missing dispatcher wake-up with the deployed configuration. No production repair has occurred. Monitoring observes failures and does not repair the queue.
 
 GPT-6.1 Sol approved the prepared implementation with no blocking correctness or safety finding. The initial comparison had an independent Opus review. The user selected Sol after the Opus usage limit; the final audit lacks vendor diversity. The reviewer checked code, specs, the decision log, and local receipts. A repository transcript was unavailable.

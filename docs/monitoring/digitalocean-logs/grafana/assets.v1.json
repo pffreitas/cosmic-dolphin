@@ -1,0 +1,641 @@
+{
+  "schemaVersion": 1,
+  "config": {
+    "namespace": "default",
+    "datasourceUid": "REPLACE_LOKI_UID",
+    "receiver": "REPLACE_EXISTING_RECEIVER",
+    "environment": "production",
+    "runbookUrl": "https://github.com/pffreitas/cosmic-dolphin/blob/main/docs/runbooks/digitalocean-logs.md"
+  },
+  "folder": {
+    "uid": "cosmic-production-logs",
+    "title": "Cosmic production logs"
+  },
+  "dashboard": {
+    "uid": "cosmic-production-logs",
+    "title": "Cosmic production logs",
+    "tags": [
+      "managed-by-cosmic-log-bridge"
+    ],
+    "schemaVersion": 39,
+    "version": 0,
+    "timezone": "utc",
+    "editable": false,
+    "refresh": "1m",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "links": [
+      {
+        "title": "Log forwarding runbook",
+        "url": "https://github.com/pffreitas/cosmic-dolphin/blob/main/docs/runbooks/digitalocean-logs.md",
+        "type": "link"
+      },
+      {
+        "title": "Save-journey alerts and metrics",
+        "url": "/d/cosmic-save-bookmarks",
+        "type": "link"
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "source",
+          "label": "Runtime source",
+          "type": "custom",
+          "query": "cosmic-dolphin-api,cosmic-dolphin-worker,cosmic-dolphin-web,cosmic-dolphin-save-monitor",
+          "multi": true,
+          "includeAll": true,
+          "allValue": "cosmic-dolphin-api|cosmic-dolphin-worker|cosmic-dolphin-web|cosmic-dolphin-save-monitor",
+          "current": {
+            "selected": true,
+            "text": "All",
+            "value": "$__all"
+          },
+          "options": [
+            {
+              "text": "All",
+              "value": "$__all",
+              "selected": true
+            },
+            {
+              "text": "cosmic-dolphin-api",
+              "value": "cosmic-dolphin-api",
+              "selected": false
+            },
+            {
+              "text": "cosmic-dolphin-worker",
+              "value": "cosmic-dolphin-worker",
+              "selected": false
+            },
+            {
+              "text": "cosmic-dolphin-web",
+              "value": "cosmic-dolphin-web",
+              "selected": false
+            },
+            {
+              "text": "cosmic-dolphin-save-monitor",
+              "value": "cosmic-dolphin-save-monitor",
+              "selected": false
+            }
+          ]
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "type": "text",
+        "title": "Scope, safety and interpretation",
+        "gridPos": {
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 6
+        },
+        "options": {
+          "mode": "markdown",
+          "content": "Production App Platform runtime logs for API, worker, web and save-monitor. Build/deploy logs, historical backfill and client-only events are outside this forwarding scope. Save-monitor runs every 15m; sparse logs and idle applications are normal. No generic source-silence alert is installed.\n\nIndexed scope is bounded by service and environment. OTLP severity_text and detected_level are searchable metadata. Queue/processor and opaque correlation context stay in redacted log bodies, never indexed user/bookmark/request labels. Redaction removes known credentials and private fields but cannot guarantee arbitrary free-form text is private; avoid logging private content at source.\n\nA bridge heartbeat is sent every 60s directly to OTLP. It proves bridge-to-Grafana reachability, not that any native source is connected. Counter values are process-local, reset on restart and are not a complete audit: rejectedBatches counts authenticated body/normalization rejections; deliveryFailures counts failed source-batch deliveries. Authentication, header, size and overload rejections before body processing and failed heartbeat attempts are not counted. Accepted totals do not establish all-source coverage. Loki storage/ingestion charges and retention apply; consult the stack's current usage and limits.\n\n[Log forwarding runbook](https://github.com/pffreitas/cosmic-dolphin/blob/main/docs/runbooks/digitalocean-logs.md) · [Save-journey alerts and metrics](/d/cosmic-save-bookmarks)."
+        }
+      },
+      {
+        "id": 2,
+        "type": "logs",
+        "title": "Runtime logs by source",
+        "description": "Choose a bounded runtime source above. Expand a row for severity metadata and redacted context. At most 500 lines per query.",
+        "gridPos": {
+          "x": 0,
+          "y": 6,
+          "w": 24,
+          "h": 9
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "REPLACE_LOKI_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "loki",
+              "uid": "REPLACE_LOKI_UID"
+            },
+            "expr": "{service_name=~\"cosmic-dolphin-api|cosmic-dolphin-worker|cosmic-dolphin-web|cosmic-dolphin-save-monitor\",deployment_environment_name=\"production\"} | service_name=~\"${source:regex}\"",
+            "queryType": "range",
+            "maxLines": 500
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": false,
+          "showCommonLabels": false,
+          "wrapLogMessage": true,
+          "prettifyLogMessage": false,
+          "enableLogDetails": true,
+          "sortOrder": "Descending",
+          "dedupStrategy": "none"
+        }
+      },
+      {
+        "id": 3,
+        "type": "logs",
+        "title": "Errors and warnings",
+        "description": "Severity is searched as metadata after the bounded source/environment selector.",
+        "gridPos": {
+          "x": 0,
+          "y": 15,
+          "w": 12,
+          "h": 9
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "REPLACE_LOKI_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "loki",
+              "uid": "REPLACE_LOKI_UID"
+            },
+            "expr": "{service_name=~\"cosmic-dolphin-api|cosmic-dolphin-worker|cosmic-dolphin-web|cosmic-dolphin-save-monitor\",deployment_environment_name=\"production\"} | service_name=~\"${source:regex}\" | severity_text=~\"(?i)(WARN|WARNING|ERROR|FATAL|CRITICAL)\" or detected_level=~\"(?i)(WARN|WARNING|ERROR|FATAL|CRITICAL)\"",
+            "queryType": "range",
+            "maxLines": 500
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": false,
+          "showCommonLabels": false,
+          "wrapLogMessage": true,
+          "prettifyLogMessage": false,
+          "enableLogDetails": true,
+          "sortOrder": "Descending",
+          "dedupStrategy": "none"
+        }
+      },
+      {
+        "id": 4,
+        "type": "logs",
+        "title": "Worker queue and processor context",
+        "description": "Worker runtime lines mentioning queue, processor, job, retry, attempt, pgmq or embedding. This text filter is contextual, not a queue health metric.",
+        "gridPos": {
+          "x": 12,
+          "y": 15,
+          "w": 12,
+          "h": 9
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "REPLACE_LOKI_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "loki",
+              "uid": "REPLACE_LOKI_UID"
+            },
+            "expr": "{service_name=\"cosmic-dolphin-worker\",deployment_environment_name=\"production\"} |~ \"(?i)(queue|processor|job|retry|attempt|pgmq|embedding)\"",
+            "queryType": "range",
+            "maxLines": 500
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": false,
+          "showCommonLabels": false,
+          "wrapLogMessage": true,
+          "prettifyLogMessage": false,
+          "enableLogDetails": true,
+          "sortOrder": "Descending",
+          "dedupStrategy": "none"
+        }
+      },
+      {
+        "id": 5,
+        "type": "logs",
+        "title": "API errors",
+        "description": "API error/fatal metadata, independently scoped from the source selector.",
+        "gridPos": {
+          "x": 0,
+          "y": 24,
+          "w": 12,
+          "h": 9
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "REPLACE_LOKI_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "loki",
+              "uid": "REPLACE_LOKI_UID"
+            },
+            "expr": "{service_name=\"cosmic-dolphin-api\",deployment_environment_name=\"production\"} | severity_text=~\"(?i)(ERROR|FATAL|CRITICAL)\" or detected_level=~\"(?i)(ERROR|FATAL|CRITICAL)\"",
+            "queryType": "range",
+            "maxLines": 500
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": false,
+          "showCommonLabels": false,
+          "wrapLogMessage": true,
+          "prettifyLogMessage": false,
+          "enableLogDetails": true,
+          "sortOrder": "Descending",
+          "dedupStrategy": "none"
+        }
+      },
+      {
+        "id": 6,
+        "type": "logs",
+        "title": "Bridge heartbeat logs",
+        "description": "Direct OTLP heartbeat every 60s. A heartbeat is not proof that native source forwarding is connected.",
+        "gridPos": {
+          "x": 12,
+          "y": 24,
+          "w": 12,
+          "h": 9
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "REPLACE_LOKI_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "loki",
+              "uid": "REPLACE_LOKI_UID"
+            },
+            "expr": "{service_name=\"cosmic-log-bridge\",deployment_environment_name=\"production\"} |= \"log_bridge_heartbeat\"",
+            "queryType": "range",
+            "maxLines": 500
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": false,
+          "showCommonLabels": false,
+          "wrapLogMessage": true,
+          "prettifyLogMessage": false,
+          "enableLogDetails": true,
+          "sortOrder": "Descending",
+          "dedupStrategy": "none"
+        }
+      },
+      {
+        "id": 7,
+        "type": "timeseries",
+        "title": "Runtime log rate by source",
+        "description": "Observed Loki records per second, not request rate or completeness. Sparse save-monitor logs every 15m are normal.",
+        "gridPos": {
+          "x": 0,
+          "y": 33,
+          "w": 12,
+          "h": 8
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "REPLACE_LOKI_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "loki",
+              "uid": "REPLACE_LOKI_UID"
+            },
+            "expr": "sum by (service_name) (rate({service_name=~\"cosmic-dolphin-api|cosmic-dolphin-worker|cosmic-dolphin-web|cosmic-dolphin-save-monitor\",deployment_environment_name=\"production\"} [$__interval]))",
+            "queryType": "range",
+            "legendFormat": "{{service_name}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops",
+            "min": 0
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        }
+      },
+      {
+        "id": 8,
+        "type": "stat",
+        "title": "Runtime records in selected range",
+        "description": "Count of indexed runtime records in the selected dashboard range by source. Missing records can be normal for idle sources; this is not a delivery guarantee.",
+        "gridPos": {
+          "x": 12,
+          "y": 33,
+          "w": 12,
+          "h": 8
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "REPLACE_LOKI_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "loki",
+              "uid": "REPLACE_LOKI_UID"
+            },
+            "expr": "sum by (service_name) (count_over_time({service_name=~\"cosmic-dolphin-api|cosmic-dolphin-worker|cosmic-dolphin-web|cosmic-dolphin-save-monitor\",deployment_environment_name=\"production\"} [$__range]))",
+            "queryType": "instant",
+            "legendFormat": "{{service_name}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "min": 0
+          },
+          "overrides": []
+        },
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "values": false
+          },
+          "textMode": "value_and_name",
+          "colorMode": "none"
+        }
+      },
+      {
+        "id": 9,
+        "type": "stat",
+        "title": "Bridge acceptedBatches",
+        "description": "Latest heartbeat counter within 5m, summed across streams. Process-local; resets on restart. Missing is unknown, never converted to zero. See scope notes for excluded failures. Not proof of native source coverage.",
+        "gridPos": {
+          "x": 0,
+          "y": 41,
+          "w": 6,
+          "h": 6
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "REPLACE_LOKI_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "loki",
+              "uid": "REPLACE_LOKI_UID"
+            },
+            "expr": "sum(last_over_time({service_name=\"cosmic-log-bridge\",deployment_environment_name=\"production\"} |= \"log_bridge_heartbeat\" | json event=\"event\", acceptedBatches=\"acceptedBatches\" | event=\"log_bridge_heartbeat\" | unwrap acceptedBatches | __error__=\"\" [5m]))",
+            "queryType": "instant"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "min": 0,
+            "noValue": "Unknown"
+          },
+          "overrides": []
+        },
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "values": false
+          },
+          "colorMode": "none"
+        }
+      },
+      {
+        "id": 10,
+        "type": "stat",
+        "title": "Bridge acceptedRecords",
+        "description": "Latest heartbeat counter within 5m, summed across streams. Process-local; resets on restart. Missing is unknown, never converted to zero. See scope notes for excluded failures. Not proof of native source coverage.",
+        "gridPos": {
+          "x": 6,
+          "y": 41,
+          "w": 6,
+          "h": 6
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "REPLACE_LOKI_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "loki",
+              "uid": "REPLACE_LOKI_UID"
+            },
+            "expr": "sum(last_over_time({service_name=\"cosmic-log-bridge\",deployment_environment_name=\"production\"} |= \"log_bridge_heartbeat\" | json event=\"event\", acceptedRecords=\"acceptedRecords\" | event=\"log_bridge_heartbeat\" | unwrap acceptedRecords | __error__=\"\" [5m]))",
+            "queryType": "instant"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "min": 0,
+            "noValue": "Unknown"
+          },
+          "overrides": []
+        },
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "values": false
+          },
+          "colorMode": "none"
+        }
+      },
+      {
+        "id": 11,
+        "type": "stat",
+        "title": "Bridge rejectedBatches",
+        "description": "Latest heartbeat counter within 5m, summed across streams. Process-local; resets on restart. Missing is unknown, never converted to zero. See scope notes for excluded failures. Not proof of native source coverage.",
+        "gridPos": {
+          "x": 12,
+          "y": 41,
+          "w": 6,
+          "h": 6
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "REPLACE_LOKI_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "loki",
+              "uid": "REPLACE_LOKI_UID"
+            },
+            "expr": "sum(last_over_time({service_name=\"cosmic-log-bridge\",deployment_environment_name=\"production\"} |= \"log_bridge_heartbeat\" | json event=\"event\", rejectedBatches=\"rejectedBatches\" | event=\"log_bridge_heartbeat\" | unwrap rejectedBatches | __error__=\"\" [5m]))",
+            "queryType": "instant"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "min": 0,
+            "noValue": "Unknown"
+          },
+          "overrides": []
+        },
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "values": false
+          },
+          "colorMode": "none"
+        }
+      },
+      {
+        "id": 12,
+        "type": "stat",
+        "title": "Bridge deliveryFailures",
+        "description": "Latest heartbeat counter within 5m, summed across streams. Process-local; resets on restart. Missing is unknown, never converted to zero. See scope notes for excluded failures. Not proof of native source coverage.",
+        "gridPos": {
+          "x": 18,
+          "y": 41,
+          "w": 6,
+          "h": 6
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "REPLACE_LOKI_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "loki",
+              "uid": "REPLACE_LOKI_UID"
+            },
+            "expr": "sum(last_over_time({service_name=\"cosmic-log-bridge\",deployment_environment_name=\"production\"} |= \"log_bridge_heartbeat\" | json event=\"event\", deliveryFailures=\"deliveryFailures\" | event=\"log_bridge_heartbeat\" | unwrap deliveryFailures | __error__=\"\" [5m]))",
+            "queryType": "instant"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "min": 0,
+            "noValue": "Unknown"
+          },
+          "overrides": []
+        },
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "values": false
+          },
+          "colorMode": "none"
+        }
+      }
+    ]
+  },
+  "rules": [
+    {
+      "apiVersion": "rules.alerting.grafana.app/v1beta1",
+      "kind": "AlertRule",
+      "metadata": {
+        "name": "cosmic-logs-heartbeat",
+        "namespace": "default",
+        "annotations": {
+          "grafana.app/folder": "cosmic-production-logs",
+          "grafana.com/provenance": "api"
+        }
+      },
+      "spec": {
+        "title": "Production log bridge heartbeat missing",
+        "trigger": {
+          "interval": "1m"
+        },
+        "for": "2m",
+        "noDataState": "Alerting",
+        "execErrState": "Error",
+        "labels": {
+          "managed_by": "cosmic-log-bridge",
+          "environment": "production",
+          "source": "bridge",
+          "service": "cosmic-log-bridge",
+          "severity": "critical"
+        },
+        "annotations": {
+          "summary": "Log bridge has not delivered a heartbeat for 5 minutes",
+          "description": "Check the bridge deployment and OTLP ingestion. Native source coverage is unknown even when a heartbeat is present.",
+          "runbook_url": "https://github.com/pffreitas/cosmic-dolphin/blob/main/docs/runbooks/digitalocean-logs.md#missing-bridge-heartbeat",
+          "__dashboardUid__": "cosmic-production-logs",
+          "__panelId__": "6"
+        },
+        "notificationSettings": {
+          "type": "SimplifiedRouting",
+          "receiver": "REPLACE_EXISTING_RECEIVER",
+          "groupBy": [
+            "grafana_folder",
+            "alertname",
+            "environment"
+          ],
+          "groupWait": "30s",
+          "groupInterval": "5m",
+          "repeatInterval": "4h"
+        },
+        "expressions": {
+          "A": {
+            "datasourceUID": "REPLACE_LOKI_UID",
+            "relativeTimeRange": {
+              "from": "5m",
+              "to": "0s"
+            },
+            "model": {
+              "expr": "sum(count_over_time({service_name=\"cosmic-log-bridge\",deployment_environment_name=\"production\"} |= \"log_bridge_heartbeat\" [5m])) or vector(0)",
+              "instant": true,
+              "queryType": "instant",
+              "refId": "A"
+            }
+          },
+          "B": {
+            "source": true,
+            "model": {
+              "type": "threshold",
+              "expression": "A",
+              "refId": "B",
+              "conditions": [
+                {
+                  "evaluator": {
+                    "type": "lt",
+                    "params": [
+                      1
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}
