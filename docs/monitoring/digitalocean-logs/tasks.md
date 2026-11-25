@@ -2,10 +2,10 @@
 
 | Current state | Value |
 | --- | --- |
-| Outcome | Receiver `20e573b4-5222-42c2-ab23-63eb5b6f18d5` is ACTIVE on reviewed commit `8127f582`, with health and direct Loki heartbeats verified. All four native destinations are configured with image versions and other fields preserved. Native source records have not arrived, so forwarding is not complete. |
-| Next gate | Verify intake compatibility corrections, redeploy the receiver, and obtain real source records before claiming activation complete. |
+| Outcome | Receiver `20e573b4-5222-42c2-ab23-63eb5b6f18d5` is ACTIVE on reviewed commit `7b245306`, with health, auth rejection, and direct Loki heartbeats verified. All four native destinations are configured with image versions and other fields preserved. Native API records are readable in Loki. Worker, web, and save-monitor receipts remain open. |
+| Next gate | Merge verified release hooks through PR checks, complete the normal deployment gates, and verify native records from every source. |
 | Owner | This thread owns configuration, delivery, and live verification. |
-| Blocker | No access blocker. Native runtime delivery remains unverified despite a healthy receiver. |
+| Blocker | No access blocker. Native source coverage remains partial until the other components emit new runtime logs. |
 | Starting state | Branch `activate-save-monitoring`, base and live `origin/main` `08bef9224c8cbdedf4f14ca75c866eb04c62b94a`. Existing monitoring activation/incident documentation changes are preserved. |
 | Delivery branch | `integrate-digitalocean-logs`, updated without conflicts to live main `f312e01dc0a871221e7d99b27ad0f80267cdad57` before review. |
 
@@ -38,7 +38,7 @@ The data shape is `authenticated source → bounded Datadog batch → normalized
 - Grafana has the new 12-panel dashboard. Its heartbeat rule remains staged until a real receiver heartbeat arrives.
 - The new `log-observability-production` environment holds the publisher and source-key map. Four matching source-key repository secrets are configured. No keys are recorded here.
 - Primary `godo` source confirms the bridge update field is `update_all_source_versions`. It refreshes only the owned receiver's source. Live source-app log overlays preserve their image versions.
-- The DigitalOcean API accepted the new receiver proposal and reports a $5 monthly app cost. This is separate from the existing Grafana stack. No receiver has been created yet.
+- The DigitalOcean API accepted the new receiver proposal and reports a $5 monthly app cost. This is separate from the existing Grafana stack. The receiver is now deployed; native source coverage remains a separate gate.
 - All 71 host tests pass with 884 assertions. The Grafana suite also passes on pinned Linux Bun 1.3.11. All eleven generated dashboard queries execute against Cloud Loki; source results are currently empty because native forwarding is not enabled.
 
 ## Review ledger
@@ -58,6 +58,8 @@ S1 proof replays the actual three non-network monitoring workflow steps in an ow
 Live activation uses the platform's configurable endpoint origin. The initial receiver supported only Datadog subpaths and rejected gzip. A production-shaped API request produced no native Loki records. Compatibility corrections accept authenticated intake at the endpoint root as well as Datadog paths and bound both gzip wire and expanded bytes. Heartbeats now include safe rejection categories so an intake mismatch is observable. These changes require the third review round. The new local tests pass; two initial assertions were corrected because the fixture key maps to API, not worker. No source-app or worker behavior changes accompany these receiver fixes.
 
 The current suite passes 76 tests and 911 assertions. A chunked gzip error fixture initially reused a dangling Bun client connection and received an empty native 400 on its recovery request. The fixture now consumes both rejection bodies and disables reuse for that invalid chunked upload; the recovery assertion remains 202. No timeout was increased. Earlier pinned Linux tests passed with the unmodified recovery assertion.
+
+The compatible receiver's exact deployed source is `7b245306e0c1a994b4b71597c8ccf931a44fb6b1`. Its `/health` returns 200; an unauthenticated intake returns 401. At 21:51:26 UTC, Loki returned five native API records and direct bridge heartbeats. No authenticated production-source fixture was submitted by the agent. The repository bridge URL and environment app ID are configured for future release workflows. The worker and web are otherwise quiet until startup/activity; save-monitor emits on its 15-minute schedule. Their native receipts must still be observed.
 
 ## Sources
 
