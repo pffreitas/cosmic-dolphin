@@ -14,7 +14,7 @@ jobs:
         enabled: false
     instance_count: 1
     instance_size_slug: apps-s-1vcpu-0.5gb
-    run_command: bun --no-env-file scripts/monitoring/monitor.ts --publish
+    run_command: bun --no-env-file scripts/monitoring/monitor.ts --publish --publish-log
     envs:
       - key: DATABASE_URL
         scope: RUN_TIME

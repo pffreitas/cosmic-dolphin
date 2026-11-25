@@ -30,6 +30,8 @@ The bridge sends `log_bridge_heartbeat` every minute. Its missing-heartbeat aler
 
 Native forwarding covers new runtime logs. Build/deploy logs and historical backfill are outside this integration. Use `doctl apps logs --type build` or `--type deploy` for those. The account's current Grafana plan determines log retention and ingestion limits. The separate DigitalOcean bridge service is billed independently.
 
+API, worker and web native forwarding is verified. The scheduled monitor's output is retained in DigitalOcean but has not reached the native receiver. Its prepared `--publish-log` fallback emits one acknowledged, count/status-only snapshot directly to the same Loki service name; see the [collector runbook](save-bookmark-monitoring.md). Verify its rollout in the activation record before treating that fourth source as live. This snapshot excludes IDs/private text and does not replace full stdout/stderr retention in DigitalOcean.
+
 The receiver acknowledges a batch only after Grafana accepts it. Upstream HTTP errors, timeouts, malformed acknowledgements, or partial rejection return an error to the native sender. The bridge has no durable spool. Native retry behavior and retention determine recovery after an outage; do not assume loss-free delivery. Dashboard counters are process-local and reset on restart.
 
 If source records are missing while heartbeats continue, inspect the heartbeat's `lastRejection`. Its fixed reason, route, encoding, and source identify intake errors without exposing credentials or payloads. The custom endpoint accepts plain or gzip JSON at its root and Datadog paths. Both compressed and expanded bodies have byte caps.
