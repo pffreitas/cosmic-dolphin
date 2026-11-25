@@ -75,7 +75,7 @@ export async function deliver(records: readonly LogRecord[], source: Source | "b
 function response(status: number, error: string): Response {
   const headers: Record<string, string> = {};
   if (status === 503) headers["retry-after"] = "1";
-  if (status === 408 || status === 413) headers.connection = "close";
+  if (status === 408 || status === 413 || status === 400 && error === "invalid_json") headers.connection = "close";
   return Response.json({ error }, { status, headers });
 }
 
@@ -96,6 +96,7 @@ export function createBridge(config: Config, options: { fetchImpl?: HttpFetch; n
   let active = 0;
   let heartbeatActive = false;
   const totals = { acceptedBatches: 0, acceptedRecords: 0, rejectedBatches: 0, deliveryFailures: 0 };
+  let lastRejection: { status: number; reason: string; route: string; encoding: string; source: Source | "unknown" } | undefined;
   const increment = (key: keyof typeof totals, n = 1) => { totals[key] = Math.min(Number.MAX_SAFE_INTEGER, totals[key] + n); };
 
   async function handle(request: Request): Promise<Response> {
@@ -103,37 +104,55 @@ export function createBridge(config: Config, options: { fetchImpl?: HttpFetch; n
     try { url = new URL(request.url); } catch { return response(400, "invalid_request"); }
     if (url.pathname === "/health") return request.method === "GET"
       ? Response.json({ status: "process_up" }) : response(405, "method_not_allowed");
-    if (url.pathname !== "/api/v2/logs" && url.pathname !== "/v1/input" && !/^\/v1\/input\/[^/]+$/.test(url.pathname)) return response(404, "not_found");
-    if (request.method !== "POST") return response(405, "method_not_allowed");
+    const encoding = (request.headers.get("content-encoding") ?? "identity").trim().toLowerCase();
+    let intakeSource: Source | "unknown" = "unknown";
+    const reject = (status: number, reason: string) => {
+      increment("rejectedBatches");
+      lastRejection = { status, reason, route: url.pathname === "/" ? "/" : url.pathname === "/api/v2/logs" ? "/api/v2/logs" : url.pathname.startsWith("/v1/input") ? "/v1/input" : "other",
+        encoding: ["identity", "gzip"].includes(encoding) ? encoding : "other", source: intakeSource };
+      return response(status, reason);
+    };
+    if (url.pathname !== "/" && url.pathname !== "/api/v2/logs" && url.pathname !== "/v1/input" && !/^\/v1\/input\/[^/]+$/.test(url.pathname)) return reject(404, "not_found");
+    if (request.method !== "POST") return reject(405, "method_not_allowed");
     const keys = credentials(url, request);
     const source = keys && authenticate(keys, config);
-    if (!source) return response(401, "unauthorized");
+    if (!source) return reject(401, "unauthorized");
+    intakeSource = source;
     const contentType = request.headers.get("content-type") ?? "";
-    if (!/^application\/json(?:\s*;\s*charset\s*=\s*"?utf-8"?)?\s*$/i.test(contentType)) return response(415, "invalid_content_type");
-    if (request.headers.has("content-encoding") && request.headers.get("content-encoding") !== "identity") return response(415, "invalid_content_encoding");
+    if (!/^application\/json(?:\s*;\s*charset\s*=\s*"?utf-8"?)?\s*$/i.test(contentType)) return reject(415, "invalid_content_type");
+    if (!["identity", "gzip"].includes(encoding)) return reject(415, "invalid_content_encoding");
     const length = request.headers.get("content-length");
-    if (length !== null && (!/^\d+$/.test(length) || Number(length) > config.limits.requestBytes)) return response(413, "payload_too_large");
-    if (active >= config.limits.concurrentRequests) return response(503, "overloaded");
+    if (length !== null && (!/^\d+$/.test(length) || Number(length) > config.limits.requestBytes)) return reject(413, "payload_too_large");
+    if (active >= config.limits.concurrentRequests) return reject(503, "overloaded");
     active++;
     try {
-      const body = await readBounded(request.body, config.limits.requestBytes, AbortSignal.timeout(config.limits.requestTimeoutMs));
+      let wireTooLarge = false;
+      let input = request.body;
+      if (encoding === "gzip" && input) {
+        let wireBytes = 0;
+        input = input.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({ transform(chunk, controller) {
+          wireBytes += chunk.byteLength;
+          if (wireBytes > config.limits.requestBytes) { wireTooLarge = true; throw new Error("payload_too_large"); }
+          controller.enqueue(chunk);
+        } })).pipeThrough(new DecompressionStream("gzip"));
+      }
+      const body = await readBounded(input, config.limits.requestBytes, AbortSignal.timeout(config.limits.requestTimeoutMs));
+      if (wireTooLarge) return reject(413, "payload_too_large");
       if (!body.ok) {
-        increment("rejectedBatches");
-        return response(body.error === "timeout" ? 408 : body.error === "payload_too_large" ? 413 : 400,
+        return reject(body.error === "timeout" ? 408 : body.error === "payload_too_large" ? 413 : 400,
           body.error === "timeout" ? "request_timeout" : body.error === "invalid_body" ? "invalid_json" : body.error);
       }
       let payload: unknown;
-      try { payload = JSON.parse(body.text); } catch { increment("rejectedBatches"); return response(400, "invalid_json"); }
+      try { payload = JSON.parse(body.text); } catch { return reject(400, "invalid_json"); }
       let normalized;
-      try { normalized = normalizeBatch(payload, config, now()); } catch { increment("rejectedBatches"); return response(400, "invalid_batch"); }
+      try { normalized = normalizeBatch(payload, config, now()); } catch { return reject(400, "invalid_batch"); }
       if (!normalized.ok) {
-        increment("rejectedBatches");
-        return response(normalized.error === "payload_too_large" ? 413 : 400, normalized.error);
+        return reject(normalized.error === "payload_too_large" ? 413 : 400, normalized.error);
       }
       const result = await deliver(normalized.records, source, config, fetchImpl);
       if (!result.ok) {
         increment("deliveryFailures");
-        return response(result.timeout ? 503 : 502, result.timeout ? "delivery_timeout" : "delivery_failed");
+        return reject(result.timeout ? 503 : 502, result.timeout ? "delivery_timeout" : "delivery_failed");
       }
       increment("acceptedBatches");
       increment("acceptedRecords", normalized.records.length);
@@ -148,7 +167,7 @@ export function createBridge(config: Config, options: { fetchImpl?: HttpFetch; n
       const timeUnixNano = (BigInt(Math.round(now())) * 1_000_000n).toString();
       const record: LogRecord = {
         timeUnixNano, observedTimeUnixNano: timeUnixNano, severityNumber: 9, severityText: "INFO",
-        body: { stringValue: JSON.stringify({ event: "log_bridge_heartbeat", ...totals }) },
+        body: { stringValue: JSON.stringify({ event: "log_bridge_heartbeat", ...totals, lastRejection }) },
       };
       return await deliver([record], "bridge", config, fetchImpl);
     } finally { heartbeatActive = false; }

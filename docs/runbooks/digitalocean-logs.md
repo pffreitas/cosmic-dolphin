@@ -32,6 +32,8 @@ Native forwarding covers new runtime logs. Build/deploy logs and historical back
 
 The receiver acknowledges a batch only after Grafana accepts it. Upstream HTTP errors, timeouts, malformed acknowledgements, or partial rejection return an error to the native sender. The bridge has no durable spool. Native retry behavior and retention determine recovery after an outage; do not assume loss-free delivery. Dashboard counters are process-local and reset on restart.
 
+If source records are missing while heartbeats continue, inspect the heartbeat's `lastRejection`. Its fixed reason, route, encoding, and source identify intake errors without exposing credentials or payloads. The custom endpoint accepts plain or gzip JSON at its root and Datadog paths. Both compressed and expanded bodies have byte caps.
+
 ## Deploy or update the bridge
 
 1. Complete the verification workflow and code review for the intended version.

@@ -95,12 +95,12 @@ describe("authenticated real HTTP intake", () => {
     }
   });
 
-  test("unknown paths/methods, content types, compressed data and malformed JSON fail before upstream", async () => {
+  test("unknown paths/methods, content types, unsupported encodings and malformed JSON fail before upstream", async () => {
     const f = fixture();
     expect((await fetch(f.url + "/api/v2/logs")).status).toBe(405);
     expect((await f.post(undefined, {}, "/unknown")).status).toBe(404);
     expect((await f.post(undefined, { headers: { "DD-API-KEY": KEY, "content-type": "text/plain" } })).status).toBe(415);
-    expect((await f.post(undefined, { headers: { "DD-API-KEY": KEY, "content-type": "application/json", "content-encoding": "gzip" } })).status).toBe(415);
+    expect((await f.post(undefined, { headers: { "DD-API-KEY": KEY, "content-type": "application/json", "content-encoding": "br" } })).status).toBe(415);
     const json = await f.post(undefined, { body: '{"message": "private-json-error"' });
     expect(json.status).toBe(400);
     expect(await json.text()).toBe('{"error":"invalid_json"}');
@@ -112,6 +112,54 @@ describe("authenticated real HTTP intake", () => {
     const invalidUtf8 = await f.post(undefined, { body: new Uint8Array([0xc3, 0x28]) });
     expect(invalidUtf8.status).toBe(400);
     expect(f.captured).toHaveLength(0);
+  });
+
+  test("custom endpoint root accepts authenticated plain and gzip batches", async () => {
+    const f = fixture();
+    expect((await f.post({ message: "native root" }, {}, "/")).status).toBe(202);
+    const bytes = Bun.gzipSync(JSON.stringify([{ message: "compressed café" }]));
+    const result = await f.post(undefined, { body: bytes, headers: { "DD-API-KEY": KEY, "content-type": "application/json", "content-encoding": "gzip" } }, "/");
+    expect(result.status).toBe(202);
+    expect(record(f.captured[1]).body.stringValue).toBe("compressed café");
+    expect(labels(f.captured[1])["service.name"]).toBe("cosmic-dolphin-api");
+  });
+
+  test("gzip wire and expanded byte limits reject before publishing and allow recovery", async () => {
+    const f = fixture({ env: { LOG_MAX_REQUEST_BYTES: "100", LOG_MAX_LINE_BYTES: "1000" } });
+    const headers = { "DD-API-KEY": KEY, "content-type": "application/json", "content-encoding": "gzip" };
+    const expanded = Bun.gzipSync(JSON.stringify({ message: "é".repeat(1000) }));
+    const tooExpanded = await f.post(undefined, { body: expanded, headers });
+    expect(tooExpanded.status).toBe(413);
+    expect(await tooExpanded.json()).toEqual({ error: "payload_too_large" });
+    const wire = new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(new Uint8Array(101)); controller.close(); } });
+    const tooLargeWire = await f.post(undefined, { body: wire, headers, keepalive: false });
+    expect(tooLargeWire.status).toBe(413);
+    expect(await tooLargeWire.json()).toEqual({ error: "payload_too_large" });
+    expect(f.captured).toHaveLength(0);
+    expect((await f.post(undefined, { body: Bun.gzipSync(JSON.stringify({ message: "recovered" })), headers })).status).toBe(202);
+  });
+
+  test("gzip errors remain fixed and auth precedes decompression", async () => {
+    const f = fixture();
+    const headers = { "DD-API-KEY": KEY, "content-type": "application/json", "content-encoding": "gzip" };
+    const bad = await f.post(undefined, { body: new Uint8Array([1, 2, 3]), headers });
+    expect(bad.status).toBe(400);
+    expect(await bad.json()).toEqual({ error: "invalid_json" });
+    const denied = await f.post(undefined, { body: new Uint8Array([1, 2, 3]), headers: { ...headers, "DD-API-KEY": "wrong-key" } }, "/");
+    expect(denied.status).toBe(401);
+    expect(f.captured).toHaveLength(0);
+  });
+
+  test("heartbeat records bounded rejection metadata without path keys or payload content", async () => {
+    const f = fixture();
+    const result = await f.post({ message: "private body" }, { headers: { "content-type": "application/json", "content-encoding": KEY } }, `/v1/input/${KEY}`);
+    expect(result.status).toBe(415);
+    expect(await f.bridge.heartbeat()).toEqual({ ok: true });
+    const text = record(f.captured[0]).body.stringValue;
+    expect(JSON.parse(text).lastRejection).toEqual({ status: 415, reason: "invalid_content_encoding", route: "/v1/input", encoding: "other", source: "api" });
+    expect(JSON.parse(text).rejectedBatches).toBe(1);
+    expect(text).not.toContain(KEY);
+    expect(text).not.toContain("private body");
   });
 });
 

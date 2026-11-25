@@ -2,10 +2,10 @@
 
 | Current state | Value |
 | --- | --- |
-| Outcome | The receiver, deployment assets, source-release hooks, and log dashboard are built. `doctl` 2.6.0 browser OAuth succeeded in the dedicated context. The existing Grafana publisher accepts logs; a setup log is readable through Loki. The dashboard is provisioned with its heartbeat rule staged. |
-| Next gate | Complete review, deploy the receiver, and verify native forwarding from every source before enabling the heartbeat rule. |
+| Outcome | Receiver `20e573b4-5222-42c2-ab23-63eb5b6f18d5` is ACTIVE on reviewed commit `8127f582`, with health and direct Loki heartbeats verified. All four native destinations are configured with image versions and other fields preserved. Native source records have not arrived, so forwarding is not complete. |
+| Next gate | Verify intake compatibility corrections, redeploy the receiver, and obtain real source records before claiming activation complete. |
 | Owner | This thread owns configuration, delivery, and live verification. |
-| Blocker | No access blocker. Production log forwarding is not enabled yet. |
+| Blocker | No access blocker. Native runtime delivery remains unverified despite a healthy receiver. |
 | Starting state | Branch `activate-save-monitoring`, base and live `origin/main` `08bef9224c8cbdedf4f14ca75c866eb04c62b94a`. Existing monitoring activation/incident documentation changes are preserved. |
 | Delivery branch | `integrate-digitalocean-logs`, updated without conflicts to live main `f312e01dc0a871221e7d99b27ad0f80267cdad57` before review. |
 
@@ -49,10 +49,15 @@ The standalone Sol review cap is three rounds across implementation and activati
 | --- | --- | --- | --- |
 | 1 | GPT-6.1 Sol | Full log integration on base `f312e01d`, including uncommitted files | CHANGES. S1 monitoring tests ran after template mutation; S2 existing secret-bearing templates retained 0644 permissions. Both fixed; recheck pending |
 | 2 | GPT-6.1 Sol | Changed monitoring gate order and private spec writer | APPROVE. S1 and S2 independently resolved. Candidate approved for controlled activation; native delivery remains open |
+| 3 | GPT-6.1 Sol | Root-path intake, bounded gzip, and safe rejection metadata | APPROVE. No blocker/should finding. Documentation nit S3 fixed. Three-round review cap exhausted; real native receipts remain required |
 
 Comment review removed 16 narrative blocks without changing runtime behavior. Its two accepted design findings are encoded by one named request ceiling shared with the native parser, and an explicit `stageAssets` factory. The staging factory keeps canonical enabled/staged assets distinct without adding mutable mode state or a bypass option to the provisioner.
 
 S1 proof replays the actual three non-network monitoring workflow steps in an owned temporary checkout with fictional production-shaped configuration. All 144 offline tests pass before the overlay, the overlay succeeds, and the combined spec/config checks pass afterwards. No deployment or business-network step runs. S2 has a CLI regression test that overwrites an existing 0644 template, proves 0600 permissions and unchanged key bytes, and refuses a symlink without leaking its key.
+
+Live activation uses the platform's configurable endpoint origin. The initial receiver supported only Datadog subpaths and rejected gzip. A production-shaped API request produced no native Loki records. Compatibility corrections accept authenticated intake at the endpoint root as well as Datadog paths and bound both gzip wire and expanded bytes. Heartbeats now include safe rejection categories so an intake mismatch is observable. These changes require the third review round. The new local tests pass; two initial assertions were corrected because the fixture key maps to API, not worker. No source-app or worker behavior changes accompany these receiver fixes.
+
+The current suite passes 76 tests and 911 assertions. A chunked gzip error fixture initially reused a dangling Bun client connection and received an empty native 400 on its recovery request. The fixture now consumes both rejection bodies and disables reuse for that invalid chunked upload; the recovery assertion remains 202. No timeout was increased. Earlier pinned Linux tests passed with the unmodified recovery assertion.
 
 ## Sources
 

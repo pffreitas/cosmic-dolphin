@@ -4,6 +4,10 @@ Dependency-free Bun HTTP receiver for DigitalOcean App Platform's configurable
 Datadog destination. It converts an authenticated batch into Grafana OTLP logs.
 Application source code and DigitalOcean credentials are not needed by the bridge.
 
+The custom endpoint root, Datadog v2 path, and legacy v1 path accept authenticated
+JSON. Gzip requests have separate wire and expanded byte caps under the same
+request deadline. Unsupported encodings and malformed compressed bodies reject.
+
 ```sh
 bun test scripts/log-forwarding/__tests__/bridge.test.ts
 bun run scripts/log-forwarding/main.ts
@@ -35,7 +39,7 @@ modules, installs no dependencies and runs as the image's `bun` user.
 
 ## Intake and acknowledgement
 
-`POST /api/v2/logs` accepts a JSON list or one JSON event with a string `message`.
+`POST /`, `POST /api/v2/logs` accepts a JSON list or one JSON event with a string `message`.
 `POST /v1/input/<key>` and `/v1/input` accept the same shapes. Keys can be supplied
 via the case-insensitive `DD-API-KEY` header; legacy `api_key` and `dd-api-key`
 query spellings are supported. Every supplied credential must map to the same
@@ -44,7 +48,7 @@ it, because path/query secrets can appear in infrastructure access logs outside
 the bridge's control. Keys are compared using fixed-size SHA-256 digests and
 constant-time comparisons across all configured sources.
 
-Only `application/json` with optional UTF-8 charset is accepted. Compressed,
+Only `application/json` with optional UTF-8 charset is accepted. Unsupported encodings,
 NDJSON, Datadog object envelopes without a `message`, malformed UTF-8, invalid JSON,
 empty batches and any invalid event fail the whole request. Byte, event count,
 serialized event size, request deadline and concurrency limits apply before OTLP
@@ -88,7 +92,9 @@ avoid emitting private payloads in the first place.
 `GET /health` reports only `{"status":"process_up"}`. It says nothing about
 Grafana acceptance. Startup and periodic OTLP heartbeats use their own fixed
 `service.name=cosmic-log-bridge` and body event `log_bridge_heartbeat`, with bounded
-accepted/rejected/delivery-failure counters. Heartbeat delivery bypasses native
+accepted/rejected/delivery-failure counters. `lastRejection` contains only fixed
+reason, route, encoding, status and source categories, never raw paths, headers,
+keys or payloads. Heartbeat delivery bypasses native
 forwarding; do not configure the bridge as one of its own forwarded sources.
 
 ## Compatibility proof boundary
