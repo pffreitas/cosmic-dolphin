@@ -27,6 +27,8 @@ Grafana credentials, notification destinations, and an actual received notificat
 
 ## Evidence
 
+The [interactive architecture blueprint](blueprint/architecture.html) explains the application path, observation boundaries, failure scenarios, and manual activation. Its diagrams and scenarios contain no live production telemetry.
+
 See [verification.md](verification.md) for the final checks, corrections, and activation gaps. The integrated implementation passes 144 offline tests and 14 real-SQL tests against all 36 unchanged migrations. Local Grafana 13.3.2 and Mimir 3.2.6 proof covers provisioning, ingestion/readback, sparse samples, alert firing, query errors, and healthy recovery. The development queue inspected earlier is unrelated to production and is not production evidence.
 
 ## Implementation history

@@ -23,6 +23,8 @@ The local receiver has zero integrations. This proves routing configuration and 
 
 ## Reproduce
 
+The [architecture blueprint](blueprint/architecture.html) was checked at 728px and 390px widths. All eight component buttons, four failure scenarios, three views, keyboard tab navigation, and the source accordion worked. The browser reported no page errors, external resource loads, or horizontal overflow. A separate Sol content review approved the architecture and stated activation limits. The HTML is self-contained and opens without a server.
+
 The [runbook](../../runbooks/save-bookmark-monitoring.md#rerun-isolated-verification) and `.github/workflows/verify-monitoring.yml` contain the commands and fresh-container protocol. The test target must be an explicitly owned loopback database with a populated fixture marker; port 5433 is refused. The loader refuses an occupied database.
 
 Build the monitoring Dockerfile from the repository root in an isolated Docker context, then run the five offline test files and healthy fixture with networking disabled. The image starts only the collector and installs no dependencies.
