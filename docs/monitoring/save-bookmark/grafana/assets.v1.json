@@ -1,0 +1,1287 @@
+{
+  "schemaVersion": 1,
+  "config": {
+    "namespace": "default",
+    "datasourceUid": "REPLACE_METRICS_UID",
+    "receiver": "REPLACE_EXISTING_RECEIVER",
+    "environment": "production",
+    "runbookUrl": "https://github.com/pffreitas/cosmic-dolphin/blob/main/docs/runbooks/save-bookmark-monitoring.md"
+  },
+  "folder": {
+    "uid": "cosmic-save-monitor",
+    "title": "Cosmic save monitoring"
+  },
+  "dashboard": {
+    "uid": "cosmic-save-bookmarks",
+    "title": "Save-bookmark monitoring",
+    "tags": [
+      "managed-by-cosmic-save-monitor"
+    ],
+    "schemaVersion": 39,
+    "version": 0,
+    "timezone": "utc",
+    "editable": false,
+    "refresh": "1m",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "links": [
+      {
+        "title": "Runbook",
+        "url": "https://github.com/pffreitas/cosmic-dolphin/blob/main/docs/runbooks/save-bookmark-monitoring.md",
+        "type": "link"
+      }
+    ],
+    "panels": [
+      {
+        "id": 1,
+        "type": "text",
+        "title": "Scope and timing",
+        "gridPos": {
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 4
+        },
+        "options": {
+          "mode": "markdown",
+          "content": "Server-accepted saves only. Client-only captures and rejected attempts are unseen. API health does not prove save acceptance. Collector every 15m; values use a 45m lookback. Terminal failures cover 60m. Completion timing includes idle deferral and reprocessing. [Runbook](https://github.com/pffreitas/cosmic-dolphin/blob/main/docs/runbooks/save-bookmark-monitoring.md)."
+        }
+      },
+      {
+        "id": 2,
+        "type": "timeseries",
+        "title": "Observer and API health",
+        "description": "1 when the database snapshot succeeded, 0 when it failed.",
+        "gridPos": {
+          "x": 0,
+          "y": 4,
+          "w": 12,
+          "h": 8
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "REPLACE_METRICS_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m])",
+            "legendFormat": "{{__name__}}",
+            "range": true
+          },
+          {
+            "refId": "B",
+            "expr": "last_over_time(cosmic_save_api_up{environment=\"production\",journey=\"save_bookmark\"}[45m])",
+            "legendFormat": "{{__name__}}",
+            "range": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "none"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "type": "timeseries",
+        "title": "Time since delivered heartbeat",
+        "description": "Missing or older than 45m alerts. Fresh observer failure still delivers a heartbeat.",
+        "gridPos": {
+          "x": 12,
+          "y": 4,
+          "w": 12,
+          "h": 8
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "REPLACE_METRICS_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "time() - last_over_time(cosmic_save_monitor_heartbeat_timestamp_seconds{environment=\"production\",journey=\"save_bookmark\"}[45m])",
+            "legendFormat": "Heartbeat age",
+            "range": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "type": "timeseries",
+        "title": "Database clock of the last successful snapshot.",
+        "description": "Database clock of the last successful snapshot.",
+        "gridPos": {
+          "x": 0,
+          "y": 12,
+          "w": 12,
+          "h": 8
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "REPLACE_METRICS_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "last_over_time(cosmic_save_monitor_snapshot_timestamp_seconds{environment=\"production\",journey=\"save_bookmark\"}[45m])",
+            "legendFormat": "cosmic_save_monitor_snapshot_timestamp_seconds",
+            "range": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "dateTimeAsIso"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        }
+      },
+      {
+        "id": 5,
+        "type": "timeseries",
+        "title": "Rows past each database alert threshold; 0 when healthy.",
+        "description": "Rows past each database alert threshold; 0 when healthy.",
+        "gridPos": {
+          "x": 12,
+          "y": 12,
+          "w": 12,
+          "h": 8
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "REPLACE_METRICS_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "last_over_time(cosmic_save_alert_count{environment=\"production\",journey=\"save_bookmark\"}[45m]) and on(environment,journey) (last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m]) == 1)",
+            "legendFormat": "{{code}}",
+            "range": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        }
+      },
+      {
+        "id": 6,
+        "type": "timeseries",
+        "title": "Bookmark queue messages by visibility state.",
+        "description": "Bookmark queue messages by visibility state.",
+        "gridPos": {
+          "x": 0,
+          "y": 20,
+          "w": 12,
+          "h": 8
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "REPLACE_METRICS_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "last_over_time(cosmic_save_queue_messages{environment=\"production\",journey=\"save_bookmark\"}[45m]) and on(environment,journey) (last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m]) == 1)",
+            "legendFormat": "{{state}}",
+            "range": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        }
+      },
+      {
+        "id": 7,
+        "type": "timeseries",
+        "title": "Queue messages delivered more than once.",
+        "description": "Queue messages delivered more than once.",
+        "gridPos": {
+          "x": 12,
+          "y": 20,
+          "w": 12,
+          "h": 8
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "REPLACE_METRICS_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "last_over_time(cosmic_save_queue_redelivered_messages{environment=\"production\",journey=\"save_bookmark\"}[45m]) and on(environment,journey) (last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m]) == 1)",
+            "legendFormat": "cosmic_save_queue_redelivered_messages",
+            "range": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        }
+      },
+      {
+        "id": 8,
+        "type": "timeseries",
+        "title": "Longest claimable wait; 0 when nothing is claimable.",
+        "description": "Longest claimable wait; 0 when nothing is claimable.",
+        "gridPos": {
+          "x": 0,
+          "y": 28,
+          "w": 12,
+          "h": 8
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "REPLACE_METRICS_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "last_over_time(cosmic_save_queue_oldest_visible_wait_seconds{environment=\"production\",journey=\"save_bookmark\"}[45m]) and on(environment,journey) (last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m]) == 1)",
+            "legendFormat": "cosmic_save_queue_oldest_visible_wait_seconds",
+            "range": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        }
+      },
+      {
+        "id": 9,
+        "type": "timeseries",
+        "title": "Invalid messages claimable past one lease, by kind.",
+        "description": "Invalid messages claimable past one lease, by kind.",
+        "gridPos": {
+          "x": 12,
+          "y": 28,
+          "w": 12,
+          "h": 8
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "REPLACE_METRICS_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "last_over_time(cosmic_save_queue_invalid_messages{environment=\"production\",journey=\"save_bookmark\"}[45m]) and on(environment,journey) (last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m]) == 1)",
+            "legendFormat": "{{kind}}",
+            "range": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        }
+      },
+      {
+        "id": 10,
+        "type": "timeseries",
+        "title": "Bookmarks currently processing.",
+        "description": "Bookmarks currently processing.",
+        "gridPos": {
+          "x": 0,
+          "y": 36,
+          "w": 12,
+          "h": 8
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "REPLACE_METRICS_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "last_over_time(cosmic_save_processing_bookmarks{environment=\"production\",journey=\"save_bookmark\"}[45m]) and on(environment,journey) (last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m]) == 1)",
+            "legendFormat": "cosmic_save_processing_bookmarks",
+            "range": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        }
+      },
+      {
+        "id": 11,
+        "type": "timeseries",
+        "title": "Oldest processing journey, dated by its queue enqueue; 0 when none.",
+        "description": "Oldest processing journey, dated by its queue enqueue; 0 when none.",
+        "gridPos": {
+          "x": 12,
+          "y": 36,
+          "w": 12,
+          "h": 8
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "REPLACE_METRICS_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "last_over_time(cosmic_save_processing_oldest_journey_age_seconds{environment=\"production\",journey=\"save_bookmark\"}[45m]) and on(environment,journey) (last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m]) == 1)",
+            "legendFormat": "cosmic_save_processing_oldest_journey_age_seconds",
+            "range": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        }
+      },
+      {
+        "id": 12,
+        "type": "timeseries",
+        "title": "Bookmarks created in the last 24h by current status.",
+        "description": "Bookmarks created in the last 24h by current status.",
+        "gridPos": {
+          "x": 0,
+          "y": 44,
+          "w": 12,
+          "h": 8
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "REPLACE_METRICS_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "last_over_time(cosmic_save_saves{environment=\"production\",journey=\"save_bookmark\"}[45m]) and on(environment,journey) (last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m]) == 1)",
+            "legendFormat": "{{status}}",
+            "range": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        }
+      },
+      {
+        "id": 13,
+        "type": "timeseries",
+        "title": "Bookmarks completed in the last 60m.",
+        "description": "Bookmarks completed in the last 60m.",
+        "gridPos": {
+          "x": 12,
+          "y": 44,
+          "w": 12,
+          "h": 8
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "REPLACE_METRICS_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "last_over_time(cosmic_save_terminal_completed{environment=\"production\",journey=\"save_bookmark\"}[45m]) and on(environment,journey) (last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m]) == 1)",
+            "legendFormat": "cosmic_save_terminal_completed",
+            "range": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        }
+      },
+      {
+        "id": 14,
+        "type": "timeseries",
+        "title": "Bookmarks failed in the last 60m by failure code.",
+        "description": "Bookmarks failed in the last 60m by failure code.",
+        "gridPos": {
+          "x": 0,
+          "y": 52,
+          "w": 12,
+          "h": 8
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "REPLACE_METRICS_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "last_over_time(cosmic_save_terminal_failed{environment=\"production\",journey=\"save_bookmark\"}[45m]) and on(environment,journey) (last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m]) == 1)",
+            "legendFormat": "{{code}} {{class}}",
+            "range": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        }
+      },
+      {
+        "id": 15,
+        "type": "timeseries",
+        "title": "Age of the latest completion of any bookmark. Absent when none in 24h.",
+        "description": "Age of the latest completion of any bookmark. Absent when none in 24h.",
+        "gridPos": {
+          "x": 12,
+          "y": 52,
+          "w": 12,
+          "h": 8
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "REPLACE_METRICS_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "last_over_time(cosmic_save_completion_latest_age_seconds{environment=\"production\",journey=\"save_bookmark\"}[45m]) and on(environment,journey) (last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m]) == 1)",
+            "legendFormat": "cosmic_save_completion_latest_age_seconds",
+            "range": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        }
+      },
+      {
+        "id": 16,
+        "type": "timeseries",
+        "title": "Created to completed for saves created and completed in 24h. Includes idle deferral and reprocessing. Context only.",
+        "description": "Created to completed for saves created and completed in 24h. Includes idle deferral and reprocessing. Context only.",
+        "gridPos": {
+          "x": 0,
+          "y": 60,
+          "w": 12,
+          "h": 8
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "REPLACE_METRICS_UID"
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "last_over_time(cosmic_save_completion_created_to_completed_seconds{environment=\"production\",journey=\"save_bookmark\"}[45m]) and on(environment,journey) (last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m]) == 1)",
+            "legendFormat": "{{quantile}}",
+            "range": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        }
+      }
+    ]
+  },
+  "rules": [
+    {
+      "apiVersion": "rules.alerting.grafana.app/v1beta1",
+      "kind": "AlertRule",
+      "metadata": {
+        "name": "cosmic-save-monitoring-failed",
+        "namespace": "default",
+        "annotations": {
+          "grafana.app/folder": "cosmic-save-monitor",
+          "grafana.com/provenance": "api"
+        }
+      },
+      "spec": {
+        "title": "Save monitor cannot observe the database",
+        "trigger": {
+          "interval": "1m"
+        },
+        "for": "1m",
+        "noDataState": "Alerting",
+        "execErrState": "Error",
+        "labels": {
+          "managed_by": "cosmic-save-monitor",
+          "service": "cosmic-dolphin",
+          "environment": "production",
+          "journey": "save_bookmark",
+          "severity": "critical",
+          "code": "monitoring_failed"
+        },
+        "annotations": {
+          "summary": "Save monitor cannot observe the database",
+          "description": "Save health is unknown. Fix the checker's target, credentials, grants or network before trusting any green run.",
+          "runbook_url": "https://github.com/pffreitas/cosmic-dolphin/blob/main/docs/runbooks/save-bookmark-monitoring.md#monitoring-failed",
+          "__dashboardUid__": "cosmic-save-bookmarks",
+          "__panelId__": "2"
+        },
+        "notificationSettings": {
+          "type": "SimplifiedRouting",
+          "receiver": "REPLACE_EXISTING_RECEIVER",
+          "groupBy": [
+            "grafana_folder",
+            "alertname",
+            "environment"
+          ],
+          "groupWait": "30s",
+          "groupInterval": "5m",
+          "repeatInterval": "4h"
+        },
+        "expressions": {
+          "A": {
+            "datasourceUID": "REPLACE_METRICS_UID",
+            "relativeTimeRange": {
+              "from": "45m",
+              "to": "0s"
+            },
+            "model": {
+              "expr": "1 - sum(last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m]))",
+              "instant": true,
+              "refId": "A"
+            }
+          },
+          "B": {
+            "source": true,
+            "model": {
+              "type": "threshold",
+              "expression": "A",
+              "refId": "B",
+              "conditions": [
+                {
+                  "evaluator": {
+                    "type": "gt",
+                    "params": [
+                      0
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "rules.alerting.grafana.app/v1beta1",
+      "kind": "AlertRule",
+      "metadata": {
+        "name": "cosmic-save-api-health-failed",
+        "namespace": "default",
+        "annotations": {
+          "grafana.app/folder": "cosmic-save-monitor",
+          "grafana.com/provenance": "api"
+        }
+      },
+      "spec": {
+        "title": "API health check failed",
+        "trigger": {
+          "interval": "1m"
+        },
+        "for": "1m",
+        "noDataState": "Alerting",
+        "execErrState": "Error",
+        "labels": {
+          "managed_by": "cosmic-save-monitor",
+          "service": "cosmic-dolphin",
+          "environment": "production",
+          "journey": "save_bookmark",
+          "severity": "critical",
+          "code": "api_health_failed"
+        },
+        "annotations": {
+          "summary": "API health check failed",
+          "description": "API health failed; save acceptance is unverified. Check the API app's deployment, logs and domain.",
+          "runbook_url": "https://github.com/pffreitas/cosmic-dolphin/blob/main/docs/runbooks/save-bookmark-monitoring.md#api-health-failed",
+          "__dashboardUid__": "cosmic-save-bookmarks",
+          "__panelId__": "2"
+        },
+        "notificationSettings": {
+          "type": "SimplifiedRouting",
+          "receiver": "REPLACE_EXISTING_RECEIVER",
+          "groupBy": [
+            "grafana_folder",
+            "alertname",
+            "environment"
+          ],
+          "groupWait": "30s",
+          "groupInterval": "5m",
+          "repeatInterval": "4h"
+        },
+        "expressions": {
+          "A": {
+            "datasourceUID": "REPLACE_METRICS_UID",
+            "relativeTimeRange": {
+              "from": "45m",
+              "to": "0s"
+            },
+            "model": {
+              "expr": "1 - sum(last_over_time(cosmic_save_api_up{environment=\"production\",journey=\"save_bookmark\"}[45m]))",
+              "instant": true,
+              "refId": "A"
+            }
+          },
+          "B": {
+            "source": true,
+            "model": {
+              "type": "threshold",
+              "expression": "A",
+              "refId": "B",
+              "conditions": [
+                {
+                  "evaluator": {
+                    "type": "gt",
+                    "params": [
+                      0
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "rules.alerting.grafana.app/v1beta1",
+      "kind": "AlertRule",
+      "metadata": {
+        "name": "cosmic-save-queue-visible-backlog",
+        "namespace": "default",
+        "annotations": {
+          "grafana.app/folder": "cosmic-save-monitor",
+          "grafana.com/provenance": "api"
+        }
+      },
+      "spec": {
+        "title": "Claimable save messages are not being read",
+        "trigger": {
+          "interval": "1m"
+        },
+        "for": "1m",
+        "noDataState": "Alerting",
+        "execErrState": "Error",
+        "labels": {
+          "managed_by": "cosmic-save-monitor",
+          "service": "cosmic-dolphin",
+          "environment": "production",
+          "journey": "save_bookmark",
+          "severity": "critical",
+          "code": "queue_visible_backlog"
+        },
+        "annotations": {
+          "summary": "Claimable save messages are not being read",
+          "description": "Claimable messages are not being read. Check the worker app is running and polling the bookmarks queue.",
+          "runbook_url": "https://github.com/pffreitas/cosmic-dolphin/blob/main/docs/runbooks/save-bookmark-monitoring.md#queue-visible-backlog",
+          "__dashboardUid__": "cosmic-save-bookmarks",
+          "__panelId__": "5"
+        },
+        "notificationSettings": {
+          "type": "SimplifiedRouting",
+          "receiver": "REPLACE_EXISTING_RECEIVER",
+          "groupBy": [
+            "grafana_folder",
+            "alertname",
+            "environment"
+          ],
+          "groupWait": "30s",
+          "groupInterval": "5m",
+          "repeatInterval": "4h"
+        },
+        "expressions": {
+          "A": {
+            "datasourceUID": "REPLACE_METRICS_UID",
+            "relativeTimeRange": {
+              "from": "45m",
+              "to": "0s"
+            },
+            "model": {
+              "expr": "sum(last_over_time(cosmic_save_alert_count{environment=\"production\",journey=\"save_bookmark\",code=\"queue_visible_backlog\"}[45m]) * on(environment,journey) group_left() last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m])) or (sum(last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m])) == 0)",
+              "instant": true,
+              "refId": "A"
+            }
+          },
+          "B": {
+            "source": true,
+            "model": {
+              "type": "threshold",
+              "expression": "A",
+              "refId": "B",
+              "conditions": [
+                {
+                  "evaluator": {
+                    "type": "gt",
+                    "params": [
+                      0
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "rules.alerting.grafana.app/v1beta1",
+      "kind": "AlertRule",
+      "metadata": {
+        "name": "cosmic-save-processing-without-owner",
+        "namespace": "default",
+        "annotations": {
+          "grafana.app/folder": "cosmic-save-monitor",
+          "grafana.com/provenance": "api"
+        }
+      },
+      "spec": {
+        "title": "Processing saves have no queue message",
+        "trigger": {
+          "interval": "1m"
+        },
+        "for": "1m",
+        "noDataState": "Alerting",
+        "execErrState": "Error",
+        "labels": {
+          "managed_by": "cosmic-save-monitor",
+          "service": "cosmic-dolphin",
+          "environment": "production",
+          "journey": "save_bookmark",
+          "severity": "critical",
+          "code": "processing_without_owner"
+        },
+        "annotations": {
+          "summary": "Processing saves have no queue message",
+          "description": "A processing save has no queued message and nothing will finish it. Reprocess the listed bookmarks after finding why the message was lost.",
+          "runbook_url": "https://github.com/pffreitas/cosmic-dolphin/blob/main/docs/runbooks/save-bookmark-monitoring.md#processing-without-owner",
+          "__dashboardUid__": "cosmic-save-bookmarks",
+          "__panelId__": "5"
+        },
+        "notificationSettings": {
+          "type": "SimplifiedRouting",
+          "receiver": "REPLACE_EXISTING_RECEIVER",
+          "groupBy": [
+            "grafana_folder",
+            "alertname",
+            "environment"
+          ],
+          "groupWait": "30s",
+          "groupInterval": "5m",
+          "repeatInterval": "4h"
+        },
+        "expressions": {
+          "A": {
+            "datasourceUID": "REPLACE_METRICS_UID",
+            "relativeTimeRange": {
+              "from": "45m",
+              "to": "0s"
+            },
+            "model": {
+              "expr": "sum(last_over_time(cosmic_save_alert_count{environment=\"production\",journey=\"save_bookmark\",code=\"processing_without_owner\"}[45m]) * on(environment,journey) group_left() last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m])) or (sum(last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m])) == 0)",
+              "instant": true,
+              "refId": "A"
+            }
+          },
+          "B": {
+            "source": true,
+            "model": {
+              "type": "threshold",
+              "expression": "A",
+              "refId": "B",
+              "conditions": [
+                {
+                  "evaluator": {
+                    "type": "gt",
+                    "params": [
+                      0
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "rules.alerting.grafana.app/v1beta1",
+      "kind": "AlertRule",
+      "metadata": {
+        "name": "cosmic-save-processing-overdue",
+        "namespace": "default",
+        "annotations": {
+          "grafana.app/folder": "cosmic-save-monitor",
+          "grafana.com/provenance": "api"
+        }
+      },
+      "spec": {
+        "title": "Saves outlived the retry budget",
+        "trigger": {
+          "interval": "1m"
+        },
+        "for": "1m",
+        "noDataState": "Alerting",
+        "execErrState": "Error",
+        "labels": {
+          "managed_by": "cosmic-save-monitor",
+          "service": "cosmic-dolphin",
+          "environment": "production",
+          "journey": "save_bookmark",
+          "severity": "critical",
+          "code": "processing_overdue"
+        },
+        "annotations": {
+          "summary": "Saves outlived the retry budget",
+          "description": "A save has outlived the bounded retry budget. Check worker logs for these message deliveries and provider health.",
+          "runbook_url": "https://github.com/pffreitas/cosmic-dolphin/blob/main/docs/runbooks/save-bookmark-monitoring.md#processing-overdue",
+          "__dashboardUid__": "cosmic-save-bookmarks",
+          "__panelId__": "5"
+        },
+        "notificationSettings": {
+          "type": "SimplifiedRouting",
+          "receiver": "REPLACE_EXISTING_RECEIVER",
+          "groupBy": [
+            "grafana_folder",
+            "alertname",
+            "environment"
+          ],
+          "groupWait": "30s",
+          "groupInterval": "5m",
+          "repeatInterval": "4h"
+        },
+        "expressions": {
+          "A": {
+            "datasourceUID": "REPLACE_METRICS_UID",
+            "relativeTimeRange": {
+              "from": "45m",
+              "to": "0s"
+            },
+            "model": {
+              "expr": "sum(last_over_time(cosmic_save_alert_count{environment=\"production\",journey=\"save_bookmark\",code=\"processing_overdue\"}[45m]) * on(environment,journey) group_left() last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m])) or (sum(last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m])) == 0)",
+              "instant": true,
+              "refId": "A"
+            }
+          },
+          "B": {
+            "source": true,
+            "model": {
+              "type": "threshold",
+              "expression": "A",
+              "refId": "B",
+              "conditions": [
+                {
+                  "evaluator": {
+                    "type": "gt",
+                    "params": [
+                      0
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "rules.alerting.grafana.app/v1beta1",
+      "kind": "AlertRule",
+      "metadata": {
+        "name": "cosmic-save-queue-invalid-messages",
+        "namespace": "default",
+        "annotations": {
+          "grafana.app/folder": "cosmic-save-monitor",
+          "grafana.com/provenance": "api"
+        }
+      },
+      "spec": {
+        "title": "Invalid queue messages stay claimable",
+        "trigger": {
+          "interval": "1m"
+        },
+        "for": "1m",
+        "noDataState": "Alerting",
+        "execErrState": "Error",
+        "labels": {
+          "managed_by": "cosmic-save-monitor",
+          "service": "cosmic-dolphin",
+          "environment": "production",
+          "journey": "save_bookmark",
+          "severity": "warning",
+          "code": "queue_invalid_messages"
+        },
+        "annotations": {
+          "summary": "Invalid queue messages stay claimable",
+          "description": "Malformed, orphaned or owner-mismatched messages stayed claimable past one lease. Queue age does not date a bookmark deletion. Check the worker is draining them and what enqueued them.",
+          "runbook_url": "https://github.com/pffreitas/cosmic-dolphin/blob/main/docs/runbooks/save-bookmark-monitoring.md#queue-invalid-messages",
+          "__dashboardUid__": "cosmic-save-bookmarks",
+          "__panelId__": "5"
+        },
+        "notificationSettings": {
+          "type": "SimplifiedRouting",
+          "receiver": "REPLACE_EXISTING_RECEIVER",
+          "groupBy": [
+            "grafana_folder",
+            "alertname",
+            "environment"
+          ],
+          "groupWait": "30s",
+          "groupInterval": "5m",
+          "repeatInterval": "4h"
+        },
+        "expressions": {
+          "A": {
+            "datasourceUID": "REPLACE_METRICS_UID",
+            "relativeTimeRange": {
+              "from": "45m",
+              "to": "0s"
+            },
+            "model": {
+              "expr": "sum(last_over_time(cosmic_save_alert_count{environment=\"production\",journey=\"save_bookmark\",code=\"queue_invalid_messages\"}[45m]) * on(environment,journey) group_left() last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m])) or (sum(last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m])) == 0)",
+              "instant": true,
+              "refId": "A"
+            }
+          },
+          "B": {
+            "source": true,
+            "model": {
+              "type": "threshold",
+              "expression": "A",
+              "refId": "B",
+              "conditions": [
+                {
+                  "evaluator": {
+                    "type": "gt",
+                    "params": [
+                      0
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "rules.alerting.grafana.app/v1beta1",
+      "kind": "AlertRule",
+      "metadata": {
+        "name": "cosmic-save-infrastructure-failures",
+        "namespace": "default",
+        "annotations": {
+          "grafana.app/folder": "cosmic-save-monitor",
+          "grafana.com/provenance": "api"
+        }
+      },
+      "spec": {
+        "title": "Saves failed for infrastructure reasons",
+        "trigger": {
+          "interval": "1m"
+        },
+        "for": "1m",
+        "noDataState": "Alerting",
+        "execErrState": "Error",
+        "labels": {
+          "managed_by": "cosmic-save-monitor",
+          "service": "cosmic-dolphin",
+          "environment": "production",
+          "journey": "save_bookmark",
+          "severity": "critical",
+          "code": "infrastructure_failures"
+        },
+        "annotations": {
+          "summary": "Saves failed for infrastructure reasons",
+          "description": "Saves failed for provider, availability or unclassified reasons. Check provider status and worker logs; users must retry these saves.",
+          "runbook_url": "https://github.com/pffreitas/cosmic-dolphin/blob/main/docs/runbooks/save-bookmark-monitoring.md#infrastructure-failures",
+          "__dashboardUid__": "cosmic-save-bookmarks",
+          "__panelId__": "5"
+        },
+        "notificationSettings": {
+          "type": "SimplifiedRouting",
+          "receiver": "REPLACE_EXISTING_RECEIVER",
+          "groupBy": [
+            "grafana_folder",
+            "alertname",
+            "environment"
+          ],
+          "groupWait": "30s",
+          "groupInterval": "5m",
+          "repeatInterval": "4h"
+        },
+        "expressions": {
+          "A": {
+            "datasourceUID": "REPLACE_METRICS_UID",
+            "relativeTimeRange": {
+              "from": "45m",
+              "to": "0s"
+            },
+            "model": {
+              "expr": "sum(last_over_time(cosmic_save_alert_count{environment=\"production\",journey=\"save_bookmark\",code=\"infrastructure_failures\"}[45m]) * on(environment,journey) group_left() last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m])) or (sum(last_over_time(cosmic_save_monitor_observer_up{environment=\"production\",journey=\"save_bookmark\"}[45m])) == 0)",
+              "instant": true,
+              "refId": "A"
+            }
+          },
+          "B": {
+            "source": true,
+            "model": {
+              "type": "threshold",
+              "expression": "A",
+              "refId": "B",
+              "conditions": [
+                {
+                  "evaluator": {
+                    "type": "gt",
+                    "params": [
+                      0
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "rules.alerting.grafana.app/v1beta1",
+      "kind": "AlertRule",
+      "metadata": {
+        "name": "cosmic-save-missing-observer",
+        "namespace": "default",
+        "annotations": {
+          "grafana.app/folder": "cosmic-save-monitor",
+          "grafana.com/provenance": "api"
+        }
+      },
+      "spec": {
+        "title": "Save monitor has not delivered for 45 minutes",
+        "trigger": {
+          "interval": "1m"
+        },
+        "for": "1m",
+        "noDataState": "Alerting",
+        "execErrState": "Error",
+        "labels": {
+          "managed_by": "cosmic-save-monitor",
+          "service": "cosmic-dolphin",
+          "environment": "production",
+          "journey": "save_bookmark",
+          "severity": "critical",
+          "code": "missing_observer"
+        },
+        "annotations": {
+          "summary": "Save monitor has not delivered for 45 minutes",
+          "description": "Check the scheduled job and Grafana ingestion. Save health is unknown.",
+          "runbook_url": "https://github.com/pffreitas/cosmic-dolphin/blob/main/docs/runbooks/save-bookmark-monitoring.md#missing-observer",
+          "__dashboardUid__": "cosmic-save-bookmarks",
+          "__panelId__": "3"
+        },
+        "notificationSettings": {
+          "type": "SimplifiedRouting",
+          "receiver": "REPLACE_EXISTING_RECEIVER",
+          "groupBy": [
+            "grafana_folder",
+            "alertname",
+            "environment"
+          ],
+          "groupWait": "30s",
+          "groupInterval": "5m",
+          "repeatInterval": "4h"
+        },
+        "expressions": {
+          "A": {
+            "datasourceUID": "REPLACE_METRICS_UID",
+            "relativeTimeRange": {
+              "from": "45m",
+              "to": "0s"
+            },
+            "model": {
+              "expr": "sum(absent_over_time(cosmic_save_monitor_heartbeat_timestamp_seconds{environment=\"production\",journey=\"save_bookmark\"}[45m])) or (time() - max(last_over_time(cosmic_save_monitor_heartbeat_timestamp_seconds{environment=\"production\",journey=\"save_bookmark\"}[45m])) > bool 2700)",
+              "instant": true,
+              "refId": "A"
+            }
+          },
+          "B": {
+            "source": true,
+            "model": {
+              "type": "threshold",
+              "expression": "A",
+              "refId": "B",
+              "conditions": [
+                {
+                  "evaluator": {
+                    "type": "gt",
+                    "params": [
+                      0
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

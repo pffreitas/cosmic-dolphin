@@ -1,0 +1,61 @@
+name: Activate save monitoring manually
+on:
+  workflow_dispatch:
+    inputs:
+      activation:
+        description: Create the separate monitoring app or update its configured ID
+        required: true
+        type: choice
+        options: [update, create]
+permissions:
+  contents: read
+concurrency:
+  group: deploy-save-monitoring
+  cancel-in-progress: false
+jobs:
+  activate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: monitoring-production
+    env:
+      IMAGE_TAG: ${{ github.sha }}
+      DIGITALOCEAN_REGISTRY_NAME: ${{ secrets.DIGITALOCEAN_REGISTRY_NAME }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      MONITOR_DB_CA_PEM: ${{ secrets.MONITOR_DB_CA_PEM }}
+      GRAFANA_OTLP_ENDPOINT: ${{ vars.GRAFANA_OTLP_ENDPOINT }}
+      GRAFANA_OTLP_INSTANCE_ID: ${{ vars.GRAFANA_OTLP_INSTANCE_ID }}
+      GRAFANA_OTLP_TOKEN: ${{ secrets.GRAFANA_OTLP_TOKEN }}
+      MONITOR_DO_APP_ID: ${{ inputs.activation == 'update' && vars.MONITOR_DO_APP_ID || '' }}
+      MONITOR_DO_CREATE: ${{ inputs.activation == 'create' && 'true' || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.11"
+      - name: Validate config without network or secret output
+        run: |
+          if [ "${{ inputs.activation }}" = update ] && [ -z "$MONITOR_DO_APP_ID" ]; then
+            echo 'MONITOR_DO_APP_ID is required for update' >&2
+            exit 1
+          fi
+          bun --no-env-file scripts/monitoring/deployment.ts --check-config
+          bun --no-env-file scripts/monitoring/monitor.ts --check-config --publish
+      - name: Verify offline behavior
+        run: |
+          bun --no-env-file test scripts/monitoring/__tests__/save-bookmarks.test.ts scripts/monitoring/__tests__/telemetry.test.ts scripts/monitoring/__tests__/grafana.test.ts scripts/monitoring/__tests__/deployment.test.ts scripts/monitoring/__tests__/cli.test.ts
+          bun --no-env-file scripts/monitoring/grafana.ts --check docs/monitoring/save-bookmark/grafana/assets.v1.json
+      - uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+      - name: Build and push this SHA only
+        run: |
+          doctl registry login
+          docker build --platform linux/amd64 -f scripts/monitoring/Dockerfile -t "registry.digitalocean.com/$DIGITALOCEAN_REGISTRY_NAME/cosmic-dolphin-save-monitor:$IMAGE_TAG" .
+          docker run --rm --network none "registry.digitalocean.com/$DIGITALOCEAN_REGISTRY_NAME/cosmic-dolphin-save-monitor:$IMAGE_TAG" --fixture scripts/monitoring/__tests__/fixtures/healthy-no-traffic.json
+          docker push "registry.digitalocean.com/$DIGITALOCEAN_REGISTRY_NAME/cosmic-dolphin-save-monitor:$IMAGE_TAG"
+      - name: Create or update only the isolated monitoring app
+        env:
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        run: bun --no-env-file scripts/monitoring/deployment.ts --deploy
