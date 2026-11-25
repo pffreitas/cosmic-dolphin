@@ -1,0 +1,46 @@
+name: cosmic-dolphin-save-monitor
+region: nyc
+jobs:
+  - name: save-bookmark-monitor
+    kind: SCHEDULED
+    schedule:
+      cron: "*/15 * * * *"
+      time_zone: Etc/UTC
+    image:
+      registry_type: DOCR
+      repository: cosmic-dolphin-save-monitor
+      tag: ${IMAGE_TAG}
+      deploy_on_push:
+        enabled: false
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    run_command: bun --no-env-file scripts/monitoring/monitor.ts --publish
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        type: SECRET
+        value: ${DATABASE_URL}
+      - key: SUPABASE_PROJECT_REF
+        scope: RUN_TIME
+        type: GENERAL
+        value: ${SUPABASE_PROJECT_REF}
+      - key: SUPABASE_URL
+        scope: RUN_TIME
+        type: GENERAL
+        value: ${SUPABASE_URL}
+      - key: MONITOR_DB_CA_PEM
+        scope: RUN_TIME
+        type: SECRET
+        value: ${MONITOR_DB_CA_PEM}
+      - key: GRAFANA_OTLP_ENDPOINT
+        scope: RUN_TIME
+        type: GENERAL
+        value: ${GRAFANA_OTLP_ENDPOINT}
+      - key: GRAFANA_OTLP_INSTANCE_ID
+        scope: RUN_TIME
+        type: GENERAL
+        value: ${GRAFANA_OTLP_INSTANCE_ID}
+      - key: GRAFANA_OTLP_TOKEN
+        scope: RUN_TIME
+        type: SECRET
+        value: ${GRAFANA_OTLP_TOKEN}

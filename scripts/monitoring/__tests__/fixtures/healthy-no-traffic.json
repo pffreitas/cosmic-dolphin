@@ -1,0 +1,110 @@
+{
+  "observedAt": "2026-11-24T12:00:00.000Z",
+  "api": {
+    "state": "ok"
+  },
+  "database": {
+    "state": "ok",
+    "facts": {
+      "queue": {
+        "visible": 0,
+        "delayed": 0,
+        "leasedOrBackoff": 0,
+        "redelivered": 0,
+        "oldestVisibleWaitSeconds": null,
+        "backlog": {
+          "count": 0,
+          "oldestAgeSeconds": null,
+          "sampleIds": []
+        },
+        "malformed": {
+          "count": 0,
+          "oldestAgeSeconds": null,
+          "sampleIds": []
+        },
+        "orphan": {
+          "count": 0,
+          "oldestAgeSeconds": null,
+          "sampleIds": []
+        },
+        "ownerMismatch": {
+          "count": 0,
+          "oldestAgeSeconds": null,
+          "sampleIds": []
+        }
+      },
+      "processing": {
+        "total": 0,
+        "oldestJourneyAgeSeconds": null,
+        "withoutOwner": {
+          "count": 0,
+          "oldestAgeSeconds": null,
+          "sampleIds": []
+        },
+        "overdue": {
+          "count": 0,
+          "oldestAgeSeconds": null,
+          "sampleIds": []
+        }
+      },
+      "saves": {
+        "processing": 0,
+        "completed": 0,
+        "failed": 0,
+        "idle": 0
+      },
+      "terminal": {
+        "completed": 0,
+        "failedByCode": {
+          "provider": {
+            "count": 0,
+            "oldestAgeSeconds": null,
+            "sampleIds": []
+          },
+          "unavailable": {
+            "count": 0,
+            "oldestAgeSeconds": null,
+            "sampleIds": []
+          },
+          "unclassified": {
+            "count": 0,
+            "oldestAgeSeconds": null,
+            "sampleIds": []
+          },
+          "paywall": {
+            "count": 0,
+            "oldestAgeSeconds": null,
+            "sampleIds": []
+          },
+          "auth": {
+            "count": 0,
+            "oldestAgeSeconds": null,
+            "sampleIds": []
+          },
+          "blocked": {
+            "count": 0,
+            "oldestAgeSeconds": null,
+            "sampleIds": []
+          },
+          "empty": {
+            "count": 0,
+            "oldestAgeSeconds": null,
+            "sampleIds": []
+          },
+          "unsupported": {
+            "count": 0,
+            "oldestAgeSeconds": null,
+            "sampleIds": []
+          }
+        }
+      },
+      "completion": {
+        "latestAgeSeconds": null,
+        "timedCount": 0,
+        "p50Seconds": null,
+        "p95Seconds": null,
+        "maxSeconds": null
+      }
+    }
+  }
+}
