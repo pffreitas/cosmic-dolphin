@@ -142,20 +142,36 @@ primary button.
 
 ## Landing · `/`
 
-Signed out only — a signed-in reader is redirected to Home. Draws its own frame: the public header,
-then four beats, then a footer.
+Signed out only. Signed-in readers go straight to Home.
 
-1. **Hero** — a neutral chip kicker ("Summaries that name their sources"), a two-line 68px `display`
-   headline whose second line is `--cd-fg-secondary`, one 18px line of what the product does,
-   **Start your library** (primary, large) and **Sign in**. Below, the Library in an app window, fading out at its foot.
-2. **How it works** — on `--cd-bg-subtle`: three alternating text-and-vignette rows (capture,
-   Cosmic brief, filing), numbered `01`–`03`.
-3. **Principles** — "Built to be finished, not scrolled." beside a hairline-ruled definition list.
-4. **Closing** — a `--cd-bg-subtle` bordered panel with one sentence and **Create your account**.
+“Close the tabs. Keep the ideas.” leads into three chapters built around the same source.
+A full-width Earthrise photograph opens the page. Large sans-serif display type handles the marketing promise,
+while Source Serif distinguishes the saved article and its adaptations.
 
-Every illustration is a vignette from `components/marketing/vignettes.tsx`: the product's own
-components on illustrative content, marked `inert` and labelled with what they depict. Never a
-screenshot, never a mock drawn to look like the app.
+- **Understand.** Save the sample NASA article, open its sourced Cosmic brief, and mark it read.
+- **Retrieve.** Search a one-item sample library using the detail you remember. The Library row shows the matching article, its source and its suggested collection. The sample uses local keyword matching.
+- **Adapt.** Switch between a visual comparison, a narrated audio brief with transcript, a captioned short film and an infographic. These are locally prepared samples. The signed-in product generates written briefs.
+
+The examples require no account or API calls. Audio and video start on request. The film pairs
+a time-compressed excerpt of Ernie Wright’s spacecraft visualization with the original photograph and a narrated brief.
+[Original article and image comparison](https://science.nasa.gov/earth/earth-observatory/earthrise-revisited-82693/) · [Bill Anders photograph](https://science.nasa.gov/resource/apollo-8s-iconic-earthrise/) · [NASA Scientific Visualization Studio footage](https://svs.gsfc.nasa.gov/4129/)
+
+### Positioning evidence
+
+The product model treats marking a save read as success. Home ranks candidates using topic affinity,
+source affinity, effort and other signals. The bookmark detail exposes a brief and its source, while
+the Library keeps the collection editable. Together these support a promise about choosing a next read.
+
+| Competitor | What its landing page leads with | Implication for this page |
+| --- | --- | --- |
+| [Raindrop.io](https://raindrop.io/) | Bookmark management, collections and retrieval | Filing supports the story after the visitor saves something. |
+| [Readwise Reader](https://readwise.io/read) | A unified reading and annotation environment for power readers | Show the decision immediately before reading an original. |
+| [mymind](https://mymind.com/) | Private recall and automatic organization | Make the content of a brief inspectable before signup. |
+
+These are observations about public positioning. The visual alternatives considered were a
+photo-led editorial spread, a capture-to-reading walkthrough and a library tour. The walkthrough
+lets visitors test the product promise in a few actions, while the editorial photograph gives the
+example a recognizable subject.
 
 ---
 
