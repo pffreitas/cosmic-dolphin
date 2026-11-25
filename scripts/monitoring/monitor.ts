@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 /**
- *   bun --no-env-file scripts/monitoring/monitor.ts [--fixture snapshot.json] [--report out.json] [--summary out.md] [--publish]
+ *   bun --no-env-file scripts/monitoring/monitor.ts [--fixture snapshot.json] [--report out.json] [--summary out.md] [--publish [--publish-log]]
  *   bun --no-env-file scripts/monitoring/monitor.ts --check-config [--publish]
  *
  * Exit 0 ok, 1 alerting, 2 monitoring_failed, 3 delivery_failed. The JSON
- * report goes to stdout; a one-line delivery result goes to stderr.
+ * report goes to stdout; metric and optional log delivery results go to stderr.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import {
@@ -22,6 +22,7 @@ import {
   type TargetKind,
 } from "./save-bookmarks";
 import { deliver, resolveOtlpTarget, samplesFor, type Delivery } from "./telemetry";
+import { publishLog } from "./logs";
 
 export const EXIT = { ok: 0, alerting: 1, monitoring_failed: 2, delivery_failed: 3 } as const;
 
@@ -42,6 +43,7 @@ interface Args {
   report?: string;
   summary?: string;
   publish: boolean;
+  publishLog: boolean;
   checkConfig: boolean;
 }
 
@@ -52,11 +54,11 @@ const VALUE_FLAGS = new Map<string, "fixture" | "report" | "summary">([
 ] as const);
 
 export function parseArgs(argv: readonly string[]): Args | null {
-  const args: Args = { publish: false, checkConfig: false };
+  const args: Args = { publish: false, publishLog: false, checkConfig: false };
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
-    if (flag === "--publish" || flag === "--check-config") {
-      const key = flag === "--publish" ? "publish" : "checkConfig";
+    if (flag === "--publish" || flag === "--publish-log" || flag === "--check-config") {
+      const key = flag === "--publish" ? "publish" : flag === "--publish-log" ? "publishLog" : "checkConfig";
       if (args[key]) return null;
       args[key] = true;
       continue;
@@ -68,6 +70,7 @@ export function parseArgs(argv: readonly string[]): Args | null {
     i++;
   }
   if (args.checkConfig && (args.fixture || args.report || args.summary)) return null;
+  if (args.publishLog && !args.publish) return null;
   return args;
 }
 
@@ -131,6 +134,7 @@ export async function main(argv: readonly string[], deps: Deps): Promise<number>
     report = evaluate(failedSnapshot("checker_failed", "unresolved", deps.now()));
   }
   const delivery = args?.publish ? await publish(report, deps) : null;
+  const logDelivery = args?.publishLog ? await publishLog(report, deps.env, deps.fetch, deps.now()) : null;
 
   const write = (r: Report) => {
     if (args?.report) deps.writeFile(args.report, json(r));
@@ -147,7 +151,8 @@ export async function main(argv: readonly string[], deps: Deps): Promise<number>
   }
   deps.stdout(json(report));
   if (delivery) deps.stderr(`${JSON.stringify(delivery.ok ? { delivery: "ok", series: delivery.series } : { delivery: "failed", reason: delivery.failure })}\n`);
-  return delivery && !delivery.ok ? EXIT.delivery_failed : EXIT[report.status];
+  if (logDelivery) deps.stderr(`${JSON.stringify(logDelivery.ok ? { logDelivery: "ok", records: logDelivery.records } : { logDelivery: "failed", reason: logDelivery.failure })}\n`);
+  return (delivery && !delivery.ok) || (logDelivery && !logDelivery.ok) ? EXIT.delivery_failed : EXIT[report.status];
 }
 
 if (import.meta.main) {

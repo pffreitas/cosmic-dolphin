@@ -7,7 +7,7 @@ The independent DigitalOcean job runs every 15 minutes. It performs a bounded re
 ## Prepare a new Grafana Cloud Free stack
 
 1. Create the new Free stack in Grafana Cloud. Record its Grafana URL and stack ID. Use `stacks-<STACK_ID>` as `GRAFANA_NAMESPACE`.
-2. Open the stack's OpenTelemetry connection tile. Record the OTLP gateway base ending in `/otlp` and the numeric instance ID. Create an access policy token limited to this stack and `metrics:write`. Store `GRAFANA_OTLP_TOKEN` in your secret store. Do not paste tokens into chat or commit them.
+2. Open the stack's OpenTelemetry connection tile. Record the OTLP gateway base ending in `/otlp` and the numeric instance ID. Create an access policy token limited to this stack with `metrics:write` and `logs:write` for snapshot logging. Store `GRAFANA_OTLP_TOKEN` in your secret store. Do not paste tokens into chat or commit them.
 3. Find the existing Prometheus metrics data-source UID in Grafana. Set `GRAFANA_DATASOURCE_UID` to that UID. The provisioner reads this data source and does not modify it.
 4. Create and verify your intended contact point in Grafana. Set `GRAFANA_RECEIVER` to the exact existing contact-point title. The provisioner does not create contact points or overwrite global notification policies. Every rule routes directly to this receiver, with a 30-second group wait, five-minute group interval, and four-hour repeat interval. Confirm that recovery notifications are enabled on the contact point.
 5. Create a Grafana service account with permission to read the data source and receiver, create the owned folder and dashboard, and provision alert rules. Store its token as `GRAFANA_SERVICE_ACCOUNT_TOKEN` in your secret store. Editor or Admin is supported by default. Use narrower Grafana RBAC where your plan supports it. This token is used for provisioning only and is never injected into the cron job.
@@ -46,7 +46,7 @@ Use the GitHub environment `monitoring-production` for new ingest and database C
 | `SUPABASE_PROJECT_REF`, `SUPABASE_URL` | Existing production repository variables |
 | `MONITOR_DB_CA_PEM` | Supabase database root CA PEM from a trusted source, stored as a secret |
 | `GRAFANA_OTLP_ENDPOINT`, `GRAFANA_OTLP_INSTANCE_ID` | New stack's OpenTelemetry tile, stored as variables |
-| `GRAFANA_OTLP_TOKEN` | Stack-scoped `metrics:write` secret |
+| `GRAFANA_OTLP_TOKEN` | Stack-scoped `metrics:write` and `logs:write` secret |
 | `DIGITALOCEAN_ACCESS_TOKEN`, `DIGITALOCEAN_REGISTRY_NAME` | Existing GitHub secrets |
 | `MONITOR_DO_APP_ID` | Variable holding the separate monitoring app ID after creation |
 
@@ -59,7 +59,7 @@ The production CA download used by [Supabase Studio](https://github.com/supabase
 Validate configuration without database or Grafana calls.
 
 ```sh
-bun --no-env-file scripts/monitoring/monitor.ts --check-config --publish
+bun --no-env-file scripts/monitoring/monitor.ts --check-config --publish --publish-log
 bun --no-env-file scripts/monitoring/deployment.ts --check-config
 ```
 
@@ -84,6 +84,10 @@ Use `last_over_time(metric{environment="production",journey="save_bookmark"}[45m
 Successful observations publish fixed zeros for healthy database rules. Query errors use Grafana's `Error` state and no-data uses `Alerting`. Database observation failure sends a fresh heartbeat and observer value zero but omits business gauges and the successful snapshot timestamp. An unobserved API gauge is omitted too. Retained business values are suppressed when the latest observer value is zero. They are never replaced with invented collector zeros. When no observer series exists, rule no-data and the dedicated heartbeat rule identify the gap.
 
 An ingest timeout, redirect, HTTP failure, malformed response, or OTLP partial rejection exits nonzero. Missing-heartbeat detection later catches scheduler or delivery outages. Exit codes are 0 for healthy observations, 1 for product alerts, 2 for observer failure, and 3 for delivery failure. A product alert can produce a failed DigitalOcean invocation while its metric delivery succeeds.
+
+With `--publish --publish-log`, each run also sends one `save_bookmark_snapshot` log to `cosmic-dolphin-save-monitor` before exiting. It contains safe gauge samples and observation status, with no sampled IDs, private notes, or runbook URLs. INFO means healthy, WARN means product alerts, and ERROR means observation failure. Metric-only `--publish` remains available. Each delivery uses one request with a 10-second deadline; log requests are capped at 65,536 serialized UTF-8 bytes and acknowledgement bodies at 16,384 bytes. Partial rejection is a delivery failure.
+
+Metric and log delivery are independent. A failed metric delivery still attempts the snapshot log, and a failed log delivery does not replace valid observations or published metrics with unhealthy business values. Either delivery failure exits 3. Inspect the `logDelivery` stderr result and verify a fresh snapshot in Loki after deployment: the metric heartbeat alone does not prove log delivery. Direct snapshots do not forward all scheduled stdout/stderr or historical output.
 
 Terminal failure gauges cover 60 minutes, longer than the collection cadence and drift. Completion timing measures `created_at` to completion and includes budget deferral and reprocessing. It is context, with no latency alert.
 
