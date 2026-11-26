@@ -19,7 +19,7 @@ envs:
   value: "3000"
 - key: QUEUE_NAMES
   scope: RUN_AND_BUILD_TIME
-  value: default,bookmarks
+  value: bookmarks
 - key: OPENROUTER_API_KEY
   scope: RUN_AND_BUILD_TIME
   value: ${OPENROUTER_API_KEY}

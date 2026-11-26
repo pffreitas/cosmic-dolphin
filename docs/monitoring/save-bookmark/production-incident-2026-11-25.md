@@ -1,6 +1,6 @@
 # Production bookmark queue diagnosis, 2026-11-25
 
-The strongest supported cause is a missing wake-up in the worker dispatcher. The bug reproduces with the production queue order and concurrency. DigitalOcean access and Grafana log forwarding are now available; current worker ACTIVE/startup evidence supports the configured queue order, while the missing wake-up itself remains demonstrated by the local dispatcher reproduction. No worker repair or manual bookmark/queue mutation was performed.
+The strongest supported cause is a missing wake-up in the worker dispatcher. The bug reproduces with the production queue order and concurrency. DigitalOcean access and Grafana log forwarding are now available; current worker ACTIVE/startup evidence supports the configured queue order, while the missing wake-up itself is demonstrated by the dispatcher reproduction. The user has now authorized the repair: implementation and release evidence are tracked in [repair tasks](repair-tasks.md). Production repair remains pending; no manual bookmark/queue mutation was performed.
 
 ## Current observability
 
@@ -72,7 +72,7 @@ bun --no-env-file test docs/monitoring/save-bookmark/reproduction/queue-starvati
 
 Rechecked against the current source: exit 1 in approximately 80ms, nine default reads, no bookmark read, no handler completion, one message waiting. A source copy differing by exactly one wake-up line passes with a bookmark read/completion. Reversing queue order also passes. The assertions concern actual polling/handling, not whether a wake-up method was called.
 
-To recreate the one-line source-copy control without recovering a temporary artifact, run from the repository root:
+The following source-copy control describes the original diagnosis and applies to the pre-repair source. On the repaired source, the standalone reproduction passes directly; do not add the wake-up a second time. To recreate the historical control without recovering a temporary artifact, run against the original source from the repository root:
 
 ```sh
 starvation_control_dir=$(mktemp -d)

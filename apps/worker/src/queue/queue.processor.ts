@@ -200,6 +200,7 @@ export class QueueProcessor implements OnModuleInit, OnModuleDestroy {
         this.logger.error(`Error processing queue ${config.name}`, error);
       } finally {
         this.reserved -= count;
+        this.wakeSlotWaiters();
       }
 
       if (!this.isProcessing) {

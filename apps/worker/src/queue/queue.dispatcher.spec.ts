@@ -80,6 +80,99 @@ function build(
 }
 
 describe("dispatcher", () => {
+  for (const outcome of ["empty", "failed"]) test(`${outcome} reads release capacity to a waiting bookmark queue`, async () => {
+    const firstRead = deferred();
+    const reads: string[] = [];
+    const waiting = [msg(1)];
+    const started: number[] = [];
+    const queue = {
+      ...fakeQueue([]),
+      async popMessages(name: string, count: number) {
+        reads.push(name);
+        if (name === "default") {
+          await firstRead.promise;
+          if (outcome === "failed") throw new Error("fixture read failure");
+          return [];
+        }
+        return waiting.splice(0, count);
+      },
+    };
+    const processor = build(queue, async (m) => { started.push(m.msg_id); }, {
+      QUEUE_NAMES: "default,bookmarks", QUEUE_POLL_INTERVAL: "60000",
+    });
+    try {
+      await processor.startProcessing();
+      await tick();
+      expect(reads).toEqual(["default"]);
+      expect(started).toEqual([]);
+      firstRead.resolve();
+      await tick();
+      await tick();
+      expect(reads).toContain("bookmarks");
+      expect(started).toEqual([1]);
+      expect(waiting).toHaveLength(0);
+    } finally {
+      firstRead.resolve();
+      await processor.stopProcessing();
+    }
+  });
+
+  for (const batchSize of [2, 5]) test(`a first batch of ${batchSize} shares the five-slot limit with a second queue`, async () => {
+    const firstRead = deferred();
+    const firstBatch = Array.from({ length: batchSize }, (_, i) => msg(i + 1));
+    const waiting = [msg(99)];
+    const reads: { name: string; count: number; running: number }[] = [];
+    const started: number[] = [];
+    const gates = new Map<number, ReturnType<typeof deferred>>();
+    let running = 0, peak = 0, closing = false, first = true;
+    const queue = {
+      ...fakeQueue([]),
+      async popMessages(name: string, count: number) {
+        reads.push({ name, count, running });
+        if (name === "default") {
+          if (first) { first = false; await firstRead.promise; return firstBatch.splice(0, count); }
+          return [];
+        }
+        return waiting.splice(0, count);
+      },
+    };
+    const processor = build(queue, async (m) => {
+      running++;
+      peak = Math.max(peak, running);
+      started.push(m.msg_id);
+      if (!closing) {
+        const gate = deferred();
+        gates.set(m.msg_id, gate);
+        await gate.promise;
+      }
+      running--;
+    }, { QUEUE_NAMES: "default,bookmarks", QUEUE_POLL_INTERVAL: "60000" });
+    try {
+      await processor.startProcessing();
+      await tick();
+      expect(reads.map(r => r.name)).toEqual(["default"]);
+      firstRead.resolve();
+      await tick();
+      await tick();
+      if (batchSize === 5) {
+        expect(started).toEqual([1, 2, 3, 4, 5]);
+        expect(reads.filter(r => r.name === "bookmarks")).toHaveLength(0);
+        gates.get(1)!.resolve();
+        await tick();
+        await tick();
+      }
+      expect(started).toContain(99);
+      expect(waiting).toHaveLength(0);
+      expect(peak).toBeLessThanOrEqual(5);
+      for (const read of reads) expect(read.count + read.running).toBeLessThanOrEqual(5);
+    } finally {
+      closing = true;
+      firstRead.resolve();
+      for (const gate of gates.values()) gate.resolve();
+      await processor.stopProcessing();
+    }
+  });
+
   test("reads only as many messages as free slots", async () => {
     const queue = fakeQueue(Array.from({ length: 20 }, (_, i) => msg(i + 1)));
     const gates = new Map<number, ReturnType<typeof deferred>>();
