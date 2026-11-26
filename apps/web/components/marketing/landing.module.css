@@ -10,15 +10,16 @@
   background: var(--cd-brand-black);
   color: var(--cd-brand-fg);
 }
-.heroPhoto {
+.heroArt {
   position: absolute;
-  inset: 0 auto 0 0;
-  width: 132%;
-  height: 100%;
-  max-width: none;
-  object-fit: cover;
-  object-position: 50% 70%;
+  inset: 0;
   z-index: -1;
+}
+.heroPhoto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 78%;
 }
 .heroInner, .chapter, .formatStudio, .studioIntro {
   width: min(calc(100% - 4rem), 1152px);
@@ -163,10 +164,17 @@
 }
 @media (max-width: 760px) {
   .heroInner, .chapter, .studioIntro, .formatStudio { width: min(calc(100% - 2.5rem), 600px); }
-  .heroInner { padding-top: 3.5rem; padding-bottom: clamp(13rem, 43vw, 17rem); }
+  .heroInner { padding-top: 3.5rem; padding-bottom: 1.25rem; }
   .hero h1 { font-size: clamp(2.6rem, 11vw, 4.75rem); }
   .heroInner > p { max-width: 35ch; }
-  .heroPhoto { top: auto; bottom: 0; height: 43%; width: 100%; object-position: center 64%; mask-image: linear-gradient(to bottom, transparent, black 18%); }
+  .heroArt {
+    display: block;
+    position: relative;
+    aspect-ratio: 1.4;
+    max-height: 24rem;
+    mask-image: linear-gradient(to bottom, transparent, black 14%);
+  }
+  .heroPhoto { object-position: center 68%; }
   .heroCredit { bottom: .5rem; right: .65rem; }
   .actions { gap: .2rem; margin-top: 1.35rem; }
   .actions .heroLink { padding-inline: .8rem; }

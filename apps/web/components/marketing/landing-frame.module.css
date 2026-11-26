@@ -10,17 +10,15 @@
 .header { position: sticky; top: 0; z-index: 30; }
 .bar, .inner { width: min(calc(100% - 4rem), 1152px); margin-inline: auto; }
 .bar { display: flex; justify-content: space-between; align-items: center; min-height: 74px; border-bottom: 1px solid var(--frame-line); }
-.signature, .desktop, .account, .base, .base a { display: flex; align-items: center; }
+.signature, .account, .base, .base a { display: flex; align-items: center; }
 .signature { width: fit-content; gap: .55rem; font-size: 1.2rem; letter-spacing: -.04em; font-weight: 600; white-space: nowrap; }
 .signature .mark { width: 36px; height: 36px; }
-.desktop { gap: 1.5rem; }
 .account { gap: 1rem; }
 .header a, .footer a { min-height: 44px; display: inline-flex; align-items: center; }
-.header nav, .columns nav a, .identity p, .base { color: var(--frame-muted); }
-.header nav a:hover, .signin:hover, .footer a:not(.signature):hover { text-decoration: underline; text-underline-offset: .28em; }
+.columns nav a, .identity p, .base { color: var(--frame-muted); }
+.signin:hover, .footer a:not(.signature):hover { text-decoration: underline; text-underline-offset: .28em; }
 .bar .signup { background: var(--cd-brand-fg); color: var(--cd-brand-black); }
 .bar .signup:hover { background: var(--frame-muted); }
-.bar .menu { display: none; color: var(--cd-brand-fg); }
 .columns { display: grid; grid-template-columns: 2.6fr 1fr 1fr; gap: 1.75rem; padding: 4rem 0 2.875rem; }
 .columns nav { display: flex; flex-direction: column; align-items: flex-start; }
 .columns h2 { font-size: .8125rem; font-weight: 600; margin-bottom: .3rem; }
@@ -34,10 +32,8 @@
 @media (max-width: 760px) {
   .bar, .inner { width: calc(100% - 2.5rem); }
   .bar { min-height: 62px; }
-  .desktop, .bar .signin { display: none; }
-  .bar .menu { display: inline-flex; width: 44px; height: 44px; }
-  .bar .menu:hover, .bar .menu[data-state="open"] { background: var(--frame-line); }
-  .account { gap: .25rem; }
+  .account { gap: .75rem; }
+  .signin { min-width: 44px; justify-content: center; }
   .signature { font-size: 1.05rem; }
   .signature .mark { width: 30px; height: 30px; }
   .columns { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.4rem; padding: 2rem 0 1rem; }

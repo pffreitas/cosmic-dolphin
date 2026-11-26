@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { ArrowUp, Menu } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 import { LogoMark } from "@/components/brand/logo";
-import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { focusRing } from "@/components/ui/focus-ring";
 import { LandingSignupButton } from "./landing-analytics";
 import styles from "./landing-frame.module.css";
@@ -26,20 +24,10 @@ export function LandingHeader() {
     <header className={styles.header}>
       <div className={styles.bar}>
         <Signature />
-        <nav aria-label="Page sections" className={styles.desktop}><ChapterLinks /></nav>
-        <div className={styles.account}>
+        <nav className={styles.account} aria-label="Account">
           <Link href="/sign-in" className={`${styles.signin} ${focusRing}`}>Sign in</Link>
           <LandingSignupButton placement="header" className={styles.signup} />
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Page navigation" className={styles.menu}><Menu aria-hidden /></Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" aria-label="Page navigation">
-              {chapters.map(({ href, label }) => <DropdownMenuItem key={href} asChild><a className="min-h-11" href={href}>{label}</a></DropdownMenuItem>)}
-              <DropdownMenuItem asChild><Link className="min-h-11" href="/sign-in">Sign in</Link></DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        </nav>
       </div>
     </header>
   );

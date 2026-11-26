@@ -145,10 +145,11 @@ primary button.
 Signed out only. Signed-in readers go straight to Home.
 
 “Close the tabs. Keep the ideas.” leads into three chapters built around the same source.
-A full-width Earthrise photograph opens the page. Large sans-serif display type handles the marketing promise,
+A Meshy reinterpretation of Earthrise opens the page, with a wide desktop composition and a tighter
+mobile crop below the copy. The sample article uses the historical NASA imagery. Large sans-serif display type handles the marketing promise,
 while Source Serif distinguishes the saved article and its adaptations. The header and footer use the
-continuous dark treatment. Both link to all three chapters. On mobile the header keeps the product name
-and signup action visible, with chapter links and sign-in in a navigation menu.
+continuous dark treatment. On mobile and desktop the header shows the brand, Sign in and Sign up.
+The footer links to all three chapters.
 
 - **Understand.** Save the sample NASA article, open its sourced Cosmic brief, and mark it read.
 - **Retrieve.** Search a one-item sample library using the detail you remember. The Library row shows the matching article, its source and its suggested collection. The sample uses local keyword matching.

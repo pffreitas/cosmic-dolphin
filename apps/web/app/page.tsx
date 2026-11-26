@@ -48,7 +48,6 @@ export default async function Index() {
       <LandingHeader />
       <main id="main" tabIndex={-1} className="outline-none">
         <section aria-labelledby="landing-title" className={styles.hero}>
-          <Image src="/reading/earthrise.webp" width={1280} height={1280} priority sizes="100vw" className={styles.heroPhoto} alt="Earth seen over the lunar horizon from Apollo 8." />
           <div className={styles.heroInner}>
             <h1 id="landing-title">Close the tabs.<br />Keep the ideas.</h1>
             <p>Bookmark any link with Cosmic Dolphin. Get the key ideas, find them again in your own words, and explore them in the format that suits you.</p>
@@ -57,7 +56,20 @@ export default async function Index() {
               <Button variant="ghost" size="lg" asChild className={styles.heroLink}><a href="#knowledge">Try a sample <ArrowDownRight aria-hidden /></a></Button>
             </div>
           </div>
-          <span className={styles.heroCredit}>Earthrise, 1968 · Bill Anders / NASA</span>
+          <picture className={styles.heroArt}>
+            <source media="(max-width: 520px)" srcSet="/reading/cosmic-earthrise-mobile.webp" />
+            <Image
+              src="/reading/cosmic-earthrise-wide.webp"
+              width={1706}
+              height={768}
+              sizes="100vw"
+              loading="eager"
+              fetchPriority="high"
+              className={styles.heroPhoto}
+              alt="A half-lit Earth above the lunar horizon, with a turquoise rim and faint violet starlight."
+            />
+          </picture>
+          <span className={styles.heroCredit}>Meshy artwork inspired by Bill Anders’s Earthrise</span>
         </section>
 
         <section id="knowledge" className={styles.chapter}>
