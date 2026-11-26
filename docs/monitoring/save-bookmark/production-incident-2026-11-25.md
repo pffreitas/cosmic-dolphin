@@ -91,3 +91,19 @@ rm -rf "$starvation_control_dir"
 ## Repair gate
 
 Add a regression test through the real multi-queue dispatcher boundary before changing worker behavior. Verify reservation release after empty reads, failed reads, and partial batches without exceeding shared concurrency. Then complete the repository backend release gate before deploying a fix. Confirm the existing production messages progress and the two Grafana alerts resolve. No manual message replay is needed merely to make a visible message claimable.
+
+## Queue simplification audit
+
+No current application producer for the `default` queue was found. Its creation is legacy scaffolding in the initial pgmq migration. `DefaultMessageHandler` is a catch-all logger for unknown message types in any consumed queue; it is not a business producer for a queue named `default`.
+
+A production query at 2026-11-26 02:01:08 UTC used the worker's existing credential after the production target fence, verified TLS, and an explicitly read-only transaction with statement/lock limits. It selected counts only and called no queue claim, send, delete or archive function.
+
+| Queue | Current producer | Queued | Ever claimed among current messages | Archived |
+| --- | --- | --- | --- | --- |
+| `default` | None found | 0 | 0 | 0 |
+| `bookmarks` | Save/reprocess repository paths | 6 | 0 | 24 |
+| `digests` | `DigestSchedulerService` | 116 | 0 | 0 |
+
+The worker's live `QUEUE_NAMES=default,bookmarks` omits `digests`, while the digest scheduler remains enabled by default. Each `digest_generate` message carries `userId` and `scheduledAt`; it asks the handler to create an AI feed item from a coherent group of 3–6 recent saves, with source links. The generation window is 14 days, scheduler eligibility requires three recent saves, and users with a digest inside three days are skipped. Incoherent or insufficient content produces no digest. The 116 messages are unprocessed generation requests, not 116 completed digests or necessarily 116 different users.
+
+Recommendation: stop consuming unused `default`, retain the small dispatcher wake-up fix, and align consumers with the real `bookmarks`/`digests` producers if digests remain a product feature. An empty first queue can starve the second even after `default` is removed, so queue cleanup alone does not repair the generic dispatcher. Handle the 116 queued digest jobs deliberately before enabling that consumer. If digests are retired, disable the scheduler and retire that job path explicitly. Stopping a consumer is separate from dropping a database queue; no queue or configuration change was made in this audit.
