@@ -1,6 +1,6 @@
 # Bookmark queue wake-up repair
 
-Current outcome: implemented; production is still on the old worker. Next gate: complete serial backend tests and clean Linux API/worker image proofs, then review and independent shipping verification. Owner: root. Blocker: none observed; release evidence remains pending.
+Current outcome: implemented and Sol-approved; complete Linux backend suite and clean API/worker image/browser gates passed. Production is still on the old worker. Next gate: independent PR shipping verification and CI before merge, then the exact backend deployment and original-save progress. Owner: root. Blocker: none observed; release evidence remains pending.
 
 ## Authorized scope and starting state
 
@@ -16,13 +16,19 @@ After a queue read releases its reserved slots, the dispatcher now wakes loops w
 - Test-first tracer on original source: failed, bookmark never read.
 - Repaired dispatcher suite: 27 passed, 72 assertions.
 - Mutation removing only the wake-up line: empty, failed, and partial-batch cases fail; full-batch case passes through the existing handler-completion wake-up. Restored source: all 27 pass.
-- Frozen dependency install, contract compilation, generated-client build, shared and API builds: passed on host Bun 1.3.13. Worker build and complete backend gate: pending.
+- Frozen dependency install, contract compilation, generated-client build, shared, API and worker builds: passed on host Bun 1.3.13.
+- First host backend run: shared 510 passed, worker 48 passed; API 394 passed / 3 failed because two fixture guards require the literal local port 5433 and the native fixture child rejects port 53383. Tests were preserved. A Linux runner shares only the owned database container's network namespace, with a loopback 5433 proxy to its 5432 Postgres; the host's shared 5433 is untouched.
+- First Linux run could compile all inputs but Jest ran through Bun's Node fallback and failed before test execution. Installing actual Node 20.19.2 in the owned runner restored the CI runtime boundary. Complete serial Linux Bun 1.3.11 backend gate passed: shared 510 tests / 35 suites, API 406 tests, worker 48 tests; four Turbo tasks successful, zero cached, 70.35 seconds.
 
 ## Owned verification infrastructure
 
 The default Colima context and its existing databases were inventoried and left alone. This repair owns profile `cosmic-queue-repair-proof` (4 CPUs, 8 GB RAM), context `colima-cosmic-queue-repair-proof`, and disposable container `cosmic-queue-repair-db` on loopback port 53383. All repository migrations and the test marker were applied successfully. `TEST_DB_ALLOW_NONLOCAL=1` permits this explicitly owned alternate loopback port; no production database or shared port 5433 is used by tests. Backend suites run serially with fictional Supabase transport configuration.
 
-Clean tracked-source Linux image identity, startup/browser receipts, PR and backend deployment IDs: pending. Local Linux emulation will be distinguished from native cloud deployment.
+Clean tracked-source image input is `git archive` of `2830785745a25d71e92af1e0601f5e9795ae5966`, without local environment, dependencies or stale build outputs. Linux amd64 API image `sha256:f3d49b34d4e93c68cd7e32d0b05c820919bfa6a88a9892cfb91457147a8485e2` built; its actual process answered health 200 and imported the generated client with fictional configuration and network disabled. An initial health probe preceded readiness; the bounded readiness probe passed. The existing API Dockerfile uses Bun 1.2.23; the worker pins 1.3.11.
+
+Linux amd64 worker image `sha256:affe3d34c5c931106bcebf73c5230dac7cdabef231686d122e2a1688da16d9e2` built. QEMU's initial Bun execution hit the 512 MB container limit, confirmed by kernel memory-cgroup evidence. Only the owned profile was restarted with Rosetta. The same image then passed all eight packaged-browser assertions at 512 MB / one CPU, including public HTTPS trust and recovery after stalled JavaScript, without an OOM kill. The first Rosetta attempt used network disabled: seven local assertions passed, then its expected public HTTPS check failed; the final run allowed the public smoke request to example.com and passed. The script was copied into its expected `/app/scripts` path. No application code or memory limit was changed. Local Linux emulation is distinct from native cloud deployment.
+
+Owned test database/runner and smoke containers were removed after their gates; the owned VM and immutable proof images remain available for independent verification. The default Docker context remains `colima`. PR and backend deployment IDs: pending.
 
 ## Repair review ledger
 
@@ -30,10 +36,12 @@ This new repair has a three-round Sol review cap. The completed log-forwarding i
 
 | Round | Candidate | Verdict | Findings / outcome |
 | --- | --- | --- | --- |
-| 1 | Pending checks | Pending | Not started |
+| 1 | `2830785745a25d71e92af1e0601f5e9795ae5966` | APPROVE | gpt-6.1-sol on high; no findings. Independently ran dispatcher 27/72 and standalone reproduction 1 pass; checked wake-up ordering, capacity, shutdown and deployment overlay. Usage not returned. |
 
-Independent isolated functional Shipping verification is a separate release gate, not another code-review round. No commit, push, PR, merge, or deployment of this repair has occurred yet.
+Independent isolated functional Shipping verification is a separate release gate, not another code-review round. The repair is committed locally; no push, PR, merge or deployment has occurred at this receipt. Subsequent changes only update documentation; the approved behavior diff remains unchanged (three implementation/test/config files, 96 insertions / 2 deletions).
 
 ## Production acceptance
 
 Verify the exact merged SHA's backend tests, migrations, API and worker deployment. Observe real bookmark handler-entry logs, terminal status/dequeue progress for the six original queued saves, and scheduled Grafana backlog/overdue recovery. Report any normal source-processing failures separately. Digest jobs remain unconsumed. Save monitoring runs every 15 minutes, so a healthy deployment alone does not establish alert recovery.
+
+A read-only production capture at 2026-11-26 02:31:00 UTC confirmed six owner-matched queued saves, all processing, none ever claimed. Their bookmark/message IDs are retained only in a private receipt for exact post-release comparison; no customer URLs, titles or identities are published.
