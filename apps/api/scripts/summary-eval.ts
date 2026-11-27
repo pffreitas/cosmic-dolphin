@@ -413,6 +413,8 @@ async function judge(options: { key: string; label: string; reference?: string; 
         try {
           const result = await ai.generateObjectWithUsage({
             sessionID: `summary-eval-${randomUUID()}`, modelId: JUDGE_MODEL, prompt, schema: JUDGE_SCHEMA,
+            // A bounded reply keeps OpenRouter's in-flight credit reservation small.
+            maxOutputTokens: 8000,
             providerOptions: { openrouter: { provider: { require_parameters: true } } },
           });
           const value = result.value;
