@@ -1,0 +1,42 @@
+{
+  "sourceSHA": "1a5546038711d556354edff2fd44108f68677d71",
+  "type": "simulator fixture/local HTTP; not physical or production account proof",
+  "viewportPoints": [
+    402,
+    778
+  ],
+  "originalPoints": [
+    402,
+    874
+  ],
+  "crop": {
+    "top": 62,
+    "bottom": 34
+  },
+  "checks": {
+    "errorLightDarkDefault": "matches current web line breaks",
+    "confirmationLightDarkXXXL": "balanced heading, no stranded it",
+    "omniboxPrivateAndDuplicate": "owner-scoped URL, private description, save_sheet attribution, Saved then Already in your Library, Done returns to Home"
+  },
+  "images": {
+    "native-confirmation-light-large-after-balance-full.png": "081a88e110f9eca8c3ae9e0a3fc6c74f91afb8d1fb39106a8abcb72a283a9c70",
+    "native-confirmation-light-large-after-balance.png": "40b0b76c82c0642f32a221500e917b7f1e643d7ea79315e368bea57be196039c",
+    "native-confirmation-dark-large-after-balance-full.png": "8d451c5fd5c8ed58ac7c76cc7a0c0f86535e6cdaa4026c1ec0501a0aff45589f",
+    "loading-rejected.png": "332e2321d8e0cf5ffb5e96957d2c9ceba788f1954870126477ce4bc02b393ccc",
+    "native-invalid-dark-default-after-wrap-full.png": "5812f151e7e0708c6e74df744bc4899e16d9eb438831b1f60f6498802e8c9f81",
+    "native-invalid-light-default-after-wrap-full.png": "e6f0455f1bfd7b1c93b975e29fed0d79edf26782bbac614490e87574015af571",
+    "native-invalid-light-default-after-wrap.png": "476991d5dfe00cbdee6a108258ef2e700698d03c2cb1da7ac0f97827491fcd63",
+    "pair-invalid-light-default-after-wrap.png": "6bd3c8e79742d7b49f7179c22e2ab854a8cfd5e032cad1337bdc0c259b693df3",
+    "native-confirmation-dark-large-after-balance.png": "f05900b588beb727cfc4a517c5351b596a05b9ade20b38b2c061c443657e9e2b",
+    "pair-invalid-dark-default-after-wrap.png": "0fb119ee3a3a2f55490d94e18778f9313536573930a1fe6624ddfad7447ebcd5",
+    "native-invalid-dark-default-after-wrap.png": "9a21c4de0ce0c07db3ce8e3bcee0852dd9052a23c093f906023118f9f329597c",
+    "flow-omnibox-duplicate.png": "e73921f9c0bae67b40a0972420bbd6361ad957dfc0a9e0d20056409e71751ee8",
+    "flow-omnibox-private-saved.png": "e0093b2e6b87e92a57f094b2eaff9e0cba61755f9af3de1582180e8c24b31eca"
+  },
+  "limits": [
+    "No live spoken VoiceOver or physical/session proof.",
+    "Raw accessibility tree includes retained Home nodes when the private sheet opens from Home; previous cold-route/tree-only observation is not global focus-isolation proof.",
+    "Home backdrop is illustrative fixture content; the Save route/provider/storage/generated client/HTTP boundary is real native code."
+  ],
+  "captureHarnessNote": "All four bound CLI captures completed; the initial Python wrapper then hit a stray EOF sentinel NameError. Files were checked directly; no device command failed."
+}
