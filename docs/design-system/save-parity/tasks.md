@@ -1,6 +1,6 @@
 # Native Save web parity · 2026-11-27
 
-- Outcome: **Save and private-link presentation migrated to web composition**. Eight accepted main-state simulator/web pairs, two diagnostic invalid-state pairs and four native-only confirmation fixtures recorded. Mobile typecheck/lint and 40 suites / 324 tests pass (1 skipped). Source is ready for branch delivery; no Save TestFlight upload has been made.
+- Outcome: **Save and private-link presentation migrated to web composition**. Eight accepted main-state simulator/web pairs, two diagnostic invalid-state pairs and four native-only confirmation fixtures recorded. Mobile typecheck/lint and 40 suites / 324 tests pass (1 skipped). Source pushed as `d261b491eca5564665f74267e10879b57152cdb0` on `feat/mobile-home-web-parity`; no Save TestFlight upload has been made.
 - Next gate: render the final two-line error-wrap and balanced confirmation-heading corrections with a working bound-device session, then physical/signed-session acceptance. TestFlight remains the prior Home/sidebar build 24; distribution of this new Save change is a separate gate.
 - Owner: this MacBook T3 thread for source delivery; device QA/T3 continuation for the remaining render gate. Blocker: bound CLI `alert get` returned `ALERT_NOT_FOUND` after its prescribed `--debug` retry; device interaction stopped under the T3 device instructions. This did not undo completed captures or HTTP proofs.
 - Starting state: clean `feat/mobile-home-web-parity` at `bba8850a56a5900d1ea3cffda5cb2afa83cc38e0`, matching fetched origin. Base `origin/main` remains `671e2781e2f685804bf33bb06422bd1b92b05154`.
@@ -40,3 +40,5 @@
 - Remaining scope limits: other viewports/tablet/landscape, accessibility text categories, spoken VoiceOver, production account/share-extension capability and physical hardware are not certified by this pass. The existing build 24 receipt in the Home task record remains accurate and does not include these Save changes.
 
 - Final web URL-validator adapter reuses Home’s `captureUrl`: bare domains assume HTTPS; non-HTTP schemes and single-label/hostless addresses are rejected before persistence. Three provider/transport integration cases cover this; no new backend validator was introduced.
+
+- Delivery: implementation/evidence commit `d261b491eca5564665f74267e10879b57152cdb0` pushed to origin on the requested feature branch. No PR, merge, backend release or new TestFlight submission was performed.

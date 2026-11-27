@@ -1711,5 +1711,8 @@
     },
     "webTypecheck": "pass",
     "tokenTestsPassed": 11
-  }
+  },
+  "sourceCommit": "d261b491eca5564665f74267e10879b57152cdb0",
+  "branch": "feat/mobile-home-web-parity",
+  "delivery": "Source pushed; final device render gate remains; no Save TestFlight submission"
 }
