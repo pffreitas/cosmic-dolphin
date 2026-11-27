@@ -2724,6 +2724,29 @@ describe("BookmarkProcessorService", () => {
       expect(mockBookmarkService.updateProcessingStatus).toHaveBeenLastCalledWith(testBookmark.id, "failed", "Unusable source");
     });
 
+    it("keeps the source kind on failed summary turns", async () => {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(xBookmark());
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(linkedRow("complete"));
+      respond = (input) => {
+        if ("overview" in input.schema.shape) throw new NoObjectGeneratedError({ message: "incomplete", text: "{}", response: {} as any, usage: {} as any, finishReason: "length" });
+        throw new Error("provider down");
+      };
+
+      await processor.process(testBookmark.id, testBookmark.userId);
+
+      const persisted = new Map<string, any>();
+      for (const [data] of mockBookmarkProcessingRepository.createEvent.mock.calls) persisted.set(`event-${(data as any).sequence}`, { ...(data as any) });
+      for (const [id, data] of mockBookmarkProcessingRepository.updateEvent.mock.calls) {
+        const event = persisted.get(id);
+        if (event) for (const [key, value] of Object.entries(data as any)) if (value !== undefined) event[key] = value;
+      }
+      const failed = [...persisted.values()].filter((event) => event.kind === "turn" && event.phase === "summarise");
+      expect(failed.map((event) => [event.name, event.status, event.metadata?.kind, event.metadata?.linkedUrl, event.metadata?.linkedStatus])).toEqual([
+        ["Generate summary", "failed", "link_post", "https://essay.example.org/a", "used"],
+        ["Recover brief summary", "failed", "link_post", "https://essay.example.org/a", "used"],
+      ]);
+    });
+
     it("leaves no article overview after a scoped brief-only retry on the downgraded row", async () => {
       mockBookmarkService.findByIdAndUser.mockResolvedValue({ ...xBookmark(), cosmicSummary: "Article overview" });
       mockBookmarkService.ensureScrapedContent.mockResolvedValue(linkedRow("complete"));

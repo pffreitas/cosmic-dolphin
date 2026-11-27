@@ -923,7 +923,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
               unusableReason: result.value.unusableReason,
             },
           };
-        }
+        },
+        metadata
       );
     } catch (error) {
       if (!NoObjectGeneratedError.isInstance(error)) throw error;
@@ -953,7 +954,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
               briefOnly: true,
             },
           };
-        }
+        },
+        metadata
       );
     }
 
