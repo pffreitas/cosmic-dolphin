@@ -88,6 +88,8 @@ export class TestDataFactory {
       openGraph: TestDataFactory.createOpenGraphMetadata(),
       wordCount: 1200,
       readingTime: 5,
+      // As the create path stores a new save: its title is the pipeline's until edited.
+      titleOrigin: "pipeline",
     };
 
     return {

@@ -25,6 +25,9 @@ import type { Kysely } from "kysely";
 import { ContentExtractionError, isIncompleteExtraction } from "./content-extraction";
 import { dailyProcessingBudget } from "./processing-budget.service";
 import { bookmarkContentBlocks, limitBookmarkContent, type BookmarkContent } from "./bookmark-content-blocks";
+import { xPostOnlyContent } from "./twitter.service";
+
+const X_SITE_NAME = "X (formerly Twitter)";
 
 export interface PrivateLinkMetadata extends CaptureFields {
   title?: string;
@@ -137,6 +140,16 @@ export interface BookmarkService {
     bookmark: Bookmark,
     signal?: AbortSignal
   ): Promise<ScrapedUrlContents | null>;
+  /**
+   * Replace the title the run observed with one the pipeline chose. Refused,
+   * returning `false`, once the title changed or became the owner's.
+   */
+  replacePipelineTitle(bookmark: Bookmark, title: string): Promise<boolean>;
+  /**
+   * Keep only the post of an X row whose linked page was unreadable, and
+   * return the retained content row the rest of the run must use.
+   */
+  downgradeLinkedSource(bookmarkId: string, content: ScrapedUrlContents): Promise<ScrapedUrlContents>;
   createPrivateLink(
     url: string,
     userId: string,
@@ -374,6 +387,8 @@ export class BookmarkServiceImpl implements BookmarkService {
   ): NewBookmark {
     const urlMetadata = this.webScrapingService.extractMetadataFromUrl(url);
     const provisionalTitle = options.title || urlMetadata.title || url;
+    // A title the saver typed is theirs; one inherited from a reshare is a placeholder.
+    const ownerTitle = Boolean(options.title?.trim()) && !options.savedFromBookmarkId;
 
     const metadata: BookmarkMetadata = {
       openGraph: {
@@ -383,6 +398,7 @@ export class BookmarkServiceImpl implements BookmarkService {
         url,
       },
       originalUrl: options.originalUrl ?? url,
+      titleOrigin: ownerTitle ? "owner" : "pipeline",
     };
 
     const newBookmark: NewBookmark = {
@@ -454,15 +470,11 @@ export class BookmarkServiceImpl implements BookmarkService {
     await this.bookmarkRepository.update(bookmark.id, { metadata });
     // The scraped title replaces only the placeholder this call started from.
     // If the owner retitled while the fetch was in flight, the write is
-    // refused in SQL and their title stands.
-    const titleReplaced = await this.bookmarkRepository.replaceProvisionalTitle(
-      bookmark.id,
-      bookmark.title ?? null,
-      title,
-      `${title} ${bookmark.sourceUrl}`
-    );
-
-    if (titleReplaced) bookmark.title = title;
+    // refused in SQL and their title stands. An X post's title waits for the
+    // summary, which knows whether the linked article was readable.
+    if (metadata.openGraph?.site_name !== X_SITE_NAME && (await this.replacePipelineTitle(bookmark, title))) {
+      bookmark.title = title;
+    }
     bookmark.metadata = metadata;
 
     if (isIncompleteExtraction(scraped)) {
@@ -474,6 +486,20 @@ export class BookmarkServiceImpl implements BookmarkService {
     }
 
     return this.bookmarkRepository.getScrapedUrlContent(bookmark.id);
+  }
+
+  async replacePipelineTitle(bookmark: Bookmark, title: string): Promise<boolean> {
+    return this.bookmarkRepository.replaceProvisionalTitle(
+      bookmark.id,
+      bookmark.title ?? null,
+      title,
+      `${title} ${bookmark.sourceUrl}`
+    );
+  }
+
+  async downgradeLinkedSource(bookmarkId: string, content: ScrapedUrlContents): Promise<ScrapedUrlContents> {
+    await this.bookmarkRepository.downgradeLinkedSource(content.id, bookmarkId, xPostOnlyContent(content.content));
+    return (await this.bookmarkRepository.getScrapedUrlContent(bookmarkId)) ?? content;
   }
 
   async createPrivateLink(
@@ -911,7 +937,7 @@ export function mapDatabaseRowToBookmark(data: any): Bookmark {
     capturePlatform: data.capture_platform ?? null,
     captureQueuedAt: data.capture_queued_at ? new Date(data.capture_queued_at) : null,
     title: data.title,
-    metadata: data.metadata,
+    metadata: withoutTitleOrigin(data.metadata),
     collectionId: data.collection_id,
     filingSource: data.filing_source ?? "ai",
     savedFromBookmarkId: data.saved_from_bookmark_id ?? undefined,
@@ -944,6 +970,13 @@ export function mapDatabaseRowToBookmark(data: any): Bookmark {
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
   };
+}
+
+/** Title provenance is the pipeline's own bookkeeping; no API response carries it. */
+function withoutTitleOrigin(metadata: BookmarkMetadata | undefined): BookmarkMetadata | undefined {
+  if (!metadata || !("titleOrigin" in metadata)) return metadata;
+  const { titleOrigin: _origin, ...visible } = metadata;
+  return visible;
 }
 
 /** Private capture intent never travels with a public, followed or reshare DTO. */

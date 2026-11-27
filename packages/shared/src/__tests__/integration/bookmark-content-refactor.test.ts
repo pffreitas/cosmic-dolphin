@@ -52,10 +52,11 @@ describe("Bookmark Content Refactor Integration", () => {
       const fields = input.schema.shape
         ? Object.keys(input.schema.shape).sort().join(",")
         : Object.keys(input.schema.jsonSchema.properties).sort().join(",");
-      if (fields === "brief,contentStatus,keyPoints,overview,sections,unusableReason") {
+      if (fields === "brief,contentStatus,keyPoints,overview,sections,title,unusableReason") {
         return {
           contentStatus: "ok",
           unusableReason: null,
+          title: "Generated title",
           brief: "Generated brief summary",
           overview: "Generated AI summary",
           keyPoints: ["First finding", "Second finding"],

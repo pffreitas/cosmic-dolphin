@@ -41,6 +41,14 @@ export interface HttpFetchOptions {
   timeoutMs?: number;
   retryLimit?: number;
   signal?: AbortSignal;
+  /**
+   * Request-local destination check. It runs before the first dispatch, every
+   * redirect and every retry, and on the final URL before its body is used.
+   * Its error is what the call rejects with.
+   */
+  guard?: (url: URL) => void;
+  /** Omit the per-request logs, which carry the full URL. */
+  quiet?: boolean;
 }
 
 export interface HttpClient {
@@ -83,6 +91,20 @@ export class CosmicHttpClient implements HttpClient {
   private readonly requestTimeout = 15000; // bounded even for unreachable hosts
 
   async fetch(url: string, options?: HttpFetchOptions): Promise<HttpResponse> {
+    let rejection: unknown;
+    const check = (target: string | URL) => {
+      if (!options?.guard || rejection) return;
+      try {
+        options.guard(new URL(String(target)));
+      } catch (error) {
+        rejection = error;
+        throw error;
+      }
+    };
+    const log = (message: string) => {
+      if (!options?.quiet) console.log(message);
+    };
+    check(url);
     try {
       const response = await got(url, {
         timeout: { request: options?.timeoutMs ?? this.requestTimeout },
@@ -118,15 +140,21 @@ export class CosmicHttpClient implements HttpClient {
         throwHttpErrors: true,
         hooks: {
           beforeRequest: [
-            (options: any) => {
-              console.log(
-                `🌐 Making request to ${options.url} (attempt ${options.retryCount || 1})`,
+            (requestOptions: any) => {
+              check(requestOptions.url);
+              log(
+                `🌐 Making request to ${requestOptions.url} (attempt ${requestOptions.retryCount || 1})`,
               );
+            },
+          ],
+          beforeRedirect: [
+            (redirectOptions: any) => {
+              check(redirectOptions.url);
             },
           ],
           afterResponse: [
             (response: any) => {
-              console.log(
+              log(
                 `✅ Response: ${response.statusCode} ${response.statusMessage}`,
               );
               return response;
@@ -134,7 +162,8 @@ export class CosmicHttpClient implements HttpClient {
           ],
           beforeRetry: [
             (error: any, retryCount: number) => {
-              console.log(
+              check(error.options?.url ?? url);
+              log(
                 `🔄 Retry ${retryCount} for ${error.options?.url}: ${error.message}`,
               );
             },
@@ -143,6 +172,7 @@ export class CosmicHttpClient implements HttpClient {
       });
 
       const finalUrl = response.url || response.requestUrl;
+      check(finalUrl || url);
       return {
         ok: response.statusCode >= 200 && response.statusCode < 300,
         status: response.statusCode,
@@ -155,6 +185,7 @@ export class CosmicHttpClient implements HttpClient {
         arrayBuffer: async () => Buffer.from(response.body).buffer,
       };
     } catch (error) {
+      if (rejection) throw rejection;
       // Got 14 exposes error classes on the module namespace, not necessarily
       // on its default request function. Shape checks also work across CJS/ESM
       // boundaries and avoid instanceof undefined on Bun.

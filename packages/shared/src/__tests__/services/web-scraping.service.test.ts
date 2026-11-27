@@ -37,6 +37,48 @@ describe("WebScrapingService", () => {
     );
   });
 
+  describe("X link-posts", () => {
+    const fxThread = {
+      code: 200,
+      status: {
+        type: "status", id: "77", text: "New essay https://essay.example.org/on-bottlenecks",
+        raw_text: { text: "New essay https://t.co/EEEE", facets: [{ type: "url", original: "https://t.co/EEEE", replacement: "https://essay.example.org/on-bottlenecks" }] },
+        author: { name: "Ann", screen_name: "ann" }, created_timestamp: 1795376760,
+      },
+      thread: [],
+    };
+    const json = (body: object) => ({ ...htmlResponse(JSON.stringify(body)), headers: new Headers({ "content-type": "application/json" }) });
+    const essay = `<html><head><meta property="og:title" content="On bottlenecks"></head><body><article><h1>On bottlenecks</h1><p>${"Every queue hides a constraint worth naming. ".repeat(12)}</p></article></body></html>`;
+
+    it("reads the one eligible link with the direct reader, guarded and quiet", async () => {
+      jest.spyOn(console, "info").mockImplementation(() => undefined);
+      mockHttpClient.fetch.mockResolvedValueOnce(json(fxThread)).mockResolvedValueOnce(htmlResponse(essay));
+      const service = new WebScrapingServiceImpl(mockHttpClient, mockYouTubeService, undefined, []);
+
+      const result = await service.scrape("https://x.com/ann/status/77");
+
+      expect(mockHttpClient.fetch).toHaveBeenLastCalledWith(
+        "https://essay.example.org/on-bottlenecks",
+        expect.objectContaining({ quiet: true, guard: expect.any(Function), signal: expect.any(AbortSignal) }),
+      );
+      expect(result.metadata.extraction).toMatchObject({ provider: "fxtwitter", linked: { status: "complete", title: "On bottlenecks" } });
+      expect(result.content).toMatch(/^<blockquote>[\s\S]*<\/blockquote>\n<article>\n<h1>On bottlenecks<\/h1>/);
+    });
+
+    it("falls back to the post when the linked page needs rendering", async () => {
+      jest.spyOn(console, "info").mockImplementation(() => undefined);
+      const renderer = { extract: jest.fn() };
+      mockHttpClient.fetch.mockResolvedValueOnce(json(fxThread)).mockResolvedValueOnce(htmlResponse("<html><body><div id=root></div><noscript>Enable JavaScript</noscript></body></html>"));
+      const service = new WebScrapingServiceImpl(mockHttpClient, mockYouTubeService, undefined, [renderer as unknown as PageExtractionProvider]);
+
+      const result = await service.scrape("https://x.com/ann/status/77");
+
+      expect(renderer.extract).not.toHaveBeenCalled();
+      expect(result.metadata.extraction?.linked).toEqual({ url: "https://essay.example.org/on-bottlenecks", status: "failed", error: "empty" });
+      expect(result.content).not.toContain("<article>");
+    });
+  });
+
   describe("scrape", () => {
     it("hands the run signal to the page fetch and to rendered extraction", async () => {
       const controller = new AbortController();
