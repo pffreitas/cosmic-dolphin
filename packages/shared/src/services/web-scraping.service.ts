@@ -5,7 +5,12 @@ import {
   PreviewMetadata,
 } from "../types";
 import * as cheerio from "cheerio";
-import { HttpClient, CosmicHttpClient, HttpRequestError } from "./http-client";
+import {
+  HttpClient,
+  CosmicHttpClient,
+  HttpFetchOptions,
+  HttpRequestError,
+} from "./http-client";
 import { YouTubeService, YouTubeServiceImpl } from "./youtube.service";
 import { TwitterService, TwitterServiceImpl } from "./twitter.service";
 import {
@@ -54,7 +59,11 @@ export class WebScrapingServiceImpl implements WebScrapingService {
     ],
   ) {
     this.youtubeService = youtubeService ?? new YouTubeServiceImpl(httpClient);
-    this.twitterService = twitterService ?? new TwitterServiceImpl(httpClient);
+    this.twitterService =
+      twitterService ??
+      new TwitterServiceImpl(httpClient, undefined, (url, options) =>
+        this.readDirect(url, options),
+      );
   }
 
   isValidUrl(url: string): boolean {
@@ -98,46 +107,10 @@ export class WebScrapingServiceImpl implements WebScrapingService {
 
     try {
       const signal = context?.signal;
-      const response = context?.metadataOnly
-        ? await this.httpClient.fetch(url, {
-            timeoutMs: 8_000,
-            retryLimit: 0,
-            ...(signal ? { signal } : {}),
-          })
-        : signal
-          ? await this.httpClient.fetch(url, { signal })
-          : await this.httpClient.fetch(url);
-
-      if (!response.ok) {
-        throw new HttpRequestError(
-          `HTTP ${response.status}: ${response.statusText}`,
-          response.status,
-        );
-      }
-
-      if (response.redirectUrl) {
-        this.detectAuthRedirect(url, response.redirectUrl);
-      }
-
-      const contentType = response.headers.get("content-type") || "";
-
-      if (
-        !contentType.includes("text/html") &&
-        !contentType.includes("application/xhtml+xml")
-      ) {
-        throw new ContentExtractionError(
-          `Unsupported content type: ${contentType}`,
-          "unsupported",
-          false,
-        );
-      }
-
-      const scrapedUrlContents = this.scrapeContent(
-        response.redirectUrl || url,
-        response.body,
-      );
-      this.assertScrapedContentUsable(scrapedUrlContents);
-      return this.withProvenance(scrapedUrlContents, "direct");
+      return await this.readDirect(url, {
+        ...(context?.metadataOnly ? { timeoutMs: 8_000, retryLimit: 0 } : {}),
+        ...(signal ? { signal } : {}),
+      });
     } catch (error) {
       // Authentication, missing pages and unsupported files cannot be fixed by
       // rendering. Blocks, empty JS shells and transient transport errors can.
@@ -199,6 +172,48 @@ export class WebScrapingServiceImpl implements WebScrapingService {
         true,
       );
     }
+  }
+
+  /**
+   * One direct HTTP read of an HTML page with the response, redirect and
+   * usability checks, and no rendering. Standalone saves fall back to a
+   * renderer after it; an X post's linked read does not.
+   */
+  async readDirect(url: string, options: HttpFetchOptions = {}): Promise<ExtractedContent> {
+    const response = Object.keys(options).length
+      ? await this.httpClient.fetch(url, options)
+      : await this.httpClient.fetch(url);
+
+    if (!response.ok) {
+      throw new HttpRequestError(
+        `HTTP ${response.status}: ${response.statusText}`,
+        response.status,
+      );
+    }
+
+    if (response.redirectUrl) {
+      this.detectAuthRedirect(url, response.redirectUrl);
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+
+    if (
+      !contentType.includes("text/html") &&
+      !contentType.includes("application/xhtml+xml")
+    ) {
+      throw new ContentExtractionError(
+        `Unsupported content type: ${contentType}`,
+        "unsupported",
+        false,
+      );
+    }
+
+    const scrapedUrlContents = this.scrapeContent(
+      response.redirectUrl || url,
+      response.body,
+    );
+    this.assertScrapedContentUsable(scrapedUrlContents);
+    return this.withProvenance(scrapedUrlContents, "direct");
   }
 
   private withProvenance(
