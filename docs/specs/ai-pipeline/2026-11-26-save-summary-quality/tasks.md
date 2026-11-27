@@ -33,7 +33,7 @@ Critical path runs T-1 through T-6. The Haiku checks are pre-merge. The owner re
 
 - The disposable database suites run serially. Isolate Supabase RPC as well as SQL. Record the actual command, outcome and candidate SHA. Follow the [backend release runbook](../../../runbooks/backend-and-testflight-release.md).
 - Review the full package with Sol against all acceptance criteria, failure contracts, test evidence and delivery policy. Track one ledger of up to five rounds across product and release fixes. Reserve rounds for deployment or PR fixes. Each entry records base and reviewed SHAs, severity, affected criterion and disposition. Approval must cover the final behavior.
-- The PR includes model scores, measured costs, calibration results, observed errors, checks and release risks. Keep quality exceptions separate from required functional, safety and release proofs. Follow T3’s PR linking and waiting rules.
+- The PR includes the judged baseline, the Haiku verification runs, measured costs, observed cuts and errors, checks and release risks. No candidate scores or calibration exist (D-19). Keep quality exceptions separate from required functional, safety and release proofs. Follow T3’s PR linking and waiting rules.
 - Report merge, exact-SHA backend deployment and production proof independently. No manual TestFlight or client release belongs to this package.
 
 | Review round | Base SHA | Reviewed SHA | Verdict and findings |

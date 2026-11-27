@@ -12,7 +12,7 @@
 
 ## 1. Summary
 
-Owners who save X posts miss the substance of linked articles. Restore X extraction and read one eligible link. Summarise the readable article under its own title, attribute material framing or dissent to the poster, and keep a post-only summary that identifies the unread host when the follow fails. Select the model for summaries and digests with a production-code eval.
+Owners who save X posts miss the substance of linked articles. Restore X extraction and read one eligible link. Summarise the readable article under its own title, attribute material framing or dissent to the poster, and keep a post-only summary that identifies the unread host when the follow fails. Ship Haiku 5.5 for summaries and digests now (D-19) and keep the production-code eval for later setup comparisons.
 
 **Decisions to review.** One eligible link (D-7), owner title precedence (D-10), cost and quality rules for model selection (D-6, D-17), and five blind owner grades (D-18).
 
@@ -22,10 +22,10 @@ A local replay of Will Larson’s post saved `Tweet by Will Larson` without the 
 
 | ID | Metric | Target | Proof |
 |---|---|---|---|
-| G-1 | Readable link-post rubric score | Mean ≥7.5/10, each fixture ≥6.0 | FR-9 |
-| G-2 | Four readable standalone articles | Mean ≥baseline +0.5, no fixture down >1.0 | FR-9 |
-| G-3 | Title, brief or key point cut with `…` | Zero in eval, ≤1% of new saves in days 1–7 | FR-9, §8.8 |
-| G-4 | Unsupported factual claims | Zero, builder verifies judge flags | FR-9 |
+| G-1 | Readable link-post rubric score | Mean ≥7.5/10, each fixture ≥6.0 | Deferred (D-19) |
+| G-2 | Four readable standalone articles | Mean ≥baseline +0.5, no fixture down >1.0 | Deferred (D-19) |
+| G-3 | Title, brief or key point cut with `…` | ≤1% of new saves in days 1–7. Eval cuts are reported, not gating (D-19). | §8.8 |
+| G-4 | Unsupported factual claims | Zero, builder verifies judge flags | Deferred (D-19) |
 | G-5 | Mean summarise cost per save | ≤$0.03 in eval and days 1–7 | FR-9, §8.8 |
 | G-6 | p95 fetch plus summarise duration | ≤prior seven-day baseline +15 s | §8.8 |
 
@@ -64,7 +64,7 @@ Paths are under `packages/shared/src/services/` unless prefixed.
 | FR-6 | Preserve structure in extracted article text | Adjacent blocks stay distinct. Paragraphs, headings, list items and image alt text survive. |
 | FR-7 | Give each field a distinct job within existing display limits | Exercise both summary variants and caps. Score cuts and repetition in eval. |
 | FR-8 | Trace extraction and summarise decisions | Example records provider, summarise kind, linked URL and status. |
-| FR-9 | Provide a rerunnable production-code eval | Report recorded requested models, rubric, score spread, errors, cuts, cost, latency and D-6 or D-17 result. |
+| FR-9 | Provide a rerunnable production-code eval | Report recorded requested models, rubric, score spread, errors, cuts, cost and latency. Judging candidates and the D-6 or D-17 result are deferred (D-19). |
 | FR-10 | Enforce §8.7 eligibility and host rules | Multiple eligible links and previews make no follow. Reject invalid destinations before dispatch. |
 | FR-11 | Use 0–5 nonredundant points for plain posts and 2–5 for articles and readable link-posts | A one-sentence post can have zero points. |
 | FR-12 | Ship the selected model with the evaluated summary provider options | Verify the merge-candidate default and run a digest smoke. |
