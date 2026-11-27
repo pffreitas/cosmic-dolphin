@@ -10,7 +10,7 @@ Start with [cross-platform parity](./parity.md), then foundations, components an
 [The reconciliation record](./reconciliation/tasks.md) records scope and verification.
 
 For continued native implementation, start with [the native parity handoff](native-parity-handoff.md).
-It maps reusable components, build/fixture commands and the separate Home/Save proof and release gates.
+It maps reusable components, build/fixture commands and the separate Home, Save-form and [saved-detail](bookmark-detail-parity/tasks.md) proof and release gates.
 
 Product behaviour lives next door in [`docs/functional-spec/`](../functional-spec/) and the approved mobile feature spec. Visual contracts do not replace behavioral and permission requirements.
 

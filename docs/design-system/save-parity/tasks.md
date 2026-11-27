@@ -1,9 +1,10 @@
 # Native Save web parity · 2026-11-27
 
-- Outcome: **Save migration delivered in iOS 1.0.0 (25), available in the existing internal TestFlight Beta group**. Signed app/extension verified; submission FINISHED; Apple VALID / IN_BETA_TESTING / unexpired; actual Beta membership confirmed. Final Save render/omnibox/duplicate simulator rechecks passed; unchanged mobile code retains 40 suites / 324 tests, 1 skipped.
+- Outcome: **Save-a-link form delivered in iOS 1.0.0 (25), available in the existing internal TestFlight Beta group**. Signed app/extension verified; submission FINISHED; Apple VALID / IN_BETA_TESTING / unexpired; actual Beta membership confirmed. Final Save render/omnibox/duplicate simulator rechecks passed; unchanged mobile code retains 40 suites / 324 tests, 1 skipped.
 - Next gate: physical/signed-session and spoken accessibility acceptance of build 25, including modal focus and existing sign-out/share-extension capabilities. No remaining binary-delivery gate.
 - Owner: this MacBook T3 thread completed delivery; next acceptance belongs to device QA/user. Blocker: none for delivery. Evidence limits remain explicit below.
 - Starting state: clean `feat/mobile-home-web-parity` at `bba8850a56a5900d1ea3cffda5cb2afa83cc38e0`, matching fetched origin. Base `origin/main` remains `671e2781e2f685804bf33bb06422bd1b92b05154`.
+- Scope correction (2026-11-27): this record covers the **create form**. The user meant saved bookmark detail; build 25 left that route unchanged. Continue at [saved detail tasks](../bookmark-detail-parity/tasks.md). These form captures are not detail evidence.
 - Scope: user requested web → mobile Save migration using the Home approach. Current production `NewBookmarkButton`, `PrivateLinkDialog`, Dialog/Input/Textarea/Button and shared tokens are visual authority. Preserve native durable capture, clipboard privacy and optional note/read-later confirmation from FR-4/FR-5 of the approved mobile reading spec.
 - Evidence labels: simulator + dev fixtures/fictional loopback HTTP transport. No physical-device, production-account or signed share-extension session proof is implied.
 - Resume: [native component/build handoff](../native-parity-handoff.md) and [Save fixture commands and outstanding recheck](README.md). These are durable recipes; no prior terminal session or `/tmp` capture script is required.

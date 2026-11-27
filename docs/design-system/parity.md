@@ -12,7 +12,7 @@ reference for a subsequent native implementation, not authorization to replace i
 specified viewport, theme, font and text scale. A shared token file is necessary but insufficient.
 The original 2026-11-26 reconciliation was source-only. Subsequent native implementations and
 matched evidence are tracked per feature in [Home parity](home-parity/tasks.md) and
-[Save parity](save-parity/tasks.md), with their remaining gates and proof limits. Start at
+[Save-form parity](save-parity/tasks.md) and [saved-detail parity](bookmark-detail-parity/tasks.md), with their remaining gates and proof limits. Start at
 [the native continuation guide](native-parity-handoff.md) when building on those implementations;
 the reconciliation itself is not blanket native or physical-device certification.
 

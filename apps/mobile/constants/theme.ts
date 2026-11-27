@@ -323,6 +323,10 @@ export const webType = {
   label: { family: 'sans' as FontRole, fontSize: 11.5, lineHeight: 14.95, fontWeight: '600' as const },
   quote: { family: 'serif' as FontRole, fontSize: 21, lineHeight: 32.55, fontWeight: '400' as const, letterSpacing: -0.126, fontStyle: 'italic' as const },
   saving: { family: 'serif' as FontRole, fontSize: 16, lineHeight: 21.6, fontWeight: '600' as const, letterSpacing: -0.096 },
+  readerHeading: { family: 'serif' as FontRole, fontSize: 26, lineHeight: 32.5, fontWeight: '600' as const, letterSpacing: -0.39 },
+  readerSubheading: { family: 'serif' as FontRole, fontSize: 20, lineHeight: 27, fontWeight: '600' as const, letterSpacing: -0.2 },
+  briefSummary: { family: 'sans' as FontRole, fontSize: 14.5, lineHeight: 23.2, fontWeight: '400' as const },
+  briefKeyPoint: { family: 'sans' as FontRole, fontSize: 14, lineHeight: 21.7, fontWeight: '400' as const },
 } as const;
 
 export const webTypeCompact = {
@@ -342,6 +346,10 @@ export const webTypeCompact = {
   label: { family: 'sans' as FontRole, fontSize: 11.5, lineHeight: 14.95, fontWeight: '600' as const },
   quote: { family: 'serif' as FontRole, fontSize: 21, lineHeight: 32.55, fontWeight: '400' as const, letterSpacing: -0.126, fontStyle: 'italic' as const },
   saving: { family: 'serif' as FontRole, fontSize: 16, lineHeight: 21.6, fontWeight: '600' as const, letterSpacing: -0.096 },
+  readerHeading: { family: 'serif' as FontRole, fontSize: 26, lineHeight: 32.5, fontWeight: '600' as const, letterSpacing: -0.39 },
+  readerSubheading: { family: 'serif' as FontRole, fontSize: 20, lineHeight: 27, fontWeight: '600' as const, letterSpacing: -0.2 },
+  briefSummary: { family: 'sans' as FontRole, fontSize: 14.5, lineHeight: 23.2, fontWeight: '400' as const },
+  briefKeyPoint: { family: 'sans' as FontRole, fontSize: 14, lineHeight: 21.7, fontWeight: '400' as const },
 } as const;
 
 export type WebTypeRole = keyof typeof webType;

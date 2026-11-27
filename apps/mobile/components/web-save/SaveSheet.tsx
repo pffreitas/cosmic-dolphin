@@ -95,15 +95,15 @@ export function SaveSheet(props: SaveSheetProps) {
   </KeyboardAvoidingView></Modal>;
 }
 
-export function SheetButton({ label, primary, icon: Icon, iconOnly, busy, disabled, selected, onPress }: { label: string; primary?: boolean; icon?: LucideIcon; iconOnly?: boolean; busy?: boolean; disabled?: boolean; selected?: boolean; onPress: () => void }) {
+export function SheetButton({ label, primary, icon: Icon, iconOnly, busy, disabled, selected, secondary = false, onPress }: { secondary?: boolean; label: string; primary?: boolean; icon?: LucideIcon; iconOnly?: boolean; busy?: boolean; disabled?: boolean; selected?: boolean; onPress: () => void }) {
   const { colors } = useWebTheme();
   const reduceMotion = useReducedMotion();
   const { focusStyle, ...focusEvents } = useControlFocus();
-  const foreground = primary ? colors.accentFg : iconOnly ? colors.fgTertiary : colors.fgSecondary;
+  const foreground = primary ? colors.accentFg : secondary ? colors.fg : iconOnly ? colors.fgTertiary : colors.fgSecondary;
   return <Pressable {...focusEvents} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ busy: !!busy, disabled: !!(disabled || busy), ...(selected === undefined ? {} : { selected }) }} disabled={disabled || busy} onPress={onPress} hitSlop={6}
     style={({ pressed }) => [{ minHeight: iconOnly ? 32 : 36, ...(iconOnly ? { width: 32 } : { paddingHorizontal: primary ? 18 : 14, paddingVertical: 9 }),
-      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: iconOnly ? 0 : 1, borderColor: selected ? colors.borderStrong : "transparent",
-      borderRadius: primary ? radius.pill : radius.sm, opacity: disabled ? 0.45 : 1, backgroundColor: primary ? colors.accent : selected || pressed ? colors.bgInset : "transparent" }, focusStyle, { outlineColor: colors.focus }]}>
+      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: iconOnly ? 0 : 1, borderColor: secondary || selected ? colors.borderStrong : "transparent",
+      borderRadius: primary ? radius.pill : radius.sm, opacity: disabled ? 0.45 : 1, backgroundColor: primary ? colors.accent : secondary ? colors.bgPanel : selected || pressed ? colors.bgInset : "transparent" }, focusStyle, { outlineColor: colors.focus }]}>
     {busy ? <ActivityIndicator size={14} color={foreground} animating={!reduceMotion} /> : Icon ? <Icon size={16} strokeWidth={1.7} color={foreground} /> : null}
     {!iconOnly ? <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: webSansFont(500), fontSize: 13.5, lineHeight: 13.5, color: foreground }}>{label}</Text> : null}
   </Pressable>;

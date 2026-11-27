@@ -61,16 +61,34 @@
       "sha256": "5bf474dcca909ca7fb1c5579db3a611b5b6747e35d45444b5a52080f34f8a1dd"
     },
     {
+      "file": "CosmicReading32.ttf",
+      "weightAxis": 600,
+      "opticalSize": 32,
+      "sha256": "9f4368d8cd09f4418f206f379b18d47ace24bd5389cf5ec851270d1e63ac4d9a"
+    },
+    {
       "file": "CosmicReading34.ttf",
       "weightAxis": 600,
       "opticalSize": 34,
       "sha256": "56f90bad56274ecd9a73b2b2bf806727a64d89f81b2e15fa35ac3ae5507a83b8"
     },
     {
+      "file": "CosmicReading35.ttf",
+      "weightAxis": 600,
+      "opticalSize": 35,
+      "sha256": "a113f6b6edf5952f87cd820328a539f9504c4844d5ef468209b8c58f53e23537"
+    },
+    {
       "file": "CosmicReading38.ttf",
       "weightAxis": 600,
       "opticalSize": 38,
       "sha256": "09f097df5ba3b8807bacc89e1b18ae6719db124d9d12e1bce94c86beacc1e174"
+    },
+    {
+      "file": "CosmicReading43.ttf",
+      "weightAxis": 600,
+      "opticalSize": 43,
+      "sha256": "6f7bb73834686812c8ba5171cd6d960cb5ce5ecade7cbf367f8625308d7063f0"
     },
     {
       "file": "CosmicReading46.ttf",

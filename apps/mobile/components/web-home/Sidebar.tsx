@@ -51,12 +51,14 @@ import { useWebTheme, webText, webSansFont } from "./theme";
 export function HomeSidebar({
   counts,
   reducedMotion = true,
+  homeActive = true,
   onClose,
   onDestination,
   onLibrary,
 }: {
   counts: BookmarkLibraryCounts | null;
   reducedMotion?: boolean;
+  homeActive?: boolean;
   onClose: () => void;
   onDestination: (
     destination: "/" | "/explore" | "/search" | "/profile",
@@ -70,6 +72,7 @@ export function HomeSidebar({
       key={user?.id ?? "signed-out"}
       counts={counts}
       reducedMotion={reducedMotion}
+      homeActive={homeActive}
       onClose={onClose}
       onDestination={onDestination}
       onLibrary={onLibrary}
@@ -79,6 +82,7 @@ export function HomeSidebar({
 function SidebarContent({
   counts,
   reducedMotion,
+  homeActive,
   onClose,
   onDestination,
   onLibrary,
@@ -268,7 +272,7 @@ function SidebarContent({
           <SidebarRow
             label="Home"
             icon={Home}
-            active
+            active={homeActive}
             onPress={() => onDestination("/")}
           />
           <SidebarRow

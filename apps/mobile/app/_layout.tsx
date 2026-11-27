@@ -176,6 +176,7 @@ function RootLayoutNav() {
             name="bookmark/[id]"
             options={{
               headerShown: false,
+              presentation: "card",
               animation: reduceMotion ? "none" : "slide_from_right",
             }}
           />
@@ -229,7 +230,24 @@ export default function RootLayout() {
     CosmicReading26: require("../assets/fonts/CosmicReading26.ttf"),
     CosmicReading27: require("../assets/fonts/CosmicReading27.ttf"),
     CosmicReading28: require("../assets/fonts/CosmicReading28.ttf"),
+    CosmicReading32: require("../assets/fonts/CosmicReading32.ttf"),
+    CosmicReading43: require("../assets/fonts/CosmicReading43.ttf"),
+    CosmicBoldItalic17: require("../assets/fonts/CosmicBoldItalic17.ttf"),
+    CosmicBoldItalic20: require("../assets/fonts/CosmicBoldItalic20.ttf"),
+    CosmicBoldItalic21: require("../assets/fonts/CosmicBoldItalic21.ttf"),
+    CosmicBoldItalic23: require("../assets/fonts/CosmicBoldItalic23.ttf"),
+    CosmicBoldItalic26: require("../assets/fonts/CosmicBoldItalic26.ttf"),
+    CosmicBoldItalic27: require("../assets/fonts/CosmicBoldItalic27.ttf"),
+    CosmicBoldItalic28: require("../assets/fonts/CosmicBoldItalic28.ttf"),
+    CosmicBoldItalic35: require("../assets/fonts/CosmicBoldItalic35.ttf"),
+    CosmicProse17: require("../assets/fonts/CosmicProse17.ttf"),
+    CosmicProse23: require("../assets/fonts/CosmicProse23.ttf"),
+    CosmicItalic17: require("../assets/fonts/CosmicItalic17.ttf"),
+    CosmicItalic23: require("../assets/fonts/CosmicItalic23.ttf"),
+    CosmicItalic21: require("../assets/fonts/CosmicItalic21.ttf"),
+    CosmicItalic28: require("../assets/fonts/CosmicItalic28.ttf"),
     CosmicReading34: require("../assets/fonts/CosmicReading34.ttf"),
+    CosmicReading35: require("../assets/fonts/CosmicReading35.ttf"),
     CosmicReading38: require("../assets/fonts/CosmicReading38.ttf"),
     CosmicReading46: require("../assets/fonts/CosmicReading46.ttf"),
 

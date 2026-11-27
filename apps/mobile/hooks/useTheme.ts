@@ -1,3 +1,5 @@
+import { createContext, useContext } from "react";
+import { webColors } from "@/constants/theme";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import {
@@ -13,13 +15,22 @@ import {
  * its colours from the same mode — never mix a light literal into a dark
  * surface.
  */
-export function useTheme(): { scheme: ColorSchemeName; colors: ThemeColors } {
+export const ThemePaletteScope = createContext<"native" | "web">("native");
+
+export function useTheme(): {
+  scheme: ColorSchemeName;
+  colors: ThemeColors | (typeof webColors)[ColorSchemeName];
+} {
+  const palette = useContext(ThemePaletteScope);
   const system = useColorScheme() ?? "light";
   const { appearance } = usePreferences();
   const scheme = (
     appearance === "system" ? system : appearance
   ) as ColorSchemeName;
-  return { scheme, colors: colors[scheme] };
+  return {
+    scheme,
+    colors: palette === "web" ? webColors[scheme] : colors[scheme],
+  };
 }
 
 /**

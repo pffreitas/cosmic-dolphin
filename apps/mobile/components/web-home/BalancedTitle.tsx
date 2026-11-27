@@ -10,8 +10,8 @@ export function BalancedTitle({ children, style, maxLines = 3 }: { children: str
   const { fontScale } = useWindowDimensions();
   const key = `${children}:${width}:${fontScale}:${JSON.stringify(style)}`;
   return <View onLayout={event => setWidth(event.nativeEvent.layout.width)}>
-    <Text accessibilityRole="header" numberOfLines={maxLines} style={[...style, balanced?.key === key ? { width: balanced.width } : undefined]}>{children}</Text>
-    {width > 0 ? <Measurement key={key} text={children} style={style} width={width} maxLines={maxLines} onMeasured={value => setBalanced({ key, width: value })} /> : null}
+    <Text accessibilityRole="header" numberOfLines={maxLines || undefined} style={[...style, balanced?.key === key ? { width: balanced.width } : undefined]}>{children}</Text>
+    {width > 0 ? <Measurement key={key} text={children} style={style} width={width} maxLines={maxLines || Number.POSITIVE_INFINITY} onMeasured={value => setBalanced({ key, width: value })} /> : null}
   </View>;
 }
 function Measurement({ text, style, width, maxLines, onMeasured }: { text: string; style: TextStyle[]; width: number; maxLines: number; onMeasured: (width: number) => void }) {

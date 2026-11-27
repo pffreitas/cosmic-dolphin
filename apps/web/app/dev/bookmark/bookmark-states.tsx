@@ -1,6 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
+import { AppShell } from "@/components/shell/app-shell";
+import { BottomNavigation } from "@/components/mobile/bottom-nav";
+import { toDetailModel } from "@/components/bookmark/detail/detail-data";
+import type { Bookmark } from "@cosmic-dolphin/api-client";
+import comparison from "../../../../mobile/dev/bookmark-fixture.json";
 import { Highlight, ReadingProgress } from "@cosmic-dolphin/api-client";
 
 import { DevShell } from "@/app/dev/dev-shell";
@@ -259,6 +265,12 @@ const STATES: { value: StateKey; label: string }[] = [
  * is the point of it. Visit `/bookmarks/does-not-exist` to see it.
  */
 export function BookmarkStates() {
+  const params = useSearchParams();
+  const parity = params.get("parity") === "1";
+  React.useEffect(() => {
+    if (parity) document.documentElement.dataset.bookmarkParityReady = "1";
+    return () => { delete document.documentElement.dataset.bookmarkParityReady; };
+  }, [parity]);
   const [state, setState] = React.useState<StateKey>("ready");
   const services = React.useMemo(() => fixtureServices(HIGHLIGHTS), []);
 
@@ -298,6 +310,11 @@ export function BookmarkStates() {
         return model("ready", "owner");
     }
   }, [state]);
+
+  if (params.get("parity") === "1") {
+    const bookmark = { ...comparison.bookmark, createdAt: new Date(comparison.bookmark.createdAt), updatedAt: new Date(comparison.bookmark.updatedAt) } as Bookmark;
+    return <AppShell currentPath="/bookmarks/frontier-fixture" collections={[]} counts={null}><BookmarkDetail model={toDetailModel(bookmark,{mode:"owner",now:new Date(comparison.now)})} services={services} offline/><BottomNavigation currentPath="/bookmarks/frontier-fixture"/></AppShell>;
+  }
 
   return (
     <DevShell

@@ -388,3 +388,7 @@ safe-area padding is a platform addition. Web retains its existing CSS treatment
 `typography.scale.saving` records the current web SavingRow title: Source Serif 4
 600, 16px, 1.35 line height and -.006em tracking. It is separate from the 17px
 continue-reading title. Native bundles its optical cut as well as larger cuts.
+
+### Saved-detail typography exports
+
+The saved-detail adaptation exports production web roles through canonical tokens: `readerHeading` (26/32.5, serif 600, −0.015em), `readerSubheading` (20/27, serif 600, −0.01em), `briefSummary` (14.5/23.2, sans 400) and `briefKeyPoint` (14/21.7, sans 400). The native reader uses frozen regular/italic/bold-italic optical instances; its code uses the current Apple monospace fallback. See [saved-detail tasks](bookmark-detail-parity/tasks.md) for source and remaining device proof. These exports preserve current web appearance.

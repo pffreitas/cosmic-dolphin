@@ -17,7 +17,7 @@ import { useWebTheme } from "./theme";
 
 export const FOCUS_HOME_SEARCH = "cosmic:focus-home-omnibox";
 
-export function HomeToolbar({ onError, counts = null }: { onError: (message: string) => void; counts?: BookmarkLibraryCounts | null }) {
+export function HomeToolbar({ onError, counts = null, homeActive = true }: { onError: (message: string) => void; counts?: BookmarkLibraryCounts | null; homeActive?: boolean }) {
   const { colors } = useWebTheme();
   const { user } = useAuth();
   const router = useRouter();
@@ -66,22 +66,22 @@ export function HomeToolbar({ onError, counts = null }: { onError: (message: str
     <Modal visible={menu} transparent animationType="none" onRequestClose={closeMenu}>
       <View style={{ flex: 1, flexDirection: "row" }}>
         <Pressable accessibilityLabel="Close navigation" onPress={closeMenu} style={{ position: "absolute", width: "100%", height: "100%", backgroundColor: colors.overlay }} />
-        {menu ? <HomeSidebar counts={counts} reducedMotion={reducedMotion} onClose={closeMenu} onDestination={go} onLibrary={query => { setMenu(false); router.push({ pathname: "/library", params: query }); }} /> : null}
+        {menu ? <HomeSidebar homeActive={homeActive} counts={counts} reducedMotion={reducedMotion} onClose={closeMenu} onDestination={go} onLibrary={query => { setMenu(false); router.push({ pathname: "/library", params: query }); }} /> : null}
       </View>
     </Modal>
   </>;
 }
 
 /** Five web navigation cells on Home; OS bottom inset is an explicit native addition. */
-export function HomeTabBar() {
+export function HomeTabBar({ active: activeTab = "Home" }: { active?: "Home" | "Library" | "none" } = {}) {
   const { colors, scheme } = useWebTheme();
   const router = useRouter();
   const rootNavigation = useNavigation("/");
   const insets = useSafeAreaInsets();
   const [focused, setFocused] = useState<string>();
   const items = [
-    { label: "Home", icon: Home, onPress: () => router.push("/"), active: true },
-    { label: "Library", icon: Library, onPress: () => router.push("/library") },
+    { label: "Home", icon: Home, onPress: () => router.push("/"), active: activeTab === "Home" },
+    { label: "Library", icon: Library, onPress: () => router.push("/library"), active: activeTab === "Library" },
     { label: "Save", icon: Plus, onPress: () => router.push("/save") },
     { label: "Search", icon: Search, onPress: () => DeviceEventEmitter.emit(FOCUS_HOME_SEARCH) },
     { label: "You", icon: User, onPress: () => rootNavigation.navigate("profile" as never) },

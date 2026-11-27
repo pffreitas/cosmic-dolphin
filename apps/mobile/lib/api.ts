@@ -16,6 +16,7 @@ export interface CollectionPathItem {
 }
 
 export interface OpenGraphMetadata {
+  articleAuthor?: string;
   favicon?: string;
   title?: string;
   description?: string;
@@ -32,7 +33,9 @@ export interface BookmarkMetadata {
 }
 
 export interface Bookmark {
-  processingFailureCode?: import("@cosmic-dolphin/api-client").ProcessingFailureCode | null;
+  processingFailureCode?:
+    | import("@cosmic-dolphin/api-client").ProcessingFailureCode
+    | null;
   userNote?: string | null;
   laterUntil?: string | null;
   captureSource?: string | null;
@@ -162,10 +165,12 @@ export interface HybridSearchResultItem {
   matchedChunks: string[];
 }
 
-async function getAuthHeaders(): Promise<HeadersInit> {
+async function getAuthHeaders(expectedUserId?: string): Promise<HeadersInit> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
+  if (expectedUserId && session?.user.id !== expectedUserId)
+    throw new APIError("Account changed", 401);
   const accessToken = session?.access_token || "";
 
   return {
@@ -280,9 +285,12 @@ export namespace BookmarksAPI {
     }
   }
 
-  export async function findById(id: string): Promise<Bookmark | null> {
+  export async function findById(
+    id: string,
+    expectedUserId?: string,
+  ): Promise<Bookmark | null> {
     try {
-      const headers = await getAuthHeaders();
+      const headers = await getAuthHeaders(expectedUserId);
       const response = await fetch(`${API_URL}/bookmarks/${id}`, {
         method: "GET",
         headers,
@@ -374,9 +382,12 @@ export namespace BookmarksAPI {
     }
   }
 
-  export async function like(id: string): Promise<LikeResponse> {
+  export async function like(
+    id: string,
+    expectedUserId?: string,
+  ): Promise<LikeResponse> {
     try {
-      const headers = await getAuthHeaders();
+      const headers = await getAuthHeaders(expectedUserId);
       const response = await fetch(`${API_URL}/bookmarks/${id}/like`, {
         method: "PUT",
         headers,
@@ -393,9 +404,12 @@ export namespace BookmarksAPI {
     }
   }
 
-  export async function unlike(id: string): Promise<LikeResponse> {
+  export async function unlike(
+    id: string,
+    expectedUserId?: string,
+  ): Promise<LikeResponse> {
     try {
-      const headers = await getAuthHeaders();
+      const headers = await getAuthHeaders(expectedUserId);
       const response = await fetch(`${API_URL}/bookmarks/${id}/like`, {
         method: "DELETE",
         headers,
@@ -456,9 +470,12 @@ export namespace BookmarksAPI {
     }
   }
 
-  export async function share(id: string): Promise<ShareBookmarkResponse> {
+  export async function share(
+    id: string,
+    expectedUserId?: string,
+  ): Promise<ShareBookmarkResponse> {
     try {
-      const headers = await getAuthHeaders();
+      const headers = await getAuthHeaders(expectedUserId);
       const response = await fetch(`${API_URL}/bookmarks/${id}/share`, {
         method: "PUT",
         headers,
@@ -475,9 +492,12 @@ export namespace BookmarksAPI {
     }
   }
 
-  export async function unshare(id: string): Promise<ShareBookmarkResponse> {
+  export async function unshare(
+    id: string,
+    expectedUserId?: string,
+  ): Promise<ShareBookmarkResponse> {
     try {
-      const headers = await getAuthHeaders();
+      const headers = await getAuthHeaders(expectedUserId);
       const response = await fetch(`${API_URL}/bookmarks/${id}/share`, {
         method: "DELETE",
         headers,

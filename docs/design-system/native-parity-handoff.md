@@ -15,11 +15,11 @@ to identify its production renderer and contract before editing native behavior.
 | Surface | Recorded outcome | Next gate / owner | Authoritative record |
 | --- | --- | --- | --- |
 | Home and sidebar | Rendered migration; included in current build 25 with Save. The Home-only build 24 receipt remains historical evidence | Physical/signed-session QA, successful sign-out and spoken accessibility; device QA/user | [Home tasks](home-parity/tasks.md), [signed artifact and Apple receipt](home-parity/sidebar-testflight-evidence.json) |
-| Save and private link | iOS 1.0.0 (25) available in existing internal Beta: submission FINISHED, Apple VALID / IN_BETA_TESTING / unexpired, actual group membership verified; 40 suites / 324 tests pass, 1 skipped | Physical/signed-session and spoken accessibility QA, including modal focus; device QA/user | [Save tasks](save-parity/tasks.md), [evidence](save-parity/evidence.json), [resume recipe](save-parity/README.md) |
+| Save-a-link form and private link | iOS 1.0.0 (25) available in existing internal Beta: submission FINISHED, Apple VALID / IN_BETA_TESTING / unexpired, actual group membership verified; 40 suites / 324 tests pass, 1 skipped | Physical/signed-session and spoken accessibility QA, including modal focus; device QA/user | [Save tasks](save-parity/tasks.md), [evidence](save-parity/evidence.json), [resume recipe](save-parity/README.md) |
+| Saved bookmark detail | Actual route migrated after build-25 wrong-surface diagnosis; corrected binary pending. Default pairs precede final changes; full/XXXL/flow acceptance open | Binary + Apple Beta delivery, then device QA; T3 `ALERT_NOT_FOUND` blocks further device interaction | [Detail tasks](bookmark-detail-parity/tasks.md), [fixture/implementation guide](bookmark-detail-parity/README.md) |
 
 The two Save corrections were rechecked successfully in [the release evidence](save-parity/release-2026-11-27/evidence.json).
-Original invalid/confirmation images remain before-correction diagnostics. The prior alert-inspection
-failure did not recur during this fresh authorized continuation. Current build/submission state is
+Original invalid/confirmation images remain before-correction diagnostics. The earlier Save-form continuation completed device checks. The saved-detail correction later hit repeated `ALERT_NOT_FOUND`; its task record owns that new blocker. Current build/submission state is
 owned by [Save tasks](save-parity/tasks.md) and [the signed-artifact receipt](save-parity/testflight-evidence.json).
 Build 25 is now processed and assigned to the existing internal Beta group; no new audience or public release was created.
 
@@ -32,14 +32,15 @@ explicit and use a fresh authorized device claim for further QA.
 
 - Branch: `feat/mobile-home-web-parity`. Handoff started from clean, pushed
   `24c55564fecd1e11e26c637b7b71bd7f596ef36c`.
-- Last fetched base: `origin/main` at `671e2781e2f685804bf33bb06422bd1b92b05154`.
-- Current signed build 25 source: `430ecb2f8cccaffc7d1074e5b9de9d15daa32bf8`;
+- Last fetched base: `origin/main` at `65bcf07afbe3d7a60bb2ddfe47caa3bd631454e6`; original native branch base remains `671e278`.
+- Historical signed build 25 source: `430ecb2f8cccaffc7d1074e5b9de9d15daa32bf8`;
   [final Save receipt](save-parity/testflight-evidence.json). Documentation commits after it do not change that artifact.
 - Historical Home/sidebar build 24 source: `a077ea5472b764044bf0acac11b955fa20e3d7d2`.
 - Save implementation/evidence source: `d261b491eca5564665f74267e10879b57152cdb0`;
   `24c55564` records its delivery and outstanding device gate.
 - Fetch origin and inspect current head/base/working state before resuming. These are recorded
   identities, not an instruction to reset a newer checkout or discard uncommitted work.
+- “Save page” was misinterpreted as the create form. The actual intended saved detail is `/bookmark/[id]`; its production web owner is `/bookmarks/[bookmarkId]`. Require evidence from that actual renderer/controller before delivery.
 - The user chose current web Home composition/controls and subsequently requested sidebar and
   Save migration. Keep those decisions. Other screens retaining native compatibility styling
   have not thereby been approved for a bulk redesign.

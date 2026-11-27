@@ -26,7 +26,7 @@ out = root / "apps/mobile/assets/fonts"
 records = []
 # Include the cuts used at iOS XXXL (23/17 scaling). Font size itself stays
 # native-scalable; these files supply the corresponding optical shapes.
-for size in (16, 17, 19, 20, 22, 23, 26, 27, 28, 34, 38, 46):
+for size in (16, 17, 19, 20, 22, 23, 26, 27, 28, 32, 34, 35, 38, 43, 46):
     font = TTFont(source)
     font = instantiateVariableFont(font, {"wght": 600, "opsz": size}, inplace=True)
     family = f"CosmicReading{size}"
