@@ -30,6 +30,22 @@ describe("summaryProviderOptions", () => {
       openrouter: { provider: { require_parameters: true } },
     });
   });
+
+  it("defaults summaries to Haiku with the options its eval ran (D-19)", () => {
+    const saved = process.env.BOOKMARK_MODEL_LARGE;
+    delete process.env.BOOKMARK_MODEL_LARGE;
+    try {
+      jest.isolateModules(() => {
+        const { BOOKMARK_MODEL_IDS: defaults } = require("../../services/bookmark.model-ids");
+        expect(defaults.large).toBe("anthropic/claude-haiku-5.5");
+      });
+    } finally {
+      if (saved !== undefined) process.env.BOOKMARK_MODEL_LARGE = saved;
+    }
+    expect(summaryProviderOptions("anthropic/claude-haiku-5.5")).toEqual({
+      openrouter: { provider: { require_parameters: true } },
+    });
+  });
 });
 
 describe("BookmarkProcessorService", () => {
@@ -1340,7 +1356,13 @@ describe("BookmarkProcessorService", () => {
         return original(input);
       });
 
-      await service.process(testBookmark.id, testBookmark.userId);
+      const originalModel = BOOKMARK_MODEL_IDS.large;
+      BOOKMARK_MODEL_IDS.large = "openai/gpt-6-luna";
+      try {
+        await service.process(testBookmark.id, testBookmark.userId);
+      } finally {
+        BOOKMARK_MODEL_IDS.large = originalModel;
+      }
 
       const updated = mockBookmarkService.update.mock.calls.at(-1)![1];
       expect(updated.cosmicSummary).toBe("");
@@ -1372,7 +1394,7 @@ describe("BookmarkProcessorService", () => {
         .filter((input) => input.schema.shape && "contentStatus" in input.schema.shape);
       expect(summaryCalls).toHaveLength(2);
       expect(summaryCalls[0]).toEqual(expect.objectContaining({
-        modelId: BOOKMARK_MODEL_IDS.large,
+        modelId: "openai/gpt-6-luna",
         providerOptions: {
           openrouter: { reasoning: { effort: "low" }, provider: { require_parameters: true } },
         },
