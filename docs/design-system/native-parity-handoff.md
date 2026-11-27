@@ -12,12 +12,13 @@ to identify its production renderer and contract before editing native behavior.
 
 ## Current outcome and next gate
 
-**Wrap-up status (November 27):** code and TestFlight delivery are complete; full
-rendered/device acceptance is still open. The user explicitly requested integration and
-cleanup. The repository's default/deployment branch is `main` (there is no `master`).
-The integration candidate includes fetched `main` at `65bcf07a` through merge `dc87654a`.
-PR/merge and task-owned resource cleanup are the remaining delivery steps; record their
-receipts here after completion. Do not rebuild or resubmit build 26 merely for documentation.
+**Wrap-up status (November 27):** implementation is merged into `main` through
+[PR #266](https://github.com/pffreitas/cosmic-dolphin/pull/266), merge `0eb3f751`;
+TestFlight 26 delivery is complete. **Parity acceptance remains PENDING**: final rendered,
+simulator and physical/session/spoken accessibility gates are still open. The repository's
+default/deployment branch is `main` (there is no `master`). Implementation branches and
+task-owned servers/device claim have been removed/released; the active T3 checkout is
+retained until it becomes inactive. Do not rebuild/resubmit 26 merely for documentation.
 See [the integration/cleanup record](native-parity-wrap-up.md) for current delivery state.
 
 To call parity acceptance complete, the next device QA agent must:
@@ -55,9 +56,12 @@ explicit and use a fresh authorized device claim for further QA.
 
 ## Source identity and authorization
 
-- Branch: `feat/mobile-home-web-parity`. Handoff started from clean, pushed
-  `24c55564fecd1e11e26c637b7b71bd7f596ef36c`.
-- Last fetched base: `origin/main` at `65bcf07afbe3d7a60bb2ddfe47caa3bd631454e6`; original native branch base remains `671e278`.
+- Implementation: merged into `main` by PR #266 at
+  `0eb3f751f9cf3c92663e93a187b138e28fb982a5`, from final head
+  `859da8639a30abd9a6a923c528f6aa6479c8c190`. The local/remote
+  `feat/mobile-home-web-parity` branch was deleted after ancestry verification.
+  This handoff originally started from clean pushed `24c55564`.
+- Integration base: `origin/main` at `65bcf07afbe3d7a60bb2ddfe47caa3bd631454e6`; original native branch base remains `671e278`. The implementation merge is `0eb3f751`; fetch current main before resuming.
 - Current signed build 26 source: `ff57248c88fbd4927720186499de302daaa331a7`; [saved-detail receipt](bookmark-detail-parity/testflight-evidence.json). Final simulator/large-text/full-reader/flow acceptance remains open after the device-tool failure.
 - Historical signed build 25 source: `430ecb2f8cccaffc7d1074e5b9de9d15daa32bf8`;
   [final Save receipt](save-parity/testflight-evidence.json). Documentation commits after it do not change that artifact.
@@ -123,6 +127,12 @@ passing tests / 1 skipped; lint had 12 existing warnings and 100 token-linted fi
 changes also need `bun run --cwd apps/web typecheck`, lint, tests and build. Fresh PR gates run
 `bun install --frozen-lockfile` and the complete `bun run apispec` pipeline, not just postinstall.
 
+The web parity galleries import the same JSON fixtures from `apps/mobile/dev`. Web's Docker
+builder must include those explicit inputs; a full-checkout Next build can pass while the
+production image fails on omitted fixture files. Validate a fresh Linux Docker image when
+changing gallery imports/build context. The wrap-up record preserves the failed deployment
+and its packaging correction; do not duplicate fixtures to conceal the dependency.
+
 Maintain the committed iOS project in place. `react-native-svg` 15.12.1 is already in this branch's
 Pod lock; a fresh native/dependency checkout needs `pod install` in `apps/mobile/ios`. Never run
 `expo prebuild --clean`. Select your own device through T3 first, then build without driving UI:
@@ -173,6 +183,10 @@ Reconcile the actual current source/backend gate and audience first.
   source instead of reusing an old branch name or artifact receipt. The wrap-up merge does
   not itself request a new binary or a wider audience. Pushes to main may trigger the existing
   web deployment/internal-preview workflows; those states are distinct from TestFlight 26.
+- The merge's automatic iOS/Android internal previews failed on exhausted EAS Free-plan
+  credits ([run](https://github.com/pffreitas/cosmic-dolphin/actions/runs/46048712292)); the
+  runner reported reset on December 1. This is an operational follow-up, not a failed
+  TestFlight 26 upload. Reconcile current quota before any separately authorized retry.
 
 ## Suggested skills
 
