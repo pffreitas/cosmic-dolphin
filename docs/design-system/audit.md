@@ -1,5 +1,10 @@
 # Accessibility audit — D20
 
+> Historical D20 audit. This is not a fresh audit of the 2026-11-26 web reference.
+> Component usage and mobile capability statements below describe that audit date; current
+> visual contracts and verification limits live in [parity.md](./parity.md) and [inventory.md](./inventory.md).
+
+
 The last deliverable of the Signal revamp. Its job was not to add a surface; it was to make the
 sentence at the foot of [README.md](./README.md) true:
 

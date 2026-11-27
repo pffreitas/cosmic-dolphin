@@ -12,9 +12,10 @@ Run `bun run tokens` from the repo root after any change to `tokens.json`; `bun 
 fails when either output is stale and is wired into both apps' `lint`. Neither output may be
 hand-edited — a transcribed palette drifts, a generated one cannot.
 
-React Native has no gradients or box-shadows, so `nav-glass`, `nav-shadow` and the whole `elevation`
-set are absent from the mobile theme rather than approximated. Signal frames with borders, so mobile
-loses nothing by it.
+The generated native theme omits CSS-valued gradients and the `elevation` set. This is a
+serialization boundary, not a claim that native cannot draw them: web parity needs native gradient
+and shadow adapters. Canonical web colors/type are exported separately from shipped mobile overrides
+(see [parity.md](./parity.md)).
 
 This document explains what each token *means*, which is the part a hex value can't carry.
 
@@ -119,9 +120,7 @@ never a topic, a state or a rank, and never a fill for anything the user operate
 
 ### Header capsule (retired on web)
 
-`--cd-nav-glass`, `--cd-nav-edge`, `--cd-nav-sheen`, `--cd-nav-pill`, `--cd-nav-shadow`. Specified
-in [patterns.md](./patterns.md#header-capsule); they belong to that one component and must not be
-borrowed.
+`--cd-nav-glass`, `--cd-nav-edge`, `--cd-nav-sheen`, `--cd-nav-pill`, `--cd-nav-shadow` are legacy capsule tokens, not the current shell specification.
 
 
 The capsule was replaced by the app shell (revision R1). Nothing in `apps/web` reads these tokens
@@ -178,11 +177,14 @@ Never a serif button. Never a sans bookmark title.
 
 | Role | Family | Size | Line | Weight | Notes |
 | --- | --- | --- | --- | --- | --- |
-| `display` | serif | 44–68px | 1.04–1.1 | 600 | Landing hero (68px), empty-state hero (44px), Home's lead item (36px). -0.022 to -0.03em. `text-wrap: balance`. |
+| `display` | serif | 44px (34px ≤ 640px) | 1.06 | 600 | Home first-save hero, -.028em. Landing has separate sans marketing typography; do not apply this role to it. |
+| `lead` | serif | 36px (28px ≤ 640px) | 1.12 | 600 | Home lead title, -.022em, clamp 3. |
+| `edition` | serif | 34px (28px ≤ 640px) | 1.12 | 600 | Home greeting, -.022em. |
 | `title-1` | serif | 44px (32px < 640px) | 1.1 | 600 | Bookmark detail title. One per page. -0.022em. |
-| `page` | serif | 28px (24px < 640px) | 1.15 | 600 | Page header title (`components/ui/page-header.tsx`); Home's greeting at 34px. -0.018em. |
-| `title-2` | serif | 20px | 1.3 | 600 | Feed post title, digest titles. |
-| `title-3` | serif | 17–19px | 1.3–1.35 | 600 | Library row title (17), Home feed row (19), rail item title. |
+| `page` | serif | 28px (24px < 640px) | 1.15 | 600 | Page header title (`components/ui/page-header.tsx`). -0.018em. |
+| `title-2` | serif | 20px | 1.3 | 600 | Feed post title, digest titles, -.01em. |
+| `title-3` | serif | 17px | 1.35 | 600 | Library row, -.006em inherited. |
+| `feed-row` | serif | 19px | 1.3 | 600 | Home feed row, -.008em. |
 | `reader` | serif | 18px (17px < 640px) | 1.72 | 400 | Extracted article body on the detail page; h2 26px, h3 20px. |
 | `body` | sans | 15px | 1.65 | 400 | AI summaries, descriptions. |
 | `body-sm` | sans | 13.5px | 1.55 | 400 | Comments, secondary copy, help text, sidebar rows. |
@@ -201,6 +203,16 @@ tighter, higher-contrast cut and 17px rows the sturdier one; serif text tracks a
 default and tighter at display sizes. Anything that ticks — counts, timestamps, reading times —
 takes the `.nums` utility (`tabular-nums`).
 
+The canonical JSON now records these web roles, including numeric native exports `webType` and
+`webTypeCompact`. `type` remains the shipped native compatibility scale. `title-1`, `page` and
+`reader` switch strictly below 640px; Home display/lead/edition use inclusive `max-[640px]`.
+`webTypeCompact` is the compact value set, not a runtime breakpoint engine: callers must apply
+those boundaries per role. Browser zoom and native Dynamic Type are not equivalent to viewport width.
+
+Primitive and pattern overrides still apply: feed summaries are 14px/1.6 (not base body 15),
+page descriptions 13.5px/1.5 (not base body-sm 1.55), buttons line 1. The JSON scale is not proof
+that every component uses one role without overrides. Marketing typography is in landing CSS/modules.
+
 The reading column is 680px, which at the 18px `reader` size is the same ~70 characters
 `--cd-measure` (68ch) asks for. Feed summaries clamp to 3 lines, library summaries to 2, titles to 2
 — always with `-webkit-line-clamp`, never by truncating server-side.
@@ -210,9 +222,9 @@ The reading column is 680px, which at the 18px `reader` size is the same ~70 cha
 | Token | Value | Applies to |
 | --- | --- | --- |
 | `--cd-radius-xs` | 4px | Skeleton bars, `kbd`, inline code. |
-| `--cd-radius-sm` | 6px | Buttons, inputs, chips, ghost hit areas, small thumbnails. |
-| `--cd-radius-md` | 8px | Cards, feed items, panels, dialogs, thumbnails, popovers. |
-| `--cd-radius-lg` | 12px | The app frame and the AI callout. Nothing else. |
+| `--cd-radius-sm` | 6px | Secondary/ghost buttons, tooltip, Library thumbnails. |
+| `--cd-radius-md` | 8px | Fields, cards, feed panels/thumbnails, callouts, dialogs, popovers. |
+| `--cd-radius-lg` | 12px | Compact dialog top corners, grouped first-save panel. Callouts use md, not lg. |
 | `--cd-radius-brand` | 7px | The landing logo lockup. Nothing else. |
 | `--cd-radius-pill` | 999px | Tags, avatars, segmented filters, the primary CTA. |
 
@@ -237,6 +249,7 @@ Borders do the work. Shadows are reserved for surfaces that genuinely float:
 | Token | Applies to |
 | --- | --- |
 | `--cd-shadow-capsule` | Retired with the header capsule; unused on web. |
+| `--cd-shadow-segment` | Selected segmented control: web small shadow in light, inset border-strong in dark; exported as `webEffects[scheme].shadowSegment` for native. |
 | `--cd-shadow-popover` | Popovers, dropdowns, the command palette, toasts. |
 | `--cd-shadow-dialog` | Modal dialogs and sheets. |
 
@@ -331,12 +344,14 @@ Thumbnails are recognition aids, not decoration.
 | --- | --- | --- |
 | Feed article | 132×88, right of the text | `--cd-radius-md` |
 | Feed video | full width × 210, above the text | `--cd-radius-md` |
-| Library row | 88×64, right of the text | `--cd-radius-sm` |
+| Library row | 96×64; below 640px 72×56 | `--cd-radius-sm` |
 | Rail item | none | — |
 
-Source is `metadata.openGraph.image`. When it's missing, render nothing — never a placeholder
-graphic, never a letter tile in the thumbnail slot. The favicon chip beside the domain already
-carries identity.
+Source is `metadata.openGraph.image`. The shared Thumbnail **retains its box** when absent or
+failed, with the token-based radial fallback specified in components.md. Home's lead omits the
+whole box when no URL is provided; row thumbnails hide at ≤640px; article panels shrink from
+132×88 to 96×70 at ≤900px. Never replace the fallback with a favicon/letter tile. See patterns.md
+for each caller's exact responsive rules.
 
 ## Voice
 
