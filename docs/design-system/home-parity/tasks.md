@@ -1,11 +1,18 @@
 # Native Home web parity · 2026-11-26
 
-- Outcome: native iOS Home rendered, compared and hardened on this MacBook. Implementation/evidence pushed in `c2792c5ec3fce8b52699cef96f3606991f2d39cc`; final mobile typecheck/lint/Jest, web typecheck and token gates passed.
-- Next gate: user review of the matched screenshot pairs and documented adapter limits. No PR, merge or release authorized.
-- Owner: user review; this MacBook T3 thread completed the authorized implementation. Blocker: none for the requested simulator scope.
+- Outcome: Home parity implementation and simulator proof complete; authorized iOS TestFlight build/submission is in preflight. No distribution binary uploaded yet.
+- Next gate: verify production configuration/signing and package the exact candidate, then build STORE iOS, upload, verify Apple processing and the existing internal Beta group.
+- Owner: this MacBook T3 thread. Blocker: none identified; release preflight in progress.
 - Starting state on MacBook: clean `ios-home-web-parity` at `671e2781e2f685804bf33bb06422bd1b92b05154`. Fetched origin and switched to `feat/mobile-home-web-parity` at `ce03bd3` (remote head, base `origin/main` at `671e278`). Preserved environment/hooks; none were edited.
 - Scope: user explicitly approved web Home composition and controls. Current web wins. Evidence is simulator + illustrative fixtures/local HTTP transport, not physical-device or production-account proof.
 - Remaining limits: UIKit blur and Core Text antialiasing/fractional rounding remain platform adapters; larger serif optical sizes use the nearest bundled cut. Known reply/edit/delete/report controls stay out of scope. Other phone/tablet widths, accessibility categories and physical hardware were not certified by this pass.
+
+## TestFlight release · 2026-11-27
+
+- User grant: “Build iOS binary and push it to test flight.” Candidate starts at clean `9c5288e55f3b37110b0646e00a09a7b7492e7862` on `feat/mobile-home-web-parity`; internal Beta is the existing intended audience. The grant covers this binary and submission, not a merge or wider rollout.
+- Previous simulator/fixture proof and its physical-device/normal-session limits remain accurately labelled. This request authorizes internal TestFlight delivery following that disclosed evidence; no earlier task’s beta exception is adopted as a general waiver.
+- Backend/API/worker/shared/contract/client source is byte-identical to deployed `671e278`. Existing exact-SHA backend run [45745401065](https://github.com/pffreitas/cosmic-dolphin/actions/runs/45745401065) passed compiler/tests, migrations, Linux API/worker image builds and deployments. Reusing that unchanged-source evidence; no backend deployment required for Home.
+- Native host export-compliance plist is being reconciled with the existing `app.json` false declaration; encryption usage is unchanged. No native prebuild.
 
 ## MacBook result · 2026-11-26 local / 2026-11-27 UTC
 

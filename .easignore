@@ -1,0 +1,69 @@
+# Environment files
+*.env
+.env.*
+!.env.example
+!.env.test.example
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+*/dist/
+.next/
+out/
+build/
+
+# TypeScript
+*.tsbuildinfo
+
+# Turbo
+.turbo/
+
+# Temp files
+*/.temp
+/bin
+/vendor
+/test-results
+
+# IDE
+.idea/
+*.swp
+*.swo
+.cursor/skills/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeSpec output
+packages/apispec/tsp-output/
+
+# Generated API client (can be regenerated)
+packages/api-client/dist/
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+
+# Mobile (Expo/React Native)
+apps/mobile/.expo/
+apps/mobile/ios/Pods/
+apps/mobile/ios/build/
+apps/mobile/android/.gradle/
+apps/mobile/android/app/build/
+apps/mobile/android/build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/.worktrees/
+.worktrees/
+
+# Playwright CLI session output
+.playwright-cli/
+
+# Agent hooks are preserved locally, but are not native build inputs.
+.[Jj]ules/
