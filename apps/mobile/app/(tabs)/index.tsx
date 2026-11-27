@@ -67,7 +67,7 @@ function HomeEdition() {
   const entries = feed.loading ? [] : edition.rest;
   const openScope = (next: FeedScope) => { setCommentsFor(undefined); setSelection(undefined); setError(undefined); setScope(next); list.current?.scrollToOffset({ offset: 0, animated: false }); };
   return <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-    <HomeToolbar onError={setError} />
+    <HomeToolbar onError={setError} counts={feed.counts ?? null} />
     <FlatList ref={list} data={entries} keyExtractor={item => item.bookmark ? `bookmark:${item.bookmark.id}` : `digest:${item.digest?.id}`}
       style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: firstRun ? 48 : 40, paddingBottom: 112, backgroundColor: colors.bg }}
       refreshControl={<RefreshControl refreshing={feed.refreshing && !feed.loading} onRefresh={refresh} tintColor={colors.accent} />}

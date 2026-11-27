@@ -1,42 +1,38 @@
 import React, { useEffect, useRef, useState } from "react";
-import { DeviceEventEmitter, Modal, Pressable, ScrollView, TextInput, View } from "react-native";
+import { AccessibilityInfo, findNodeHandle, DeviceEventEmitter, Modal, Pressable, TextInput, View } from "react-native";
 import { BlurView } from "expo-blur";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { Home, Library, Plus, Search, User, PanelLeft, Link2, X } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Home, Library, Plus, Search, User, PanelLeft, Link2 } from "lucide-react-native";
 import { useNavigation, useRouter } from "expo-router";
-import type { Collection } from "@cosmic-dolphin/api-client";
+import type { BookmarkLibraryCounts } from "@cosmic-dolphin/api-client";
 import { radius } from "@/constants/theme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCaptures } from "@/contexts/CaptureContext";
-import { MobileAPI } from "@/lib/mobile-api";
 import { captureUrl } from "./data";
-import { BrandMark, BrandSignature } from "@/components/BrandMark";
+import { BrandMark } from "@/components/BrandMark";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { HomeSidebar } from "./Sidebar";
 import { Action, Copy } from "./Primitives";
 import { useWebTheme } from "./theme";
 
 export const FOCUS_HOME_SEARCH = "cosmic:focus-home-omnibox";
 
-export function HomeToolbar({ onError }: { onError: (message: string) => void }) {
+export function HomeToolbar({ onError, counts = null }: { onError: (message: string) => void; counts?: BookmarkLibraryCounts | null }) {
   const { colors } = useWebTheme();
   const { user } = useAuth();
   const router = useRouter();
   const rootNavigation = useNavigation("/");
   const { save } = useCaptures();
   const input = useRef<TextInput>(null);
+  const navButton = useRef<View>(null);
+  const reducedMotion = useReducedMotion();
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
   const [menu, setMenu] = useState(false);
-  const [collections, setCollections] = useState<Collection[]>([]);
   const [limited, setLimited] = useState<string>();
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false; }, []);
   useEffect(() => { const listener = DeviceEventEmitter.addListener(FOCUS_HOME_SEARCH, () => input.current?.focus()); return () => listener.remove(); }, []);
-  useEffect(() => {
-    if (!menu) return;
-    let active = true;
-    void MobileAPI.collections(user?.id).then(result => { if (active) setCollections(result); }).catch(() => {});
-    return () => { active = false; };
-  }, [menu, user?.id]);
   const capture = captureUrl(value);
   const submit = async () => {
     const text = value.trim();
@@ -46,10 +42,11 @@ export function HomeToolbar({ onError }: { onError: (message: string) => void })
     try { await save({ sourceUrl: capture, captureSource: "save_sheet", capturePlatform: "unknown" }); }
     catch { if (alive.current) { setValue(text); setLimited("Couldn't save this link. Try again."); onError("Couldn't save this link."); } }
   };
+  const closeMenu = () => { setMenu(false); requestAnimationFrame(() => { navButton.current?.focus(); const node = findNodeHandle(navButton.current); if (node) AccessibilityInfo.setAccessibilityFocus(node); }); };
   const go = (href: "/" | "/library" | "/search" | "/profile" | "/explore") => { setMenu(false); if (href === "/profile") rootNavigation.navigate("profile" as never); else router.push(href); };
   return <>
     <View style={{ height: 56, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, borderBottomWidth: 1, borderColor: colors.border, backgroundColor: colors.bg, zIndex: 30 }}>
-      <Action label="Open navigation" icon={PanelLeft} onPress={() => setMenu(true)} style={{ width: 34, height: 34 }} />
+      <Action label="Open navigation" icon={PanelLeft} iconSize={16} controlRef={navButton} onPress={() => { input.current?.blur(); setMenu(true); }} style={{ width: 34, height: 34 }} />
       <View style={{ width: 32, height: 32 }}><BrandMark size={32} /><View pointerEvents="none" style={{ position: "absolute", inset: 0, borderWidth: 1, borderColor: colors.brandEdge, borderRadius: radius.md }} /></View>
       <View style={{ flex: 1, position: "relative" }}>
         <View style={{ height: 36, borderRadius: radius.md, borderWidth: 1, borderColor: focused ? colors.accent : colors.border, backgroundColor: focused ? colors.bgPanel : colors.bgSubtle, outlineWidth: focused ? 2 : 0, outlineColor: colors.focus, outlineOffset: 2, flexDirection: "row", alignItems: "center", paddingLeft: 12, paddingRight: 4, gap: 10 }}>
@@ -66,21 +63,10 @@ export function HomeToolbar({ onError }: { onError: (message: string) => void })
         </View> : null}
       </View>
     </View>
-    <Modal visible={menu} transparent animationType="none" onRequestClose={() => setMenu(false)}>
+    <Modal visible={menu} transparent animationType="none" onRequestClose={closeMenu}>
       <View style={{ flex: 1, flexDirection: "row" }}>
-        <Pressable accessibilityLabel="Close navigation" onPress={() => setMenu(false)} style={{ position: "absolute", width: "100%", height: "100%", backgroundColor: colors.overlay }} />
-        <SafeAreaView style={{ width: 288, maxWidth: "85%", height: "100%", backgroundColor: colors.bgSubtle, borderRightWidth: 1, borderColor: colors.border }}>
-          <View style={{ padding: 12, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}><BrandSignature size={32} /><Action label="Close navigation" icon={X} onPress={() => setMenu(false)} /></View>
-          <ScrollView contentContainerStyle={{ padding: 12, gap: 4 }}>
-            <Action label="Home" icon={Home} onPress={() => go("/")}>Home</Action>
-            <Action label="Explore" onPress={() => go("/explore")}>Explore</Action>
-            <Action label="Search" icon={Search} onPress={() => go("/search")}>Search</Action>
-            <Copy role="label" style={{ paddingVertical: 12 }}>Library</Copy>
-            <Action label="All saves" icon={Library} onPress={() => go("/library")}>All saves</Action>
-            {collections.map(collection => <Action key={collection.id} label={collection.name} onPress={() => { setMenu(false); router.push({ pathname: "/library", params: { collectionId: collection.id } }); }}>{collection.name}</Action>)}
-          </ScrollView>
-          <Action label="Your profile" icon={User} onPress={() => go("/profile")}>Your profile</Action>
-        </SafeAreaView>
+        <Pressable accessibilityLabel="Close navigation" onPress={closeMenu} style={{ position: "absolute", width: "100%", height: "100%", backgroundColor: colors.overlay }} />
+        {menu ? <HomeSidebar counts={counts} reducedMotion={reducedMotion} onClose={closeMenu} onDestination={go} onLibrary={query => { setMenu(false); router.push({ pathname: "/library", params: query }); }} /> : null}
       </View>
     </Modal>
   </>;

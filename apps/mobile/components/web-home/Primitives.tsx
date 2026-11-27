@@ -6,21 +6,21 @@ import { useControlFocus } from "@/hooks/useControlFocus";
 import { useWebTheme, webText } from "./theme";
 
 /** Same visible geometry as web; invisible hit slop supplies native touch targets. */
-export function Action({ label, icon: Icon, children, onPress, selected, disabled, primary, style, tone }: {
-  label: string; icon?: LucideIcon; children?: React.ReactNode; onPress?: () => void;
+export function Action({ label, icon: Icon, children, onPress, selected, disabled, primary, style, tone, iconSize = 15, controlRef }: {
+  label: string; icon?: LucideIcon; iconSize?: number; controlRef?: React.Ref<View>; children?: React.ReactNode; onPress?: () => void;
   selected?: boolean; disabled?: boolean; primary?: boolean; style?: ViewStyle; tone?: "like";
 }) {
   const { colors } = useWebTheme();
   const foreground = primary ? colors.accentFg : selected && tone === "like" ? colors.like : colors.fgSecondary;
   const { focusStyle, ...focusEvents } = useControlFocus();
-  return <Pressable {...focusEvents} accessibilityRole="button" accessibilityLabel={label}
+  return <Pressable ref={controlRef} {...focusEvents} accessibilityRole="button" accessibilityLabel={label}
     accessibilityState={{ disabled: disabled || !onPress, ...(selected === undefined ? {} : { selected }) }}
     disabled={disabled || !onPress} onPress={onPress} hitSlop={6}
     style={({ pressed }) => [{ minHeight: 32, paddingHorizontal: primary ? 14 : 8,
       flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
       borderRadius: primary ? radius.pill : radius.sm,
       backgroundColor: primary ? colors.accent : pressed ? colors.bgInset : "transparent" }, focusStyle, { outlineColor: colors.focus }, style]}>
-    {Icon ? <Icon size={15} strokeWidth={1.7} color={foreground} fill={selected && tone === "like" ? foreground : "none"} /> : null}
+    {Icon ? <Icon size={iconSize} strokeWidth={1.7} color={foreground} fill={selected && tone === "like" ? foreground : "none"} /> : null}
     {typeof children === "string" || typeof children === "number" ? <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: "InterMedium", fontSize: 12.5, lineHeight: 12.5, fontVariant: ["tabular-nums"], color: foreground }}>{children}</Text> : children}
   </Pressable>;
 }

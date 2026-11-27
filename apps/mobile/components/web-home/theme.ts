@@ -8,6 +8,8 @@ export function useWebTheme() {
   useWindowDimensions(); // Re-select optical cuts when Dynamic Type changes.
   return { scheme, colors: webColors[scheme] };
 }
+/** Exact bundled Inter weights used by web navigation/control adapters. */
+export const webSansFont = (weight: 400 | 500 | 600 = 400) => weight === 600 ? "InterSemibold" : weight === 500 ? "InterMedium" : "Inter";
 export function webText(role: WebTypeRole): TextStyle {
   const { family, fontWeight, ...style } = webTypeCompact[role];
   const weight = Number(fontWeight);
@@ -21,6 +23,6 @@ export function webText(role: WebTypeRole): TextStyle {
     // Move glyphs only; preserve the measured line height and surrounding gaps.
     ...(Platform.OS === "ios" && (role === "edition" || role === "lead" || role === "display") ? { transform: [{ translateY: (role === "display" ? 5 : 3) * fontScale }] } : {}),
     fontFamily: family === "serif" ? weight >= 600 && [16, 17, 19, 20, 28, 34].includes(style.fontSize) ? `CosmicReading${opticalSize}` : weight >= 600 ? "SourceSerifSemibold" : "SourceSerif"
-      : family === "mono" ? "SpaceMono" : weight >= 600 ? "InterSemibold" : weight >= 500 ? "InterMedium" : "Inter",
+      : family === "mono" ? "SpaceMono" : webSansFont(weight >= 600 ? 600 : weight >= 500 ? 500 : 400),
     fontWeight: "400" };
 }

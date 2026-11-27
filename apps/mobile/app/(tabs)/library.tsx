@@ -30,8 +30,10 @@ export default function LibraryScreen() {
     collectionId?: string;
     name?: string;
     scope?: "all" | "inbox" | "archive";
+    readStatus?: "all" | "read" | "unread";
   }>();
-  const [filter, setFilter] = useState<"all" | "read" | "unread">("all");
+  const filter = params.readStatus === "read" || params.readStatus === "unread" ? params.readStatus : "all";
+  const setFilter = (readStatus: "all" | "read" | "unread") => router.setParams({ readStatus });
   const [sort, setSort] = useState<"newest" | "oldest">("newest");
   const [sorting, setSorting] = useState(false);
   const [selected, setSelected] = useState<Bookmark>();

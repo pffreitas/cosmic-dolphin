@@ -263,7 +263,7 @@ export function HomeStates() {
       bookmarkId: item.bookmark.id, href: `/bookmarks/${item.bookmark.id}`, title: item.bookmark.title,
       percent: item.progress.percent, timeLeft: `${Math.max(1, Math.ceil(item.bookmark.metadata.readingTime * (1 - item.progress.percent / 100)))} min left`,
     })) };
-    return <><AppShell currentPath="/my/dashboard" collections={[]} counts={comparison.counts} user={{ name: comparison.readerName, email: "reader@example.invalid", href: "/my/profile" }}>
+    return <><AppShell currentPath="/my/dashboard" collections={params.get("nav") === "populated" ? comparison.navigation.collections : []} counts={params.get("nav") === "populated" ? comparison.navigation.counts : comparison.counts} user={{ name: comparison.readerName, email: comparison.navigation.email, href: "/my/profile" }}>
       <HomeView scope={scope} entries={empty || newUser ? [] : entries} rail={empty || newUser ? EMPTY_RAIL : rail} readerName={comparison.readerName}
         computedAt={new Date(comparison.computedAt)} newUser={newUser} offline />
     </AppShell><BottomNavigation currentPath="/my/dashboard" /></>;

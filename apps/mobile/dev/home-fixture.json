@@ -289,5 +289,46 @@
       },
       "rankingReason": "You saved it 4 days ago and haven't opened it yet."
     }
-  ]
+  ],
+  "navigation": {
+    "email": "reader@example.invalid",
+    "collections": [
+      {
+        "id": "design",
+        "name": "Design",
+        "userId": "fixture-reader"
+      },
+      {
+        "id": "typography",
+        "name": "Typography & reading UX",
+        "parentId": "design",
+        "userId": "fixture-reader"
+      },
+      {
+        "id": "systems",
+        "name": "Systems",
+        "userId": "fixture-reader"
+      }
+    ],
+    "counts": {
+      "all": 24,
+      "unread": 12,
+      "archived": 0,
+      "inbox": 3,
+      "collections": [
+        {
+          "collectionId": "design",
+          "count": 4
+        },
+        {
+          "collectionId": "typography",
+          "count": 7
+        },
+        {
+          "collectionId": "systems",
+          "count": 10
+        }
+      ]
+    }
+  }
 }

@@ -27,6 +27,7 @@ jest.mock("@/contexts/PreferencesContext", () => ({
 }));
 jest.mock("@/components/CopiedLink", () => ({ CopiedLink: () => null }));
 jest.mock("@/contexts/CaptureContext", () => ({ useCaptures: () => ({ captures: [], acknowledge: jest.fn(), drain: jest.fn(async () => {}), save: jest.fn(async () => "capture"), confirm: jest.fn(async () => {}), revision: 0 }) }));
+jest.mock("@/hooks/useReducedMotion", () => ({ useReducedMotion: () => true }));
 jest.mock("@/hooks/useHomeFeed", () => ({ useHomeFeed: jest.fn() }));
 jest.mock("@/hooks/useBookmarks", () => ({ useBookmarks: jest.fn(() => ({ bookmarks: [], isLoading: false, refresh: jest.fn(), loadMore: jest.fn() })) }));
 jest.mock("@/lib/api", () => ({ BookmarksAPI: {} }));
@@ -83,6 +84,7 @@ it("opens profile from the Home avatar outside tabs and returns to Home", async 
     profile: () => <Text>Real profile destination</Text>,
   }, { initialUrl: "/" });
   fireEvent.press(screen.getByRole("button", { name: "Open navigation" }));
+  fireEvent.press(screen.getByRole("button", { name: "reader Account menu" }));
   fireEvent.press(screen.getByRole("button", { name: "Your profile" }));
   expect(await screen.findByText("Real profile destination")).toBeTruthy();
   expect(screen.queryByLabelText(/^Home, tab,/)).toBeNull();
@@ -141,6 +143,7 @@ it("preserves real profile editing, settings and sign-out controls behind avatar
     profile: ProfileScreen, settings: () => <Text>Settings destination</Text>,
   }, { initialUrl: "/" });
   fireEvent.press(screen.getByRole("button", { name: "Open navigation" }));
+  fireEvent.press(screen.getByRole("button", { name: "reader Account menu" }));
   fireEvent.press(screen.getByRole("button", { name: "Your profile" }));
   expect(await screen.findByRole("button", { name: "Sign out" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Settings" })).toBeTruthy();
@@ -173,4 +176,31 @@ it('returns to Home after a cold legacy profile deep link has no previous screen
   expect(await screen.findByRole('button', { name: 'Sign out' })).toBeTruthy();
   fireEvent.press(screen.getByRole('button', { name: 'Go back' }));
   expect(await screen.findByRole('button', { name: 'Open navigation' })).toBeTruthy();
+});
+
+
+it("opens web Read later as an unread Library query", async () => {
+  const route = renderRouter({ index: HomeScreen, library: LibraryScreen });
+  fireEvent.press(screen.getByRole("button", { name: "Open navigation" }));
+  fireEvent.press(screen.getByRole("button", { name: "Read later" }));
+  await waitFor(() => expect(route.getPathname()).toBe("/library"));
+  expect(useBookmarks).toHaveBeenLastCalledWith(expect.objectContaining({ readStatus: "unread", scope: "all" }));
+  expect(route.getSearchParams()).toEqual(expect.objectContaining({ readStatus: "unread" }));
+  fireEvent.press(screen.getByRole("tab", { name: "All" }));
+  expect(route.getSearchParams()).toEqual(expect.objectContaining({ readStatus: "all" }));
+  expect(useBookmarks).toHaveBeenLastCalledWith(expect.objectContaining({ readStatus: "all" }));
+});
+
+it.each(["inbox", "archive"])("opens %s through its server scope", async (scope) => {
+  const route = renderRouter({ index: HomeScreen, library: LibraryScreen });
+  fireEvent.press(screen.getByRole("button", { name: "Open navigation" }));
+  fireEvent.press(screen.getByRole("button", { name: scope === "inbox" ? "Inbox" : "Archive" }));
+  await waitFor(() => expect(route.getPathname()).toBe("/library"));
+  expect(useBookmarks).toHaveBeenLastCalledWith(expect.objectContaining({ scope }));
+});
+
+
+it("falls back to All for an unknown read-status deep link", () => {
+  renderRouter({ library: LibraryScreen }, { initialUrl: "/library?readStatus=unknown" });
+  expect(useBookmarks).toHaveBeenLastCalledWith(expect.objectContaining({ readStatus: "all" }));
 });

@@ -1,0 +1,222 @@
+- generic:
+  - link [aria-hidden]:
+    - /url: "#main"
+    - text: Skip to content
+  - generic:
+    - generic:
+      - banner [aria-hidden]:
+        - button [expanded]
+        - generic:
+          - search:
+            - generic:
+              - generic: Paste a link to save it, or search your library
+              - textbox:
+                - /placeholder: Paste a link or search
+      - main:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - paragraph [aria-hidden]: Thursday, November 26
+                - heading [level=1] [aria-hidden]: Good evening, Paulo
+                - paragraph: Ranked for what you're likely to finish · updated 4 min ago
+              - radiogroup [aria-hidden]:
+                - radio [checked]: For you
+                - radio: Following
+                - radio: Unread
+            - region [aria-hidden]:
+              - heading [level=2]: Pick up where you left off
+              - list:
+                - listitem:
+                  - link:
+                    - /url: /bookmarks/bk_1
+                    - generic: What agents forget, and when
+                    - generic:
+                      - generic:
+                        - progressbar
+                      - generic: 4 min left
+                - listitem:
+                  - link:
+                    - /url: /bookmarks/bk_2
+                    - generic: A short history of retrieval-augmented generation
+                    - generic:
+                      - generic:
+                        - progressbar
+                      - generic: 15 min left
+                - listitem:
+                  - link:
+                    - /url: /bookmarks/bk_3
+                    - generic: Typography for long-form reading on screens
+                    - generic:
+                      - generic:
+                        - progressbar
+                      - generic: 1 min left
+            - generic [aria-hidden]:
+              - region:
+                - generic:
+                  - article:
+                    - generic:
+                      - generic:
+                        - link:
+                          - /url: /u/maya
+                          - generic: MO
+                          - generic: Maya Okafor
+                        - generic: shared
+                        - generic:
+                          - generic:
+                            - generic [aria-hidden]: E
+                            - generic: every.to
+                        - generic: 2d ago
+                      - group:
+                        - generic: Why this appeared
+                      - generic:
+                        - button
+                    - heading [level=2]:
+                      - link:
+                        - /url: /bookmarks/bk_8f2a
+                        - generic: The Bottleneck Was Never Retrieval
+                    - paragraph: Agents don't fail because they can't find the right document — they fail because they can't remember what they already tried. A case for episodic memory over bigger context windows.
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - button: "128"
+                            - button: "14"
+                            - button: Save
+                            - button
+                        - generic:
+                          - generic: agent memory
+                          - generic: retrieval
+                          - generic: 9 min read
+                - generic:
+                  - heading [level=2]: More for you
+                  - article:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic [aria-hidden]: S
+                            - generic: stratechery.com
+                          - generic: you saved this
+                          - generic: 5d ago
+                        - group:
+                          - generic: Why this appeared
+                        - generic:
+                          - button
+                      - generic:
+                        - generic:
+                          - heading [level=3]:
+                            - link:
+                              - /url: /bookmarks/bk_3e77
+                              - generic: The cost of a perfect index
+                          - paragraph: Retrieval quality has a price curve, and most teams are buying the flat part of it.
+                      - generic:
+                        - generic:
+                          - generic:
+                            - button
+                            - button
+                            - button [disabled] [pressed]: In your library
+                            - button
+                        - generic:
+                          - generic: retrieval
+                          - generic: cost
+                          - generic: 11 min read
+                - paragraph: That's everything for now.
+  - navigation [aria-hidden]:
+    - generic:
+      - link:
+        - /url: /my/dashboard
+        - text: Home
+      - link:
+        - /url: /my/library
+        - text: Library
+      - button: Save
+      - button: Search
+      - link:
+        - /url: /my/profile
+        - text: You
+  - alert
+  - status
+  - dialog [aria-hidden]:
+    - button:
+      - generic: Close
+    - heading [level=2]: Navigation
+    - paragraph: Destinations, your library and collections, and your account.
+    - generic:
+      - generic:
+        - link:
+          - /url: /my/dashboard
+          - generic: Cosmic Dolphin
+      - generic:
+        - navigation:
+          - list:
+            - listitem:
+              - link:
+                - /url: /my/dashboard
+                - generic: Home
+            - listitem:
+              - link:
+                - /url: /explore
+                - generic: Explore
+            - listitem:
+              - link:
+                - /url: /search
+                - generic: Search
+        - navigation:
+          - generic: Library
+          - list:
+            - listitem:
+              - link:
+                - /url: /my/library
+                - generic: All saves
+                - generic: "24"
+            - listitem:
+              - link:
+                - /url: /my/library?scope=inbox
+                - generic: Inbox
+                - generic: "3"
+            - listitem:
+              - link:
+                - /url: /my/library?read_status=unread
+                - generic: Read later
+                - generic: "12"
+            - listitem:
+              - link:
+                - /url: /my/library?scope=archive
+                - generic: Archive
+                - generic: "0"
+        - navigation:
+          - generic: Collections
+          - list:
+            - listitem:
+              - link:
+                - /url: /my/library?collection_id=design
+                - generic: Design
+                - generic: "11"
+              - list:
+                - listitem:
+                  - link:
+                    - /url: /my/library?collection_id=typography
+                    - generic: Typography & reading UX
+                    - generic: "7"
+            - listitem:
+              - link:
+                - /url: /my/library?collection_id=systems
+                - generic: Systems
+                - generic: "10"
+      - generic:
+        - button [expanded]:
+          - generic: PF
+          - generic:
+            - generic: Paulo Freitas
+            - generic: reader@example.invalid
+  - menu "PF Paulo Freitas reader@example.invalid" [active] [ref=f2e163]:
+    - menuitem "Your profile" [ref=f2e164]
+    - separator [ref=f2e168]
+    - generic [ref=f2e169]: Theme
+    - group [ref=f2e170]:
+      - menuitemradio [checked] [ref=f2e171]
+      - menuitemradio "Dark" [ref=f2e176]
+      - menuitemradio "Match system" [ref=f2e178]
+    - separator [ref=f2e180]
+    - menuitem "Sign out" [ref=f2e182]
