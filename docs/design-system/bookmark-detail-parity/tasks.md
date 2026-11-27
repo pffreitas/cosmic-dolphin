@@ -7,6 +7,11 @@
 - Scope correction: “bookmark save page” means **saved bookmark detail**, not the create form. Correct web order is hero/breadcrumb/provenance/actions → Cosmic brief → rich reader/images/tags → social row → inline comments. Topic button, Brief/Read/Original tabs and the persistent Later/Mark done footer are not the reference composition.
 - Preserve native genuine full-text access, highlights, note/filing/reading actions and account fences. Keep known reply/edit/delete/report controls out of scope. Semantic web tokens only; maintain the native project in place.
 
+Integration/cleanup status is owned by [the wrap-up record](../native-parity-wrap-up.md).
+The November 27 user request explicitly authorizes merging into the repository default
+`main` and removing this task's branches/worktree. Historical release statements below
+describe the state at upload time; final device acceptance remains a separate gate.
+
 ## Failure and acceptance signal
 
 - [Reported web](reported-web.png): user-provided full-page reference, 146×2000 downsampled attachment; original viewport/text scale unknown.

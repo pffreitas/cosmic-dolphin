@@ -12,10 +12,35 @@ to identify its production renderer and contract before editing native behavior.
 
 ## Current outcome and next gate
 
+**Wrap-up status (November 27):** code and TestFlight delivery are complete; full
+rendered/device acceptance is still open. The user explicitly requested integration and
+cleanup. The repository's default/deployment branch is `main` (there is no `master`).
+The integration candidate includes fetched `main` at `65bcf07a` through merge `dc87654a`.
+PR/merge and task-owned resource cleanup are the remaining delivery steps; record their
+receipts here after completion. Do not rebuild or resubmit build 26 merely for documentation.
+See [the integration/cleanup record](native-parity-wrap-up.md) for current delivery state.
+
+To call parity acceptance complete, the next device QA agent must:
+
+1. Capture **final-source** matched light/dark default and larger-text pairs, including the
+   full saved-detail reader, tables, code, images and comments. The committed detail default
+   pairs precede the last corrections; the web larger-text fixture is not Dynamic Type proof.
+2. Exercise real simulator navigation/transport: Home scopes, continue reading, lead story,
+   comments, omnibox save, empty states and refresh; sidebar filters and navigation; capture
+   and saved-detail read/Undo, original, note/filing/Later, full text/highlights, comments,
+   private-summary editing and recovery. Include account A→B with a form/request active.
+3. Verify the installed signed build's session, share extension, sign-out and spoken
+   VoiceOver/modal focus on a physical device. Simulator and signed-artifact inspection
+   do not certify those interactions.
+
+The current blocker is the repeated T3 `ALERT_NOT_FOUND` failure, not a verified app defect.
+Use a fresh claim through `device_list` → `device_open`; never borrow another agent's claim.
+Comment reply/edit/delete/report remain explicitly out of scope.
+
 | Surface | Recorded outcome | Next gate / owner | Authoritative record |
 | --- | --- | --- | --- |
 | Home and sidebar | Rendered migration; included in current build 26 with saved-detail correction. The Home-only build 24 receipt remains historical evidence | Physical/signed-session QA, successful sign-out and spoken accessibility; device QA/user | [Home tasks](home-parity/tasks.md), [signed artifact and Apple receipt](home-parity/sidebar-testflight-evidence.json) |
-| Save-a-link form and private link | iOS 1.0.0 (25) available in existing internal Beta: submission FINISHED, Apple VALID / IN_BETA_TESTING / unexpired, actual group membership verified; 40 suites / 324 tests pass, 1 skipped | Physical/signed-session and spoken accessibility QA, including modal focus; device QA/user | [Save tasks](save-parity/tasks.md), [evidence](save-parity/evidence.json), [resume recipe](save-parity/README.md) |
+| Save-a-link form and private link | First delivered in iOS 1.0.0 (25), retained in current internal Beta build 26; historical form gate 40 suites / 324 tests, current combined gate 42 suites / 338 tests, 1 skipped | Physical/signed-session and spoken accessibility QA, including modal focus; device QA/user | [Save tasks](save-parity/tasks.md), [evidence](save-parity/evidence.json), [resume recipe](save-parity/README.md) |
 | Saved bookmark detail | Actual route migrated after build-25 wrong-surface diagnosis; iOS 1.0.0 (26) available in existing internal Beta. 338 tests pass; final full/XXXL/flow acceptance open | Final simulator/physical QA; T3 `ALERT_NOT_FOUND` blocks further device interaction | [Detail tasks](bookmark-detail-parity/tasks.md), [fixture/implementation guide](bookmark-detail-parity/README.md) |
 
 The two Save corrections were rechecked successfully in [the release evidence](save-parity/release-2026-11-27/evidence.json).
@@ -45,8 +70,9 @@ explicit and use a fresh authorized device claim for further QA.
 - The user chose current web Home composition/controls and subsequently requested sidebar and
   Save migration. Keep those decisions. Other screens retaining native compatibility styling
   have not thereby been approved for a bulk redesign.
-- Follow the latest user grant. The prior Home TestFlight submission is not a general release
-  waiver. No PR or merge was created; new distribution/audience changes require their own scope.
+- Follow the latest user grant. The November 27 wrap-up explicitly authorizes merging this
+  work and cleaning its branches/worktree. Earlier receipts correctly record that no merge
+  occurred at those release times. Distribution/audience changes remain separately scoped.
 
 ## Reusable implementation seams
 
@@ -92,7 +118,10 @@ bun run --cwd apps/mobile test -- --runInBand --testPathPattern=save-durable
 
 The final Save run had 40 passing suites / 324 passing tests / 1 skipped; lint had 12 existing
 warnings, no errors, and 95 token-linted files. These are historical checks, not a substitute for
-checks after new code changes. Web fixture changes also need `(cd apps/web && bunx tsc --noEmit)`.
+checks after new code changes. The corrected saved-detail run had 42 passing suites / 338
+passing tests / 1 skipped; lint had 12 existing warnings and 100 token-linted files. Web fixture
+changes also need `bun run --cwd apps/web typecheck`, lint, tests and build. Fresh PR gates run
+`bun install --frozen-lockfile` and the complete `bun run apispec` pipeline, not just postinstall.
 
 Maintain the committed iOS project in place. `react-native-svg` 15.12.1 is already in this branch's
 Pod lock; a fresh native/dependency checkout needs `pod install` in `apps/mobile/ios`. Never run
@@ -114,10 +143,12 @@ The old simulator client could use ordinary SecureStore but could not prove shar
 sign-out. Do not re-sign a copy with guessed groups or weaken auth/storage guards; see Home's
 failed attempt and signed-artifact receipt before planning capability proof.
 
-The 12 `CosmicReading*.ttf` cuts are already bundled. Only regenerate when the reference or
-font mapping changes, using [the generator](../../scripts/generate-home-fonts.py)'s documented
-pinned `uv` command after web font output exists. Keep glyph hashes/manifest/native font loading
-and evidence in sync; do not introduce a font substitute or synthetic weight to mask a mismatch.
+The current signed artifact has 29 frozen serif assets, including the retained Home cuts and
+saved-detail normal/italic/bold-italic variants. Only regenerate when the reference or font
+mapping changes, using [the Home generator](../../scripts/generate-home-fonts.py) and
+[detail generator](../../scripts/generate-detail-fonts.py)'s pinned commands after web font
+output exists. Keep hashes/manifests/native font loading and evidence in sync; do not
+introduce a font substitute or synthetic weight to mask a mismatch.
 
 ## Distribution continuity
 
@@ -125,8 +156,8 @@ Read [the release runbook](../runbooks/backend-and-testflight-release.md) and Ho
 [release history](home-parity/tasks.md#testflight-release--2026-11-27) before an authorized release.
 Reconcile the actual current source/backend gate and audience first.
 
-- Current build 25 and historical build 24 are **local EAS production distributions**, not internal previews.
-  Its signed host/extension, resolved Info configuration, production API/issuer and all font
+- Current build 26 and historical builds 25/24 are **local EAS production distributions**, not internal previews.
+  Their signed host/extension, resolved Info configuration, production API/issuer and all font
   hashes were verified; Apple processing and actual internal Beta membership are separately
   recorded in the committed receipt. Physical/session proof remains separate.
 - EAS cloud Free-plan quota was exhausted on November 27; reset was shown as December 1.
@@ -135,11 +166,13 @@ Reconcile the actual current source/backend gate and audience first.
   `GYM_XCARGS=IPHONEOS_DEPLOYMENT_TARGET=15.1`. `.easignore` already excludes the tracked
   `.Jules`/`.jules` case collision from packaging. Process-scoped case-sensitive Git settings
   used a private Git config file; do not change shared repository `core.ignorecase` as a workaround.
-- Check the remote build counter; do not hardcode 26 from the last recorded 25. Inspect the IPA
+- Check the remote build counter; do not hardcode a successor to the last recorded 26. Inspect the IPA
   before one submission; bind version/build/hash to source and verify actual Apple/group state.
-- This feature remains on a branch. Dispatching the runbook's `--ref main` example would build
-  main's source, not this Save change. Do not merge or dispatch main merely to publish it; choose
-  the authorized source/distribution path and preserve source identity.
+- Before integration is confirmed, dispatching the runbook's `--ref main` example selects
+  main's source rather than an unmerged candidate. After integration, verify the exact live
+  source instead of reusing an old branch name or artifact receipt. The wrap-up merge does
+  not itself request a new binary or a wider audience. Pushes to main may trigger the existing
+  web deployment/internal-preview workflows; those states are distinct from TestFlight 26.
 
 ## Suggested skills
 

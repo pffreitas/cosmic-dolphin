@@ -37,7 +37,7 @@ Web:
 bun run --cwd apps/web dev
 # /dev/bookmark?parity=1&theme=light&text=default
 # production BookmarkDetail + AppShell + BottomNavigation
-playwright-cli -s=bookmark-parity open 'http://localhost:3000/dev/bookmark?parity=1&theme=light&text=default'
+playwright-cli -s=bookmark-parity open 'http://localhost:3001/dev/bookmark?parity=1&theme=light&text=default'
 playwright-cli -s=bookmark-parity run-code --filename=docs/design-system/bookmark-detail-parity/capture-web.js
 ```
 
