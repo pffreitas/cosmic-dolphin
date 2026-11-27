@@ -476,9 +476,10 @@ it("Home keeps a processing capture above the loaded feed with real phases and i
   fireEvent.press(app.getByRole("button", { name: "Save" }));
   await app.findByText("Saved. Cosmic is reading it.");
   fireEvent.press(app.getByRole("button", { name: "Done" }));
-  expect(await app.findByText("Fetched page")).toBeTruthy();
-  expect(app.getByText("Extracting content…")).toBeTruthy();
-  expect(app.getByText("Reading")).toBeTruthy();
+  expect(await app.findByText("Extracting content…")).toBeTruthy();
+  // Compact web Saving now shows the active phase only; filing remains available to accessibility.
+  expect(app.queryByText("Fetched page")).toBeNull();
+  expect(app.getByRole("button", { name: "Open Saved idea" }).props.accessibilityHint).toBe("Reading");
 });
 
 it("iOS native Paste reads no clipboard contents or page title before an explicit tap and records clipboard attribution", async () => {

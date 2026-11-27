@@ -57,6 +57,10 @@ function rememberOwnedBookmark(bookmark: ContractBookmark, userId?: string) {
   return rememberBookmark(bookmark);
 }
 export const MobileAPI = {
+  async like(id: string, liked: boolean, userId: string) {
+    const client = new BookmarksApi(await configuration(userId));
+    return liked ? client.bookmarksLike({ id }) : client.bookmarksUnlike({ id });
+  },
   async sharedBookmark(slug: string, signal?: AbortSignal) {
     const bookmark = await new SharedBookmarksApi(await configuration()).sharedBookmarksFindBySlug({ slug }, { signal });
     // Public responses never populate an account's private offline cache.
@@ -96,11 +100,11 @@ export const MobileAPI = {
     const result = await new BookmarksApi(await configuration(userId)).bookmarksGetProcessingTimeline({ id }, { signal });
     return { ...result, bookmark: rememberOwnedBookmark(result.bookmark, userId) };
   },
-  async comments(id: string) {
-    return new CommentsApi(await configuration()).bookmarkCommentsList({ id });
+  async comments(id: string, userId?: string) {
+    return new CommentsApi(await configuration(userId)).bookmarkCommentsList({ id });
   },
-  async comment(id: string, body: string) {
-    return new CommentsApi(await configuration()).bookmarkCommentsCreate({
+  async comment(id: string, body: string, userId?: string) {
+    return new CommentsApi(await configuration(userId)).bookmarkCommentsCreate({
       id,
       createCommentRequest: { body },
     });

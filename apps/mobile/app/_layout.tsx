@@ -31,6 +31,7 @@ function RootLayoutNav() {
   const reduceMotion = useReducedMotion();
   const router = useRouter();
   const pathname = usePathname();
+  const devGallery = __DEV__ && pathname === "/dev/home";
   const { session, isLoading } = useAuth();
   const statusBarStyle = scheme === "dark" ? "light" : "dark";
 
@@ -111,7 +112,7 @@ function RootLayoutNav() {
   useEffect(() => { if (!hasShareIntent) consuming.current = false; }, [hasShareIntent]);
 
   useEffect(() => {
-    if (isLoading || persisting || !nativeReady) return;
+    if (devGallery || isLoading || persisting || !nativeReady) return;
     if (arrival && (session || arrival.noUrl || arrival.error || arrival.queued)) {
       setPublicResult(!!(arrival.noUrl || arrival.error || arrival.queued));
       openingShare.current = true;
@@ -128,7 +129,7 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === "(auth)";
     if (!session && !inAuthGroup && !(pathname === "/share" && publicResult)) router.replace("/(auth)/sign-in");
     else if (session && inAuthGroup && !arrival) router.replace("/(tabs)");
-  }, [session, segments, isLoading, persisting, arrival, pathname, publicResult, nativeReady, router]);
+  }, [session, segments, isLoading, persisting, arrival, pathname, publicResult, nativeReady, router, devGallery]);
 
   // Log any errors with share intent
   useEffect(() => {
@@ -138,7 +139,7 @@ function RootLayoutNav() {
   }, [error]);
 
   // Show loading screen while checking auth state
-  if (isLoading) {
+  if (isLoading && !devGallery) {
     return (
       <>
         <StatusBar
@@ -168,7 +169,7 @@ function RootLayoutNav() {
           backgroundColor={colors.bg}
           translucent={false}
         />
-        <Stack screenOptions={{ animation: reduceMotion ? "none" : "default" }}>
+        <Stack screenOptions={{ headerShown: false, animation: reduceMotion ? "none" : "default" }}>
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen
@@ -219,6 +220,12 @@ export default function RootLayout() {
     InterSemibold: require("../assets/fonts/Inter-600.ttf"),
     SourceSerif: require("../assets/fonts/SourceSerif4-400.ttf"),
     SourceSerifSemibold: require("../assets/fonts/SourceSerif4-600.ttf"),
+    CosmicReading17: require("../assets/fonts/CosmicReading17.ttf"),
+    CosmicReading19: require("../assets/fonts/CosmicReading19.ttf"),
+    CosmicReading20: require("../assets/fonts/CosmicReading20.ttf"),
+    CosmicReading28: require("../assets/fonts/CosmicReading28.ttf"),
+    CosmicReading34: require("../assets/fonts/CosmicReading34.ttf"),
+
   });
 
   useEffect(() => {

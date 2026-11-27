@@ -31,7 +31,7 @@ function CommitAudit() {
     if (user?.id !== "b") return;
     commits.push({ owner: user.id, oldTopic: !!screen.queryByRole("button", { name: "Private A" }),
       oldContent: screen.queryAllByText(/^(Article (a|pick-a|resume-a)|Private A reason|91 unread saves are in your Library\.)$/).length > 0,
-      allSelected: screen.queryByRole("button", { name: "All topics" })?.props.accessibilityState.selected });
+      allSelected: screen.queryByRole("radio", { name: "For you" })?.props.accessibilityState.checked });
   });
   return null;
 }
@@ -56,18 +56,20 @@ beforeEach(async () => {
 });
 afterEach(() => { global.fetch = originalFetch; });
 
-it("fences selected topics and content synchronously at A→B, including an open sheet and held A refresh", async () => {
+it("fences selected scopes and content synchronously at A→B, including an open sheet and held A refresh", async () => {
   renderRouter({ _layout: Layout, index: HomeScreen });
   await act(async () => {});
   await screen.findByText("Article a");
-  fireEvent.press(screen.getByRole("button", { name: "Private A" }));
+  fireEvent.press(screen.getByRole("radio", { name: "Following" }));
+  await screen.findByTestId("feed-card-a");
   const transport = global.fetch;
   let finish!: (value: Response) => void;
   global.fetch = Object.assign(jest.fn((url: string | URL | Request, init?: RequestInit) => String(url).includes("/feed") && (init?.headers as Record<string, string>).Authorization.endsWith("fixture-a")
     ? new Promise<Response>(resolve => { finish = resolve; }) : transport(url, init)), { preconnect: originalFetch.preconnect });
   fireEvent(screen.UNSAFE_getByType(RefreshControl), "refresh");
   await waitFor(() => expect(finish).toBeDefined());
-  fireEvent.press(within(screen.getByTestId("feed-card-a")).getByRole("button", { name: "Later" }));
+  fireEvent.press(within(screen.getByTestId("feed-card-a")).getByRole("button", { name: "More actions for Article a" }));
+  fireEvent.press(screen.getByText("Later…"));
   expect(screen.getByText("Tomorrow morning")).toBeTruthy();
   await act(async () => { mockSession = session("b"); mockAuthChange("SIGNED_IN", mockSession); });
   await screen.findByText("Article b");
@@ -78,14 +80,14 @@ it("fences selected topics and content synchronously at A→B, including an open
   await act(async () => finish(response({ items: [{ type: "own_save", bookmark: bookmark("a", "a", "Private A") }] })));
   expect(screen.queryByText("Article a")).toBeNull();
   expect(screen.queryByRole("button", { name: "Private A" })).toBeNull();
-  expect(screen.getByRole("button", { name: "All topics" }).props.accessibilityState.selected).toBe(true);
+  expect(screen.getByRole("radio", { name: "For you" }).props.accessibilityState.checked).toBe(true);
   expect(screen.getByText("Article b")).toBeTruthy();
   const feedCalls = jest.mocked(transport).mock.calls.filter(([url]) => String(url).includes("/feed"));
-  expect(feedCalls).toHaveLength(2); // One initial read per owner; the held refresh bypasses this fixture.
+  expect(feedCalls).toHaveLength(3); // A initial, A scope change, B initial; held refresh bypasses this fixture.
   for (const [url] of feedCalls) {
     const query = new URL(String(url), "https://fixture.invalid").searchParams;
-    expect(query.get("scope")).toBe("for_you");
-    expect(query.get("limit")).toBe("15");
+    expect(["for_you", "following"]).toContain(query.get("scope"));
+    expect(query.get("limit")).toBe(query.get("scope") === "for_you" ? "15" : "30");
     expect(query.get("cursor")).toBeNull();
   }
 });
@@ -93,7 +95,8 @@ it("ignores held old-owner action and Move-list completions without changing B o
   renderRouter({ _layout: Layout, index: HomeScreen });
   await act(async () => {});
   await screen.findByText("Article a");
-  fireEvent.press(screen.getByRole("button", { name: "Private A" }));
+  fireEvent.press(screen.getByRole("radio", { name: "Following" }));
+  await screen.findByTestId("feed-card-a");
   const transport = global.fetch;
   let finishRead!: (value: Response) => void;
   let finishTopics!: (value: Response) => void;
@@ -107,11 +110,12 @@ it("ignores held old-owner action and Move-list completions without changing B o
     return transport(url, init);
   }), { preconnect: originalFetch.preconnect });
   // The real owner-bound controller keeps the optimistic write through navigation.
-  fireEvent.press(within(screen.getByTestId("feed-card-a")).getByRole("button", { name: "Done" }));
+  fireEvent.press(within(screen.getByTestId("feed-card-a")).getByRole("button", { name: "More actions for Article a" }));
+  fireEvent.press(screen.getByText("Mark done"));
   await waitFor(() => expect(finishRead).toBeDefined());
   fireEvent.press(screen.getByRole("button", { name: "Undo" }));
   // Undo is queued behind the acknowledged owner write, not rebound to B.
-  fireEvent.press(within(screen.getByTestId("feed-card-a")).getByRole("button", { name: "More actions" }));
+  fireEvent.press(within(screen.getByTestId("feed-card-a")).getByRole("button", { name: "More actions for Article a" }));
   fireEvent.press(screen.getByText("Move to topic…"));
   await waitFor(() => expect(finishTopics).toBeDefined());
   await act(async () => { mockSession = session("b"); mockAuthChange("SIGNED_IN", mockSession); });
@@ -123,7 +127,7 @@ it("ignores held old-owner action and Move-list completions without changing B o
   expect(screen.queryByText("Private A collection")).toBeNull();
   expect(screen.queryByText("Article a")).toBeNull();
   expect(screen.queryByText("Marked done")).toBeNull();
-  expect(screen.getByRole("button", { name: "All topics" }).props.accessibilityState.selected).toBe(true);
+  expect(screen.getByRole("radio", { name: "For you" }).props.accessibilityState.checked).toBe(true);
   expect(screen.getByText("Article b")).toBeTruthy();
   expect(writes).toEqual(["Bearer fixture-a"]);
 });

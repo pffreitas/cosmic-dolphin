@@ -1,3 +1,5 @@
+import { BottomTabBar } from "@react-navigation/bottom-tabs";
+import { HomeTabBar } from "@/components/web-home/Chrome";
 import { Tabs, useRouter } from "expo-router";
 import React from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -20,6 +22,7 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   return (
     <Tabs
+      tabBar={props => props.state.routes[props.state.index].name === "index" ? <HomeTabBar /> : <BottomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.fg,

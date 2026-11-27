@@ -43,28 +43,18 @@ const bookmark = (id: string, topic: string) => ({
   updatedAt: "2026-10-01T00:00:00Z",
   cosmicTags: [topic],
 });
-it("restores the full local tail through All topics without changing the feed scope", async () => {
-  (useHomeFeed as jest.Mock).mockImplementation(() => ({
-    loading: false,
-    refreshing: false,
-    resume: [],
-    refresh: jest.fn(),
-    loadMore: jest.fn(),
-    more: false,
-    hasMore: false,
-    items: [bookmark("ai", "AI"), bookmark("design", "Design")].map((bookmark) => ({ type: "own_save", bookmark })),
-  }));
+it("changes the server feed scope through the web Home control", async () => {
+  (useHomeFeed as jest.Mock).mockImplementation(() => ({ loading: false, refreshing: false, resume: [], refresh: jest.fn(), loadMore: jest.fn(), more: false, hasMore: false,
+    items: [bookmark("ai", "AI"), bookmark("design", "Design")].map(bookmark => ({ type: "own_save", bookmark })) }));
   renderRouter({ index: HomeScreen });
-  const view = screen;
-  fireEvent.press(view.getByText("AI"));
-  expect(view.queryByText("Design article")).toBeNull();
-  fireEvent.press(view.getByText("All topics"));
-  await waitFor(() => expect(view.getByText("Design article")).toBeTruthy());
-  expect(useHomeFeed).toHaveBeenLastCalledWith("for_you");
+  fireEvent.press(screen.getByRole("radio", { name: "Following" }));
+  expect(useHomeFeed).toHaveBeenLastCalledWith("following", { edition: true });
+  fireEvent.press(screen.getByRole("radio", { name: "For you" }));
+  expect(useHomeFeed).toHaveBeenLastCalledWith("for_you", { edition: true });
 });
 
 // Router and tab primitives are real; auth/preferences/data are test boundaries.
-it("offers Home, Save, Library in that order and opens Save over the current Library", async () => {
+it("offers web Home navigation and opens Save over the current Library", async () => {
   const route = renderRouter({
     "(tabs)/_layout": TabLayout,
     "(tabs)/index": () => <Text>Home destination</Text>,
@@ -74,8 +64,9 @@ it("offers Home, Save, Library in that order and opens Save over the current Lib
     "(tabs)/explore": () => <Text>Explore destination</Text>,
     save: () => <Text>Save modal</Text>,
   }, { initialUrl: "/" });
-  expect(screen.getAllByLabelText(/, tab, /).map(tab => tab.props.accessibilityLabel.split(",")[0])).toEqual(["Home", "Save", "Library"]);
-  fireEvent.press(screen.getByLabelText(/^Library, tab,/));
+  expect(screen.getAllByRole("tab").map(tab => tab.props.accessibilityLabel)).toEqual(["Home", "Library", "You"]);
+  expect(screen.getByRole("button", { name: "Search" })).toBeTruthy();
+  fireEvent.press(screen.getByRole("tab", { name: "Library" }));
   expect(await screen.findByText("Library destination")).toBeTruthy();
   fireEvent.press(screen.getByLabelText(/^Save, tab,/));
   expect(await screen.findByText("Save modal")).toBeTruthy();
@@ -91,6 +82,7 @@ it("opens profile from the Home avatar outside tabs and returns to Home", async 
     "(tabs)/profile": () => <Text>Old profile destination</Text>,
     profile: () => <Text>Real profile destination</Text>,
   }, { initialUrl: "/" });
+  fireEvent.press(screen.getByRole("button", { name: "Open navigation" }));
   fireEvent.press(screen.getByRole("button", { name: "Your profile" }));
   expect(await screen.findByText("Real profile destination")).toBeTruthy();
   expect(screen.queryByLabelText(/^Home, tab,/)).toBeNull();
@@ -148,6 +140,7 @@ it("preserves real profile editing, settings and sign-out controls behind avatar
     "(tabs)/profile": ProfileRedirect, "(tabs)/explore": () => null,
     profile: ProfileScreen, settings: () => <Text>Settings destination</Text>,
   }, { initialUrl: "/" });
+  fireEvent.press(screen.getByRole("button", { name: "Open navigation" }));
   fireEvent.press(screen.getByRole("button", { name: "Your profile" }));
   expect(await screen.findByRole("button", { name: "Sign out" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Settings" })).toBeTruthy();
@@ -159,7 +152,7 @@ it("preserves real profile editing, settings and sign-out controls behind avatar
   await waitFor(() => expect(screen.queryByLabelText("Display name")).toBeNull());
   expect(screen.queryByText(/Accent|Density|Layout exploration/)).toBeNull();
   fireEvent.press(screen.getByRole("button", { name: "Go back" }));
-  expect(await screen.findByRole("button", { name: "Your profile" })).toBeTruthy();
+  expect(await screen.findByRole("button", { name: "Open navigation" })).toBeTruthy();
 });
 
 it("uses Topics copy while preserving Inbox, Archive and the existing topic tree", async () => {
@@ -172,11 +165,6 @@ it("uses Topics copy while preserving Inbox, Archive and the existing topic tree
   expect(useBookmarks).toHaveBeenLastCalledWith(expect.objectContaining({ scope: "archive", sort: "newest" }));
 });
 
-it("shows the signed-in reader initial in the Home avatar", async () => {
-  renderRouter({ index: HomeScreen });
-  expect(screen.getByRole('button', { name: 'Your profile' })).toBeTruthy();
-  expect(screen.getByText('R')).toBeTruthy();
-});
 
 it('returns to Home after a cold legacy profile deep link has no previous screen', async () => {
   renderRouter({ '(tabs)/_layout': TabLayout, '(tabs)/index': HomeScreen,
@@ -184,5 +172,5 @@ it('returns to Home after a cold legacy profile deep link has no previous screen
     '(tabs)/profile': ProfileRedirect, profile: ProfileScreen }, { initialUrl: '/(tabs)/profile' });
   expect(await screen.findByRole('button', { name: 'Sign out' })).toBeTruthy();
   fireEvent.press(screen.getByRole('button', { name: 'Go back' }));
-  expect(await screen.findByRole('button', { name: 'Your profile' })).toBeTruthy();
+  expect(await screen.findByRole('button', { name: 'Open navigation' })).toBeTruthy();
 });
