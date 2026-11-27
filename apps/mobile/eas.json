@@ -21,7 +21,8 @@
   "submit": {
     "production": {
       "ios": {
-        "ascAppId": "6758127357"
+        "ascAppId": "6758127357",
+        "bundleIdentifier": "com.cosmicdolphin.app"
       }
     }
   }

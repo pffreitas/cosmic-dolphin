@@ -1,0 +1,73 @@
+{
+  "ipaSHA256": "909e1675de1fe17930cdf7823832597b368588fdc5acd0114d41cbbbd3dd5cf1",
+  "sourceSHA": "60a86850f2ecafd930a9cf43b68899cb910d6895",
+  "targets": [
+    {
+      "bundle": "com.cosmicdolphin.app",
+      "version": "1.0.0",
+      "build": "23",
+      "minimumOSVersion": "15.1",
+      "signatureVerified": true,
+      "appGroup": [
+        "group.com.cosmicdolphin.app"
+      ],
+      "keychainGroup": [
+        "DVYXX2PWV5.com.cosmicdolphin.shared"
+      ],
+      "getTaskAllow": false,
+      "profileExpiration": "2027-01-22 02:02:31"
+    },
+    {
+      "bundle": "com.cosmicdolphin.app.share-extension",
+      "version": "1.0.0",
+      "build": "23",
+      "minimumOSVersion": "15.1",
+      "signatureVerified": true,
+      "appGroup": [
+        "group.com.cosmicdolphin.app"
+      ],
+      "keychainGroup": [
+        "DVYXX2PWV5.com.cosmicdolphin.shared"
+      ],
+      "getTaskAllow": false,
+      "profileExpiration": "2027-01-22 02:02:31"
+    }
+  ],
+  "exportComplianceFalse": true,
+  "productionAPI": "https://api.cosmic-dolphin.com",
+  "productionIssuer": "https://qsqbcqkpqmkuywunxbut.supabase.co",
+  "serifFontsVerified": 12,
+  "evidenceType": "local signed iOS distribution artifact; no physical-device installation proof",
+  "buildTool": "EAS local 27.11.0; Xcode 27.2",
+  "mobileChecks": {
+    "typecheck": "passed",
+    "lint": "passed with 12 warnings",
+    "jestSuites": 39,
+    "jestPassed": 307,
+    "jestSkipped": 1
+  },
+  "submission": {
+    "id": "2425ecf4-cdfd-4c61-947b-2498601c020a",
+    "status": "FINISHED",
+    "url": "https://expo.dev/accounts/cosmic-dolphin/projects/cosmic-dolphin/submissions/2425ecf4-cdfd-4c61-947b-2498601c020a"
+  },
+  "apple": {
+    "appVersion": "1.0.0",
+    "buildNumber": "23",
+    "processingState": "VALID",
+    "internalState": "IN_BETA_TESTING",
+    "externalState": "READY_FOR_BETA_SUBMISSION",
+    "uploadedDate": "2026-11-26T18:07:11-08:00",
+    "expired": false,
+    "ascBuildId": "8f4e3ded-97dd-4d26-b0ca-a73720416c5d",
+    "ascAppId": "6758127357",
+    "testFlightURL": "https://appstoreconnect.apple.com/apps/6758127357/testflight/ios"
+  },
+  "betaGroup": {
+    "id": "2cec83b6-864f-41ef-9434-652ba953e18c",
+    "name": "Beta",
+    "isInternalGroup": true,
+    "hasAccessToAllBuilds": true
+  },
+  "verifiedAtUTC": "2026-11-27T02:09:23.245785+00:00"
+}
