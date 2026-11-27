@@ -395,6 +395,8 @@ async function judge(options: { key: string; label: string; reference?: string; 
   const reference = options.reference ?? revisionState().revision;
   const records = loadRecords(options.label).filter((record) => record.role !== "standalone_paywall");
   records.forEach((record) => assert.equal(record.manifestSha256, manifestSha256, `${record.key} was run against another manifest`));
+  // The judge runs in this process; only the key from the secrets file reaches it.
+  process.env.OPENROUTER_API_KEY = options.key;
   const ai = new shared.AI();
   const dir = join(OUT, "judgments", options.label);
   let next = 0;
