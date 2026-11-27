@@ -131,7 +131,7 @@ it("T9 paywall plus Open Graph becomes an empty failed owner bookmark and skips 
   expect(result.body.cosmicKeyPoints).toEqual([]);
   expect(result.body.processingStatus).toBe("failed");
   expect(result.body.processingFailureCode).toBe("paywall");
-  expect(turns).toEqual(["contentStatus,unusableReason,brief,overview,keyPoints,sections"]);
+  expect(turns).toEqual(["contentStatus,unusableReason,title,brief,overview,keyPoints,sections"]);
   const timeline = await new BookmarkProcessingRepositoryImpl(db).findLatestTimeline(saved.id, owner);
   expect(timeline!.events.filter(event => event.kind === "phase").map(event => event.phase)).toEqual(["fetch", "extract", "summarise"]);
 });
@@ -152,7 +152,7 @@ it("T9 recovers a paywall with 200 pasted characters through the full stored-con
   expect(result.body).toMatchObject({ cosmicBriefSummary: "PASTED SOURCE BRIEF", processingStatus: "completed", processingFailureCode: null });
   expect((await request(`/bookmarks/${saved.id}/content`)).body).toMatchObject({ source: "pasted", blocks: [{ kind: "paragraph", text: text.trim() }] });
   expect(sources).toEqual([text.trim()]);
-  expect(turns).toEqual(["contentStatus,unusableReason,brief,overview,keyPoints,sections", "tags", "file"]);
+  expect(turns).toEqual(["contentStatus,unusableReason,title,brief,overview,keyPoints,sections", "tags", "file"]);
   const timeline = await new BookmarkProcessingRepositoryImpl(db).findLatestTimeline(saved.id, owner);
   expect(timeline!.events.filter(event => event.kind === "phase").map(event => event.phase).slice(-6)).toEqual(["fetch", "extract", "summarise", "tag", "file", "embed"]);
   expect((await new ContentChunkRepositoryImpl(db).findByScrapedContentId((await repository.getScrapedUrlContent(saved.id))!.id)).length).toBeGreaterThan(0);

@@ -1,5 +1,5 @@
 export const BOOKMARK_MODEL_IDS = {
-  large: process.env.BOOKMARK_MODEL_LARGE || "openai/gpt-6-luna",
+  large: process.env.BOOKMARK_MODEL_LARGE || "anthropic/claude-haiku-5.5",
   small: process.env.BOOKMARK_MODEL_SMALL || "openai/gpt-6-luna",
 };
 

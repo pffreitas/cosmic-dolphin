@@ -410,14 +410,7 @@ export class LightpandaPageProvider implements BrowserExtractionProvider {
         const wordCount = data.text.split(/\s+/).length;
         return {
           title,
-          content: [
-            data.author,
-            data.date,
-            "",
-            data.text,
-            "",
-            `Source: ${url}`,
-          ].join("\n"),
+          content: [data.author, data.date, "", data.text].join("\n"),
           images: data.images.filter((i) => safe(i.url)),
           links: data.links.filter((l) => safe(l.url)),
           metadata: {

@@ -10,6 +10,8 @@ import {
   FILTER_IMAGES_PROMPT,
   buildSummarisePrompt,
   SummariseContentKind,
+  SummariseLinkedSource,
+  SUMMARY_LIMITS,
 } from "../services/bookmark.processor.prompt";
 import { Session } from "../ai/types";
 import {
@@ -164,13 +166,19 @@ interface SummariseResult {
   briefOnly?: boolean;
   briefSummary?: string;
   keyPoints: string[];
+  /** The model's title; only X posts use it (§8.4). */
+  title?: string;
 }
 
+/** What the summary reads: its source kind, the prepared text and the linked page it covers. */
 interface ProcessableContent {
   kind: SummariseContentKind;
   text: string;
   truncated: boolean;
   originalChars: number;
+  /** The source title shown to the model: the post's for X, the bookmark's otherwise. */
+  title?: string;
+  linked?: SummariseLinkedSource;
 }
 
 export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
@@ -372,7 +380,7 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
         // `summarise` needs the page — but it is idempotent and silent, so
         // retrying one phase does not redraw a *Fetched page* line the user
         // watched succeed an hour ago.
-        const scrapedContent = inScope("fetch")
+        let scrapedContent = inScope("fetch")
           ? await reporter.trackPhase("fetch", "Fetch page", () =>
               this.requireScrapedContent(bookmark, signal)
             )
@@ -414,10 +422,30 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
             "summarise",
             "Summarise content",
             failures,
-            (phaseReporter) =>
-              this.summarise(session, bookmark, getProcessable(), phaseReporter),
+            async (phaseReporter) => {
+              try {
+                return await this.summarise(session, bookmark, getProcessable(), phaseReporter);
+              } catch (error) {
+                if (!(error instanceof UnusableSourceError) || getProcessable().kind !== "link_post") throw error;
+                // The linked page was a paywall, consent or error page. Persist the
+                // post-only row first, so a redelivery replays the post-only turn,
+                // then summarise the post with the unread host named.
+                scrapedContent = await this.bookmarkService.downgradeLinkedSource(bookmark.id, scrapedContent);
+                processable = undefined;
+                Object.assign(bookmark, { cosmicSummary: "", cosmicBriefSummary: "", cosmicKeyPoints: [], searchDocument: undefined });
+                return this.summarise(session, bookmark, getProcessable(), phaseReporter);
+              }
+            },
             signal
           );
+          if (this.isTwitterBookmark(bookmark)) {
+            // §8.4: the readable article's title, else the model's, else the post's.
+            const prepared = getProcessable();
+            const title = (prepared.linked?.status === "used" && prepared.linked.title) || summarised?.title || scrapedContent.title;
+            if (title && title !== bookmark.title && (await this.bookmarkService.replacePipelineTitle(bookmark, title))) {
+              bookmark.title = title;
+            }
+          }
           if (summarised) {
             // A scoped retry that recovers only card data cannot replace the
             // full brief. An unusable source explicitly returns "" and clears it.
@@ -858,14 +886,20 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
     const prompt = (briefOnly: boolean) => buildSummarisePrompt({
       content: content.text,
       kind,
-      title: bookmark.title,
+      title: content.title ?? bookmark.title,
       sourceUrl: bookmark.sourceUrl,
       truncated: content.truncated,
       briefOnly,
+      ...(content.linked ? { linked: content.linked } : {}),
     });
     const providerOptions = summaryProviderOptions(BOOKMARK_MODEL_IDS.large);
 
-    const metadata = { truncated: content.truncated, originalChars: content.originalChars };
+    const metadata = {
+      truncated: content.truncated,
+      originalChars: content.originalChars,
+      kind,
+      ...(content.linked ? { linkedUrl: content.linked.url, linkedStatus: content.linked.status } : {}),
+    };
     let briefOnly = false;
     let record;
     try {
@@ -889,7 +923,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
               unusableReason: result.value.unusableReason,
             },
           };
-        }
+        },
+        metadata
       );
     } catch (error) {
       if (!NoObjectGeneratedError.isInstance(error)) throw error;
@@ -919,7 +954,8 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
               briefOnly: true,
             },
           };
-        }
+        },
+        metadata
       );
     }
 
@@ -934,8 +970,9 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
       summary: record.overview.trim() || record.sections.length > 0
         ? renderSummaryMarkdown(record, keyPoints)
         : undefined,
-      briefSummary: clampText(record.brief, 240),
+      briefSummary: clampText(record.brief, SUMMARY_LIMITS.brief.cap),
       keyPoints,
+      title: clampText(record.title ?? "", SUMMARY_LIMITS.title.cap) || undefined,
     };
   }
 
@@ -995,12 +1032,26 @@ export class BookmarkProcessorServiceImpl implements BookmarkProcessorService {
   ): ProcessableContent {
     // Pasted articles are escaped HTML even when the original URL is a video or post.
     const pasted = content.metadata?.extraction?.provider === "user_paste";
-    const kind: SummariseContentKind = !pasted && this.isTwitterBookmark(bookmark)
-      ? "tweet"
-      : !pasted && this.isYouTubeBookmark(bookmark) ? "youtube" : "article";
-    const text = kind === "article"
-      ? this.chunkingService.stripHtml(content.content ?? "")
-      : (content.content ?? "");
+    const raw = content.content ?? "";
+    if (!pasted && this.isTwitterBookmark(bookmark)) {
+      // §8.4: a complete follow is a link-post; a failed or unreadable one is the post alone.
+      const linked = content.metadata?.extraction?.linked;
+      const text = linked ? this.chunkingService.stripHtml(raw) : raw;
+      const summaryLinked: SummariseLinkedSource | undefined = !linked
+        ? undefined
+        : linked.status === "complete"
+          ? { url: linked.url, status: "used", ...(linked.title ? { title: linked.title } : {}) }
+          : { url: linked.url, status: linked.status };
+      return {
+        ...budgetText(text),
+        originalChars: text.length,
+        kind: summaryLinked?.status === "used" ? "link_post" : "tweet",
+        title: content.title,
+        ...(summaryLinked ? { linked: summaryLinked } : {}),
+      };
+    }
+    const kind: SummariseContentKind = !pasted && this.isYouTubeBookmark(bookmark) ? "youtube" : "article";
+    const text = kind === "article" ? this.chunkingService.stripHtml(raw) : raw;
     return { ...budgetText(text), originalChars: text.length, kind };
   }
 

@@ -346,7 +346,8 @@ export class BookmarkProcessingReporter {
     phase: BookmarkProcessingPhaseName | undefined,
     name: string,
     modelId: string | undefined,
-    work: () => Promise<BookmarkProcessingTurnResult<T>>
+    work: () => Promise<BookmarkProcessingTurnResult<T>>,
+    metadata?: Record<string, any>
   ): Promise<T> {
     this.assertRunStarted();
 
@@ -361,6 +362,7 @@ export class BookmarkProcessingReporter {
       sequence: this.nextSequence(),
       startedAt,
       modelId,
+      metadata,
     });
 
     try {
@@ -514,14 +516,16 @@ export class BookmarkProcessingPhaseReporter {
   async trackTurn<T>(
     name: string,
     modelId: string | undefined,
-    work: () => Promise<BookmarkProcessingTurnResult<T>>
+    work: () => Promise<BookmarkProcessingTurnResult<T>>,
+    metadata?: Record<string, any>
   ): Promise<T> {
     return this.reporter.trackTurn(
       this.phaseEvent.id,
       this.phase,
       name,
       modelId,
-      work
+      work,
+      metadata
     );
   }
 }

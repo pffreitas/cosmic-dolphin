@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "registeredAt": "2026-11-27",
+  "note": "Public URLs only. Sources are cached outside Git under out/. Registered before any scoring (spec §8.5).",
+  "fixtures": [
+    {
+      "id": "example",
+      "url": "https://x.com/lethain/status/2124590238031094043",
+      "role": "link_post",
+      "expect": { "provider": "fxtwitter", "linked": "complete" },
+      "judgeNote": "Will Larson promotes his own article. A good save takes the article title, pairs the bottleneck-by-bottleneck method with 115 PRs in a calendar week or 170 in a rolling seven days, and orders the bottlenecks: the fleet harness (153 of 170), verification replacing slow approvals, the /my-open-work triage skill and the limits of PR count as a value measure."
+    },
+    {
+      "id": "own-article",
+      "url": "https://x.com/lethain/status/2116211605969203587",
+      "role": "link_post",
+      "expect": { "provider": "fxtwitter", "linked": "complete" },
+      "judgeNote": "The poster links his own write-up on adopting the verification pattern at Imprint and asks what others are doing. The save should carry the article's substance."
+    },
+    {
+      "id": "disagreement",
+      "url": "https://x.com/simonw/status/2123808432830701909",
+      "role": "link_post",
+      "expect": { "provider": "fxtwitter", "linked": "complete" },
+      "judgeNote": "The poster questions Google's Gemini 4 Neon announcement: is Neon better than Carbon for some tasks, and is Argon effectively retired since the comparison graphic leaves it out. The brief or first key point must convey that stance, attributed to the poster, while the rest covers the announcement."
+    },
+    {
+      "id": "linked-paywall",
+      "url": "https://x.com/lethain/status/2120546868489064746",
+      "role": "linked_paywall",
+      "expect": { "provider": "fxtwitter", "linked": "complete" },
+      "judgeNote": "The linked upstartsmedia.com article is a paid-subscriber teaser. The expected save is post-only: Imprint ships about 4x faster with incidents down about 80%, still early, and it names the unread host. Summarising the teaser as though it were the article is a coverage and accuracy failure."
+    },
+    {
+      "id": "incidental-link",
+      "url": "https://x.com/dhh/status/2125498388385022313",
+      "role": "link_post",
+      "expect": { "provider": "fxtwitter", "linked": "complete" },
+      "judgeNote": "The post continues DHH's own thread. Its point is tech's myopia and constant churn; the basecamp.com/ai link is incidental. A good save keeps the poster's framing and uses the linked page only as supporting context."
+    },
+    {
+      "id": "plain-post",
+      "url": "https://x.com/paulg/status/2126066121333715109",
+      "role": "plain_post",
+      "expect": { "provider": "fxtwitter" },
+      "judgeNote": "A short plain post with no link. The save should stay proportional: no invented background, at most two key points, no overview or sections."
+    },
+    {
+      "id": "quote-photo",
+      "url": "https://x.com/lethain/status/2111483002446549273",
+      "role": "quote_post",
+      "expect": { "provider": "fxtwitter" },
+      "judgeNote": "A quote post with a photo. The poster adds a punchline to the quoted post about cutting down on 'meat proxy review'. Attribute the quote and the comment to the right authors."
+    },
+    {
+      "id": "structured-article",
+      "url": "https://www.normaltech.ai/p/management-consulting-is-not-a-thin",
+      "role": "article",
+      "expect": { "provider": "direct" },
+      "judgeNote": "A long structured essay with headings and lists. Sections should follow the source's structure."
+    },
+    {
+      "id": "chart-alt-article",
+      "url": "https://ourworldindata.org/no-matter-how-you-ask-more-americans-are-negative-than-positive-about-ai",
+      "role": "article",
+      "expect": { "provider": "direct" },
+      "judgeNote": "A data article whose charts carry alt text. Specific survey numbers from the text or chart alt text should appear."
+    },
+    {
+      "id": "news-article",
+      "url": "https://www.bbc.co.uk/news/articles/c52e8k19y94mo",
+      "role": "article",
+      "expect": { "provider": "direct" },
+      "judgeNote": "A BBC news feature on the shortage of lift and escalator mechanics."
+    },
+    {
+      "id": "non-english-article",
+      "url": "https://g1.globo.com/tecnologia/ciberseguranca/noticia/2026/11/26/fifa-diz-ter-sido-vitima-de-ataque-cibernetico-que-acessou-informacoes-pessoais-e-comerciais.ghtml",
+      "role": "article",
+      "expect": { "provider": "direct" },
+      "judgeNote": "A Portuguese news article. The save must be written in Portuguese."
+    },
+    {
+      "id": "standalone-paywall",
+      "url": "https://www.upstartsmedia.com/p/netlify-new-look-130m-arr",
+      "role": "standalone_paywall",
+      "expect": { "provider": "direct" },
+      "judgeNote": "Not judged. Expected outcome: the save fails with code paywall and empty summaries."
+    }
+  ]
+}

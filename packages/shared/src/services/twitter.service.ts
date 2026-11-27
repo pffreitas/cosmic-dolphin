@@ -3,6 +3,7 @@ import { HttpClient } from "./http-client";
 import { BrowserExtractionProvider } from "./extraction-providers";
 import { ExtractionContext, ContentExtractionError } from "./content-extraction";
 import { LightpandaPageProvider } from "./lightpanda.service";
+import { eligibleLinks, LinkedArticleReader, readLinkedSource } from "./linked-source";
 import { ScrapedUrlContents } from "../types";
 
 export class TwitterScrapingError extends Error {
@@ -16,7 +17,7 @@ export class TwitterScrapingError extends Error {
   }
 }
 
-// FxTwitter API v2 response types
+// FxTwitter API v2 thread response types
 interface FxTwitterAuthor {
   name?: string;
   screen_name?: string;
@@ -34,24 +35,22 @@ interface FxTwitterVideo {
   thumbnail_url?: string;
 }
 
-interface FxTwitterMedia {
-  photos?: FxTwitterPhoto[];
-  videos?: FxTwitterVideo[];
+interface FxTwitterFacet {
+  type: string;
+  original?: string;
+  replacement?: string;
 }
 
 interface FxTwitterStatus {
+  type?: string;
+  id?: string;
   text?: string;
+  raw_text?: { text?: string; facets?: FxTwitterFacet[] };
   author?: FxTwitterAuthor;
   created_at?: string;
   created_timestamp?: number;
-  likes?: number;
-  reposts?: number;
-  replies?: number;
-  media?: FxTwitterMedia;
-  quote?: {
-    text?: string;
-    author?: FxTwitterAuthor;
-  } | null;
+  media?: { photos?: FxTwitterPhoto[]; videos?: FxTwitterVideo[] };
+  quote?: FxTwitterStatus | null;
 }
 
 interface FxTwitterResponse {
@@ -67,15 +66,142 @@ interface OEmbedResponse {
   provider_name?: string;
 }
 
+/** One post as stored: expanded text without media links, its photos and its links. */
+interface XPost {
+  id?: string;
+  name?: string;
+  handle: string;
+  date?: string;
+  text: string;
+  photos: Array<{ url: string; alt: string }>;
+  thumbnails: Array<{ url: string; alt: string }>;
+  links: string[];
+}
+
+type ExtractedPost = Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">;
+
+const X_SITE_NAME = "X (formerly Twitter)";
+const SHORT_OR_MEDIA_LINK = /(?:https?:\/\/)?(?:t\.co\/\w+|pic\.(?:x|twitter)\.com\/\w+)/g;
+
+/** Expanded post text: t.co links replaced by their destinations, media links dropped. */
+function expandText(status: FxTwitterStatus): { text: string; links: string[] } {
+  const facets = status.raw_text?.facets ?? [];
+  let text = status.raw_text?.text ?? status.text ?? "";
+  const links: string[] = [];
+  for (const facet of facets) {
+    if (!facet.original) continue;
+    if (facet.type === "url" && facet.replacement) {
+      text = text.split(facet.original).join(facet.replacement);
+      links.push(facet.replacement);
+    } else if (facet.type === "media") {
+      text = text.split(facet.original).join("");
+    }
+  }
+  const cleaned = text
+    .replace(SHORT_OR_MEDIA_LINK, "")
+    .split("\n")
+    .map((line) => line.replace(/[ \t]+$/, ""))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return { text: cleaned, links };
+}
+
+/** `null` for an unavailable post: no author, or nothing to show. */
+function parsePost(status: FxTwitterStatus | null | undefined): XPost | null {
+  const handle = status?.author?.screen_name;
+  if (!status || !handle || (status.type && status.type !== "status")) return null;
+  const { text, links } = expandText(status);
+  const photos = (status.media?.photos ?? []).map((photo) => ({
+    url: photo.url,
+    alt: photo.altText ?? (photo.type === "gif" ? "Tweet GIF" : "Tweet image"),
+  }));
+  const thumbnails = (status.media?.videos ?? [])
+    .filter((video) => video.thumbnail_url)
+    .map((video) => ({ url: video.thumbnail_url!, alt: "Tweet video thumbnail" }));
+  if (!text && photos.length === 0 && thumbnails.length === 0) return null;
+  const date = status.created_timestamp
+    ? new Date(status.created_timestamp * 1000).toISOString().slice(0, 10)
+    : status.created_at;
+  return { id: status.id, name: status.author?.name, handle, date, text, photos, thumbnails, links };
+}
+
+const byline = (post: XPost) =>
+  `${post.name ? `${post.name} (@${post.handle})` : `@${post.handle}`}${post.date ? ` · ${post.date}` : ""}`;
+
+const escapeHtml = (text: string) =>
+  text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+/** Plain text for an X row without `linked`: one block per post, the quote after its post. */
+function plainContent(posts: Array<{ post: XPost; quoting: boolean }>): string {
+  return posts
+    .map(({ post, quoting }) => [`${quoting ? "Quoting " : ""}${byline(post)}`, post.text].filter(Boolean).join("\n\n"))
+    .join("\n\n");
+}
+
+/** §8.4: each escaped post in a top-level blockquote, header first, then its paragraphs. */
+function postBlockquote(post: XPost, quoting: boolean): string {
+  const header = `<p>${quoting ? "Quoting " : ""}<strong>${escapeHtml(post.name ?? post.handle)}</strong> @${escapeHtml(post.handle)}${post.date ? ` · <time>${escapeHtml(post.date)}</time>` : ""}</p>`;
+  // Links stay anchors, so the post-only row can recover them without the article.
+  const linkify = (line: string) =>
+    line
+      .split(/(https?:\/\/\S+)/)
+      .map((part, index) => (index % 2 ? `<a href="${escapeHtml(part)}">${escapeHtml(part)}</a>` : escapeHtml(part)))
+      .join("");
+  const paragraphs = post.text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => `<p>${linkify(line)}</p>`);
+  return ["<blockquote>", header, ...paragraphs, "</blockquote>"].join("\n");
+}
+
+const countWords = (text: string) => text.split(/\s+/).filter(Boolean).length;
+
+/** Words of stored HTML, counting adjacent elements as separate words. */
+function htmlWordCount($: cheerio.CheerioAPI): number {
+  return countWords(
+    $.root().find("*").addBack().contents()
+      .filter((_, node) => node.type === "text")
+      .map((_, node) => $(node).text())
+      .get()
+      .join(" "),
+  );
+}
+
+/**
+ * The post-only body of a linked X row: the stored posts without the article,
+ * with their links and public reading counts. Used when the linked page turns
+ * out to be a paywall, consent or error page.
+ */
+export function xPostOnlyContent(content: string): { content: string; links: Array<{ url: string; text: string }>; wordCount: number; readingTime: number } {
+  const $ = cheerio.load(content, null, false);
+  $.root().children("article").remove();
+  const body = $.html().trim();
+  const links = $("a[href]").map((_, link) => ({ url: $(link).attr("href") ?? "", text: $(link).text() })).get();
+  const wordCount = htmlWordCount($);
+  return { content: body, links, wordCount, readingTime: Math.max(1, Math.ceil(wordCount / 200)) };
+}
+
 export interface TwitterService {
   isTwitterUrl(url: string): boolean;
   scrape(
     url: string, context?: ExtractionContext
-  ): Promise<Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">>;
+  ): Promise<ExtractedPost>;
 }
 
 export class TwitterServiceImpl implements TwitterService {
-  constructor(private httpClient: HttpClient, private browserProvider: BrowserExtractionProvider = new LightpandaPageProvider()) {}
+  constructor(
+    private httpClient: HttpClient,
+    private browserProvider: BrowserExtractionProvider = new LightpandaPageProvider(),
+    /** Direct HTML extraction for the one eligible link. Absent, posts are never followed. */
+    private readArticle?: LinkedArticleReader,
+  ) {}
 
   isTwitterUrl(url: string): boolean {
     try {
@@ -93,11 +219,13 @@ export class TwitterServiceImpl implements TwitterService {
 
   async scrape(
     url: string, context?: ExtractionContext
-  ): Promise<Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">> {
+  ): Promise<ExtractedPost> {
     const signal = context?.signal;
     try {
-      return await this.scrapeViaFxTwitter(url, signal);
+      return await this.scrapeViaFxTwitter(url, context);
     } catch (primaryError) {
+      // A cancelled run stops here; the fallbacks would only spend its time.
+      if (signal?.aborted) throw primaryError;
       console.warn(
         `[TwitterService] fxTwitter failed for ${url}, trying oEmbed fallback:`,
         primaryError instanceof Error ? primaryError.message : primaryError
@@ -139,14 +267,15 @@ export class TwitterServiceImpl implements TwitterService {
 
   private async scrapeViaFxTwitter(
     url: string,
-    signal?: AbortSignal
-  ): Promise<Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">> {
+    context?: ExtractionContext
+  ): Promise<ExtractedPost> {
+    const signal = context?.signal;
     const statusId = this.extractStatusId(url);
     if (!statusId) {
       throw new Error("Could not extract tweet ID from URL");
     }
 
-    const apiUrl = `https://api.fxtwitter.com/2/${statusId}`;
+    const apiUrl = `https://api.fxtwitter.com/2/thread/${statusId}`;
     const response = await this.httpClient.fetch(apiUrl, ...(signal ? [{ signal }] as const : []));
 
     if (!response.ok) {
@@ -154,19 +283,48 @@ export class TwitterServiceImpl implements TwitterService {
     }
 
     const data: FxTwitterResponse = JSON.parse(response.body);
-
     if (!data.status?.author?.screen_name) {
       throw new Error("fxTwitter response missing user data — tweet may be private or deleted");
     }
+    const focal = parsePost(data.status);
+    if (!focal) throw new Error("fxTwitter returned no post content");
 
-    const status = data.status;
-    if (!status.text?.trim() && !status.media?.photos?.length && !status.media?.videos?.length)
-      throw new Error("fxTwitter returned no post content");
-    const title = `Tweet by ${status.author!.name ?? status.author!.screen_name} (@${status.author!.screen_name})`;
-    const content = this.buildStructuredContent(url, data);
-    const images = this.extractMedia(status);
-    const links = this.extractLinks(status);
+    // The thread repeats the focal post; keep the author's order and show it once.
+    const thread = (data.thread ?? []).map(parsePost).filter((post): post is XPost => post !== null);
+    const posts = thread.some((post) => post.id && post.id === focal.id)
+      ? thread.map((post) => (post.id === focal.id ? focal : post))
+      : [focal, ...thread.filter((post) => post.text !== focal.text)];
+    const quote = parsePost(data.status.quote);
+    const ordered = posts.flatMap((post) => [
+      { post, quoting: false },
+      ...(post === focal && quote ? [{ post: quote, quoting: true }] : []),
+    ]);
 
+    const title = `Tweet by ${focal.name ?? focal.handle} (@${focal.handle})`;
+    const authorLinks = posts.flatMap((post) => post.links);
+    // Only the posts' own media: never the linked article's images (§8.2).
+    const media = [focal, ...posts.filter((post) => post !== focal), ...(quote ? [quote] : [])];
+    const images = media.flatMap((post) => [...post.photos, ...post.thumbnails]);
+    const photo = media.flatMap((post) => post.photos)[0];
+    const candidates = eligibleLinks(authorLinks);
+    const follow = candidates.length === 1 && this.readArticle && !context?.metadataOnly
+      ? await readLinkedSource(candidates[0], this.readArticle, signal)
+      : undefined;
+
+    const postLinks = [...new Set([...authorLinks, ...(quote?.links ?? [])])].map((link) => ({ url: link, text: link }));
+    let content: string;
+    let links = postLinks;
+    if (follow) {
+      const blocks = ordered.map(({ post, quoting }) => postBlockquote(post, quoting));
+      if (follow.article) {
+        blocks.push(`<article>\n${follow.article.content}\n</article>`);
+        links = [...postLinks, ...(follow.article.links ?? [])];
+      }
+      content = blocks.join("\n");
+    } else {
+      content = plainContent(ordered);
+    }
+    const wordCount = follow ? htmlWordCount(cheerio.load(content, null, false)) : countWords(content);
     return {
       title,
       content,
@@ -175,105 +333,27 @@ export class TwitterServiceImpl implements TwitterService {
       metadata: {
         openGraph: {
           title,
-          description: status.text ?? "",
+          description: focal.text,
           url,
-          site_name: "X (formerly Twitter)",
+          site_name: X_SITE_NAME,
+          ...(photo ? { image: photo.url } : {}),
         },
-        wordCount: (status.text ?? "").split(/\s+/).filter(Boolean).length,
-        readingTime: 1,
+        wordCount,
+        readingTime: Math.max(1, Math.ceil(wordCount / 200)),
+        extraction: {
+          status: "complete",
+          provider: "fxtwitter",
+          fetchedAt: new Date().toISOString(),
+          ...(follow ? { linked: follow.linked } : {}),
+        },
       },
     };
-  }
-
-  private buildStructuredContent(url: string, data: FxTwitterResponse): string {
-    const parts: string[] = [];
-    const status = data.status!;
-
-    const authorLine = status.author?.name
-      ? `${status.author.name} (@${status.author.screen_name})`
-      : `@${status.author?.screen_name ?? "unknown"}`;
-    const dateLine = status.created_at ? ` · ${status.created_at}` : "";
-    parts.push(`${authorLine}${dateLine}`);
-    parts.push("");
-
-    parts.push(status.text ?? "");
-
-    if (status.quote?.text) {
-      const quotedAuthor = status.quote.author?.name
-        ? `${status.quote.author.name} (@${status.quote.author.screen_name})`
-        : `@${status.quote.author?.screen_name ?? "unknown"}`;
-      parts.push("");
-      parts.push(`[Quoted tweet by ${quotedAuthor}]`);
-      parts.push(status.quote.text);
-    }
-
-    if (data.thread && data.thread.length > 0) {
-      parts.push("");
-      parts.push("[Thread continues]");
-      for (const threadTweet of data.thread) {
-        if (threadTweet.text) {
-          parts.push(threadTweet.text);
-        }
-      }
-    }
-
-    const engagementParts: string[] = [];
-    if (typeof status.likes === "number") engagementParts.push(`${status.likes} likes`);
-    if (typeof status.reposts === "number") engagementParts.push(`${status.reposts} retweets`);
-    if (typeof status.replies === "number") engagementParts.push(`${status.replies} replies`);
-    if (engagementParts.length > 0) {
-      parts.push("");
-      parts.push(`Engagement: ${engagementParts.join(" · ")}`);
-    }
-
-    parts.push("");
-    parts.push(`Source: ${url}`);
-
-    return parts.join("\n");
-  }
-
-  private extractMedia(status: FxTwitterStatus): Array<{ url: string; alt: string }> {
-    const images: Array<{ url: string; alt: string }> = [];
-
-    if (status.media?.photos) {
-      for (const photo of status.media.photos) {
-        images.push({
-          url: photo.url,
-          alt: photo.altText ?? (photo.type === "gif" ? "Tweet GIF" : "Tweet image"),
-        });
-      }
-    }
-
-    if (status.media?.videos) {
-      for (const video of status.media.videos) {
-        if (video.thumbnail_url) {
-          images.push({
-            url: video.thumbnail_url,
-            alt: "Tweet video thumbnail",
-          });
-        }
-      }
-    }
-
-    return images;
-  }
-
-  private extractLinks(status: FxTwitterStatus): Array<{ url: string; text: string }> {
-    const links: Array<{ url: string; text: string }> = [];
-
-    if (status.media?.videos) {
-      for (const video of status.media.videos) {
-        links.push({ url: video.url, text: `Tweet ${video.type}` });
-      }
-    }
-
-    return links;
   }
 
   private async scrapeViaOEmbed(
     url: string,
     signal?: AbortSignal
-  ): Promise<Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">> {
+  ): Promise<ExtractedPost> {
     const statusId = this.extractStatusId(url);
     if (!statusId) {
       throw new Error("Could not extract tweet ID from URL for oEmbed");
@@ -294,7 +374,7 @@ export class TwitterServiceImpl implements TwitterService {
 
     // Extract tweet text from the blockquote HTML
     const $ = cheerio.load(data.html ?? "");
-    const tweetText = $("blockquote p").first().text().trim();
+    const tweetText = $("blockquote p").first().text().replace(SHORT_OR_MEDIA_LINK, "").replace(/[ \t]+/g, " ").trim();
     const dateText = $("blockquote a").last().text().trim();
     if (!tweetText) throw new Error("oEmbed returned no post text");
 
@@ -302,9 +382,7 @@ export class TwitterServiceImpl implements TwitterService {
     const content = [
       `${data.author_name}${dateText ? ` · ${dateText}` : ""}`,
       "",
-      tweetText || "",
-      "",
-      `Source: ${url}`,
+      tweetText,
     ].join("\n");
 
     return {
@@ -317,10 +395,11 @@ export class TwitterServiceImpl implements TwitterService {
           title,
           description: tweetText,
           url,
-          site_name: "X (formerly Twitter)",
+          site_name: X_SITE_NAME,
         },
-        wordCount: tweetText.split(/\s+/).filter(Boolean).length,
+        wordCount: countWords(content),
         readingTime: 1,
+        extraction: { status: "complete", provider: "oembed", fetchedAt: new Date().toISOString() },
       },
     };
   }
@@ -328,7 +407,7 @@ export class TwitterServiceImpl implements TwitterService {
   private async scrapeViaOgFallback(
     url: string,
     signal?: AbortSignal
-  ): Promise<Omit<ScrapedUrlContents, "id" | "createdAt" | "updatedAt" | "bookmarkId">> {
+  ): Promise<ExtractedPost> {
     const response = await this.httpClient.fetch(url, ...(signal ? [{ signal }] as const : []));
 
     if (!response.ok) {
@@ -351,7 +430,7 @@ export class TwitterServiceImpl implements TwitterService {
 
     return {
       title: ogTitle,
-      content: [ogTitle, "", ogDescription, "", `Source: ${url}`].join("\n"),
+      content: [ogTitle, "", ogDescription].join("\n"),
       images,
       links: [],
       metadata: {
@@ -360,10 +439,11 @@ export class TwitterServiceImpl implements TwitterService {
           description: ogDescription,
           image: ogImage,
           url,
-          site_name: "X (formerly Twitter)",
+          site_name: X_SITE_NAME,
         },
-        wordCount: ogDescription.split(/\s+/).filter(Boolean).length,
+        wordCount: countWords(ogDescription),
         readingTime: 1,
+        extraction: { status: "complete", provider: "opengraph", fetchedAt: new Date().toISOString() },
       },
     };
   }

@@ -26,16 +26,36 @@ Phases are sequential and each is independently retryable. A failure in `summari
 
 ## Outputs
 
-**Brief summary** (`cosmic_brief_summary`, exists) — 1–2 sentences, ≤ 240 characters, declarative,
+**Brief summary** (`cosmic_brief_summary`, exists) — 1–2 sentences that lead with the takeaway and
+its specific names or numbers. The model aims under 220 characters; 240 is the hard cap. Declarative,
 no hedging, no "This article discusses". Used in feed items and library rows.
 
-**Full brief** (`cosmic_summary`, exists) — a paragraph plus **key points**. Key points are 2–5
-findings, each ≤ 140 characters, and they are *findings, not a sequence* — the UI renders them with
-a dot marker, never numbered. One structured summarisation turn returns the brief, key points,
-overview and any content-specific sections. Store the key points as a JSON array (`cosmic_key_points`)
-from that turn rather than parsing markdown; render `cosmic_summary` from the structured result.
-For an unusable source (paywall, consent page or error), leave the full brief empty rather than
-inventing content. A failed full structured response retries once with just the brief and key points.
+**Full brief** (`cosmic_summary`, exists) — a paragraph plus **key points**. Each field has its own
+job: key points add distinct supporting facts, the overview explains the argument, sections follow
+the source's own structure. Key points are *findings, not a sequence* — the UI renders them with a
+dot marker, never numbered — aimed under 110 characters with a 140 hard cap. Articles, videos and
+readable link-posts get 2–5; plain posts get 0–5, and a one- or two-sentence post gets at most two
+and no overview or sections. One structured summarisation turn returns the title, brief, key points,
+overview and any content-specific sections. Store the key points as a JSON array
+(`cosmic_key_points`) from that turn rather than parsing markdown; render `cosmic_summary` from the
+structured result. For an unusable source (paywall, consent page or error), leave the full brief
+empty rather than inventing content. A failed full structured response retries once with just the
+title, brief and key points; that turn applies the same source rules.
+
+**Source kinds** — the prompt treats the source as untrusted data and names its kind: `article`,
+`youtube`, `tweet` or `link_post`. An X post whose one eligible link was read is a `link_post`: the
+summary covers the article, in the article's language, and attributes the poster's framing or
+dissent to the poster; a rebuttal's stance is in the brief or the first key point. When the linked
+read failed, or the `link_post` turn finds a paywall, consent or error page, the post is summarised
+as a `tweet` and the brief names the unread host. In the second case the row first keeps only the
+post (see [content extraction](../content-extraction.md#x-posts)), so tags, search and embeddings use
+the post too. Only an unusable post-only turn fails the save as an unusable source.
+
+**Title** — a standalone article keeps the page's own title, even a generic one. An X post's title
+waits for the summary: the readable linked article's title, else the model's title, else the post's
+source title. A title typed with a save or set by the owner, even to the same value, is the
+owner's, and no fetch, Retry or Regenerate replaces it. The bookmark records this internally as
+`metadata.titleOrigin` (never returned by the API); rows saved before it existed keep their title.
 
 **Tags** (`cosmic_tags`, exists) — 2–5 lowercase topical tags. Reuse the user's existing tag
 vocabulary before inventing new ones: pass the user's top 50 tags as candidates so the library
@@ -45,7 +65,8 @@ converges instead of fragmenting.
 
 **Provenance** — every output records the phase, model id, and source content it derived from. This
 already flows into `bookmark_processing_events`; the UI reads it for "summarised from the full
-article" and the digest's "Built from" line.
+article" and the digest's "Built from" line. Each summarise turn records `metadata.kind`, its outcome
+and, for X link-posts, `linkedUrl` and `linkedStatus` (`used`, `failed` or `unreadable`).
 
 ## Filing
 
