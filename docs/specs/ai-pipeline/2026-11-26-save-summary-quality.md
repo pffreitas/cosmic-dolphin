@@ -115,7 +115,7 @@ For a row with `linked`, store each escaped post in a top-level `blockquote` wit
 
 **Summary inputs.** `buildSummarisePrompt` receives escaped linked URL, optional readable article title and `used | failed | unreadable` status. A complete follow sends structured post and article as `link_post`. A failed or unreadable follow sends the post as `tweet` with linked host and status. Both use the post source title. Other X rows send plain post text. Pasted text, articles and YouTube keep their source kinds. Each turn records `metadata.kind`, existing model ID and outcome, and `linkedUrl` and `linkedStatus` when present.
 
-**Titles.** Add internal `titleOrigin: "pipeline" | "owner"`. A directly supplied nonblank public-capture title is owner input. Reshare-inherited titles are provisional. Store owner origin atomically on creation or title PATCH, including same-value edits. Every automatic public-bookmark title write, including standalone article fetch and X final-summary writes, requires pipeline origin and CAS against the observed provisional title in the same SQL update. Update quick access together, merge metadata atomically while preserving origin, and strip the field from API metadata.
+**Titles.** Add internal `titleOrigin: "pipeline" | "owner"`. A directly supplied nonblank public-capture title is owner input. Reshare-inherited titles are provisional. Store owner origin atomically on creation or title PATCH, including same-value edits. The public create route drops `body.title` and stays unchanged, so owner origin there comes from title edits (D-21). Every automatic public-bookmark title write, including standalone article fetch and X final-summary writes, requires pipeline origin and CAS against the observed provisional title in the same SQL update. Update quick access together, merge metadata atomically while preserving origin, and strip the field from API metadata.
 
 Defer X titles until the final summary path is known and update the in-memory title before filing and indexing. Take the readable linked page title when available. Use the model title otherwise, including plain and fallback posts. Ignore empty model titles. Preserve unknown-origin legacy titles on reprocess and existing private-link title behavior.
 
@@ -135,7 +135,7 @@ Before viewing scores, select five records from distinct fixtures covering all c
 |---|---|
 | Zero or several eligible links, preview, or X fallback provider | No follow or unread note. |
 | Rejected, failed or timed-out follow | Store quote-only content with `linked.status: failed`. Complete a post-only brief naming the unread host. |
-| Successful fetch yields paywall, consent or error page | `link_post` returns `unusable` for the linked page. Before fallback, guard the same-ID row update on prior linked status `complete`. Atomically persist `unreadable`, post-only body and links, update public reading counts, clear stale article summary fields and search text, and delete old chunks. Keep linked title only as provenance. Invalidate prepared text and use the retained row downstream. Rerun as `tweet` with the failed-follow note. A brief-only scoped retry on this row must leave no article overview. |
+| Successful fetch yields paywall, consent or error page, including a lede that ends at a subscriber, sign-in or paywall wall (D-20) | `link_post` returns `unusable` for the linked page. Before fallback, guard the same-ID row update on prior linked status `complete`. Atomically persist `unreadable`, post-only body and links, update public reading counts, clear stale article summary fields and search text, and delete old chunks. Keep linked title only as provenance. Invalidate prepared text and use the retained row downstream. Rerun as `tweet` with the failed-follow note. A brief-only scoped retry on this row must leave no article overview. |
 | Bare-link post with unreadable article | Only an unusable post-only turn can fail the save with `Unusable source`. |
 | Abort during follow | Propagate run cancellation. Redelivery can fetch if no row was written. |
 | Retry or Regenerate | Reuse the complete row, including persisted unreadable outcomes. Rebuild lexical search on scoped summarise retry. The existing embed phase rebuilds cleared chunks when in scope. Preserve tagging and filing phase scope. |
@@ -158,9 +158,11 @@ Compare days 1, 3 and 7 with the seven days before deploy. Split X and other sav
 
 ### 8.9 Rollout, migration and rollback
 
-Choose the cheapest candidate within 0.5 points of the top comparable mean before cost and error filters, with zero factual errors and measured G-5 cost within ceiling. When the score difference is strictly below the larger of two candidates’ spreads, favor lower cost among eligible candidates. Break equal costs by higher mean. Apply D-17 if no candidate qualifies, calibration fails again or G-1–G-5 miss. Under D-17, choose the highest comparable mean within ceiling and break exact ties by lower cost. Leave selection pending without a comparable eligible score. Attach scores, costs, failed gates, calibration discrepancies and observed errors to the PR. Keep functional and safety gates in force.
+The owner chose `anthropic/claude-haiku-5.5` for `large` (D-19). The candidate matrix stays unjudged and D-18 calibration did not run. The selection rule below and calibration are deferred to in-product evaluation of model and pipeline setups.
 
-Change only the `large` default after evaluation. Rerun the example and a digest smoke with `generateForUser` (`created` or `model_declined`). Rerun the decision eval if other evaluated code or options change. Keep the small model and deploy env unchanged.
+Deferred rule. Choose the cheapest candidate within 0.5 points of the top comparable mean before cost and error filters, with zero factual errors and measured G-5 cost within ceiling. When the score difference is strictly below the larger of two candidates’ spreads, favor lower cost among eligible candidates. Break equal costs by higher mean. Apply D-17 if no candidate qualifies, calibration fails again or G-1–G-5 miss. Under D-17, choose the highest comparable mean within ceiling and break exact ties by lower cost. Leave selection pending without a comparable eligible score. Attach scores, costs, failed gates, calibration discrepancies and observed errors to the PR. Keep functional and safety gates in force.
+
+Change only the `large` default, with the provider options the eval ran for Haiku. After the D-20 prompt change, run Haiku three times each, unjudged, on both paywall fixtures, the example and two readable articles. Rerun the example and a digest smoke with `generateForUser` (`created` or `model_declined`). Keep the small model and deploy env unchanged.
 
 Run contract generation, serial disposable backend suites and Linux API/worker image proofs before merging. Follow the [release runbook](../../runbooks/backend-and-testflight-release.md). Require PR Accessibility and owner go on the actual head. One squash PR to unprotected `main` deploys API and worker via `deploy-backend.yml`. Backend CI repeats release checks on push to main. No staging or migration. The owner runs production proof and reads. Revert the squash commit for full rollback or the large default for model rollback. Old code renders new rows and may send raw X HTML on reprocess.
 
@@ -204,6 +206,9 @@ Run contract generation, serial disposable backend suites and Linux API/worker i
 | D-16 | Apply v2 to stored text on legacy X regeneration. Preserve unknown-origin titles. | Lead |
 | D-17 | Permit the highest-scoring cost-eligible fallback with disclosed misses (§8.9) | User |
 | D-18 | Owner calibrates the judge with five blind grades (§8.5) | User |
+| D-19 | Ship `anthropic/claude-haiku-5.5` as the `large` default by owner choice, without judging the candidate matrix or calibrating. The digest moves with `large`. Defer the D-6 rule and D-18 calibration to in-product evaluation. `small` stays Luna. | User, 2026-11-27 |
+| D-20 | Treat a visible lede that ends at a subscriber, sign-in or paywall wall as unusable (`paywall`). A link-post takes the post-only downgrade and a standalone article fails as `paywall`. Free ledes lose their summaries. | User, 2026-11-27 |
+| D-21 | Keep the public create route, which drops `body.title`. Owner origin comes from title edits. | User, 2026-11-27 |
 
 ## 11. Assumptions and readiness
 
@@ -215,7 +220,7 @@ Run contract generation, serial disposable backend suites and Linux API/worker i
 
 | Check | Owner and trigger | Action on miss |
 |---|---|---|
-| Eval model and quality gate | Builder, decision run before merge | D-17 |
+| Eval model and quality gate | Deferred by D-19. Builder runs the §8.9 Haiku checks before merge | Revert model under §8.8 |
 | ≥90% completed X saves use FxTwitter | Owner, day 7 | Open an issue with provider and follow failures |
 | ≤5% follows end transiently blocked, timed out or provider-failed | Owner, day 7 | Open a re-follow follow-up |
 
