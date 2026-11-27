@@ -1,0 +1,38 @@
+{
+  "sourceSHA": "430ecb2f8cccaffc7d1074e5b9de9d15daa32bf8",
+  "applicationBackendSameAsDeployed": "671e2781e2f685804bf33bb06422bd1b92b05154",
+  "rootDifferences": "tokens-test package script and native-only lock entries",
+  "images": [
+    {
+      "tag": "cosmic-save-api-proof:430ecb2f",
+      "id": "sha256:643804f2ea85af5148fea58c2a4139a34f1a15513cdc99839cee98aec853bafd",
+      "platform": "linux/amd64"
+    },
+    {
+      "tag": "cosmic-save-worker-proof:430ecb2f",
+      "id": "sha256:0032ca031ccdf88d568a9d5b201f1dcd76047c4fa85b7d23762645db887afa8f",
+      "platform": "linux/amd64"
+    }
+  ],
+  "context": "colima-cosmic-save-release-20261127",
+  "vm": {
+    "cpus": 4,
+    "memoryGiB": 8,
+    "owned": true,
+    "defaultUntouched": true
+  },
+  "apiGeneratedClientImport": "pass",
+  "apiStartupHealth": "pass, fictional environment, network none",
+  "workerBrowserSmoke": "8 checks passed, 512MiB/1 CPU; public example.com trust-store test permitted",
+  "deployedBackendRun": {
+    "id": 45745401065,
+    "status": "completed",
+    "conclusion": "success"
+  },
+  "failuresRetained": [
+    "Initial context tar filter unsupported by host Python; empty-context build failed before source compilation, then corrected.",
+    "Network-none browser run passed local cases but blocked its explicit public HTTPS check; unchanged fixture passed with workflow network setting."
+  ],
+  "noDeploymentPerformed": true,
+  "proofLimit": "Linux/amd64 images ran through Rosetta on an owned Mac VM; no cloud performance or production data proof claimed"
+}

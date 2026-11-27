@@ -14,27 +14,28 @@ to identify its production renderer and contract before editing native behavior.
 
 | Surface | Recorded outcome | Next gate / owner | Authoritative record |
 | --- | --- | --- | --- |
-| Home and sidebar | Rendered native migration; last recorded distribution is iOS 1.0.0 (24), processed and assigned to the existing internal Beta group | Physical/signed-session QA, successful sign-out and spoken accessibility; device QA/user | [Home tasks](home-parity/tasks.md), [signed artifact and Apple receipt](home-parity/sidebar-testflight-evidence.json) |
-| Save and private link | Source pushed; eight accepted main-state matched pairs; mobile typecheck/lint and 40 suites / 324 tests pass, 1 skipped | Final error-copy/confirmation-heading render recheck, then physical/signed-session QA; continuing T3 agent/device QA | [Save tasks](save-parity/tasks.md), [evidence](save-parity/evidence.json), [resume recipe](save-parity/README.md) |
+| Home and sidebar | Rendered migration; included in current build 25 with Save. The Home-only build 24 receipt remains historical evidence | Physical/signed-session QA, successful sign-out and spoken accessibility; device QA/user | [Home tasks](home-parity/tasks.md), [signed artifact and Apple receipt](home-parity/sidebar-testflight-evidence.json) |
+| Save and private link | iOS 1.0.0 (25) available in existing internal Beta: submission FINISHED, Apple VALID / IN_BETA_TESTING / unexpired, actual group membership verified; 40 suites / 324 tests pass, 1 skipped | Physical/signed-session and spoken accessibility QA, including modal focus; device QA/user | [Save tasks](save-parity/tasks.md), [evidence](save-parity/evidence.json), [resume recipe](save-parity/README.md) |
 
-The two Save render corrections are already implemented. Recheck them before changing code:
-the invalid-state and native confirmation images are **before-correction diagnostics**. The
-accepted Save/private-link pairs do not contain those branches. Save has not been built or
-uploaded to TestFlight; build 24 contains Home/sidebar, not the later Save migration.
+The two Save corrections were rechecked successfully in [the release evidence](save-parity/release-2026-11-27/evidence.json).
+Original invalid/confirmation images remain before-correction diagnostics. The prior alert-inspection
+failure did not recur during this fresh authorized continuation. Current build/submission state is
+owned by [Save tasks](save-parity/tasks.md) and [the signed-artifact receipt](save-parity/testflight-evidence.json).
+Build 25 is now processed and assigned to the existing internal Beta group; no new audience or public release was created.
 
-The last device command failure was `alert get` → `ALERT_NOT_FOUND`, repeated with the prescribed
-`--debug` retry after a launch-helper warning. Home had rendered normally. This records a failed
-alert inspection, not proof of an app crash or an unavailable simulator. Device interaction
-stopped under the T3 instructions. A future authorized device continuation must discover/open
-its own eligible claim and follow the current tool error protocol; never adopt another thread's
-claim or bypass a repeated tool failure with simulator UI commands/SSH.
+Physical/signed-session and spoken VoiceOver remain separate acceptance gates. In particular,
+Home-entry raw accessibility snapshots can enumerate retained Home nodes beneath the sheet;
+a cold-route/tree-only observation was not general modal-focus certification. Keep this limit
+explicit and use a fresh authorized device claim for further QA.
 
 ## Source identity and authorization
 
 - Branch: `feat/mobile-home-web-parity`. Handoff started from clean, pushed
   `24c55564fecd1e11e26c637b7b71bd7f596ef36c`.
 - Last fetched base: `origin/main` at `671e2781e2f685804bf33bb06422bd1b92b05154`.
-- Home/sidebar build 24 source: `a077ea5472b764044bf0acac11b955fa20e3d7d2`.
+- Current signed build 25 source: `430ecb2f8cccaffc7d1074e5b9de9d15daa32bf8`;
+  [final Save receipt](save-parity/testflight-evidence.json). Documentation commits after it do not change that artifact.
+- Historical Home/sidebar build 24 source: `a077ea5472b764044bf0acac11b955fa20e3d7d2`.
 - Save implementation/evidence source: `d261b491eca5564665f74267e10879b57152cdb0`;
   `24c55564` records its delivery and outstanding device gate.
 - Fetch origin and inspect current head/base/working state before resuming. These are recorded
@@ -122,7 +123,7 @@ Read [the release runbook](../runbooks/backend-and-testflight-release.md) and Ho
 [release history](home-parity/tasks.md#testflight-release--2026-11-27) before an authorized release.
 Reconcile the actual current source/backend gate and audience first.
 
-- Last recorded build 24 was a **local EAS production distribution**, not an internal preview.
+- Current build 25 and historical build 24 are **local EAS production distributions**, not internal previews.
   Its signed host/extension, resolved Info configuration, production API/issuer and all font
   hashes were verified; Apple processing and actual internal Beta membership are separately
   recorded in the committed receipt. Physical/session proof remains separate.
@@ -132,7 +133,7 @@ Reconcile the actual current source/backend gate and audience first.
   `GYM_XCARGS=IPHONEOS_DEPLOYMENT_TARGET=15.1`. `.easignore` already excludes the tracked
   `.Jules`/`.jules` case collision from packaging. Process-scoped case-sensitive Git settings
   used a private Git config file; do not change shared repository `core.ignorecase` as a workaround.
-- Check the remote build counter; do not hardcode 25 from the last recorded 24. Inspect the IPA
+- Check the remote build counter; do not hardcode 26 from the last recorded 25. Inspect the IPA
   before one submission; bind version/build/hash to source and verify actual Apple/group state.
 - This feature remains on a branch. Dispatching the runbook's `--ref main` example would build
   main's source, not this Save change. Do not merge or dispatch main merely to publish it; choose

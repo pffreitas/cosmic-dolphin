@@ -2,9 +2,10 @@
 
 Start at [the native handoff](../native-parity-handoff.md) and [current Save tasks](tasks.md).
 The task record owns outcome/next gate/owner/blocker; this page makes its proof reproducible.
+The previously outstanding render and omnibox/duplicate checks passed in the [release recheck](release-2026-11-27/evidence.json). Build/submission/Apple state now lives in [the release receipt](testflight-evidence.json); the steps below are the reproduction recipe, not a claim those checks remain blocked.
 Do not depend on prior terminal sessions, a cached simulator binary or old `/tmp` scripts.
 
-## Resume the outstanding gate
+## Reproduce the render/flow gate
 
 1. Inspect the current branch/base and uncommitted work. Rebuild/install the maintained native
    dev client if dependencies/native assets require it; build instructions are in the handoff.

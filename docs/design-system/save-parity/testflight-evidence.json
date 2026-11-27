@@ -1,0 +1,77 @@
+{
+  "ipaSHA256": "edd86109f504b09ff2b6ab09f72c3c8caeaae2b5ce2a7ecf17f95a91e2e273c6",
+  "sourceSHA": "430ecb2f8cccaffc7d1074e5b9de9d15daa32bf8",
+  "targets": [
+    {
+      "bundle": "com.cosmicdolphin.app",
+      "version": "1.0.0",
+      "build": "25",
+      "minimumOSVersion": "15.1",
+      "signatureVerified": true,
+      "appGroup": [
+        "group.com.cosmicdolphin.app"
+      ],
+      "keychainGroup": [
+        "DVYXX2PWV5.com.cosmicdolphin.shared"
+      ],
+      "getTaskAllow": false,
+      "profileExpiration": "2027-01-22 02:02:31"
+    },
+    {
+      "bundle": "com.cosmicdolphin.app.share-extension",
+      "version": "1.0.0",
+      "build": "25",
+      "minimumOSVersion": "15.1",
+      "signatureVerified": true,
+      "appGroup": [
+        "group.com.cosmicdolphin.app"
+      ],
+      "keychainGroup": [
+        "DVYXX2PWV5.com.cosmicdolphin.shared"
+      ],
+      "getTaskAllow": false,
+      "profileExpiration": "2027-01-22 02:02:31"
+    }
+  ],
+  "exportComplianceFalse": true,
+  "productionAPI": "https://api.cosmic-dolphin.com",
+  "productionIssuer": "https://qsqbcqkpqmkuywunxbut.supabase.co",
+  "fixtureEnvironmentExcluded": true,
+  "serifFontsVerified": 12,
+  "evidenceType": "local signed iOS distribution artifact; simulator proof is separate; no physical installation/session proof",
+  "nativeArchiveHead": "430ecb2f8cccaffc7d1074e5b9de9d15daa32bf8",
+  "ipaPath": "/Users/paulo.freitas/.cache/cosmic-dolphin-releases/save-parity-20261127T140104Z/CosmicDolphin-save-parity.ipa",
+  "submission": {
+    "id": "06b8e7d1-2643-428c-bfd9-d22459397538",
+    "status": "FINISHED",
+    "url": "https://expo.dev/accounts/cosmic-dolphin/projects/cosmic-dolphin/submissions/06b8e7d1-2643-428c-bfd9-d22459397538",
+    "completedAt": "2026-11-27T14:30:43.916Z"
+  },
+  "backendCompatibilityEvidence": "release-2026-11-27/backend-image-evidence.json",
+  "renderRecheckEvidence": "release-2026-11-27/evidence.json",
+  "apple": {
+    "appVersion": "1.0.0",
+    "buildNumber": "25",
+    "processingState": "VALID",
+    "internalState": "IN_BETA_TESTING",
+    "externalState": "READY_FOR_BETA_SUBMISSION",
+    "uploadedDate": "2026-11-27T06:31:33-08:00",
+    "expired": false,
+    "ascAppId": "6758127357",
+    "ascBuildId": "b06a5b1a-c4e2-4604-8a77-7907f637755e",
+    "testFlightURL": "https://appstoreconnect.apple.com/apps/6758127357/testflight/ios"
+  },
+  "betaGroup": {
+    "id": "2cec83b6-864f-41ef-9434-652ba953e18c",
+    "name": "Beta",
+    "isInternalGroup": true,
+    "hasAccessToAllBuilds": true,
+    "actualBuildMembershipVerified": true
+  },
+  "verifiedAtUTC": "2026-11-27T14:35:00.139776+00:00",
+  "limits": [
+    "No physical installation, normal production session, share-extension session or spoken VoiceOver acceptance proof.",
+    "Raw Home-entry accessibility snapshots can enumerate background Home nodes; modal focus acceptance remains for device QA.",
+    "Local Linux/amd64 compatibility proof uses an owned Mac VM, not a cloud performance benchmark."
+  ]
+}
