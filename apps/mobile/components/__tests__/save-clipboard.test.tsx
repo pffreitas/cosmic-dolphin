@@ -13,7 +13,7 @@ afterEach(() => { jest.restoreAllMocks(); mockText.mockClear(); mockHasUrl.mockC
 it("Android copied-link detection uses native metadata and reads text only on the explicit Paste tap", async () => {
   jest.replaceProperty(Platform, "OS", "android");
   const paste = jest.fn();
-  const app = render(<CopiedLink onPaste={paste} />);
+  const app = render(<CopiedLink appearance="web" onPaste={paste} />);
   expect(await app.findByText("Paste copied link")).toBeTruthy();
   expect(mockHasUrl).toHaveBeenCalled();
   expect(mockText).not.toHaveBeenCalled();

@@ -1,0 +1,355 @@
+[
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/bookmarks",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null,
+    "sourceUrl": "https://example.com/save-parity-public",
+    "captureSource": "save_sheet"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/bookmarks/captured-7",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null,
+    "note": "Remember the web-native parity proof",
+    "laterUntil": "2026-11-28T01:00:00.000Z"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/bookmarks/feed",
+    "scope": "for_you",
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/bookmarks/captured-7/processing-timeline",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/bookmarks/continue-reading",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/bookmarks/counts",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/bookmarks/preview",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/bookmarks",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null,
+    "sourceUrl": "https://example.com/save-parity-private",
+    "captureSource": "clipboard",
+    "isPrivateLink": true,
+    "description": "A private brief kept separate from my later note"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/bookmarks/captured-8",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null,
+    "note": "",
+    "laterUntil": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/bookmarks/feed",
+    "scope": "for_you",
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/bookmarks/counts",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/bookmarks/continue-reading",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/bookmarks/captured-8/processing-timeline",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/bookmarks/continue-reading",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/bookmarks/counts",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/bookmarks/feed",
+    "scope": "for_you",
+    "readStatus": null,
+    "collectionId": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/share-keys",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null
+  }
+]

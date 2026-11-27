@@ -59,7 +59,7 @@ export function HomeToolbar({ onError, counts = null }: { onError: (message: str
         </View>
         {focused || limited ? <View style={{ position: "absolute", top: 42, left: 0, right: 0, padding: 12, gap: 8, backgroundColor: colors.bgPanel, borderWidth: 1, borderRadius: radius.md, borderColor: colors.border }}>
           <Copy role="meta">{limited || (capture ? `Press Enter to save ${new URL(capture).hostname}` : value ? `Press Enter to search your library for “${value}”` : "Paste a link to save it, or type to search your library.")}</Copy>
-          {capture ? <Action label="Behind a login" onPress={() => { input.current?.blur(); router.push({ pathname: "/save", params: { url: capture, accountId: user?.id } }); }}>Behind a login?</Action> : null}
+          {capture ? <Action label="Behind a login" onPress={() => { input.current?.blur(); router.push({ pathname: "/save", params: { url: capture, accountId: user?.id, privateLink: "true", captureSource: "save_sheet" } }); }}>Behind a login?</Action> : null}
         </View> : null}
       </View>
     </View>

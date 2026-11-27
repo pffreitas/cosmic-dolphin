@@ -1,0 +1,16 @@
+Page: com.cosmicdolphin.app
+App: com.cosmicdolphin.app
+Snapshot: 12 visible nodes
+@e1 [application] "Cosmic Dolphin"
+@e2 [toolbar] "Toolbar"
+@e3 [scroll-area] [scrollable]
+  [content below scroll-area hidden]
+@e4 [text] "Save private link"
+@e5 [text] "We can't read or summarize this page, but we can keep it at hand. Add a short note and Cosmic Dolphin will organize it for quick access."
+@e6 [text] "Link"
+@e7 [text] "https://example.com/private"
+@e8 [text] "Brief description"
+@e9 [text-view] "Brief description What is this link, and why will you need it?" [editable]
+@e10 [button] "Save" [disabled]
+@e11 [button] "Cancel"
+@e12 [button] "Close"

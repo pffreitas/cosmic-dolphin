@@ -57,6 +57,9 @@ function rememberOwnedBookmark(bookmark: ContractBookmark, userId?: string) {
   return rememberBookmark(bookmark);
 }
 export const MobileAPI = {
+  async preview(url: string, signal?: AbortSignal, userId?: string) {
+    return new BookmarksApi(await configuration(userId)).bookmarksPreview({ previewRequest: { url } }, { signal });
+  },
   async like(id: string, liked: boolean, userId: string) {
     const client = new BookmarksApi(await configuration(userId));
     return liked ? client.bookmarksLike({ id }) : client.bookmarksUnlike({ id });

@@ -1,0 +1,1382 @@
+[
+  {
+    "stage": "link",
+    "theme": "light",
+    "text": "default",
+    "web": {
+      "bounds": {
+        "x": 0,
+        "y": 502.15625,
+        "width": 402,
+        "height": 275.84375,
+        "top": 502.15625,
+        "right": 402,
+        "bottom": 778,
+        "left": 0
+      },
+      "parts": [
+        {
+          "text": "Save a link",
+          "bounds": {
+            "x": 25,
+            "y": 527.15625,
+            "width": 352,
+            "height": 26,
+            "top": 527.15625,
+            "right": 377,
+            "bottom": 553.15625,
+            "left": 25
+          },
+          "font": "\"Source Serif 4\", Georgia, \"Times New Roman\", serif, ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif",
+          "fontSize": "20px",
+          "lineHeight": "26px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Paste a URL. It appears in your library straight away \u2014 the summary catches up.",
+          "bounds": {
+            "x": 25,
+            "y": 559.15625,
+            "width": 352,
+            "height": 41.84375,
+            "top": 559.15625,
+            "right": 377,
+            "bottom": 601,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "13.5px",
+          "lineHeight": "20.925px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "https://",
+          "bounds": {
+            "x": 25,
+            "y": 617,
+            "width": 352,
+            "height": 40,
+            "top": 617,
+            "right": 377,
+            "bottom": 657,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "14px",
+          "lineHeight": "20px",
+          "background": "rgb(255, 255, 255)"
+        },
+        {
+          "text": "Behind a login",
+          "bounds": {
+            "x": 25,
+            "y": 717,
+            "width": 352,
+            "height": 36,
+            "top": 717,
+            "right": 377,
+            "bottom": 753,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "13.5px",
+          "lineHeight": "13.5px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Save",
+          "bounds": {
+            "x": 25,
+            "y": 673,
+            "width": 352,
+            "height": 36,
+            "top": 673,
+            "right": 377,
+            "bottom": 709,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "13.5px",
+          "lineHeight": "13.5px",
+          "background": "rgb(37, 34, 31)"
+        },
+        {
+          "text": "Close",
+          "bounds": {
+            "x": 353,
+            "y": 519.15625,
+            "width": 32,
+            "height": 32,
+            "top": 519.15625,
+            "right": 385,
+            "bottom": 551.15625,
+            "left": 353
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "16px",
+          "lineHeight": "24px",
+          "background": "rgba(0, 0, 0, 0)"
+        }
+      ]
+    }
+  },
+  {
+    "stage": "private",
+    "theme": "light",
+    "text": "default",
+    "web": {
+      "bounds": {
+        "x": 0,
+        "y": 308.171875,
+        "width": 402,
+        "height": 469.828125,
+        "top": 308.171875,
+        "right": 402,
+        "bottom": 778,
+        "left": 0
+      },
+      "parts": [
+        {
+          "text": "Save private link",
+          "bounds": {
+            "x": 25,
+            "y": 333.171875,
+            "width": 352,
+            "height": 26,
+            "top": 333.171875,
+            "right": 377,
+            "bottom": 359.171875,
+            "left": 25
+          },
+          "font": "\"Source Serif 4\", Georgia, \"Times New Roman\", serif, ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif",
+          "fontSize": "20px",
+          "lineHeight": "26px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "We can't read or summarize this page, but we can keep it at hand. Add a short note and Cosmic Dolphin will organize it for quick access.",
+          "bounds": {
+            "x": 25,
+            "y": 365.171875,
+            "width": 352,
+            "height": 62.765625,
+            "top": 365.171875,
+            "right": 377,
+            "bottom": 427.9375,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "13.5px",
+          "lineHeight": "20.925px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Link",
+          "bounds": {
+            "x": 25,
+            "y": 451.9375,
+            "width": 352,
+            "height": 20,
+            "top": 451.9375,
+            "right": 377,
+            "bottom": 471.9375,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "14px",
+          "lineHeight": "20px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Brief description",
+          "bounds": {
+            "x": 25,
+            "y": 535.9375,
+            "width": 110.890625,
+            "height": 17,
+            "top": 535.9375,
+            "right": 135.890625,
+            "bottom": 552.9375,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "14px",
+          "lineHeight": "20px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "What is this link, and why will you need it?",
+          "bounds": {
+            "x": 25,
+            "y": 561.9375,
+            "width": 352,
+            "height": 87.0625,
+            "top": 561.9375,
+            "right": 377,
+            "bottom": 649,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "14px",
+          "lineHeight": "21.7px",
+          "background": "rgb(255, 255, 255)"
+        },
+        {
+          "text": "Cancel",
+          "bounds": {
+            "x": 25,
+            "y": 717,
+            "width": 352,
+            "height": 36,
+            "top": 717,
+            "right": 377,
+            "bottom": 753,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "13.5px",
+          "lineHeight": "13.5px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Save",
+          "bounds": {
+            "x": 25,
+            "y": 673,
+            "width": 352,
+            "height": 36,
+            "top": 673,
+            "right": 377,
+            "bottom": 709,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "13.5px",
+          "lineHeight": "13.5px",
+          "background": "rgb(37, 34, 31)"
+        },
+        {
+          "text": "Close",
+          "bounds": {
+            "x": 353,
+            "y": 325.171875,
+            "width": 32,
+            "height": 32,
+            "top": 325.171875,
+            "right": 385,
+            "bottom": 357.171875,
+            "left": 353
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "16px",
+          "lineHeight": "24px",
+          "background": "rgba(0, 0, 0, 0)"
+        }
+      ]
+    }
+  },
+  {
+    "stage": "link",
+    "theme": "light",
+    "text": "large",
+    "web": {
+      "bounds": {
+        "x": 0,
+        "y": 446.796875,
+        "width": 402,
+        "height": 331.203125,
+        "top": 446.796875,
+        "right": 402,
+        "bottom": 778,
+        "left": 0
+      },
+      "parts": [
+        {
+          "text": "Save a link",
+          "bounds": {
+            "x": 25,
+            "y": 471.796875,
+            "width": 352,
+            "height": 35.171875,
+            "top": 471.796875,
+            "right": 377,
+            "bottom": 506.96875,
+            "left": 25
+          },
+          "font": "\"Source Serif 4\", Georgia, \"Times New Roman\", serif, ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif",
+          "fontSize": "27.0588px",
+          "lineHeight": "35.1765px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Paste a URL. It appears in your library straight away \u2014 the summary catches up.",
+          "bounds": {
+            "x": 25,
+            "y": 512.96875,
+            "width": 352,
+            "height": 84.9375,
+            "top": 512.96875,
+            "right": 377,
+            "bottom": 597.90625,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "18.2647px",
+          "lineHeight": "28.3103px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "https://",
+          "bounds": {
+            "x": 25,
+            "y": 613.90625,
+            "width": 352,
+            "height": 40,
+            "top": 613.90625,
+            "right": 377,
+            "bottom": 653.90625,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "18.2px",
+          "lineHeight": "26px",
+          "background": "rgb(255, 255, 255)"
+        },
+        {
+          "text": "Behind a login",
+          "bounds": {
+            "x": 25,
+            "y": 715.453125,
+            "width": 352,
+            "height": 37.546875,
+            "top": 715.453125,
+            "right": 377,
+            "bottom": 753,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "17.55px",
+          "lineHeight": "17.55px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Save",
+          "bounds": {
+            "x": 25,
+            "y": 669.90625,
+            "width": 352,
+            "height": 37.546875,
+            "top": 669.90625,
+            "right": 377,
+            "bottom": 707.453125,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "17.55px",
+          "lineHeight": "17.55px",
+          "background": "rgb(37, 34, 31)"
+        },
+        {
+          "text": "Close",
+          "bounds": {
+            "x": 353,
+            "y": 463.796875,
+            "width": 32,
+            "height": 32,
+            "top": 463.796875,
+            "right": 385,
+            "bottom": 495.796875,
+            "left": 353
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "20.8px",
+          "lineHeight": "31.2px",
+          "background": "rgba(0, 0, 0, 0)"
+        }
+      ]
+    }
+  },
+  {
+    "stage": "private",
+    "theme": "light",
+    "text": "large",
+    "web": {
+      "bounds": {
+        "x": 0,
+        "y": 199.8125,
+        "width": 402,
+        "height": 578.1875,
+        "top": 199.8125,
+        "right": 402,
+        "bottom": 778,
+        "left": 0
+      },
+      "parts": [
+        {
+          "text": "Save private link",
+          "bounds": {
+            "x": 25,
+            "y": 224.8125,
+            "width": 352,
+            "height": 35.171875,
+            "top": 224.8125,
+            "right": 377,
+            "bottom": 259.984375,
+            "left": 25
+          },
+          "font": "\"Source Serif 4\", Georgia, \"Times New Roman\", serif, ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif",
+          "fontSize": "27.0588px",
+          "lineHeight": "35.1765px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "We can't read or summarize this page, but we can keep it at hand. Add a short note and Cosmic Dolphin will organize it for quick access.",
+          "bounds": {
+            "x": 25,
+            "y": 265.984375,
+            "width": 352,
+            "height": 113.25,
+            "top": 265.984375,
+            "right": 377,
+            "bottom": 379.234375,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "18.2647px",
+          "lineHeight": "28.3103px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Link",
+          "bounds": {
+            "x": 25,
+            "y": 403.234375,
+            "width": 352,
+            "height": 27.0625,
+            "top": 403.234375,
+            "right": 377,
+            "bottom": 430.296875,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "18.9412px",
+          "lineHeight": "27.0588px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Brief description",
+          "bounds": {
+            "x": 25,
+            "y": 503.359375,
+            "width": 150.015625,
+            "height": 23,
+            "top": 503.359375,
+            "right": 175.015625,
+            "bottom": 526.359375,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "18.9412px",
+          "lineHeight": "27.0588px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "What is this link, and why will you need it?",
+          "bounds": {
+            "x": 25,
+            "y": 535.828125,
+            "width": 352,
+            "height": 110.078125,
+            "top": 535.828125,
+            "right": 377,
+            "bottom": 645.90625,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "18.9412px",
+          "lineHeight": "29.3588px",
+          "background": "rgb(255, 255, 255)"
+        },
+        {
+          "text": "Cancel",
+          "bounds": {
+            "x": 25,
+            "y": 715.453125,
+            "width": 352,
+            "height": 37.546875,
+            "top": 715.453125,
+            "right": 377,
+            "bottom": 753,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "17.55px",
+          "lineHeight": "17.55px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Save",
+          "bounds": {
+            "x": 25,
+            "y": 669.90625,
+            "width": 352,
+            "height": 37.546875,
+            "top": 669.90625,
+            "right": 377,
+            "bottom": 707.453125,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "17.55px",
+          "lineHeight": "17.55px",
+          "background": "rgb(37, 34, 31)"
+        },
+        {
+          "text": "Close",
+          "bounds": {
+            "x": 353,
+            "y": 216.8125,
+            "width": 32,
+            "height": 32,
+            "top": 216.8125,
+            "right": 385,
+            "bottom": 248.8125,
+            "left": 353
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "20.8px",
+          "lineHeight": "31.2px",
+          "background": "rgba(0, 0, 0, 0)"
+        }
+      ]
+    }
+  },
+  {
+    "stage": "link",
+    "theme": "dark",
+    "text": "default",
+    "web": {
+      "bounds": {
+        "x": 0,
+        "y": 502.15625,
+        "width": 402,
+        "height": 275.84375,
+        "top": 502.15625,
+        "right": 402,
+        "bottom": 778,
+        "left": 0
+      },
+      "parts": [
+        {
+          "text": "Save a link",
+          "bounds": {
+            "x": 25,
+            "y": 527.15625,
+            "width": 352,
+            "height": 26,
+            "top": 527.15625,
+            "right": 377,
+            "bottom": 553.15625,
+            "left": 25
+          },
+          "font": "\"Source Serif 4\", Georgia, \"Times New Roman\", serif, ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif",
+          "fontSize": "20px",
+          "lineHeight": "26px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Paste a URL. It appears in your library straight away \u2014 the summary catches up.",
+          "bounds": {
+            "x": 25,
+            "y": 559.15625,
+            "width": 352,
+            "height": 41.84375,
+            "top": 559.15625,
+            "right": 377,
+            "bottom": 601,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "13.5px",
+          "lineHeight": "20.925px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "https://",
+          "bounds": {
+            "x": 25,
+            "y": 617,
+            "width": 352,
+            "height": 40,
+            "top": 617,
+            "right": 377,
+            "bottom": 657,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "14px",
+          "lineHeight": "20px",
+          "background": "rgb(26, 24, 22)"
+        },
+        {
+          "text": "Behind a login",
+          "bounds": {
+            "x": 25,
+            "y": 717,
+            "width": 352,
+            "height": 36,
+            "top": 717,
+            "right": 377,
+            "bottom": 753,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "13.5px",
+          "lineHeight": "13.5px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Save",
+          "bounds": {
+            "x": 25,
+            "y": 673,
+            "width": 352,
+            "height": 36,
+            "top": 673,
+            "right": 377,
+            "bottom": 709,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "13.5px",
+          "lineHeight": "13.5px",
+          "background": "rgb(234, 231, 228)"
+        },
+        {
+          "text": "Close",
+          "bounds": {
+            "x": 353,
+            "y": 519.15625,
+            "width": 32,
+            "height": 32,
+            "top": 519.15625,
+            "right": 385,
+            "bottom": 551.15625,
+            "left": 353
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "16px",
+          "lineHeight": "24px",
+          "background": "rgba(0, 0, 0, 0)"
+        }
+      ]
+    }
+  },
+  {
+    "stage": "private",
+    "theme": "dark",
+    "text": "default",
+    "web": {
+      "bounds": {
+        "x": 0,
+        "y": 308.171875,
+        "width": 402,
+        "height": 469.828125,
+        "top": 308.171875,
+        "right": 402,
+        "bottom": 778,
+        "left": 0
+      },
+      "parts": [
+        {
+          "text": "Save private link",
+          "bounds": {
+            "x": 25,
+            "y": 333.171875,
+            "width": 352,
+            "height": 26,
+            "top": 333.171875,
+            "right": 377,
+            "bottom": 359.171875,
+            "left": 25
+          },
+          "font": "\"Source Serif 4\", Georgia, \"Times New Roman\", serif, ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif",
+          "fontSize": "20px",
+          "lineHeight": "26px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "We can't read or summarize this page, but we can keep it at hand. Add a short note and Cosmic Dolphin will organize it for quick access.",
+          "bounds": {
+            "x": 25,
+            "y": 365.171875,
+            "width": 352,
+            "height": 62.765625,
+            "top": 365.171875,
+            "right": 377,
+            "bottom": 427.9375,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "13.5px",
+          "lineHeight": "20.925px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Link",
+          "bounds": {
+            "x": 25,
+            "y": 451.9375,
+            "width": 352,
+            "height": 20,
+            "top": 451.9375,
+            "right": 377,
+            "bottom": 471.9375,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "14px",
+          "lineHeight": "20px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Brief description",
+          "bounds": {
+            "x": 25,
+            "y": 535.9375,
+            "width": 110.890625,
+            "height": 17,
+            "top": 535.9375,
+            "right": 135.890625,
+            "bottom": 552.9375,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "14px",
+          "lineHeight": "20px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "What is this link, and why will you need it?",
+          "bounds": {
+            "x": 25,
+            "y": 561.9375,
+            "width": 352,
+            "height": 87.0625,
+            "top": 561.9375,
+            "right": 377,
+            "bottom": 649,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "14px",
+          "lineHeight": "21.7px",
+          "background": "rgb(26, 24, 22)"
+        },
+        {
+          "text": "Cancel",
+          "bounds": {
+            "x": 25,
+            "y": 717,
+            "width": 352,
+            "height": 36,
+            "top": 717,
+            "right": 377,
+            "bottom": 753,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "13.5px",
+          "lineHeight": "13.5px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Save",
+          "bounds": {
+            "x": 25,
+            "y": 673,
+            "width": 352,
+            "height": 36,
+            "top": 673,
+            "right": 377,
+            "bottom": 709,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "13.5px",
+          "lineHeight": "13.5px",
+          "background": "rgb(234, 231, 228)"
+        },
+        {
+          "text": "Close",
+          "bounds": {
+            "x": 353,
+            "y": 325.171875,
+            "width": 32,
+            "height": 32,
+            "top": 325.171875,
+            "right": 385,
+            "bottom": 357.171875,
+            "left": 353
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "16px",
+          "lineHeight": "24px",
+          "background": "rgba(0, 0, 0, 0)"
+        }
+      ]
+    }
+  },
+  {
+    "stage": "link",
+    "theme": "dark",
+    "text": "large",
+    "web": {
+      "bounds": {
+        "x": 0,
+        "y": 446.796875,
+        "width": 402,
+        "height": 331.203125,
+        "top": 446.796875,
+        "right": 402,
+        "bottom": 778,
+        "left": 0
+      },
+      "parts": [
+        {
+          "text": "Save a link",
+          "bounds": {
+            "x": 25,
+            "y": 471.796875,
+            "width": 352,
+            "height": 35.171875,
+            "top": 471.796875,
+            "right": 377,
+            "bottom": 506.96875,
+            "left": 25
+          },
+          "font": "\"Source Serif 4\", Georgia, \"Times New Roman\", serif, ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif",
+          "fontSize": "27.0588px",
+          "lineHeight": "35.1765px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Paste a URL. It appears in your library straight away \u2014 the summary catches up.",
+          "bounds": {
+            "x": 25,
+            "y": 512.96875,
+            "width": 352,
+            "height": 84.9375,
+            "top": 512.96875,
+            "right": 377,
+            "bottom": 597.90625,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "18.2647px",
+          "lineHeight": "28.3103px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "https://",
+          "bounds": {
+            "x": 25,
+            "y": 613.90625,
+            "width": 352,
+            "height": 40,
+            "top": 613.90625,
+            "right": 377,
+            "bottom": 653.90625,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "18.2px",
+          "lineHeight": "26px",
+          "background": "rgb(26, 24, 22)"
+        },
+        {
+          "text": "Behind a login",
+          "bounds": {
+            "x": 25,
+            "y": 715.453125,
+            "width": 352,
+            "height": 37.546875,
+            "top": 715.453125,
+            "right": 377,
+            "bottom": 753,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "17.55px",
+          "lineHeight": "17.55px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Save",
+          "bounds": {
+            "x": 25,
+            "y": 669.90625,
+            "width": 352,
+            "height": 37.546875,
+            "top": 669.90625,
+            "right": 377,
+            "bottom": 707.453125,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "17.55px",
+          "lineHeight": "17.55px",
+          "background": "rgb(234, 231, 228)"
+        },
+        {
+          "text": "Close",
+          "bounds": {
+            "x": 353,
+            "y": 463.796875,
+            "width": 32,
+            "height": 32,
+            "top": 463.796875,
+            "right": 385,
+            "bottom": 495.796875,
+            "left": 353
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "20.8px",
+          "lineHeight": "31.2px",
+          "background": "rgba(0, 0, 0, 0)"
+        }
+      ]
+    }
+  },
+  {
+    "stage": "private",
+    "theme": "dark",
+    "text": "large",
+    "web": {
+      "bounds": {
+        "x": 0,
+        "y": 199.8125,
+        "width": 402,
+        "height": 578.1875,
+        "top": 199.8125,
+        "right": 402,
+        "bottom": 778,
+        "left": 0
+      },
+      "parts": [
+        {
+          "text": "Save private link",
+          "bounds": {
+            "x": 25,
+            "y": 224.8125,
+            "width": 352,
+            "height": 35.171875,
+            "top": 224.8125,
+            "right": 377,
+            "bottom": 259.984375,
+            "left": 25
+          },
+          "font": "\"Source Serif 4\", Georgia, \"Times New Roman\", serif, ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif",
+          "fontSize": "27.0588px",
+          "lineHeight": "35.1765px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "We can't read or summarize this page, but we can keep it at hand. Add a short note and Cosmic Dolphin will organize it for quick access.",
+          "bounds": {
+            "x": 25,
+            "y": 265.984375,
+            "width": 352,
+            "height": 113.25,
+            "top": 265.984375,
+            "right": 377,
+            "bottom": 379.234375,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "18.2647px",
+          "lineHeight": "28.3103px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Link",
+          "bounds": {
+            "x": 25,
+            "y": 403.234375,
+            "width": 352,
+            "height": 27.0625,
+            "top": 403.234375,
+            "right": 377,
+            "bottom": 430.296875,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "18.9412px",
+          "lineHeight": "27.0588px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Brief description",
+          "bounds": {
+            "x": 25,
+            "y": 503.359375,
+            "width": 150.015625,
+            "height": 23,
+            "top": 503.359375,
+            "right": 175.015625,
+            "bottom": 526.359375,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "18.9412px",
+          "lineHeight": "27.0588px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "What is this link, and why will you need it?",
+          "bounds": {
+            "x": 25,
+            "y": 535.828125,
+            "width": 352,
+            "height": 110.078125,
+            "top": 535.828125,
+            "right": 377,
+            "bottom": 645.90625,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "18.9412px",
+          "lineHeight": "29.3588px",
+          "background": "rgb(26, 24, 22)"
+        },
+        {
+          "text": "Cancel",
+          "bounds": {
+            "x": 25,
+            "y": 715.453125,
+            "width": 352,
+            "height": 37.546875,
+            "top": 715.453125,
+            "right": 377,
+            "bottom": 753,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "17.55px",
+          "lineHeight": "17.55px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Save",
+          "bounds": {
+            "x": 25,
+            "y": 669.90625,
+            "width": 352,
+            "height": 37.546875,
+            "top": 669.90625,
+            "right": 377,
+            "bottom": 707.453125,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "17.55px",
+          "lineHeight": "17.55px",
+          "background": "rgb(234, 231, 228)"
+        },
+        {
+          "text": "Close",
+          "bounds": {
+            "x": 353,
+            "y": 216.8125,
+            "width": 32,
+            "height": 32,
+            "top": 216.8125,
+            "right": 385,
+            "bottom": 248.8125,
+            "left": 353
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "20.8px",
+          "lineHeight": "31.2px",
+          "background": "rgba(0, 0, 0, 0)"
+        }
+      ]
+    }
+  },
+  {
+    "stage": "invalid",
+    "theme": "light",
+    "text": "default",
+    "web": {
+      "bounds": {
+        "x": 0,
+        "y": 459.15625,
+        "width": 402,
+        "height": 318.84375,
+        "top": 459.15625,
+        "right": 402,
+        "bottom": 778,
+        "left": 0
+      },
+      "parts": [
+        {
+          "text": "Save a link",
+          "bounds": {
+            "x": 25,
+            "y": 484.15625,
+            "width": 352,
+            "height": 26,
+            "top": 484.15625,
+            "right": 377,
+            "bottom": 510.15625,
+            "left": 25
+          },
+          "font": "\"Source Serif 4\", Georgia, \"Times New Roman\", serif, ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif",
+          "fontSize": "20px",
+          "lineHeight": "26px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Paste a URL. It appears in your library straight away \u2014 the summary catches up.",
+          "bounds": {
+            "x": 25,
+            "y": 516.15625,
+            "width": 352,
+            "height": 41.84375,
+            "top": 516.15625,
+            "right": 377,
+            "bottom": 558,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "13.5px",
+          "lineHeight": "20.925px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "https://",
+          "bounds": {
+            "x": 25,
+            "y": 574,
+            "width": 352,
+            "height": 40,
+            "top": 574,
+            "right": 377,
+            "bottom": 614,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "14px",
+          "lineHeight": "20px",
+          "background": "rgb(255, 255, 255)"
+        },
+        {
+          "text": "That does not look like a link. Check the address and try again.",
+          "bounds": {
+            "x": 25,
+            "y": 622,
+            "width": 352,
+            "height": 35,
+            "top": 622,
+            "right": 377,
+            "bottom": 657,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "12.5px",
+          "lineHeight": "17.5px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Behind a login",
+          "bounds": {
+            "x": 25,
+            "y": 717,
+            "width": 352,
+            "height": 36,
+            "top": 717,
+            "right": 377,
+            "bottom": 753,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "13.5px",
+          "lineHeight": "13.5px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Save",
+          "bounds": {
+            "x": 25,
+            "y": 673,
+            "width": 352,
+            "height": 36,
+            "top": 673,
+            "right": 377,
+            "bottom": 709,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "13.5px",
+          "lineHeight": "13.5px",
+          "background": "rgb(37, 34, 31)"
+        },
+        {
+          "text": "Close",
+          "bounds": {
+            "x": 353,
+            "y": 476.15625,
+            "width": 32,
+            "height": 32,
+            "top": 476.15625,
+            "right": 385,
+            "bottom": 508.15625,
+            "left": 353
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "16px",
+          "lineHeight": "24px",
+          "background": "rgba(0, 0, 0, 0)"
+        }
+      ]
+    }
+  },
+  {
+    "stage": "invalid",
+    "theme": "dark",
+    "text": "default",
+    "web": {
+      "bounds": {
+        "x": 0,
+        "y": 459.15625,
+        "width": 402,
+        "height": 318.84375,
+        "top": 459.15625,
+        "right": 402,
+        "bottom": 778,
+        "left": 0
+      },
+      "parts": [
+        {
+          "text": "Save a link",
+          "bounds": {
+            "x": 25,
+            "y": 484.15625,
+            "width": 352,
+            "height": 26,
+            "top": 484.15625,
+            "right": 377,
+            "bottom": 510.15625,
+            "left": 25
+          },
+          "font": "\"Source Serif 4\", Georgia, \"Times New Roman\", serif, ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif",
+          "fontSize": "20px",
+          "lineHeight": "26px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Paste a URL. It appears in your library straight away \u2014 the summary catches up.",
+          "bounds": {
+            "x": 25,
+            "y": 516.15625,
+            "width": 352,
+            "height": 41.84375,
+            "top": 516.15625,
+            "right": 377,
+            "bottom": 558,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "13.5px",
+          "lineHeight": "20.925px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "https://",
+          "bounds": {
+            "x": 25,
+            "y": 574,
+            "width": 352,
+            "height": 40,
+            "top": 574,
+            "right": 377,
+            "bottom": 614,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "14px",
+          "lineHeight": "20px",
+          "background": "rgb(26, 24, 22)"
+        },
+        {
+          "text": "That does not look like a link. Check the address and try again.",
+          "bounds": {
+            "x": 25,
+            "y": 622,
+            "width": 352,
+            "height": 35,
+            "top": 622,
+            "right": 377,
+            "bottom": 657,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "12.5px",
+          "lineHeight": "17.5px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Behind a login",
+          "bounds": {
+            "x": 25,
+            "y": 717,
+            "width": 352,
+            "height": 36,
+            "top": 717,
+            "right": 377,
+            "bottom": 753,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "13.5px",
+          "lineHeight": "13.5px",
+          "background": "rgba(0, 0, 0, 0)"
+        },
+        {
+          "text": "Save",
+          "bounds": {
+            "x": 25,
+            "y": 673,
+            "width": 352,
+            "height": 36,
+            "top": 673,
+            "right": 377,
+            "bottom": 709,
+            "left": 25
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "13.5px",
+          "lineHeight": "13.5px",
+          "background": "rgb(234, 231, 228)"
+        },
+        {
+          "text": "Close",
+          "bounds": {
+            "x": 353,
+            "y": 476.15625,
+            "width": 32,
+            "height": 32,
+            "top": 476.15625,
+            "right": 385,
+            "bottom": 508.15625,
+            "left": 353
+          },
+          "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "fontSize": "16px",
+          "lineHeight": "24px",
+          "background": "rgba(0, 0, 0, 0)"
+        }
+      ]
+    }
+  }
+]

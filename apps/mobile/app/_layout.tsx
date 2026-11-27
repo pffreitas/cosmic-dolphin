@@ -198,7 +198,7 @@ function RootLayoutNav() {
           />
           <Stack.Screen
             name="save"
-            options={{ headerShown: false, presentation: "modal" }}
+            options={{ headerShown: false, presentation: "transparentModal", animation: reduceMotion ? "none" : "fade" }}
           />
           <Stack.Screen name="topic" options={{ headerShown: false }} />
           <Stack.Screen name="collections" options={{ headerShown: false }} />

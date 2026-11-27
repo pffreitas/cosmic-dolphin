@@ -1,0 +1,14 @@
+Page: com.cosmicdolphin.app
+App: com.cosmicdolphin.app
+Snapshot: 10 visible nodes
+@e1 [application] "Cosmic Dolphin"
+@e2 [toolbar] "Toolbar"
+@e3 [scroll-area] [scrollable]
+  [content below scroll-area hidden]
+@e4 [text] "Save a link"
+@e5 [text] "Paste a URL. It appears in your library straight away — the summary catches up."
+@e6 [text-field] "https://" [editable]
+@e7 [text] "That does not look like a link. Check the address and try again."
+@e8 [button] "Save"
+@e9 [button] "Behind a login"
+@e10 [button] "Close"

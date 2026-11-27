@@ -87,3 +87,5 @@ Everything else in this directory elaborates on these.
 explored and not adopted. They are kept as a record of the exploration and are reachable through the
 switcher in the prototype. Do not import them, and do not treat anything in the prototype's Ember or
 Graphite modes as guidance.
+
+Native rendered work and its current gates: [Home parity](home-parity/tasks.md), [Save parity](save-parity/tasks.md).

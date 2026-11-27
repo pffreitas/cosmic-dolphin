@@ -1,0 +1,18 @@
+Page: com.cosmicdolphin.app
+App: com.cosmicdolphin.app
+Snapshot: 14 visible nodes
+@e1 [application] "Cosmic Dolphin"
+@e2 [toolbar] "Toolbar"
+@e3 [scroll-area] [scrollable]
+  [content below scroll-area hidden]
+@e4 [text] "Saved. Cosmic is reading it."
+@e5 [text] "https://example.com/save-parity-public"
+@e6 [text] "Read when"
+@e7 [button] "Tonight"
+@e8 [button] "This weekend"
+@e9 [button] "No rush" [selected]
+@e10 [text] "Note (optional)"
+@e11 [text-view] "Note (optional) Why you’re saving it" [editable]
+@e12 [text] "Private to you. Up to 500 characters."
+@e13 [button] "Done"
+@e14 [button] "Close"
