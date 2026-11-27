@@ -12,7 +12,11 @@
 - User grant: “Build iOS binary and push it to test flight.” Candidate starts at clean `9c5288e55f3b37110b0646e00a09a7b7492e7862` on `feat/mobile-home-web-parity`; internal Beta is the existing intended audience. The grant covers this binary and submission, not a merge or wider rollout.
 - Previous simulator/fixture proof and its physical-device/normal-session limits remain accurately labelled. This request authorizes internal TestFlight delivery following that disclosed evidence; no earlier task’s beta exception is adopted as a general waiver.
 - Backend/API/worker/shared/contract/client source is byte-identical to deployed `671e278`. Existing exact-SHA backend run [45745401065](https://github.com/pffreitas/cosmic-dolphin/actions/runs/45745401065) passed compiler/tests, migrations, Linux API/worker image builds and deployments. Reusing that unchanged-source evidence; no backend deployment required for Home.
-- Native host export-compliance plist is being reconciled with the existing `app.json` false declaration; encryption usage is unchanged. No native prebuild.
+- Native host export-compliance plist was reconciled with the existing `app.json` false declaration; encryption usage is unchanged. No native prebuild.
+
+- Production configuration resolves the production API/issuer and existing public anon key. EAS remote iOS counter is **21**, matching Apple’s latest build; auto-increment will allocate **22**. Explicit production scheme `CosmicDolphin` avoids the test-scheme prompt.
+- First archive preflight failed on tracked `.Jules`/`.jules` casing. Both palette blobs are identical. Agent hooks remain intact; `.easignore` retains gitignore exclusions and omits those build-irrelevant paths. Scoped case-sensitive Git configuration was restored after successful archive verification. No local `.env`, dependencies or hooks are packaged; all serif font bytes, RNSVG 15.12.1 and maintained native project were verified.
+- Fresh frozen Bun installation, OpenAPI compilation and client build passed. Native share/scene/splash static checks: **3 suites / 5 tests passed**. Home’s previous full mobile gate remains applicable to unchanged JavaScript.
 
 ## MacBook result · 2026-11-26 local / 2026-11-27 UTC
 
