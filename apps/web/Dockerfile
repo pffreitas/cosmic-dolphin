@@ -36,6 +36,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages ./packages
 COPY apps/web ./apps/web
 
+# Web's production-renderer galleries share the exact native parity fixtures.
+# Include only those illustrative JSON inputs, not the mobile app or local state.
+COPY apps/mobile/dev/home-fixture.json apps/mobile/dev/bookmark-fixture.json ./apps/mobile/dev/
+
 # Accept build arguments for configuration
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY

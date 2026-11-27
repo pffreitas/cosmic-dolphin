@@ -8,9 +8,25 @@
 - Preserve native genuine full-text access, highlights, note/filing/reading actions and account fences. Keep known reply/edit/delete/report controls out of scope. Semantic web tokens only; maintain the native project in place.
 
 Integration/cleanup status is owned by [the wrap-up record](../native-parity-wrap-up.md).
+Implementation is merged into `main` through [PR #266](https://github.com/pffreitas/cosmic-dolphin/pull/266),
+merge `0eb3f751`, final head `859da863`; both PR CI gates passed. This does not close the
+final rendered/device acceptance gate.
 The November 27 user request explicitly authorizes merging into the repository default
 `main` and removing this task's branches/worktree. Historical release statements below
 describe the state at upload time; final device acceptance remains a separate gate.
+
+## Explicit deferrals
+
+Comment reply/edit/delete/report controls remain outside the user's original agreed scope.
+Impact: native lacks those web conversation/moderation actions. This is deferred scope,
+not a substitute for missing final parity/device QA. Owner: unassigned; no external ticket
+was requested or created. Reconsider when the user requests those controls.
+
+Next action: inspect current production web controls/API permissions, implement the agreed
+native adaptations with owner/account fences, and prove actual rendering and interactions.
+Done condition: the requested actions work with appropriate permissions, account A→B during
+active forms/requests, and simulator plus spoken accessibility evidence. Current scope does
+not require this work to close; the required QA gates at the top still do.
 
 ## Failure and acceptance signal
 
