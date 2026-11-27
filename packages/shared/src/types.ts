@@ -346,6 +346,8 @@ export interface ScrapedUrlContents extends BaseEntity {
       jobId?: string;
       error?: string;
       retryable?: boolean;
+      /** The one eligible link an FxTwitter post was followed to (§8.4). */
+      linked?: LinkedSource;
     };
   };
   images?: {
@@ -357,6 +359,27 @@ export interface ScrapedUrlContents extends BaseEntity {
     text: string;
   }[];
 }
+
+/** Why a linked read stored no article: the extraction code, the 60 s budget, or the host rules. */
+export type LinkedSourceError =
+  | "blocked"
+  | "empty"
+  | "auth"
+  | "unsupported"
+  | "unavailable"
+  | "pending"
+  | "provider"
+  | "timeout"
+  | "rejected_host";
+
+/**
+ * The page an X link-post points to. `complete` stored its article beside the
+ * post; `failed` never read one; `unreadable` read a paywall, consent or error
+ * page that the summary classified and dropped, keeping its title as provenance.
+ */
+export type LinkedSource =
+  | { url: string; status: "complete" | "unreadable"; title?: string }
+  | { url: string; status: "failed"; error: LinkedSourceError };
 
 export interface BaseContentChunk extends BaseEntity {
   scrapedContentId: string;
