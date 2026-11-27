@@ -298,3 +298,20 @@ it("a legacy row without title origin keeps its title and still renders, searche
   expect((await request(`/bookmarks/${legacy.id}/content`)).body.blocks[0].text).toBe("Ann (@ann) · 2026-10-01");
   expect(await lexical("LEGACYTERM")).toEqual([legacy.id]);
 });
+
+it("records a typed save title as the owner's and a reshared one as provisional", async () => {
+  const origin = async (id: string) => (await db.selectFrom("bookmarks").select(sql<string>`metadata->>'titleOrigin'`.as("origin")).where("id", "=", id).executeTakeFirstOrThrow()).origin;
+  const typed = await bookmark.create("https://essay.example.org/typed", owner, { title: "My reading note title" });
+  const reshared = await bookmark.create("https://essay.example.org/reshared", owner, { title: "Original owner's title", savedFromBookmarkId: typed.id });
+  const plain = await bookmark.create("https://essay.example.org/plain", owner);
+
+  expect([await origin(typed.id), await origin(reshared.id), await origin(plain.id)]).toEqual(["owner", "pipeline", "pipeline"]);
+  for (const url of ["https://essay.example.org/typed", "https://essay.example.org/reshared"]) {
+    sources.set(url, () => ({ title: "Page title", content: READABLE, images: [], links: [], metadata: { openGraph: { title: "Page title", site_name: "Essays" }, wordCount: 12, readingTime: 1, extraction: { status: "complete" as const, provider: "direct" } } }));
+  }
+  await pipeline().processor.process(typed.id, owner);
+  await pipeline().processor.process(reshared.id, owner);
+
+  expect((await request(`/bookmarks/${typed.id}`)).body.title).toBe("My reading note title");
+  expect((await request(`/bookmarks/${reshared.id}`)).body.title).toBe("Page title");
+});

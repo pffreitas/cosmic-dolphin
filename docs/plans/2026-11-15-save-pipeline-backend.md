@@ -43,7 +43,7 @@ under ordinary conditions. **P2** waste or debt.
 | 10 | P1 | A bookmark deleted while queued throws before the `try`, so it is retried three times, five minutes apart. | `bookmark.processor.service.ts:149` |
 | 11 | P1 | `collection_id` on create is not checked for ownership (refile checks it). `tags`, `title` and `description` are unvalidated or unbounded. | `bookmarks.ts:550`, `:130` |
 | 12 | P2 | `scraped_url_contents.bookmark_id` has no unique constraint; two runs can insert two rows and reads pick one arbitrarily. | `20250919110755_…`, `bookmark.repository.ts:360` |
-| 13 | P2 | Text stripping uses `.text()`, which joins adjacent blocks on minified HTML, then collapses all newlines, so paragraph chunking never triggers. Affects summary input, search document and chunk boundaries. | `chunking.service.ts:50` |
+| 13 | P2 | Text stripping uses `.text()`, which joins adjacent blocks on minified HTML, then collapses all newlines, so paragraph chunking never triggers. Affects summary input, search document and chunk boundaries. **Covered** by [save summary quality](../specs/ai-pipeline/2026-11-26-save-summary-quality.md) FR-6: blocks stay distinct and chunks stay within their size. | `chunking.service.ts:50` |
 
 ### Waste
 

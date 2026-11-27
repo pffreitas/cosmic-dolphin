@@ -118,7 +118,7 @@ it is accepted. Challenge pages and loading placeholders advance to the next
 provider; authentication, missing pages and unsupported formats remain terminal.
 The accepted provider is recorded in `metadata.extraction.provider`.
 
-For X posts, FxTwitter and oEmbed retain priority. If they fail or return empty
+For X posts, FxTwitter and oEmbed retain priority (see [X posts](#x-posts)). If they fail or return empty
 post text, Lightpanda selects the requested status's timestamp permalink and
 extracts its text, author, date, photo/video previews and links. It excludes
 other timeline posts, replies and nested quoted-post media. It does not expand
@@ -170,3 +170,48 @@ redirects, HTTP classification, stalled scripts and capacity recovery.
 References: [Lightpanda 1.0.2](https://github.com/lightpanda-io/browser/releases/tag/1.0.2),
 [CDP integration](https://lightpanda.io/docs/usage/cdp/puppeteer),
 [browser options](https://lightpanda.io/docs/reference/cli/common-options).
+
+## X posts
+
+The worker reads FxTwitter's `/2/thread/{id}`, then oEmbed, Lightpanda and Open
+Graph in that order. Every path records `metadata.extraction.provider` as
+`fxtwitter`, `oembed`, `lightpanda` or `opengraph`, and none adds generated
+engagement or source lines. FxTwitter rows use the expanded text from the facets,
+without t.co or media links, and keep the author's thread in order with the focal
+post once, followed by an available quote. Photos become the extracted images and
+the first one the card image; the linked article's images never do.
+
+**One linked read.** The post's expanded links are normalised and deduplicated,
+and X, t.co, YouTube and PDF links are excluded. When exactly one remains on an
+FxTwitter row, and the request is not a URL-card preview, the worker reads it once
+with the direct HTML reader and its usual response and usability checks, never a
+renderer. A request-local guard runs before the first dispatch, every redirect
+and every retry, and on the final URL: it rejects non-HTTP(S) URLs, IP literals,
+`localhost` and its subdomains, and single-label hosts. DNS and egress controls
+are backend plan package 3. The read stops within 60 seconds, and a run
+cancellation stops it and propagates so redelivery can fetch again. It logs one
+`Linked source` line with host, status, provider, error class and duration, and
+suppresses the full-URL request logs.
+
+**Stored row.** A followed post records `metadata.extraction.linked` with `url`,
+`status` (`complete`, `failed` or `unreadable`), the page `title` when one was
+read, and `error` for a failure (an extraction code, `timeout` or
+`rejected_host`). Its body stores each escaped post in a top-level `blockquote`
+(name, handle, date, a "Quoting" label on a quote, then paragraphs) and a readable
+page as one top-level `article` after it, so Read shows the post, then the
+article. A failed follow keeps the post alone. Other X rows stay plain text. Word
+count and reading time cover the stored body. `metadata.extraction.status` stays
+`complete` either way.
+
+**Unreadable pages.** If the summary classifies the linked article as a paywall,
+consent or error page, one guarded transaction keeps only the posts and their
+links, sets `linked.status` to `unreadable` (the title stays as provenance),
+updates the reading counts, clears the summary fields and search text, and
+deletes the row's chunks. The post is then summarised on its own, and Retry and
+Regenerate reuse the stored outcome.
+
+**Prepared text.** Summaries, tags, search and embeddings read text with the
+source's structure: blank lines between blocks, `#` headings, `-` and numbered
+list items, `>` quotes and `[Image: …]` alt text. A page header that holds the
+`h1` is kept; site headers are dropped. Long paragraphs are cut at sentence ends
+so every embedding chunk stays within its size.
