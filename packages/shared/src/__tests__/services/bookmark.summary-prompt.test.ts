@@ -33,6 +33,17 @@ describe("summary prompt v2", () => {
     }
   });
 
+  it.each([false, true])("treats a lede that stops at a subscriber wall as a paywall, not a subscribe prompt after a full article (brief only: %s)", (briefOnly) => {
+    for (const kind of ["article", "link_post"] as const) {
+      const prompt = buildSummarisePrompt({ ...base, kind, briefOnly, linked: kind === "link_post" ? { url: "https://www.upstartsmedia.com/p/x", status: "used" } : undefined });
+      expect(prompt).toContain("A teaser is a paywall");
+      expect(prompt).toContain("stops at a subscriber, sign-in or paywall wall");
+      expect(prompt).toContain("A subscribe or newsletter prompt after a complete article is not a wall.");
+    }
+    const linkPost = buildSummarisePrompt({ ...base, kind: "link_post", briefOnly, linked: { url: "https://www.upstartsmedia.com/p/x", status: "used" } });
+    expect(linkPost).toContain("Treat the article as unusable when it is only a paywall or a teaser");
+  });
+
   it("states the display targets and hard caps, and the short-post rule", () => {
     const full = buildSummarisePrompt({ ...base, kind: "tweet" });
     for (const text of ["70 characters or fewer; never more than 120", "under 220 characters, never more than 240", "under 110 characters and never more than 140"])

@@ -66,7 +66,7 @@ const CONTENT_KIND_GUIDANCE: Record<SummariseContentKind, string> = {
   article: "Summarise the page's actual readable content, not navigation, ads, or boilerplate.",
   youtube: "This is a video transcript. Preserve concrete explanations and examples; treat transcription errors cautiously. Do not claim to have watched the video.",
   tweet: "This is a post or thread. Keep the summary proportional to the source; distinguish the author's claims from established facts. Do not invent background context.",
-  link_post: "This is an X post (the lines quoted with >) followed by the article it links to. Summarise the article's substance. Attribute the poster's framing, praise, doubt or dissent to the poster by name: when the poster disputes or questions the article, the brief or the first key point must say so. Treat the article as unusable when it is only a paywall, cookie/consent dialog or error page, so the post can be summarised on its own.",
+  link_post: "This is an X post (the lines quoted with >) followed by the article it links to. Summarise the article's substance. Attribute the poster's framing, praise, doubt or dissent to the poster by name: when the poster disputes or questions the article, the brief or the first key point must say so. Treat the article as unusable when it is only a paywall or a teaser, a cookie/consent dialog or an error page, so the post can be summarised on its own.",
 };
 
 const linkedHost = (url: string) => {
@@ -120,7 +120,7 @@ ${linkedGuidance(kind, linked)}
 ${params.truncated ? "The middle of this content was elided for length. Do not assume what was in the missing part." : ""}
 
 Return a structured record based only on evidence in the source, ${language}. Every field has its own job; do not repeat one field in another. Preserve caveats, uncertainty and attribution: say who claims what.
-- contentStatus: "ok" if there is meaningful content to summarise; "unusable" if this is only a paywall, cookie/consent dialog, error page, empty body, or equivalent. For unusable content, set unusableReason to "paywall", "consent", "error_page", "empty", or "other" and other fields to empty strings/arrays. Do not summarise a paywall as though it were the article.
+- contentStatus: "ok" if there is meaningful content to summarise; "unusable" if this is only a paywall, cookie/consent dialog, error page, empty body, or equivalent. A teaser is a paywall: when the article text is only its opening and stops at a subscriber, sign-in or paywall wall (such as "The rest of this post is for paid subscribers" or "Sign in to keep reading"), it is "unusable" with reason "paywall", however many facts the opening shows. A subscribe or newsletter prompt after a complete article is not a wall. For unusable content, set unusableReason to "paywall", "consent", "error_page", "empty", or "other" and other fields to empty strings/arrays. Do not summarise a paywall as though it were the article.
 - unusableReason: null when contentStatus is "ok".
 - title: A specific title for the library that names the subject${kind === "link_post" ? ", normally the linked article's own title" : post ? " or claim of the post, never \"Tweet by …\"" : ""}. Aim for ${title.target} characters or fewer; never more than ${title.cap}.
 - brief: 1–2 declarative sentences under ${brief.target} characters, never more than ${brief.cap}. Lead with the takeaway and its specific names or numbers, then why it matters. Avoid "This article discusses", hype, hedging and invented implications.

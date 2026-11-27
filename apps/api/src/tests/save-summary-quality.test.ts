@@ -99,7 +99,8 @@ function pipeline(hooks: { onSummary?: (turn: Turn, index: number) => Promise<vo
         if (hooks.postFullObjectFails && turn.kind === "tweet" && !turn.briefOnly) {
           throw new NoObjectGeneratedError({ message: "incomplete", text: "{}", response: {} as never, usage: {} as never, finishReason: "length" });
         }
-        const teaser = input.prompt.includes("paid subscribers");
+        const source = input.prompt.slice(input.prompt.indexOf("<content>"), input.prompt.indexOf("</content>"));
+        const teaser = source.includes("paid subscribers");
         const value = turn.kind === "article" && teaser || turn.kind === "link_post" && teaser || turn.kind === "tweet" && input.prompt.includes("BARELINKPOST")
           ? { contentStatus: "unusable", unusableReason: "paywall", title: "", brief: "", overview: "", keyPoints: [], sections: [] }
           : {
