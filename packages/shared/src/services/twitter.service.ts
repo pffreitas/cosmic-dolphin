@@ -147,11 +147,17 @@ function plainContent(posts: Array<{ post: XPost; quoting: boolean }>): string {
 /** §8.4: each escaped post in a top-level blockquote, header first, then its paragraphs. */
 function postBlockquote(post: XPost, quoting: boolean): string {
   const header = `<p>${quoting ? "Quoting " : ""}<strong>${escapeHtml(post.name ?? post.handle)}</strong> @${escapeHtml(post.handle)}${post.date ? ` · <time>${escapeHtml(post.date)}</time>` : ""}</p>`;
+  // Links stay anchors, so the post-only row can recover them without the article.
+  const linkify = (line: string) =>
+    line
+      .split(/(https?:\/\/\S+)/)
+      .map((part, index) => (index % 2 ? `<a href="${escapeHtml(part)}">${escapeHtml(part)}</a>` : escapeHtml(part)))
+      .join("");
   const paragraphs = post.text
     .split(/\n+/)
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((line) => `<p>${escapeHtml(line)}</p>`);
+    .map((line) => `<p>${linkify(line)}</p>`);
   return ["<blockquote>", header, ...paragraphs, "</blockquote>"].join("\n");
 }
 

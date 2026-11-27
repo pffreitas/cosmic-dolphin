@@ -1,4 +1,4 @@
-import { TwitterServiceImpl, TwitterScrapingError } from "../../services/twitter.service";
+import { TwitterServiceImpl, TwitterScrapingError, xPostOnlyContent } from "../../services/twitter.service";
 import { BrowserExtractionProvider } from "../../services/extraction-providers";
 import { ContentExtractionError } from "../../services/content-extraction";
 import { HttpClient } from "../../services/http-client";
@@ -183,7 +183,7 @@ describe("TwitterService", () => {
           "<blockquote>",
           "<p><strong>John Doe</strong> @johndoe · <time>2026-11-22</time></p>",
           "<p>Wrote up how we shipped faster.</p>",
-          "<p>https://blog.example.com/shipping-faster/</p>",
+          '<p><a href="https://blog.example.com/shipping-faster/">https://blog.example.com/shipping-faster/</a></p>',
           "</blockquote>",
           "<article>",
           article.content,
@@ -215,8 +215,26 @@ describe("TwitterService", () => {
 
         const result = await twitterService.scrape("https://x.com/johndoe/status/12345");
 
-        expect(result.content).toContain("<p>&lt;b&gt;bold&lt;/b&gt; &amp; https://blog.example.com/shipping-faster/</p>");
+        expect(result.content).toContain('<p>&lt;b&gt;bold&lt;/b&gt; &amp; <a href="https://blog.example.com/shipping-faster/">https://blog.example.com/shipping-faster/</a></p>');
         expect(result.content).toContain("<blockquote>\n<p>Quoting <strong>Bob</strong> @bob · <time>2026-11-22</time></p>\n<p>Quoted &lt;i&gt;words&lt;/i&gt;</p>\n</blockquote>\n<article>");
+      });
+
+      it("recovers the post-only body, links and counts from a linked row", async () => {
+        mockHttpClient.fetch.mockResolvedValueOnce(thread(linkPost({
+          quote: post({ id: "7", text: "See https://quoted.example.com/x", author: { name: "Bob", screen_name: "bob" },
+            raw_text: { text: "See https://t.co/QQ", facets: [{ type: "url", original: "https://t.co/QQ", replacement: "https://quoted.example.com/x" }] } }),
+        })));
+        const linked = await twitterService.scrape("https://x.com/johndoe/status/12345");
+
+        const postOnly = xPostOnlyContent(linked.content);
+
+        expect(postOnly.content).toBe(linked.content.slice(0, linked.content.indexOf("\n<article>")));
+        expect(postOnly.links).toEqual([
+          { url: "https://blog.example.com/shipping-faster/", text: "https://blog.example.com/shipping-faster/" },
+          { url: "https://quoted.example.com/x", text: "https://quoted.example.com/x" },
+        ]);
+        // Two bylines (5 each), the post (7) and the quote (2).
+        expect(postOnly).toMatchObject({ wordCount: 19, readingTime: 1 });
       });
 
       it("keeps a quote-only row when the follow fails", async () => {

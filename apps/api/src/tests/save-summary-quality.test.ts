@@ -61,7 +61,7 @@ async function request(path: string, method = "GET", body?: unknown) {
   return { status: response.status, body: await response.json() as any };
 }
 
-const postBlock = `<blockquote>\n<p><strong>Ann</strong> @ann · <time>2026-11-22</time></p>\n<p>Imprint ships four times faster and POSTONLYTERM incidents fell.</p>\n<p>${ARTICLE_URL}</p>\n</blockquote>`;
+const postBlock = `<blockquote>\n<p><strong>Ann</strong> @ann · <time>2026-11-22</time></p>\n<p>Imprint ships four times faster and POSTONLYTERM incidents fell.</p>\n<p><a href="${ARTICLE_URL}">${ARTICLE_URL}</a></p>\n</blockquote>`;
 function xRow(article: string | null, status: "complete" | "failed" = "complete"): Extracted {
   return {
     title: "Tweet by Ann (@ann)",
@@ -151,7 +151,7 @@ it("a seeded teaser yields two ordered turns and a post-only row in Read, search
   const row = await stored(saved.id);
   expect(row.metadata.extraction).toMatchObject({ status: "complete", provider: "fxtwitter", linked: { url: ARTICLE_URL, status: "unreadable", title: "On bottlenecks" } });
   expect(row.content).toBe(postBlock);
-  expect(row.links).toEqual([]);
+  expect(row.links).toEqual([{ url: ARTICLE_URL, text: ARTICLE_URL }]);
   const result = (await request(`/bookmarks/${saved.id}`)).body;
   expect(result).toMatchObject({ processingStatus: "completed", title: "Imprint ships four times faster", cosmicBriefSummary: expect.stringContaining("essay.example.org page was not read") });
   expect(result.metadata.wordCount).toBe(14);
