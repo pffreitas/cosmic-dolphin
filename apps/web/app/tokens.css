@@ -105,6 +105,7 @@
   --cd-nav-edge: rgba(255,255,255,.9);
   --cd-nav-sheen: rgba(255,255,255,.85);
   --cd-nav-pill: rgba(255,255,255,.96);
+  --cd-nav-surface: rgba(255,255,255,.95);
   --cd-nav-shadow: 0 10px 26px -14px rgba(28,22,16,.32), 0 2px 6px -3px rgba(28,22,16,.12);
 
   /* Brand artwork */
@@ -114,6 +115,7 @@
   --cd-shadow-capsule: var(--cd-nav-shadow);
   --cd-shadow-popover: 0 12px 32px -12px rgba(28, 22, 16, 0.2), 0 2px 6px -3px rgba(28, 22, 16, 0.1);
   --cd-shadow-dialog: 0 24px 60px -20px rgba(28, 22, 16, 0.32);
+  --cd-shadow-segment: 0 1px 2px 0 rgba(0,0,0,.05);
 }
 
 .dark {
@@ -182,6 +184,7 @@
   --cd-nav-edge: rgba(255,255,255,.13);
   --cd-nav-sheen: rgba(255,255,255,.15);
   --cd-nav-pill: rgba(255,255,255,.11);
+  --cd-nav-surface: rgba(26,24,22,.95);
   --cd-nav-shadow: 0 12px 30px -16px rgba(0,0,0,.85);
 
   /* Brand artwork */
@@ -189,6 +192,7 @@
 
   --cd-shadow-popover: 0 12px 32px -12px rgba(0, 0, 0, 0.7), 0 2px 6px -3px rgba(0, 0, 0, 0.5);
   --cd-shadow-dialog: 0 24px 60px -20px rgba(0, 0, 0, 0.8);
+  --cd-shadow-segment: inset 0 0 0 1px var(--cd-border-strong);
 }
 
 /* ----------------------------------------------------------------------------

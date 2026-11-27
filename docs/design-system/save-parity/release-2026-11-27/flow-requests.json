@@ -1,0 +1,42 @@
+[
+  {
+    "method": "POST",
+    "path": "/api/v1/bookmarks",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null,
+    "sourceUrl": "https://example.com/testflight-save-parity",
+    "captureSource": "save_sheet",
+    "isPrivateLink": true,
+    "description": "Private TestFlight migration proof"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/bookmarks/captured-9",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null,
+    "note": "",
+    "laterUntil": null
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/bookmarks",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null,
+    "sourceUrl": "https://example.com/testflight-save-parity",
+    "captureSource": "save_sheet",
+    "isPrivateLink": true,
+    "description": "Private TestFlight migration proof"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/bookmarks/captured-9",
+    "scope": null,
+    "readStatus": null,
+    "collectionId": null,
+    "note": "",
+    "laterUntil": null
+  }
+]

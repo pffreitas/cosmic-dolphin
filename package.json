@@ -38,7 +38,8 @@
     "db:test:down": "docker compose -f docker-compose.test.yml down -v",
     "db:test:reset": "node scripts/db-test-reset.mjs",
     "test:db": "bun run db:test:up && bun run db:test:reset && bun run test:backend",
-    "brand:generate": "node scripts/generate-brand-assets.mjs"
+    "brand:generate": "node scripts/generate-brand-assets.mjs",
+    "tokens:test": "node --test scripts/__tests__/generate-tokens.test.mjs"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

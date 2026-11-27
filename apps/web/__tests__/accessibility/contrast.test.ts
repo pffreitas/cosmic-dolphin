@@ -182,6 +182,7 @@ const NOT_CONTRAST_BEARING: Record<string, string> = {
   // Not solid colours at all: gradients, shadows and translucent washes. There
   // is no single pair to measure, and none of them carries information.
   overlay: "translucent scrim — dims the page, states nothing",
+  "nav-surface": "translucent compact-navigation ground — composited contrast measured below",
   "nav-glass": "gradient",
   "brand-gradient": "gradient — its three opaque stops are measured under brand-fg",
   "nav-edge": "translucent capsule edge",
@@ -245,6 +246,33 @@ describe("header material", () => {
     expect(glass).not.toMatch(/rgba|hsla|transparent|#[0-9a-f]{8}\b|\//i);
   });
 });
+
+// Compact navigation floats over scrolling content, including images. Measure
+// its actual 95% panel fill over both app grounds and black/white image extremes;
+// measuring the opaque panel alone would miss the translucency. Active labels
+// sit on accent-soft and are already covered by TEXT/NON_TEXT above.
+for (const mode of MODES) {
+  describe(`compact navigation material · ${mode}`, () => {
+    const palette = TOKENS.color[mode];
+    const grounds = ["bg", "bg-subtle", "bg-panel", "bg-inset", "#000000", "#FFFFFF"];
+    for (const ground of grounds) {
+      for (const [ink, min] of [["fg", 4.5], ["fg-secondary", 4.5], ["focus", 3]] as const) {
+        it(`${ink} on nav-surface over ${ground} clears ${min}:1`, () => {
+          const fill = palette["nav-surface"].match(/^rgba\((\d+),(\d+),(\d+),([\d.]+)\)$/);
+          expect(fill, "nav-surface must be a measurable rgba fill").toBeTruthy();
+          const beneath = palette[ground] ?? ground;
+          const alpha = Number(fill![4]);
+          const blended = [0, 1, 2].map((channelIndex) => {
+            const back = parseInt(beneath.slice(1 + channelIndex * 2, 3 + channelIndex * 2), 16);
+            return Math.round(Number(fill![channelIndex + 1]) * alpha + back * (1 - alpha))
+              .toString(16).padStart(2, "0");
+          }).join("");
+          expect(contrast(palette[ink], `#${blended}`)).toBeGreaterThanOrEqual(min);
+        });
+      }
+    }
+  });
+}
 
 /**
  * The landing's header and footer are `--cd-brand-ground` in both modes and

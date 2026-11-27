@@ -1,123 +1,66 @@
-# Implementation
+# Implementation and reuse
 
-How Signal lands in `apps/web` and `apps/mobile`. Follow the phases in order — each one leaves the
-app in a shippable state.
+Current web defines the reference; this is a maintenance workflow, not the original revamp plan.
+Historical phases remain in `docs/plans/signal-revamp-plan.md` and must not be rerun to reconstruct
+current web. In particular, never copy historical CSS or HTML prototypes into an application.
 
-## Phase 1 · Tokens
+## Ownership
 
-1. Copy [`tokens.css`](./tokens.css) to `apps/web/app/tokens.css` and import it at the top of
-   `app/globals.css`, above the `@tailwind` directives.
-2. Delete the `:root` and `.dark` blocks currently in `globals.css`. `tokens.css` supplies both,
-   including the shadcn compatibility layer that keeps `components/ui/*` working untouched.
-3. Load the typefaces in `app/layout.tsx` with `next/font/google` — `Inter` (400/500/600/700) and
-   `Source_Serif_4` (400/600, with italic) — exposing them as `--cd-font-sans` and `--cd-font-serif`
-   so the token file stays authoritative. Drop the `geist` dependency and the `karla` / `noto`
-   entries.
-4. Extend `tailwind.config.ts`:
+| Layer | Owner | Sharing boundary |
+| --- | --- | --- |
+| Semantic colors, radii, spacing, fonts, motion, web type roles | `docs/design-system/tokens.json` | Machine-readable common source; generated CSS/native exports |
+| Primitive defaults and visual states | `components.md`, `apps/web/components/ui/*` | Same variant/slot/state contract; platform renderer handles DOM or native views |
+| Product patterns | `patterns.md`, source inventory | Same anatomy/order/data fallbacks; platform layout/gesture adapter |
+| Screen assembly | `pages.md`, current routes | Compose patterns; preserve screen-specific overrides |
+| Product behavior and API shapes | functional spec, approved mobile spec, generated API client | Do not infer new endpoints or offline behavior from a visual contract |
+| Visual proof | `parity.md` | Matched fixtures and rendered comparisons, separately recorded by platform |
 
-```ts
-fontFamily: {
-  sans:  ["var(--cd-font-sans)", ...defaultTheme.fontFamily.sans],
-  serif: ["var(--cd-font-serif)", ...defaultTheme.fontFamily.serif],
-  mono:  ["var(--cd-font-mono)", ...defaultTheme.fontFamily.mono],
-},
-colors: {
-  // Signal tokens. The shadcn keys already present stay until every primitive
-  // has been migrated off them; then delete both them and the bridge in tokens.css.
-  bg:      { DEFAULT: "var(--cd-bg)", subtle: "var(--cd-bg-subtle)", panel: "var(--cd-bg-panel)", inset: "var(--cd-bg-inset)" },
-  fg:      { DEFAULT: "var(--cd-fg)", secondary: "var(--cd-fg-secondary)", tertiary: "var(--cd-fg-tertiary)" },
-  line:    { DEFAULT: "var(--cd-border)", strong: "var(--cd-border-strong)" },
-  accent:  { DEFAULT: "var(--cd-accent)", hover: "var(--cd-accent-hover)", fg: "var(--cd-accent-fg)", soft: "var(--cd-accent-soft)", border: "var(--cd-accent-border)" },
-  id:      { 1: "var(--cd-id-1)", "1-bg": "var(--cd-id-1-bg)", /* … through 5 */ },
-  like:    "var(--cd-like)",
-},
-borderRadius: {
-  xs: "var(--cd-radius-xs)", sm: "var(--cd-radius-sm)",
-  md: "var(--cd-radius-md)", lg: "var(--cd-radius-lg)", pill: "var(--cd-radius-pill)",
-},
-```
+Do not import `packages/shared` into any client; it is backend-only. Web React/Radix components
+cannot be imported into React Native. Reuse the semantic source, portable formatting and component
+contracts; implement platform renderers behind the same conceptual slots. If executable UI-neutral
+helpers are extracted in a future implementation, use a dedicated client-safe package with no
+Next, DOM, React Native or backend dependency. Do not create duplicate helper copies per screen.
 
-> `accent` deliberately shadows shadcn's `accent`, which meant "muted hover surface". Any component
-> using `bg-accent` for hover must move to `bg-bg-inset` in the same commit — grep for it first.
+## Generation
 
-5. Add a lint rule (or a CI grep) rejecting hex literals, `rgb(`, and `px` radii in
-   `apps/web/{app,components}`. Rule zero is only real if it's enforced.
+`bun run tokens` writes three artifacts:
 
-## Phase 2 · Primitives
+- `apps/web/app/tokens.css` — used by `globals.css` and Tailwind.
+- `docs/design-system/tokens.css` — byte-identical reference copy, now checked too.
+- `apps/mobile/constants/theme.ts` — typed native values.
 
-Restyle in place, in `components/ui/`: `button`, `input`, `textarea`, `select`, `badge` (→ Tag),
-`avatar`, `separator`, `dialog`, `tooltip`, `dropdown-menu`, `scroll-area`, plus new `segmented`,
-`kbd`, `skeleton`, `empty-state`, and `toast`. Specs in [components.md](./components.md).
+`bun run tokens:check` checks all three. Never hand-edit a generated file. The JSON's canonical
+`typography.scale` describes current web; `typography.compact.scale` records compact overrides.
+The generator exports `webType` and `webTypeCompact` with numeric line heights/tracking; `webColors`
+holds canonical web colors. Existing `type` and `colors` retain native compatibility typography and
+Plum overrides. A future parity component must opt into web exports explicitly. See parity.md for
+font loading and exact breakpoint boundaries. Token checks do not read rendered component styles.
 
-Do not touch pages in this phase. When it lands, the app should look mostly the same but be running
-entirely on Signal tokens.
+Native gradients/shadows need an explicit adapter: the theme omits CSS-valued gradients and
+elevation strings. Use the canonical JSON for those effects; do not conclude they are absent from
+web or unnecessary to reproduce it. Current native components and extensions remain unchanged.
 
-## Phase 3 · Patterns
+## Adapting a component
 
-Build the seven shared patterns from [patterns.md](./patterns.md) in this order — later ones consume
-earlier ones:
-
-1. `components/provenance-row.tsx`
-2. `components/ai/ai-callout.tsx`
-3. `components/ai/processing-steps.tsx`
-4. `components/social/action-row.tsx`
-5. `components/shell/` — the app shell: `app-shell.tsx`, `sidebar.tsx`, `public-header.tsx`
-   (originally the header capsule, `app-header.tsx`; replaced by revision R1 and deleted)
-6. `components/bookmark/library-row.tsx`
-7. `components/feed/feed-item.tsx`
-
-Each ships with a story or a fixture route covering all of its states, including the failed and
-empty ones. A pattern without its states rendered somewhere is not done.
-
-## Phase 4 · Pages
-
-In this order, so the highest-traffic and lowest-risk surface moves first:
-
-1. **Library** (`/my/library`) — the pattern with the fewest dependencies. Replaces
-   `bookmark-list-card.tsx`.
-2. **Bookmark detail** (`/bookmarks/[bookmarkId]`) and **shared** (`/s/[slug]`).
-3. **Home** (`/my/dashboard`) — depends on feed ranking; see
-   [functional-spec/05-feed.md](../functional-spec/05-feed.md).
-4. **Search**, **Explore**, **Profile**.
-5. **Auth pages** and remaining chrome. Remove `cosmic-menu.tsx`, `hero.tsx`, and the `.shimmer`
-   block in `globals.css`.
-
-Delete the old component as part of the commit that replaces it. A migration that leaves both
-versions in the tree stops being a migration.
-
-## Phase 5 · Mobile
-
-`apps/mobile` consumes the same `tokens.json`. `scripts/generate-tokens.mjs` compiles it into
-`apps/mobile/constants/theme.ts` alongside the web stylesheet, so the two clients cannot drift —
-`bun run tokens` writes both, `bun run tokens:check` fails when either is stale, and both apps' lint
-runs that check. Patterns translate directly; the app shell becomes a bottom tab bar plus the
-compact `components/TopBar.tsx`, and hover states become pressed states (a row's `--cd-bg-subtle`
-hover becomes its pressed ground). Parity beyond token adoption is out of scope.
+1. Find the production component in inventory; inspect rendered class values, not only comments.
+2. Apply its variants, geometry, slots, accessibility state and fallback precedence from components/patterns.
+3. Share data/formatting rules (identity, counts, capture parsing, provenance). Inject platform navigation,
+   clipboard, image loading, focus, native accessibility and persistence through adapters.
+4. Document each native difference: hit slop, Dynamic Type, safe area, keyboard avoidance, modal gesture.
+   Do not silently change visible padding or colors under the name of adaptation.
+5. Reuse the new primitive in all consuming patterns; don't recreate its styling inline on each screen.
+6. Exercise the same fixture matrix on each renderer, then compare captures as described in parity.md.
 
 ## Definition of done
 
-A surface is migrated when all of the following hold:
+- Source and documentation agree, including caller overrides, image failure and absent data.
+- Shared token generation is fresh; generator tests pass after pipeline changes.
+- State/route coverage is recorded in inventory; known missing web states are labelled as such.
+- Matched visual evidence exists before claiming pixel parity; font, viewport, theme and data are fixed.
+- Accessibility is preserved; invisible target expansion does not change the reference geometry.
+- No app behavior is changed just to satisfy an old prototype or aspirational guideline.
 
-- [ ] No hex, `rgb()`, or px radius literal anywhere in its files.
-- [ ] Serif on content titles, sans on everything operable.
-- [ ] Loading, empty, error, and AI-processing states all render.
-- [ ] Contrast verified at 4.5:1 in **both** light and dark.
-- [ ] Keyboard-reachable, with a visible focus ring on every control.
-- [ ] `prefers-reduced-motion` honoured.
-- [ ] The component it replaces has been deleted.
-
-Four of the seven are machine-checked and break the build: raw values
-(`apps/web/scripts/lint-tokens.mjs`), contrast
-(`apps/web/__tests__/accessibility/contrast.test.ts`), the focus ring and the 32px target
-(`apps/web/scripts/lint-a11y.mjs`), and reduced motion (both of those plus the global block in
-`app/globals.css`). `.github/workflows/accessibility.yml` runs them on every pull request. The other
-three — the two voices, the four states, and deleting the predecessor — are still read rather than
-run. [audit.md](./audit.md) records this checklist walked route by route, every violation the D20
-audit found, and what remains open.
-
-## Reference
-
-[`prototypes/index.html`](./prototypes/index.html) is the visual source of truth for Signal — open
-it beside the code. It also carries the two directions that were not adopted (Ember, Graphite),
-behind the header switcher, as a record of the exploration. **They are not the spec.** Only Signal
-is; their tokens sit in `prototypes/alternates/` and must not be imported.
+Relevant checks: `bun run tokens:check`, `node --test scripts/__tests__/generate-tokens.test.mjs`,
+web `lint:tokens`, `lint:a11y`, and the three web accessibility test files. The existing historical
+[audit](./audit.md) explains their coverage limits. Native testing is required when native runtime
+behavior changes; a generated export alone is not a native screenshot proof.

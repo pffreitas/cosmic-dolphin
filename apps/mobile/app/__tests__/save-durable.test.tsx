@@ -10,10 +10,12 @@ const mockReaderSession = { access_token: "fixture-jwt", user: { id: "reader" } 
 let mockSession: any = mockReaderSession;
 let mockAuthChange: (event: string, session: any) => void;
 let mockPath = "/save";
-let mockSaveParams: { url?: string; accountId?: string } = {};
+let mockSaveParams: { url?: string; accountId?: string; privateLink?: string; captureSource?: string } = {};
 let mockNavigate: (path: string) => void;
 let mockCaptures: ReturnType<typeof useCaptures>;
 let mockCaptureViews: { owner?: string; captureOwners: (string | undefined)[] }[];
+// Expo Router supplies this provider on-device; the Stack harness is a leaf.
+jest.mock("react-native-safe-area-context", () => ({ ...jest.requireActual("react-native-safe-area-context"), useSafeAreaInsets: () => ({ top: 62, bottom: 34, left: 0, right: 0 }) }));
 jest.mock("@/lib/supabase", () => ({
   supabase: { auth: {
     getSession: jest.fn(async () => ({ data: { session: mockSession } })),
@@ -50,13 +52,21 @@ jest.mock("expo-router", () => {
     const [path, setPath] = React.useState(mockPath);
     mockNavigate = (next: string) => { mockPath = next; setPath(next); };
     if (path.startsWith("/(auth)")) return React.createElement(require("react-native").Text, {}, "Sign in");
-    const Screen = path === "/save" ? require("../save").default : require("../(tabs)/index").default;
+    const Screen = path === "/save" ? mockRouteScreens.save : mockRouteScreens.home;
     return <Screen />;
   }
   Stack.Screen = function StackScreen() { return null; };
   return { Stack, useLocalSearchParams: () => mockSaveParams, useNavigation: () => ({ navigate: (path: string) => mockNavigate("/" + path) }), useRouter: () => router, usePathname: () => mockPath,
     useSegments: () => [mockPath.startsWith("/(auth)") ? "(auth)" : "(tabs)"], useFocusEffect: (effect: any) => React.useEffect(effect, [effect]) };
 });
+
+// These are the real screens, not renderer mocks. Native bundles are already
+// compiled; move Jest's first dependency transforms outside timed interactions.
+// Providers, navigation, queue state and transport still start cold per test.
+const mockRouteScreens = {
+  save: require("../save").default,
+  home: require("../(tabs)/index").default,
+};
 
 let requests: { body: any; authorization: string }[];
 let bookmarks: Map<string, any>;
@@ -112,8 +122,8 @@ beforeEach(async () => {
 
 it("cold root Save writes durably, shows Home pending, and replays a lost acknowledgement exactly once", async () => {
   const app = render(<RootLayout />);
-  // Flush asynchronous auth bootstrap and its cold screen imports before the field-query timer starts.
-  await act(async () => {});
+  // Await the actual owner visible through the root/provider boundary.
+  await waitFor(() => expect(mockCaptureViews.at(-1)?.owner).toBe("reader"));
   fireEvent.changeText(await app.findByLabelText("Link"), "https://example.com/idea");
   fireEvent.press(app.getByRole("button", { name: "Save" }));
   fireEvent.press(app.getByRole("button", { name: "Save" }));
@@ -143,16 +153,15 @@ it("keeps private description and optional note/timing separate on an offline sa
   }) as any;
   const app = render(<RootLayout />);
   fireEvent.changeText(await app.findByLabelText("Link"), "https://example.com/private");
-  fireEvent(app.getByLabelText("Page behind a login"), "valueChange", true);
-  fireEvent.changeText(app.getByLabelText("Your title"), "Private title");
-  fireEvent.changeText(app.getByLabelText("Describe this link"), "The description used to organise this link");
+  fireEvent.press(app.getByRole("button", { name: "Behind a login" }));
+  fireEvent.changeText(app.getByLabelText("Brief description"), "The description used to organise this link");
   fireEvent.press(app.getByRole("button", { name: "Save" }));
   fireEvent.changeText(await app.findByLabelText("Note (optional)"), "Why I saved this");
   fireEvent.press(app.getByRole("button", { name: "Tonight" }));
   fireEvent.press(app.getByRole("button", { name: "Done" }));
   await waitFor(() => expect(mockPath).toBe("/(tabs)"));
   const [entry] = JSON.parse((await AsyncStorage.getItem("save-queue:v1"))!);
-  expect(entry).toMatchObject({ isPrivateLink: true, title: "Private title",
+  expect(entry).toMatchObject({ isPrivateLink: true,
     description: "The description used to organise this link", note: "Why I saved this", laterUntil: expect.any(String) });
   expect(Date.parse(entry.laterUntil)).toBeGreaterThan(Date.now());
   app.unmount();
@@ -160,7 +169,7 @@ it("keeps private description and optional note/timing separate on an offline sa
   holdFirst = false;
   render(<RootLayout />);
   await waitFor(() => expect(requests).toHaveLength(1));
-  expect(requests[0].body).toMatchObject({ is_private_link: true, title: "Private title",
+  expect(requests[0].body).toMatchObject({ is_private_link: true,
     description: entry.description, user_note: entry.note, later_until: entry.laterUntil });
   await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem("save-queue:v1"))!)).toHaveLength(0));
 });
@@ -476,9 +485,10 @@ it("Home keeps a processing capture above the loaded feed with real phases and i
   fireEvent.press(app.getByRole("button", { name: "Save" }));
   await app.findByText("Saved. Cosmic is reading it.");
   fireEvent.press(app.getByRole("button", { name: "Done" }));
-  expect(await app.findByText("Fetched page")).toBeTruthy();
-  expect(app.getByText("Extracting content…")).toBeTruthy();
-  expect(app.getByText("Reading")).toBeTruthy();
+  expect(await app.findByText("Extracting content…")).toBeTruthy();
+  // Compact web Saving now shows the active phase only; filing remains available to accessibility.
+  expect(app.queryByText("Fetched page")).toBeNull();
+  expect(app.getByRole("button", { name: "Open Saved idea" }).props.accessibilityHint).toBe("Reading");
 });
 
 it("iOS native Paste reads no clipboard contents or page title before an explicit tap and records clipboard attribution", async () => {
@@ -501,15 +511,14 @@ it("empty, invalid and incomplete private Saves keep the form usable without iss
   await app.findByLabelText("Link");
   expect(app.queryByText("Paste copied link")).toBeNull();
   fireEvent.press(app.getByRole("button", { name: "Save" }));
-  expect(await app.findByText("Enter a complete http or https link.")).toBeTruthy();
+  expect(await app.findByText("That does not look like a link. Check the address and try again.")).toBeTruthy();
   fireEvent.changeText(app.getByLabelText("Link"), "ftp://example.com/invalid");
   fireEvent.press(app.getByRole("button", { name: "Save" }));
   expect(requests).toHaveLength(0);
   fireEvent.changeText(app.getByLabelText("Link"), "https://example.com/private");
-  fireEvent(app.getByLabelText("Page behind a login"), "valueChange", true);
-  fireEvent.press(app.getByRole("button", { name: "Save" }));
-  expect(await app.findByText("Add a title and description for this private link.")).toBeTruthy();
-  expect(app.getByLabelText("Describe this link").props.numberOfLines).toBeUndefined();
+  fireEvent.press(app.getByRole("button", { name: "Behind a login" }));
+  expect(app.getByRole("button", { name: "Save" }).props.accessibilityState.disabled).toBe(true);
+  expect(app.getByLabelText("Brief description").props.numberOfLines).toBeUndefined();
   expect(requests).toHaveLength(0);
 });
 it("the Save confirmation reports Already in your Library when the generated create is a duplicate", async () => {
@@ -527,15 +536,14 @@ it.each(["pending", "accepted private"])("scopes the %s Save confirmation and pr
   try {
     fireEvent.changeText(await app.findByLabelText("Link"), "https://private.example/account-a");
     if (variant === "accepted private") {
-      fireEvent(app.getByLabelText("Page behind a login"), "valueChange", true);
-      fireEvent.changeText(app.getByLabelText("Your title"), "A PRIVATE TITLE");
-      fireEvent.changeText(app.getByLabelText("Describe this link"), "A PRIVATE DESCRIPTION");
+      fireEvent.press(app.getByRole("button", { name: "Behind a login" }));
+      fireEvent.changeText(app.getByLabelText("Brief description"), "A PRIVATE DESCRIPTION");
     }
     fireEvent.press(app.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(requests).toHaveLength(1));
     fireEvent.changeText(await app.findByLabelText("Note (optional)"), "A PRIVATE SAVE NOTE");
     if (variant === "accepted private") {
-      expect(requests[0].body).toMatchObject({ is_private_link: true, title: "A PRIVATE TITLE", description: "A PRIVATE DESCRIPTION" });
+      expect(requests[0].body).toMatchObject({ is_private_link: true, description: "A PRIVATE DESCRIPTION" });
       await act(async () => completeRequest());
       await waitFor(() => expect(mockCaptures.captures[0].status).toBe("saved"));
     }
@@ -620,5 +628,114 @@ it("ignores a legacy unscoped URL parameter instead of adopting another account'
   try {
     expect((await app.findByLabelText("Link")).props.value).toBe("");
     expect(requests).toEqual([]);
+  } finally { app.unmount(); }
+});
+
+it("resets a private-link draft synchronously on account change before any capture exists", async () => {
+  const app = render(<RootLayout />);
+  try {
+    fireEvent.changeText(await app.findByLabelText("Link"), "https://private.example/draft-a");
+    fireEvent.press(app.getByRole("button", { name: "Behind a login" }));
+    fireEvent.changeText(app.getByLabelText("Brief description"), "OWNER A PRIVATE DRAFT");
+    mockSession = { access_token: "other-jwt", user: { id: "other" } };
+    await act(async () => mockAuthChange("SIGNED_IN", mockSession));
+    expect(app.queryByLabelText("Brief description")).toBeNull();
+    expect(app.queryByText("https://private.example/draft-a")).toBeNull();
+    expect(app.getByLabelText("Link").props.value).toBe("");
+    expect(requests).toEqual([]);
+  } finally { app.unmount(); }
+});
+
+it.each(["reader", "other"])("scopes omnibox private-link prefill to %s", async accountId => {
+  mockSaveParams = { url: "https://private.example/omnibox", accountId, privateLink: "true" };
+  const app = render(<RootLayout />);
+  try {
+    await act(async () => {});
+    if (accountId === "reader") {
+      expect(await app.findByLabelText("Brief description")).toBeTruthy();
+      expect(app.getByText("https://private.example/omnibox")).toBeTruthy();
+      expect(app.getByRole("button", { name: "Save" }).props.accessibilityState.disabled).toBe(true);
+    } else {
+      expect((await app.findByLabelText("Link")).props.value).toBe("");
+      expect(app.queryByLabelText("Brief description")).toBeNull();
+    }
+    expect(requests).toEqual([]);
+  } finally { app.unmount(); }
+});
+
+it("never waits for a private preview and ignores its late title after an account switch", async () => {
+  const transport = global.fetch;
+  let releasePreview!: () => void;
+  let previews = 0;
+  global.fetch = jest.fn(async (url, init) => {
+    if (String(url).endsWith("/bookmarks/preview")) {
+      previews++;
+      return new Promise<Response>(resolve => { releasePreview = () => resolve(response({ metadata: { title: "OWNER A PRIVATE PREVIEW" }, scrapable: false })); });
+    }
+    return transport(url, init);
+  }) as any;
+  const app = render(<RootLayout />);
+  try {
+    fireEvent.changeText(await app.findByLabelText("Link"), "https://private.example/held-preview");
+    fireEvent.press(app.getByRole("button", { name: "Behind a login" }));
+    await waitFor(() => expect(previews).toBe(1));
+    fireEvent.changeText(app.getByLabelText("Brief description"), "Durable private description");
+    fireEvent.press(app.getByRole("button", { name: "Save" }));
+    await app.findByLabelText("Note (optional)");
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0].body).toMatchObject({ is_private_link: true, description: "Durable private description" });
+    expect(requests[0].body.title).toBeUndefined();
+    mockSession = { access_token: "other-jwt", user: { id: "other" } };
+    await act(async () => mockAuthChange("SIGNED_IN", mockSession));
+    await act(async () => releasePreview());
+    expect(app.queryByText("OWNER A PRIVATE PREVIEW")).toBeNull();
+    expect(app.queryByLabelText("Brief description")).toBeNull();
+    expect(app.getByLabelText("Link").props.value).toBe("");
+  } finally { releasePreview?.(); app.unmount(); }
+});
+
+it("uses an already-arrived private preview title without replacing the user's brief", async () => {
+  const transport = global.fetch;
+  global.fetch = jest.fn(async (url, init) => String(url).endsWith("/bookmarks/preview")
+    ? response({ metadata: { title: "Private preview title" }, scrapable: false }) : transport(url, init)) as any;
+  const app = render(<RootLayout />);
+  try {
+    fireEvent.changeText(await app.findByLabelText("Link"), "https://private.example/preview");
+    fireEvent.press(app.getByRole("button", { name: "Behind a login" }));
+    await app.findByText("Private preview title");
+    fireEvent.changeText(app.getByLabelText("Brief description"), "The user's own brief");
+    fireEvent.press(app.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0].body).toMatchObject({ source_url: "https://private.example/preview", title: "Private preview title", description: "The user's own brief", is_private_link: true });
+  } finally { app.unmount(); }
+});
+
+it("keeps omnibox private-link attribution distinct from an explicitly pasted clipboard link", async () => {
+  mockSaveParams = { url: "https://private.example/omnibox-source", accountId: "reader", privateLink: "true", captureSource: "save_sheet" };
+  const app = render(<RootLayout />);
+  try {
+    fireEvent.changeText(await app.findByLabelText("Brief description"), "Saved from the omnibox");
+    fireEvent.press(app.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0].body).toMatchObject({ capture_source: "save_sheet", is_private_link: true, description: "Saved from the omnibox" });
+  } finally { app.unmount(); }
+});
+
+it.each([
+  { input: "example.com/article", expected: "https://example.com/article" },
+  { input: "javascript:alert(1)", expected: undefined },
+  { input: "https://localhost", expected: undefined },
+])("applies web capture validation to $input before durable submission", async ({ input, expected }) => {
+  const app = render(<RootLayout />);
+  try {
+    fireEvent.changeText(await app.findByLabelText("Link"), input);
+    fireEvent.press(app.getByRole("button", { name: "Save" }));
+    if (expected) {
+      await waitFor(() => expect(requests).toHaveLength(1));
+      expect(requests[0].body.source_url).toBe(expected);
+    } else {
+      await app.findByText("That does not look like a link. Check the address and try again.");
+      expect(requests).toEqual([]);
+    }
   } finally { app.unmount(); }
 });

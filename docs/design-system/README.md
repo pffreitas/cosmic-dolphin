@@ -1,36 +1,46 @@
 # Cosmic Dolphin — Design System
 
-**Adopted direction: Signal.** This directory is the specification for the UI revamp. It is written
-to be read by coding agents as well as people: when implementing or refactoring any Cosmic Dolphin
-interface, read these documents first and treat them as binding.
+**Current web is the visual source of truth.** This directory records its reusable design system
+as of `4c8d362` (2026-11-26), so native clients can reproduce the same surfaces. If a recorded
+measurement disagrees with the current web component's rendered styles, preserve web and reconcile
+the record. Do not “fix” web to match a historical prototype.
 
-Product behaviour lives next door in [`docs/functional-spec/`](../functional-spec/). The revamp
-touches both; neither document alone is enough to build a screen.
+Start with [cross-platform parity](./parity.md), then foundations, components and patterns.
+[The source inventory](./inventory.md) identifies the reusable implementation behind every family.
+[The reconciliation record](./reconciliation/tasks.md) records scope and verification.
+
+For continued native implementation, start with [the native parity handoff](native-parity-handoff.md).
+It maps reusable components, build/fixture commands and the separate Home, Save-form and [saved-detail](bookmark-detail-parity/tasks.md) proof and release gates.
+
+Product behaviour lives next door in [`docs/functional-spec/`](../functional-spec/) and the approved mobile feature spec. Visual contracts do not replace behavioral and permission requirements.
 
 ## Mobile scope and token overrides
 
-For shipped mobile behavior and the approved Plum direction, read [Save + Today's 5](../specs/mobile-reading-app/2026-11-09-save-and-todays-5.md) before older mobile prototypes. Its scope supersedes their exploratory screen/ranking/capture behavior. This directory's Signal guidance remains the web reference and the shared semantic-token foundation.
+For shipped mobile behavior and the approved Plum direction, read [Save + Today's 5](../specs/mobile-reading-app/2026-11-09-save-and-todays-5.md) before older mobile prototypes. Its scope supersedes their exploratory screen/ranking/capture behavior. This directory's Signal guidance is the web reference and the shared semantic-token foundation.
 
 Mobile colors come from `tokens.json` → `color.mobile.light/dark` overrides; the generator merges them into the native theme. Change the JSON and regenerate, never hand-edit either client's theme. Mobile work should preserve web colors unless its task explicitly changes the web direction. Serif-for-content, sans-for-controls and accessibility requirements remain shared.
+For web parity use the generated `webColors`, `webType`, and `webTypeCompact`, not the
+existing native `colors`/`type` exports. Those retain shipped Plum and compatibility typography.
+This makes the difference explicit without silently restyling the current native app.
 
 ## Read in this order
 
 | Document | What it settles |
 | --- | --- |
-| [decisions.md](./decisions.md) | The 20 product decisions everything else derives from. Read first; it explains *why*. |
+| [decisions.md](./decisions.md) | Historical product decisions and subsequent revisions; explains *why*. Current web wins on measurements. |
 | [foundations.md](./foundations.md) | Colour, type, shape, space, elevation, motion, accessibility, icons, imagery, voice. |
 | [components.md](./components.md) | Primitives — button, input, tag, avatar, segmented control, skeleton, dialog, palette. |
-| [patterns.md](./patterns.md) | The seven composite patterns that carry the product's identity. |
+| [patterns.md](./patterns.md) | The reusable composite patterns that carry the product's identity. |
 | [pages.md](./pages.md) | Route-by-route composition and required states. |
-| [implementation.md](./implementation.md) | How to land it in `apps/web` and `apps/mobile`, phase by phase. |
+| [implementation.md](./implementation.md) | Ownership, generation, reuse and verification workflow. |
 | [audit.md](./audit.md) | The accessibility gate: what enforces rule ten, what the D20 audit found, and the one accepted deviation. |
 
 | Artifact | What it is |
 | --- | --- |
-| [tokens.json](./tokens.json) | Canonical Signal tokens. The source of truth for every value. |
-| [tokens.css](./tokens.css) | Generated from the JSON. Drop into `apps/web/app/`, import from `globals.css`. |
-| `scripts/generate-tokens.mjs` | Compiles the JSON into `apps/web/app/tokens.css` and `apps/mobile/constants/theme.ts`. `bun run tokens` writes both; `bun run tokens:check` fails when either is stale. |
-| [prototypes/index.html](./prototypes/index.html) | The visual reference. Open it beside the code. |
+| [tokens.json](./tokens.json) | Shared semantic tokens and web type roles, with explicit native compatibility overrides. Component geometry is recorded in components/patterns. |
+| [tokens.css](./tokens.css) | Generated reference copy, byte-identical to `apps/web/app/tokens.css`. Do not copy historical CSS into the app. |
+| `scripts/generate-tokens.mjs` | Compiles the JSON into `apps/web/app/tokens.css` and `apps/mobile/constants/theme.ts`. `bun run tokens` writes both clients and the reference CSS; `bun run tokens:check` checks all three. |
+| [prototypes/index.html](./prototypes/index.html) | Historical exploration, not a parity reference. Use the current `/dev/*` component fixtures and actual routes. |
 
 ## Signal in one paragraph
 
@@ -50,18 +60,17 @@ Everything else in this directory elaborates on these.
 1. **Two voices.** Serif for content being evaluated — bookmark titles, feed titles, detail titles,
    headings inside saved content, pull quotes. Sans for everything operable. Never a serif button,
    never a sans bookmark title.
-2. **Semantic tokens only.** No hex, no `rgb()`, no px radius, no font stack in a component. Need a
+2. **Semantic tokens only.** No new hex, `rgb()`, px radius or font stack in a component. Existing web geometry is the baseline. Need a
    value that doesn't exist? Add it to `tokens.json`, run `bun run tokens` to regenerate both
    clients, document it in `foundations.md` — in that order.
 3. **Borders, not elevation.** Shadows are for surfaces that genuinely float: dialogs, sheets,
    popovers, the command palette. The sidebar and top bar are separated by hairlines. Nothing in a feed or list may float.
-4. **Shape is meaning.** 6px controls, 8px content surfaces, 12px on the app frame.
+4. **Shape is meaning.** 6px compact controls and Library thumbnails; 8px fields, panels and callouts; 12px compact dialog top corners and grouped panels.
    Pills mark identity or a single decisive action: tags,
    avatars, segmented filters, the primary CTA.
 5. **Restyle primitives, never fork them.** Radix plus `components/ui` is the single source. A screen
    does not get its own button.
-6. **Four states, always.** Every list and every async surface ships loading, empty, error, and
-   AI-processing. A pattern with fewer is incomplete.
+6. **State coverage.** Reproduce the states applicable to each surface: loading, empty, error, and processing where content is being processed. See inventory and the historical audit for existing gaps; requirements are not evidence that every state ships.
 7. **A pasted link gets a real row immediately**, with staged progress inside it. Never a full-screen
    spinner, never a blocking modal, never a fake percentage.
 8. **Provenance is mandatory.** No AI output ships without naming its sources. `metadata.openGraph`
@@ -81,3 +90,6 @@ Everything else in this directory elaborates on these.
 explored and not adopted. They are kept as a record of the exploration and are reachable through the
 switcher in the prototype. Do not import them, and do not treat anything in the prototype's Ember or
 Graphite modes as guidance.
+
+Native rendered work and its current gates: [Home parity](home-parity/tasks.md),
+[Save parity](save-parity/tasks.md), [Save fixture/resume recipe](save-parity/README.md).

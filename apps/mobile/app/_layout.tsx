@@ -31,6 +31,7 @@ function RootLayoutNav() {
   const reduceMotion = useReducedMotion();
   const router = useRouter();
   const pathname = usePathname();
+  const devGallery = __DEV__ && pathname === "/dev/home";
   const { session, isLoading } = useAuth();
   const statusBarStyle = scheme === "dark" ? "light" : "dark";
 
@@ -111,7 +112,7 @@ function RootLayoutNav() {
   useEffect(() => { if (!hasShareIntent) consuming.current = false; }, [hasShareIntent]);
 
   useEffect(() => {
-    if (isLoading || persisting || !nativeReady) return;
+    if (devGallery || isLoading || persisting || !nativeReady) return;
     if (arrival && (session || arrival.noUrl || arrival.error || arrival.queued)) {
       setPublicResult(!!(arrival.noUrl || arrival.error || arrival.queued));
       openingShare.current = true;
@@ -128,7 +129,7 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === "(auth)";
     if (!session && !inAuthGroup && !(pathname === "/share" && publicResult)) router.replace("/(auth)/sign-in");
     else if (session && inAuthGroup && !arrival) router.replace("/(tabs)");
-  }, [session, segments, isLoading, persisting, arrival, pathname, publicResult, nativeReady, router]);
+  }, [session, segments, isLoading, persisting, arrival, pathname, publicResult, nativeReady, router, devGallery]);
 
   // Log any errors with share intent
   useEffect(() => {
@@ -138,7 +139,7 @@ function RootLayoutNav() {
   }, [error]);
 
   // Show loading screen while checking auth state
-  if (isLoading) {
+  if (isLoading && !devGallery) {
     return (
       <>
         <StatusBar
@@ -168,13 +169,14 @@ function RootLayoutNav() {
           backgroundColor={colors.bg}
           translucent={false}
         />
-        <Stack screenOptions={{ animation: reduceMotion ? "none" : "default" }}>
+        <Stack screenOptions={{ headerShown: false, animation: reduceMotion ? "none" : "default" }}>
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen
             name="bookmark/[id]"
             options={{
               headerShown: false,
+              presentation: "card",
               animation: reduceMotion ? "none" : "slide_from_right",
             }}
           />
@@ -197,7 +199,7 @@ function RootLayoutNav() {
           />
           <Stack.Screen
             name="save"
-            options={{ headerShown: false, presentation: "modal" }}
+            options={{ headerShown: false, presentation: "transparentModal", animation: reduceMotion ? "none" : "fade" }}
           />
           <Stack.Screen name="topic" options={{ headerShown: false }} />
           <Stack.Screen name="collections" options={{ headerShown: false }} />
@@ -219,6 +221,36 @@ export default function RootLayout() {
     InterSemibold: require("../assets/fonts/Inter-600.ttf"),
     SourceSerif: require("../assets/fonts/SourceSerif4-400.ttf"),
     SourceSerifSemibold: require("../assets/fonts/SourceSerif4-600.ttf"),
+    CosmicReading16: require("../assets/fonts/CosmicReading16.ttf"),
+    CosmicReading17: require("../assets/fonts/CosmicReading17.ttf"),
+    CosmicReading19: require("../assets/fonts/CosmicReading19.ttf"),
+    CosmicReading20: require("../assets/fonts/CosmicReading20.ttf"),
+    CosmicReading23: require("../assets/fonts/CosmicReading23.ttf"),
+    CosmicReading22: require("../assets/fonts/CosmicReading22.ttf"),
+    CosmicReading26: require("../assets/fonts/CosmicReading26.ttf"),
+    CosmicReading27: require("../assets/fonts/CosmicReading27.ttf"),
+    CosmicReading28: require("../assets/fonts/CosmicReading28.ttf"),
+    CosmicReading32: require("../assets/fonts/CosmicReading32.ttf"),
+    CosmicReading43: require("../assets/fonts/CosmicReading43.ttf"),
+    CosmicBoldItalic17: require("../assets/fonts/CosmicBoldItalic17.ttf"),
+    CosmicBoldItalic20: require("../assets/fonts/CosmicBoldItalic20.ttf"),
+    CosmicBoldItalic21: require("../assets/fonts/CosmicBoldItalic21.ttf"),
+    CosmicBoldItalic23: require("../assets/fonts/CosmicBoldItalic23.ttf"),
+    CosmicBoldItalic26: require("../assets/fonts/CosmicBoldItalic26.ttf"),
+    CosmicBoldItalic27: require("../assets/fonts/CosmicBoldItalic27.ttf"),
+    CosmicBoldItalic28: require("../assets/fonts/CosmicBoldItalic28.ttf"),
+    CosmicBoldItalic35: require("../assets/fonts/CosmicBoldItalic35.ttf"),
+    CosmicProse17: require("../assets/fonts/CosmicProse17.ttf"),
+    CosmicProse23: require("../assets/fonts/CosmicProse23.ttf"),
+    CosmicItalic17: require("../assets/fonts/CosmicItalic17.ttf"),
+    CosmicItalic23: require("../assets/fonts/CosmicItalic23.ttf"),
+    CosmicItalic21: require("../assets/fonts/CosmicItalic21.ttf"),
+    CosmicItalic28: require("../assets/fonts/CosmicItalic28.ttf"),
+    CosmicReading34: require("../assets/fonts/CosmicReading34.ttf"),
+    CosmicReading35: require("../assets/fonts/CosmicReading35.ttf"),
+    CosmicReading38: require("../assets/fonts/CosmicReading38.ttf"),
+    CosmicReading46: require("../assets/fonts/CosmicReading46.ttf"),
+
   });
 
   useEffect(() => {

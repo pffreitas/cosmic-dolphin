@@ -1,0 +1,222 @@
+{
+  "scope": "Saved bookmark detail; not Save-a-link form",
+  "captureStage": "Default pairs preceded final Key points label-color, contextual navigation, generated metadata, owner-bound progress and rich-renderer corrections. Final renders were blocked by T3; not whole-page final certification.",
+  "captureSourceHashes": {
+    "apps/mobile/app/bookmark/[id].tsx": "7806b388f31968c3384cc8f284f8c7983042b474628a91bac628c5af711836f9",
+    "apps/mobile/components/web-bookmark/Comments.tsx": "2721aa2113a83c02a77bc454a9a7d318b130f53c462044b77bab911ca7b107b2",
+    "apps/mobile/components/web-bookmark/Reader.tsx": "c000d796e9152e7ed38ce7d80d9f0911a3bf92a830bc84856719c676c5e7e312",
+    "apps/mobile/components/web-bookmark/Provenance.tsx": "3289375f72cac9f26d86988369801d12959adb323ea0b604e4a01b69c9f63230",
+    "apps/mobile/components/web-home/theme.ts": "8f50c438ea4276365df98b8b3cef95494bea807a23c05bc6da54bac4723e6352"
+  },
+  "native": {
+    "kind": "iOS Simulator, development client, fictional loopback HTTP/auth fixture",
+    "device": "iPhone 18 Pro",
+    "os": "iOS 27.0",
+    "id": "3C7F9D5E-A343-4DB8-B75F-671CA10AC69A",
+    "logicalBounds": [
+      402,
+      874
+    ],
+    "backingScale": 3,
+    "topInset": 62,
+    "bottomInset": 34,
+    "textSize": "large (default, scale 1.0)",
+    "heroBounds": [
+      {
+        "label": "Open navigation",
+        "kind": "button",
+        "rect": {
+          "x": 12,
+          "y": 72.6666669845581,
+          "width": 34,
+          "height": 34
+        }
+      },
+      {
+        "label": "Library",
+        "kind": "button",
+        "rect": {
+          "x": 16,
+          "y": 158,
+          "width": 41.66666793823242,
+          "height": 18
+        }
+      },
+      {
+        "label": "Technology",
+        "kind": "button",
+        "rect": {
+          "x": 77.66666793823242,
+          "y": 158,
+          "width": 69.33333587646484,
+          "height": 18
+        }
+      },
+      {
+        "label": "AI",
+        "kind": "button",
+        "rect": {
+          "x": 167,
+          "y": 158,
+          "width": 12,
+          "height": 18
+        }
+      },
+      {
+        "label": "Software Engineering",
+        "kind": "button",
+        "rect": {
+          "x": 199,
+          "y": 158,
+          "width": 127,
+          "height": 18
+        }
+      },
+      {
+        "label": "Frontier engineering",
+        "kind": "text",
+        "rect": {
+          "x": 16,
+          "y": 192,
+          "width": 370,
+          "height": 35.33332824707031
+        }
+      },
+      {
+        "label": "kiro.dev",
+        "kind": "button",
+        "rect": {
+          "x": 16,
+          "y": 235.33333587646484,
+          "width": 71.33333587646484,
+          "height": 17.666671752929688
+        }
+      },
+      {
+        "label": "Mark as read",
+        "kind": "button",
+        "rect": {
+          "x": 16,
+          "y": 277,
+          "width": 146.3333282470703,
+          "height": 36
+        }
+      },
+      {
+        "label": "Open original",
+        "kind": "button",
+        "rect": {
+          "x": 170.3333282470703,
+          "y": 277,
+          "width": 116.33332824707031,
+          "height": 36
+        }
+      },
+      {
+        "label": "More actions",
+        "kind": "button",
+        "rect": {
+          "x": 360,
+          "y": 278,
+          "width": 34,
+          "height": 34
+        }
+      },
+      {
+        "label": "Cosmic brief",
+        "kind": "text",
+        "rect": {
+          "x": 37,
+          "y": 366,
+          "width": 77.33333587646484,
+          "height": 17.666656494140625
+        }
+      },
+      {
+        "label": "3 min article",
+        "kind": "text",
+        "rect": {
+          "x": 292.3333282470703,
+          "y": 366,
+          "width": 72.66665649414062,
+          "height": 17.666656494140625
+        }
+      }
+    ]
+  },
+  "web": {
+    "kind": "production BookmarkDetail + AppShell + BottomNavigation, dev gallery, offline fixture",
+    "viewport": [
+      402,
+      778
+    ],
+    "route": "/dev/bookmark?parity=1",
+    "fixture": "apps/mobile/dev/bookmark-fixture.json",
+    "contentLabel": "Illustrative article title/brief from supplied screenshots, representative long Markdown; not a recovered private API response"
+  },
+  "pairs": [
+    "light-default",
+    "dark-default"
+  ],
+  "pending": [
+    "Native larger Dynamic Type capture",
+    "Final full rich-reader/list/table/code/image render",
+    "Simulator controls and real transport flows after final implementation",
+    "Physical signed session and spoken accessibility"
+  ],
+  "blocker": {
+    "diagnostic": "ALERT_NOT_FOUND",
+    "at": "2026-11-27T15:57:39Z",
+    "attempts": "Launch warned confirmation status unreadable; alert get failed; its advised --debug retry failed. Device interaction stopped under T3 rule."
+  },
+  "finalSourceHashes": {
+    "apps/mobile/app/bookmark/[id].tsx": "7e8bd427c1b76a08fde5a4ed29371ce1e89e8604627dcb981d7fe8126122cfad",
+    "apps/mobile/components/web-bookmark/Comments.tsx": "9d65e1b0f883aa04daee333b14a9eac8a19e19cb7b560fd6404501c8f4d9fdb3",
+    "apps/mobile/components/web-bookmark/Reader.tsx": "479dcf8cb4fddc12a82b5e77c4f9b7d9155056b78524e1fc6dede9d26c9bf60e",
+    "apps/mobile/components/web-bookmark/Provenance.tsx": "3289375f72cac9f26d86988369801d12959adb323ea0b604e4a01b69c9f63230",
+    "apps/mobile/components/web-home/theme.ts": "9778466d0393be804a430ec3cd2da7eb094d42a710f36f6bde782884d0c2a7b9"
+  },
+  "fonts": {
+    "apps/mobile/assets/fonts/CosmicBoldItalic17.ttf": "7015c0660d6c16dd3c5e7be193dc35344c20510120cc9973d206f04102c27d91",
+    "apps/mobile/assets/fonts/CosmicBoldItalic20.ttf": "b870d58d100c154401cc87e3010d6b98f56cf9003f52953d67c575bd0c707006",
+    "apps/mobile/assets/fonts/CosmicBoldItalic21.ttf": "bd9e78fae98b14d30691b74ef224dfcd39f56a794b16af5457754e8e4481b69d",
+    "apps/mobile/assets/fonts/CosmicBoldItalic23.ttf": "f5f87b26869eae4cb0d8a5d4a7d13dffb0cb3d9f256ee6b310b9ac4965199ee2",
+    "apps/mobile/assets/fonts/CosmicBoldItalic26.ttf": "00debf163429389a54b32ac990504551c83940ffd92cc3dfc83671c1fbf6e3ca",
+    "apps/mobile/assets/fonts/CosmicBoldItalic27.ttf": "7e6c5a870c63dc9c85ac77c50caba740e7fcc13b9cbcf560a347bb861341b681",
+    "apps/mobile/assets/fonts/CosmicBoldItalic28.ttf": "82e157c4e3cad7593c3b34db7584d8b4f87e588d9d0c6b13ab9dba69599658f9",
+    "apps/mobile/assets/fonts/CosmicBoldItalic35.ttf": "d10f044d286b16f7c586bf6adaa65cc7cbfe59833aee293344a177ce4e36ba86",
+    "apps/mobile/assets/fonts/CosmicItalic17.ttf": "1683bfad26945f3c4ed18d93506f520835fd6e9f4d3daadcab6d1b797832c376",
+    "apps/mobile/assets/fonts/CosmicItalic21.ttf": "53ddbef91383aff7deca158a5ac1ffd8d8b8f18a9eeed5f912093f8a22861faf",
+    "apps/mobile/assets/fonts/CosmicItalic23.ttf": "3badf58ec71e82c57fe60cbceea67c81c61a86a42b90a0bf8d7e8c4d77539ab7",
+    "apps/mobile/assets/fonts/CosmicItalic28.ttf": "564c1355ad2babcf6ff2d428a93812307594a5b6459cb5e5f12edee448796d47",
+    "apps/mobile/assets/fonts/CosmicProse17.ttf": "b81c733094c8757771bfe3782b668e0437d551a149e3144d7fe393508e09b7d4",
+    "apps/mobile/assets/fonts/CosmicProse23.ttf": "c066cf1b31ec46b83abdb97adbda6224db80ae0d3831155169ed6433d697d342",
+    "apps/mobile/assets/fonts/CosmicReading16.ttf": "5d20d20dfc31adbac7f4ce14a91e9f84c068b411cc53e95281bc5f8e9f08824c",
+    "apps/mobile/assets/fonts/CosmicReading17.ttf": "5c7a6b5d64dc7b69db72025a2eba018cda2730c42855c47ca78fdc5af183dead",
+    "apps/mobile/assets/fonts/CosmicReading19.ttf": "784c08fccc18bd1adc7357df5026fe4cc64677f21c2e2a1161c5425ef777f1cd",
+    "apps/mobile/assets/fonts/CosmicReading20.ttf": "23a910798a73b5d5f8e45389a314f09327203939365e3b7e54ad565e133c6f90",
+    "apps/mobile/assets/fonts/CosmicReading22.ttf": "1a0623b38d8321ff82ce688d1c519c69d8ba3d1f1dc9ccf283dc19873ad06746",
+    "apps/mobile/assets/fonts/CosmicReading23.ttf": "864c000177acf211c8a4f63db16d6b2875a3d2e087ad933cdc373a0265f941d8",
+    "apps/mobile/assets/fonts/CosmicReading26.ttf": "004ea9fa9d41029f138cef217d004ea9a674dad4d7ea14c4672e9deadfa73ec5",
+    "apps/mobile/assets/fonts/CosmicReading27.ttf": "d6e0687eadce4ca52ac4b2cc08bd5c7b3d6a914f42440e71103ced4add3ec55e",
+    "apps/mobile/assets/fonts/CosmicReading28.ttf": "5bf474dcca909ca7fb1c5579db3a611b5b6747e35d45444b5a52080f34f8a1dd",
+    "apps/mobile/assets/fonts/CosmicReading32.ttf": "9f4368d8cd09f4418f206f379b18d47ace24bd5389cf5ec851270d1e63ac4d9a",
+    "apps/mobile/assets/fonts/CosmicReading34.ttf": "56f90bad56274ecd9a73b2b2bf806727a64d89f81b2e15fa35ac3ae5507a83b8",
+    "apps/mobile/assets/fonts/CosmicReading35.ttf": "a113f6b6edf5952f87cd820328a539f9504c4844d5ef468209b8c58f53e23537",
+    "apps/mobile/assets/fonts/CosmicReading38.ttf": "09f097df5ba3b8807bacc89e1b18ae6719db124d9d12e1bce94c86beacc1e174",
+    "apps/mobile/assets/fonts/CosmicReading43.ttf": "6f7bb73834686812c8ba5171cd6d960cb5ce5ecade7cbf367f8625308d7063f0",
+    "apps/mobile/assets/fonts/CosmicReading46.ttf": "94acabebf23b368b0ec10d9691811a165ae7d95e9e86e5596d469b665282a407"
+  },
+  "checks": {
+    "mobileTypecheck": "passed",
+    "mobileLint": "passed, 12 existing warnings",
+    "mobileJest": {
+      "passedSuites": 42,
+      "passedTests": 338,
+      "skippedSuites": 1,
+      "skippedTests": 1
+    },
+    "tokensTests": 11,
+    "webTypecheck": "passed"
+  }
+}

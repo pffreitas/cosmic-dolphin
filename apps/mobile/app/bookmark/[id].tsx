@@ -1,27 +1,27 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   StyleSheet,
   View,
   Text,
   TextInput,
   ScrollView,
-  Pressable,
   Alert,
   Share,
 } from "react-native";
-import type { Bookmark as ContractBookmark, BookmarkContent, BookmarkProcessingEvent, Comment, TodayPicksResponse } from "@cosmic-dolphin/api-client";
+import type {
+  Bookmark as ContractBookmark,
+  BookmarkContent,
+  BookmarkProcessingEvent,
+  TodayPicksResponse,
+} from "@cosmic-dolphin/api-client";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import Markdown from "react-native-markdown-display";
 
-import { TopBarAction } from "@/components/TopBar";
 import {
   Button,
   EmptyState,
   layout,
   Notice,
-  Screen,
   Sheet,
   SkeletonRows,
 } from "@/components/ui/Signal";
@@ -40,18 +40,52 @@ import { ReadingTools } from "@/components/ReadingTools";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import { BookmarkFailure, openOriginal } from "@/components/BookmarkFailure";
 import { PendingPhases } from "@/components/PendingPhases";
-import { BookmarkActionSheets, type ActionSheet } from "@/components/BookmarkActionSheets";
+import {
+  BookmarkActionSheets,
+  type ActionSheet,
+} from "@/components/BookmarkActionSheets";
 import { Toast } from "@/components/Toast";
 import { isAuthError } from "@/lib/api-errors";
-import { fontFamily, textStyle } from "@/constants/fonts";
+import { textStyle } from "@/constants/fonts";
 import { radius, space, type } from "@/constants/theme";
-import { useTheme } from "@/hooks/useTheme";
+import { useWebTheme, webText, webSansFont } from "@/components/web-home/theme";
+import { Action, Copy, Tag } from "@/components/web-home/Primitives";
+import { Favicon } from "@/components/web-home/FeedItem";
+import { BalancedTitle } from "@/components/web-home/BalancedTitle";
+import { DetailProvenance } from "@/components/web-bookmark/Provenance";
+import { ReaderImage } from "@/components/web-bookmark/ReaderImage";
+import { SheetButton } from "@/components/web-save/SaveSheet";
+import { DetailFrame } from "@/components/web-bookmark/Frame";
+import { DetailReader, detailProse } from "@/components/web-bookmark/Reader";
+import { DetailComments } from "@/components/web-bookmark/Comments";
+import {
+  Check,
+  BookmarkPlus,
+  RotateCcw,
+  ExternalLink,
+  Share as ShareIcon,
+  MoreHorizontal,
+  Heart,
+  MessageCircle,
+  Bookmark as BookmarkIcon,
+  ChevronRight,
+  RotateCw,
+  Lock,
+} from "lucide-react-native";
 
 function readingBookmark(value: Bookmark): ContractBookmark {
-  return { ...value, createdAt: new Date(value.createdAt), updatedAt: new Date(value.updatedAt),
+  return {
+    ...value,
+    createdAt: new Date(value.createdAt),
+    updatedAt: new Date(value.updatedAt),
     readAt: value.readAt ? new Date(value.readAt) : undefined,
-    laterUntil: value.laterUntil ? new Date(value.laterUntil) : value.laterUntil,
-    captureQueuedAt: value.captureQueuedAt ? new Date(value.captureQueuedAt) : value.captureQueuedAt } as ContractBookmark;
+    laterUntil: value.laterUntil
+      ? new Date(value.laterUntil)
+      : value.laterUntil,
+    captureQueuedAt: value.captureQueuedAt
+      ? new Date(value.captureQueuedAt)
+      : value.captureQueuedAt,
+  } as ContractBookmark;
 }
 
 function extractDomain(url: string): string {
@@ -63,37 +97,56 @@ function extractDomain(url: string): string {
   }
 }
 
-function formatDate(dateString: string): string {
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  } catch {
-    return "";
-  }
-}
-
 export default function BookmarkDetailScreen() {
-  const { id, slug, mode: requestedMode, paste: requestedPaste, retry: requestedRetry } = useLocalSearchParams<{ id: string; slug?: string; mode?: string; paste?: string; retry?: string }>();
+  const { user } = useAuth();
+  const { id, slug } = useLocalSearchParams<{ id: string; slug?: string }>();
+  // Reset private drafts synchronously at the route/account boundary.
+  return (
+    <BookmarkDetailController
+      key={`${user?.id ?? ""}:${id}:${slug ?? "owner"}`}
+    />
+  );
+}
+function BookmarkDetailController() {
+  const {
+    id,
+    slug,
+    mode: requestedMode,
+    paste: requestedPaste,
+    retry: requestedRetry,
+  } = useLocalSearchParams<{
+    id: string;
+    slug?: string;
+    mode?: string;
+    paste?: string;
+    retry?: string;
+  }>();
   const router = useRouter();
   const { user } = useAuth();
-  const { colors } = useTheme();
+  const { colors } = useWebTheme();
   const preferences = usePreferences();
-  const readingSize = preferences.readingSize === "larger" ? type.title1.fontSize : preferences.readingSize === "large" ? space.s5 : type.title2.fontSize;
+  const readingSize =
+    preferences.readingSize === "larger"
+      ? type.title1.fontSize
+      : preferences.readingSize === "large"
+        ? space.s5
+        : type.title2.fontSize;
 
   const pageIdentity = useRef("");
   pageIdentity.current = `${user?.id ?? ""}:${id}:${slug ?? "owner"}`;
   const bookmarkRequest = useRef(0);
-  const cancelBookmarkRequest = useCallback(() => { bookmarkRequest.current++; }, []);
+  const cancelBookmarkRequest = useCallback(() => {
+    bookmarkRequest.current++;
+  }, []);
 
-  const [conversation, setConversation] = useState(false);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [comment, setComment] = useState("");
-  const [commentsError, setCommentsError] = useState("");
-  const [posting, setPosting] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const alive = useRef(true);
+  useEffect(
+    () => () => {
+      alive.current = false;
+    },
+    [],
+  );
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [pasteBusy, setPasteBusy] = useState(false);
@@ -102,37 +155,77 @@ export default function BookmarkDetailScreen() {
   const [retryBusy, setRetryBusy] = useState(false);
   const pasteRequest = useRef(0);
   const pasteAbort = useRef<AbortController>();
-  const cancelRecovery = useCallback(() => { ++pasteRequest.current; pasteAbort.current?.abort(); }, []);
+  const cancelRecovery = useCallback(() => {
+    ++pasteRequest.current;
+    pasteAbort.current?.abort();
+  }, []);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summaryDraft, setSummaryDraft] = useState("");
+  const [summaryBusy, setSummaryBusy] = useState(false);
+  const [summaryError, setSummaryError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const detailMutationAbort = useRef<AbortController>();
+  useEffect(() => () => detailMutationAbort.current?.abort(), []);
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [selection, setSelection] = useState<ActionSheet>();
   const [storedBookmark, setBookmark] = useState<Bookmark | null>(null);
   const [loadedIdentity, setLoadedIdentity] = useState("");
   const { controller, state: actionState } = useBookmarkActions(user?.id);
-  const viewed = storedBookmark && loadedIdentity === pageIdentity.current ? controller.view(readingBookmark(storedBookmark)) : undefined;
-  const bookmark = viewed ? { ...storedBookmark!, ...viewed, createdAt: viewed.createdAt.toISOString(), updatedAt: viewed.updatedAt.toISOString(), readAt: viewed.readAt?.toISOString(), laterUntil: viewed.laterUntil?.toISOString() } : null;
+  const viewed =
+    storedBookmark && loadedIdentity === pageIdentity.current
+      ? controller.view(readingBookmark(storedBookmark))
+      : undefined;
+  const bookmark = viewed
+    ? {
+        ...storedBookmark!,
+        ...viewed,
+        createdAt: viewed.createdAt.toISOString(),
+        updatedAt: viewed.updatedAt.toISOString(),
+        readAt: viewed.readAt?.toISOString(),
+        laterUntil: viewed.laterUntil?.toISOString(),
+      }
+    : null;
   const bookmarkRef = useRef(bookmark);
   bookmarkRef.current = bookmark;
   const [picks, setPicks] = useState<TodayPicksResponse>();
   useEffect(() => {
     let active = true;
     const sequence = nextReadingSequence();
-    void MobileAPI.picks().then(value => {
-      if (!active) return;
-      controller.synchronize(value.items.map(pick => pick.bookmark), sequence);
-      setPicks(value);
-    }).catch(() => {});
-    return () => { active = false; };
+    void MobileAPI.picks()
+      .then((value) => {
+        if (!active) return;
+        controller.synchronize(
+          value.items.map((pick) => pick.bookmark),
+          sequence,
+        );
+        setPicks(value);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, [controller]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState("brief");
-  useEffect(() => { setMode(requestedMode === "read" || requestedMode === "original" ? requestedMode : "brief"); }, [id, requestedMode]);
+  const [mode, setMode] = useState("article");
+  useEffect(() => {
+    setMode(
+      requestedMode === "read" || requestedMode === "original"
+        ? requestedMode
+        : "article",
+    );
+  }, [id, requestedMode]);
   const [events, setEvents] = useState<BookmarkProcessingEvent[]>([]);
   const [content, setContent] = useState<BookmarkContent>();
   const [contentOffline, setContentOffline] = useState(false);
   const [contentLoading, setContentLoading] = useState(false);
-  const reading = useReadingProgress(id, bookmark?.userId === user?.id ? user?.id : undefined, mode === "read" && !!content?.blocks.length);
+  const reading = useReadingProgress(
+    id,
+    bookmark?.userId === user?.id ? user?.id : undefined,
+    (mode === "read" && !!content?.blocks.length) ||
+      (mode === "article" && !!bookmark?.cosmicSummary),
+  );
   const contentBookmarkId = bookmark?.id;
   const contentOwnerId = bookmark?.userId;
   const contentPrivate = bookmark?.isPrivateLink;
@@ -144,10 +237,27 @@ export default function BookmarkDetailScreen() {
     setContentLoading(false);
     if (contentOwnerId === user?.id && contentBookmarkId && !contentPrivate) {
       setContentLoading(true);
-      void MobileAPI.content(contentBookmarkId, undefined, user?.id).then(value => { if (active) setContent(value); }).catch(error => { if (active) setContentOffline(!error?.response?.status); }).finally(() => { if (active) setContentLoading(false); });
+      void MobileAPI.content(contentBookmarkId, undefined, user?.id)
+        .then((value) => {
+          if (active) setContent(value);
+        })
+        .catch((error) => {
+          if (active) setContentOffline(!error?.response?.status);
+        })
+        .finally(() => {
+          if (active) setContentLoading(false);
+        });
     }
-    return () => { active = false; };
-  }, [contentBookmarkId, contentOwnerId, contentPrivate, contentProcessing, user?.id]);
+    return () => {
+      active = false;
+    };
+  }, [
+    contentBookmarkId,
+    contentOwnerId,
+    contentPrivate,
+    contentProcessing,
+    user?.id,
+  ]);
 
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
@@ -159,120 +269,30 @@ export default function BookmarkDetailScreen() {
   const [isCopied, setIsCopied] = useState(false);
   const [isReadLoading, setIsReadLoading] = useState(false);
   useEffect(() => {
-    setNoteOpen(false); setNoteDraft(""); setSelection(undefined);
+    setNoteOpen(false);
+    setNoteDraft("");
+    setSelection(undefined);
     cancelRecovery();
-    setPasteOpen(false); setPasteText(""); setPasteBusy(false); setPasteError(false); setRetryBusy(false);
+    setPasteOpen(false);
+    setPasteText("");
+    setPasteBusy(false);
+    setPasteError(false);
+    setRetryBusy(false);
     return cancelRecovery;
   }, [id, slug, user?.id, cancelRecovery]);
 
-  // Markdown styles based on color scheme - must be called before any early returns
-  const markdownStyles = useMemo(
-    () => ({
-      body: {
-        ...textStyle("body"),
-        color: colors.fgSecondary,
-      },
-      heading1: {
-        ...textStyle("title2"),
-        color: colors.fg,
-        marginTop: space.s4,
-        marginBottom: space.s2,
-      },
-      heading2: {
-        ...textStyle("title3"),
-        color: colors.fg,
-        marginTop: space.s3,
-        marginBottom: space.s2,
-      },
-      heading3: {
-        ...textStyle("title3"),
-        color: colors.fg,
-        marginTop: space.s3,
-        marginBottom: space.s1,
-      },
-      paragraph: {
-        marginTop: 0,
-        marginBottom: space.s3,
-      },
-      bullet_list: {
-        marginBottom: space.s3,
-      },
-      ordered_list: {
-        marginBottom: space.s3,
-      },
-      list_item: {
-        marginBottom: space.s1,
-      },
-      bullet_list_icon: {
-        ...textStyle("body"),
-        color: colors.fgSecondary,
-      },
-      ordered_list_icon: {
-        ...textStyle("body"),
-        color: colors.fgSecondary,
-      },
-      strong: {
-        color: colors.fg,
-        fontWeight: "600" as const,
-      },
-      em: {
-        fontStyle: "italic" as const,
-      },
-      link: {
-        color: colors.accent,
-        textDecorationLine: "underline" as const,
-      },
-      blockquote: {
-        ...textStyle("quote"),
-        backgroundColor: colors.hlBg,
-        borderLeftColor: colors.hlLine,
-        borderLeftWidth: space.s1,
-        paddingLeft: space.s3,
-        paddingVertical: space.s2,
-        marginVertical: space.s3,
-      },
-      code_inline: {
-        ...textStyle("bodySm"),
-        backgroundColor: colors.bgInset,
-        color: colors.fg,
-        paddingHorizontal: space.s2,
-        paddingVertical: space.s1 / 2,
-        borderRadius: radius.xs,
-      },
-      code_block: {
-        ...textStyle("bodySm"),
-        backgroundColor: colors.bgInset,
-        color: colors.fg,
-        padding: space.s3,
-        borderRadius: radius.md,
-        marginVertical: space.s3,
-      },
-      fence: {
-        ...textStyle("bodySm"),
-        backgroundColor: colors.bgInset,
-        color: colors.fg,
-        padding: space.s3,
-        borderRadius: radius.md,
-        marginVertical: space.s3,
-      },
-      hr: {
-        backgroundColor: colors.border,
-        height: StyleSheet.hairlineWidth,
-        marginVertical: space.s4,
-      },
-    }),
-    [colors],
+  const applyBookmark = useCallback(
+    (data: Bookmark) => {
+      const identity = `${user?.id ?? ""}:${id}:${slug ?? "owner"}`;
+      if (identity !== pageIdentity.current || data.id !== id) return;
+      setLoadedIdentity(identity);
+      setBookmark(data);
+      setIsLiked(data.isLikedByCurrentUser ?? false);
+      setLikeCount(data.likeCount ?? 0);
+      setIsShared(data.isPublic ?? false);
+    },
+    [id, slug, user?.id],
   );
-
-  const applyBookmark = useCallback((data: Bookmark) => {
-    const identity = `${user?.id ?? ""}:${id}:${slug ?? "owner"}`;
-    if (identity !== pageIdentity.current || data.id !== id) return;
-    setLoadedIdentity(identity);
-    setBookmark(data);
-    setIsLiked(data.isLikedByCurrentUser ?? false);
-    setLikeCount(data.likeCount ?? 0);
-    setIsShared(data.isPublic ?? false);
-  }, [id, slug, user?.id]);
 
   const fetchBookmark = useCallback(
     async (bookmarkId: string) => {
@@ -282,9 +302,14 @@ export default function BookmarkDetailScreen() {
       const sequence = nextReadingSequence();
       const request = ++bookmarkRequest.current;
       const identity = `${user?.id ?? ""}:${bookmarkId}:${slug ?? "owner"}`;
-      const isCurrent = () => request === bookmarkRequest.current && identity === pageIdentity.current;
+      const isCurrent = () =>
+        request === bookmarkRequest.current &&
+        identity === pageIdentity.current;
       try {
-        const data = slug === undefined ? await BookmarksAPI.findById(bookmarkId) : await MobileAPI.sharedBookmark(slug);
+        const data =
+          slug === undefined
+            ? await MobileAPI.bookmark(bookmarkId, user?.id)
+            : await MobileAPI.sharedBookmark(slug);
         if (!isCurrent()) return;
         if (data) {
           controller.synchronize([readingBookmark(data)], sequence);
@@ -313,7 +338,10 @@ export default function BookmarkDetailScreen() {
           err instanceof Error ? err.message : "Failed to load bookmark",
         );
       } finally {
-        if (isCurrent()) { setLoadedIdentity(identity); setIsLoading(false); }
+        if (isCurrent()) {
+          setLoadedIdentity(identity);
+          setIsLoading(false);
+        }
       }
     },
     [applyBookmark, slug, user?.id, controller],
@@ -330,7 +358,8 @@ export default function BookmarkDetailScreen() {
   const processingStatus = bookmark?.processingStatus;
   useEffect(() => {
     if (
-      slug !== undefined || !processingId ||
+      slug !== undefined ||
+      !processingId ||
       !["idle", "processing"].includes(processingStatus || "")
     )
       return;
@@ -338,42 +367,84 @@ export default function BookmarkDetailScreen() {
     const load = async () => {
       const sequence = nextReadingSequence();
       try {
-        const timeline = await MobileAPI.processingTimeline(processingId, undefined, user?.id);
+        const timeline = await MobileAPI.processingTimeline(
+          processingId,
+          undefined,
+          user?.id,
+        );
         if (active) {
-          controller.synchronize([readingBookmark(timeline.bookmark)], sequence);
+          controller.synchronize(
+            [readingBookmark(timeline.bookmark)],
+            sequence,
+          );
           setEvents(timeline.events);
           applyBookmark(timeline.bookmark);
           cacheBookmarksInBackground(user?.id, [timeline.bookmark]);
         }
-      } catch { /* Keep the saved link and reported phases usable on failure. */ }
+      } catch {
+        /* Keep the saved link and reported phases usable on failure. */
+      }
     };
     setEvents([]);
     void load();
     const timer = setInterval(load, 5000);
-    return () => { active = false; clearInterval(timer); };
-  }, [processingId, processingStatus, applyBookmark, slug, user?.id, controller]);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [
+    processingId,
+    processingStatus,
+    applyBookmark,
+    slug,
+    user?.id,
+    controller,
+  ]);
 
   const handleOpenUrl = () => {
     if (bookmark?.sourceUrl) openOriginal(bookmark.sourceUrl);
   };
 
   const submitPaste = async () => {
-    if (!bookmark || bookmark.userId !== user?.id || bookmark.isPrivateLink || pasteBusy || pasteText.length < 200 || pasteText.length > 100000) return;
+    if (
+      !bookmark ||
+      bookmark.userId !== user?.id ||
+      bookmark.isPrivateLink ||
+      pasteBusy ||
+      pasteText.length < 200 ||
+      pasteText.length > 100000
+    )
+      return;
     const identity = pageIdentity.current;
     const request = ++pasteRequest.current;
-    const abort = new AbortController(); pasteAbort.current = abort;
-    const current = () => identity === pageIdentity.current && request === pasteRequest.current && !abort.signal.aborted;
+    const abort = new AbortController();
+    pasteAbort.current = abort;
+    const current = () =>
+      identity === pageIdentity.current &&
+      request === pasteRequest.current &&
+      !abort.signal.aborted;
     cancelBookmarkRequest();
     const sequence = nextReadingSequence();
-    setPasteBusy(true); setPasteError(false);
+    setPasteBusy(true);
+    setPasteError(false);
     try {
-      const result = await MobileAPI.pasteContent(bookmark.id, pasteText, abort.signal, user.id);
+      const result = await MobileAPI.pasteContent(
+        bookmark.id,
+        pasteText,
+        abort.signal,
+        user.id,
+      );
       if (!current()) return;
       controller.synchronize([readingBookmark(result.bookmark)], sequence);
       applyBookmark(result.bookmark);
-      setMode("brief"); setPasteOpen(false); setPasteText("");
-    } catch { if (current()) setPasteError(true); }
-    finally { if (current()) setPasteBusy(false); }
+      setMode("article");
+      setPasteOpen(false);
+      setPasteText("");
+    } catch {
+      if (current()) setPasteError(true);
+    } finally {
+      if (current()) setPasteBusy(false);
+    }
   };
 
   const retryProcessing = useCallback(async () => {
@@ -381,27 +452,109 @@ export default function BookmarkDetailScreen() {
     if (!bookmark || bookmark.userId !== user?.id || retryBusy) return;
     const identity = pageIdentity.current;
     const request = ++pasteRequest.current;
-    const abort = new AbortController(); pasteAbort.current = abort;
-    const current = () => identity === pageIdentity.current && request === pasteRequest.current && !abort.signal.aborted;
+    const abort = new AbortController();
+    pasteAbort.current = abort;
+    const current = () =>
+      identity === pageIdentity.current &&
+      request === pasteRequest.current &&
+      !abort.signal.aborted;
     cancelBookmarkRequest();
-    const sequence = nextReadingSequence(); setRetryBusy(true);
+    const sequence = nextReadingSequence();
+    setRetryBusy(true);
     try {
       const result = await MobileAPI.retry(bookmark.id, user.id, abort.signal);
       if (!current()) return;
       controller.synchronize([readingBookmark(result.bookmark)], sequence);
-      applyBookmark(result.bookmark); setMode("brief");
-    } catch { if (current()) Alert.alert("Could not retry", "Please try again."); }
-    finally { if (current()) setRetryBusy(false); }
+      applyBookmark(result.bookmark);
+      setMode("article");
+    } catch {
+      if (current()) Alert.alert("Could not retry", "Please try again.");
+    } finally {
+      if (current()) setRetryBusy(false);
+    }
   }, [user?.id, retryBusy, controller, applyBookmark, cancelBookmarkRequest]);
-  const recoveryOwner = bookmark?.userId, recoveryStatus = bookmark?.processingStatus, recoveryCode = bookmark?.processingFailureCode, recoveryPrivate = bookmark?.isPrivateLink;
+  const recoveryOwner = bookmark?.userId,
+    recoveryStatus = bookmark?.processingStatus,
+    recoveryCode = bookmark?.processingFailureCode,
+    recoveryPrivate = bookmark?.isPrivateLink;
   useEffect(() => {
     if (recoveryOwner !== user?.id || recoveryStatus !== "failed") return;
     const intent = `${pageIdentity.current}:${requestedPaste || ""}:${requestedRetry || ""}`;
     if (recoveryHandled.current === intent) return;
     recoveryHandled.current = intent;
-    if (requestedPaste === "1" && !recoveryPrivate && recoveryCode && recoveryCode !== "provider") setPasteOpen(true);
+    if (
+      requestedPaste === "1" &&
+      !recoveryPrivate &&
+      recoveryCode &&
+      recoveryCode !== "provider"
+    )
+      setPasteOpen(true);
     if (requestedRetry === "1") void retryProcessing();
-  }, [recoveryOwner, recoveryStatus, recoveryCode, recoveryPrivate, user?.id, requestedPaste, requestedRetry, retryProcessing]);
+  }, [
+    recoveryOwner,
+    recoveryStatus,
+    recoveryCode,
+    recoveryPrivate,
+    user?.id,
+    requestedPaste,
+    requestedRetry,
+    retryProcessing,
+  ]);
+
+  const saveSummary = async () => {
+    const current = bookmarkRef.current;
+    if (
+      !current ||
+      current.userId !== user?.id ||
+      !current.isPrivateLink ||
+      summaryBusy
+    )
+      return;
+    const abort = new AbortController();
+    detailMutationAbort.current = abort;
+    const sequence = nextReadingSequence();
+    setSummaryBusy(true);
+    setSummaryError("");
+    try {
+      const result = await MobileAPI.update(
+        current.id,
+        { cosmicSummary: summaryDraft },
+        abort.signal,
+        user.id,
+      );
+      if (!alive.current || abort.signal.aborted) return;
+      controller.synchronize([readingBookmark(result)], sequence);
+      applyBookmark(result);
+      setSummaryOpen(false);
+    } catch {
+      if (alive.current && !abort.signal.aborted)
+        setSummaryError("Couldn't save that summary. Try again.");
+    } finally {
+      if (alive.current) setSummaryBusy(false);
+    }
+  };
+  const deleteBookmark = async () => {
+    const current = bookmarkRef.current;
+    if (!current || current.userId !== user?.id || deleting) return;
+    const abort = new AbortController();
+    detailMutationAbort.current = abort;
+    setDeleting(true);
+    try {
+      await MobileAPI.remove(current.id, user.id, abort.signal);
+      if (alive.current && !abort.signal.aborted) {
+        controller.navigationAway();
+        router.replace("/library");
+      }
+    } catch {
+      if (alive.current && !abort.signal.aborted)
+        Alert.alert(
+          "Couldn't delete this save",
+          "Check your connection and try again.",
+        );
+    } finally {
+      if (alive.current) setDeleting(false);
+    }
+  };
 
   const handleBack = () => {
     router.back();
@@ -419,12 +572,14 @@ export default function BookmarkDetailScreen() {
 
     try {
       const result = isLiked
-        ? await BookmarksAPI.unlike(bookmark.id)
-        : await BookmarksAPI.like(bookmark.id);
+        ? await BookmarksAPI.unlike(bookmark.id, user?.id)
+        : await BookmarksAPI.like(bookmark.id, user?.id);
 
+      if (!alive.current) return;
       setLikeCount(result.likeCount);
       setIsLiked(result.isLikedByCurrentUser);
     } catch (error) {
+      if (!alive.current) return;
       console.error("Failed to toggle like:", error);
       setIsLiked(previousIsLiked);
       setLikeCount(previousLikeCount);
@@ -434,7 +589,7 @@ export default function BookmarkDetailScreen() {
         [{ text: "OK" }],
       );
     } finally {
-      setIsLikeLoading(false);
+      if (alive.current) setIsLikeLoading(false);
     }
   };
 
@@ -445,14 +600,16 @@ export default function BookmarkDetailScreen() {
     if (!bookmark || isShareLoading) return;
     setIsShareLoading(true);
     try {
-      const result = await BookmarksAPI.share(bookmark.id);
+      const result = await BookmarksAPI.share(bookmark.id, user?.id);
+      if (!alive.current) return;
       setIsShared(result.isPublic);
       setShareUrl(result.shareUrl);
       setIsShareModalVisible(true);
     } catch {
-      Alert.alert("Error", "Failed to share bookmark. Please try again.");
+      if (alive.current)
+        Alert.alert("Error", "Failed to share bookmark. Please try again.");
     } finally {
-      setIsShareLoading(false);
+      if (alive.current) setIsShareLoading(false);
     }
   };
 
@@ -461,14 +618,16 @@ export default function BookmarkDetailScreen() {
 
     setIsShareLoading(true);
     try {
-      const result = await BookmarksAPI.unshare(bookmark.id);
+      const result = await BookmarksAPI.unshare(bookmark.id, user?.id);
+      if (!alive.current) return;
       setIsShared(result.isPublic);
       setShareUrl("");
       setIsShareModalVisible(false);
     } catch {
-      Alert.alert("Error", "Failed to unshare bookmark. Please try again.");
+      if (alive.current)
+        Alert.alert("Error", "Failed to unshare bookmark. Please try again.");
     } finally {
-      setIsShareLoading(false);
+      if (alive.current) setIsShareLoading(false);
     }
   };
 
@@ -488,16 +647,16 @@ export default function BookmarkDetailScreen() {
 
   if (isLoading || loadedIdentity !== pageIdentity.current)
     return (
-      <Screen title="Your save" onBack={handleBack}>
-        <View style={layout.content}>
+      <DetailFrame>
+        <View style={{ padding: 16 }}>
           <SkeletonRows />
         </View>
-      </Screen>
+      </DetailFrame>
     );
   if (error || !bookmark)
     return (
-      <Screen title="Your save" onBack={handleBack}>
-        <View style={layout.content}>
+      <DetailFrame>
+        <View style={{ padding: 16 }}>
           <EmptyState
             title="Something went wrong"
             description={error || "Bookmark not found"}
@@ -507,319 +666,880 @@ export default function BookmarkDetailScreen() {
             }}
           />
         </View>
-      </Screen>
+      </DetailFrame>
     );
   const siteName = extractDomain(bookmark.sourceUrl);
   const ownsBookmark = bookmark.userId === user?.id;
   const processing =
     bookmark.processingStatus === "processing" ||
     bookmark.processingStatus === "idle";
-  const failedPage = ownsBookmark && bookmark.processingStatus === "failed" && !bookmark.isPrivateLink;
-  const visiblePicks = (picks?.items ?? []).filter(pick => controller.isVisible({ type: "own_save", bookmark: pick.bookmark })).sort((a, b) => a.position - b.position);
-  const isPick = visiblePicks.some(pick => pick.bookmark.id === bookmark.id);
-  const doneCount = visiblePicks.filter(pick => controller.view(pick.bookmark).readAt).length;
-  const nextPick = visiblePicks.find(pick => pick.bookmark.id !== bookmark.id && !controller.view(pick.bookmark).readAt);
+  const failedPage =
+    ownsBookmark &&
+    bookmark.processingStatus === "failed" &&
+    !bookmark.isPrivateLink;
+  const visiblePicks = (picks?.items ?? [])
+    .filter((pick) =>
+      controller.isVisible({ type: "own_save", bookmark: pick.bookmark }),
+    )
+    .sort((a, b) => a.position - b.position);
+  const isPick = visiblePicks.some((pick) => pick.bookmark.id === bookmark.id);
+  const doneCount = visiblePicks.filter(
+    (pick) => controller.view(pick.bookmark).readAt,
+  ).length;
+  const nextPick = visiblePicks.find(
+    (pick) =>
+      pick.bookmark.id !== bookmark.id &&
+      !controller.view(pick.bookmark).readAt,
+  );
   const done = !!viewed?.readAt;
   const selectAction = (mode: ActionSheet["mode"]) => {
-    if (viewed) setSelection({ mode, item: { type: "own_save", bookmark: viewed } });
+    if (viewed)
+      setSelection({ mode, item: { type: "own_save", bookmark: viewed } });
   };
+  const brief = bookmark.cosmicBriefSummary;
   return (
-    <Screen
-      title={ownsBookmark ? "Your save" : "Article"}
-      onBack={handleBack}
-      actions={
-        <>
-          {ownsBookmark ? <TopBarAction icon="ellipsis-horizontal" label="More actions" onPress={() => selectAction("menu")} /> : null}
-          <Pressable
-            onPress={handleLikeToggle}
-            accessibilityRole="button"
-            accessibilityLabel={isLiked ? "Unlike" : "Like"}
-            accessibilityState={{ selected: isLiked }}
-            disabled={isLikeLoading}
-            testID="like-button"
-            style={styles.like}
-          >
-            <Ionicons
-              name={isLiked ? "heart" : "heart-outline"}
-              size={20}
-              color={isLiked ? colors.like : colors.fgSecondary}
-            />
-            {likeCount > 0 ? (
-              <Text style={[textStyle("meta"), { color: colors.fgSecondary }]}>
-                {likeCount}
-              </Text>
-            ) : null}
-          </Pressable>
-          <TopBarAction
-            icon="share-outline"
-            label="Share"
-            onPress={handleShareToggle}
-          />
-        </>
-      }
-    >
-      {mode === "read" && content?.blocks.length ? <View accessibilityLabel={`${Math.round(reading.percent)}% read`} style={{ height: 2, backgroundColor: colors.bgInset }}>
-        <View style={{ height: 2, width: `${reading.percent}%`, backgroundColor: colors.accent }} />
-      </View> : null}
-      <ScrollView ref={reading.scroll} accessibilityLabel="Saved article" contentContainerStyle={layout.content} scrollEventThrottle={100} onScroll={reading.onScroll} onContentSizeChange={reading.onContentSizeChange}>
-        {reading.error ? <Notice message={reading.error} error /> : null}
-        {ownsBookmark ? <Button title={bookmark.collectionPath?.map(part => part.name).join(" / ") || "Inbox"} detail="Move to topic" icon="folder-outline" onPress={() => selectAction("move")} /> : null}
-        <Text
-          accessibilityRole="header"
-          style={[textStyle("title1"), { color: colors.fg }]}
+    <DetailFrame>
+      {mode === "read" && content?.blocks.length ? (
+        <View
+          accessibilityLabel={`${Math.round(reading.percent)}% read`}
+          style={{ height: 2, backgroundColor: colors.bgInset }}
         >
-          {bookmark.title || siteName}
-        </Text>
-        <Text style={[textStyle("meta"), { color: colors.fgSecondary }]}>
-          {siteName}
-          {bookmark.metadata?.readingTime
-            ? ` · ${bookmark.metadata.readingTime} min read`
-            : ""}
-          {ownsBookmark ? ` · Saved ${formatDate(bookmark.createdAt)}` : ""}
-        </Text>
-        {ownsBookmark ? <>
-          {bookmark.userNote ? <View style={[layout.panel, { borderColor: colors.border, backgroundColor: colors.bgSubtle }]}>
-            <Text style={[textStyle("bodySm"), { color: colors.fgSecondary }]}>Why you saved it</Text>
-            <Text selectable style={[textStyle("body"), { color: colors.fg }]}>{bookmark.userNote}</Text>
-          </View> : null}
-          <Button title={bookmark.userNote ? "Edit note" : "Add a note"} icon="create-outline" onPress={() => { setNoteDraft(bookmark.userNote ?? ""); setNoteOpen(true); }} />
-        </> : null}
-        <View style={layout.row}>
-          {!ownsBookmark ? (
-            <Button
-              title="Save to Library"
-              icon="add"
-              primary
-              busy={isReadLoading}
-              onPress={async () => {
-                setIsReadLoading(true);
-                try {
-                  const saved = await MobileAPI.saveRecommendation(bookmark.id);
-                  router.replace(`/bookmark/${saved.id}`);
-                } catch {
-                  Alert.alert(
-                    "Link was not saved",
-                    "Check your connection and try again.",
-                  );
-                } finally {
-                  setIsReadLoading(false);
-                }
-              }}
-            />
-          ) : null}
-          <TopBarAction
-            icon="open-outline"
-            label="Open original"
-            onPress={handleOpenUrl}
-          />
-        </View>
-        {ownsBookmark && bookmark.processingStatus === "failed" ? <BookmarkFailure code={bookmark.processingFailureCode} url={bookmark.sourceUrl} page privateLink={bookmark.isPrivateLink}
-          onPaste={() => setPasteOpen(true)} onRetry={retryProcessing} /> : null}
-        {!failedPage ? <>
-        <View style={layout.row} accessibilityRole="tablist">
-          {[["brief", "Brief"], ["read", "Read"], ["original", "Original"]].map(([value, label]) => (
-            <Pressable key={value} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected: mode === value }} onPress={() => setMode(value)} style={{ minHeight: 44, padding: space.s3 }}>
-              <Text maxFontSizeMultiplier={1.3} style={[textStyle("bodySm"), { color: mode === value ? colors.accent : colors.fgSecondary }]}>{label}</Text>
-            </Pressable>
-          ))}
-        </View>
-        {mode === "read" ? <ReadingTools key={bookmark.id} id={bookmark.id} userId={ownsBookmark ? user?.id : undefined} body={content?.blocks.map(block => block.text).join("\n\n") ?? ""} /> : null}
-        {mode === "read" ? contentLoading ? <View accessibilityLabel="Loading full text"><SkeletonRows /></View> : content?.blocks.length ? <>
-          {content.truncated ? <Notice message="Showing the opening part of this article. Open the original for the complete text." action="Open original" onAction={handleOpenUrl} /> : null}
-          {content.blocks.map((block, index) => (
-          <Text key={index} selectable accessibilityRole={block.kind === "heading" ? "header" : undefined} style={[block.kind === "heading" ? textStyle("title2") : { fontFamily: fontFamily.serif, fontSize: readingSize, lineHeight: readingSize * 1.7 }, { color: colors.fg }]}>{block.kind === "list_item" ? `• ${block.text}` : block.text}</Text>
-        ))}</> : <Notice message={contentOffline ? "Connect to load the full text." : "Full text isn't available for this save."} action="Open original" onAction={handleOpenUrl} /> : mode === "brief" ? <View
-          style={[
-            layout.panel,
-            { borderColor: colors.border, backgroundColor: colors.bgPanel },
-          ]}
-        >
-          <View style={layout.between}>
-            <Text
-              accessibilityRole="header"
-              style={[
-                textStyle("bodySm"),
-                { color: colors.fg, fontFamily: "InterSemibold" },
-              ]}
-            >
-              {bookmark.isPrivateLink ? "From your description" : "Cosmic brief"}
-            </Text>
-            {bookmark.cosmicBriefSummary ? (
-              <Text style={[textStyle("meta"), { color: colors.fgTertiary }]}>
-                1 min read
-              </Text>
-            ) : null}
-          </View>
-          {processing && !bookmark.cosmicBriefSummary ? <>
-            <Notice message={content?.source === "pasted" ? "Cosmic is reading the text you pasted" : bookmark.isPrivateLink ? "Cosmic is preparing your description. You can keep browsing." : "Cosmic is reading it. You can keep browsing while the brief is prepared."} />
-            <PendingPhases events={events} privateLink={bookmark.isPrivateLink} />
-          </> : null}
-          {bookmark.cosmicBriefSummary ? (
-            <Text selectable style={[textStyle("body"), { color: colors.fg }]}>
-              {bookmark.cosmicBriefSummary}
-            </Text>
-          ) : bookmark.cosmicSummary ? (
-            <Markdown style={markdownStyles}>{bookmark.cosmicSummary}</Markdown>
-          ) : (
-            <Text style={[textStyle("bodySm"), { color: colors.fgSecondary }]}>
-              {(bookmark.isPrivateLink
-                  ? "Open the original to read this private page."
-                  : "No brief is available yet. You can still open the original.")}
-            </Text>
-          )}
-          {bookmark.cosmicKeyPoints?.length ? (
-            <>
-              <Text style={[textStyle("bodySm"), { color: colors.fg }]}>
-                Key points
-              </Text>
-              {bookmark.cosmicKeyPoints.map((point, index) => (
-                <Text
-                  key={index}
-                  style={[textStyle("bodySm"), { color: colors.fgSecondary }]}
-                >
-                  • {point}
-                </Text>
-              ))}
-            </>
-          ) : null}
-          <Text
-            style={[
-              textStyle("meta"),
-              {
-                color: colors.fgTertiary,
-                borderTopWidth: StyleSheet.hairlineWidth,
-                borderColor: colors.border,
-                paddingTop: space.s3,
-              },
-            ]}
-          >
-            {bookmark.isPrivateLink
-              ? "From your description; no article text was fetched."
-              : content ? content.source === "pasted" ? `Summarised from the text you pasted · ${siteName}` : `Summarised from the full article (${content.wordCount.toLocaleString("en-US")} words) · ${siteName}` : `Source: ${siteName}`}
-          </Text>
-        </View> : <>
-          <Notice message="The original page opens in the in-app browser." />
-          <Button title={`Open ${siteName}`} icon="open-outline" onPress={handleOpenUrl} />
-        </>}
-        {bookmark.cosmicSummary ? (
-          <Button
-            title="Continue reading"
-            icon="arrow-forward"
-            primary
-            onPress={() => router.push(`/reader/${bookmark.id}`)}
-          />
-        ) : (
-          <Button
-            title="Read the original"
-            icon="open-outline"
-            primary
-            onPress={handleOpenUrl}
-          />
-        )}
-        </> : null}
-        {bookmark.isPublic || isShared ? (
-          <Button
-            title="Read the conversation"
-            icon="chatbubble-outline"
-            onPress={async () => {
-              setConversation(true);
-              setCommentsError("");
-              try {
-                setComments((await MobileAPI.comments(bookmark.id)).comments);
-              } catch {
-                setCommentsError(
-                  "The conversation could not be loaded. Close and try again.",
-                );
-              }
+          <View
+            style={{
+              height: 2,
+              width: `${reading.percent}%`,
+              backgroundColor: colors.accent,
             }}
           />
-        ) : null}
-        {ownsBookmark ? (
-          <Notice message="Your library and highlights are private, even when you share this save." />
-        ) : null}
+        </View>
+      ) : null}
+      <ScrollView
+        ref={reading.scroll}
+        accessibilityLabel="Saved article"
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+        keyboardDismissMode="interactive"
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 40,
+          paddingBottom: 112,
+          gap: 64,
+        }}
+        scrollEventThrottle={100}
+        onScroll={reading.onScroll}
+        onContentSizeChange={reading.onContentSizeChange}
+      >
+        <View
+          style={{ width: "100%", maxWidth: 680, alignSelf: "center", gap: 32 }}
+        >
+          <View style={{ gap: 24 }}>
+            <View style={{ gap: 12 }}>
+              {ownsBookmark ? (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    gap: 5,
+                  }}
+                >
+                  <Action
+                    label="Library"
+                    onPress={() => router.push("/library")}
+                    style={{ paddingHorizontal: 0, minHeight: 18 }}
+                  >
+                    <Copy role="meta" maxFontSizeMultiplier={1.3}>
+                      Library
+                    </Copy>
+                  </Action>
+                  {bookmark.collectionPath?.map((part) => (
+                    <React.Fragment key={part.id}>
+                      <ChevronRight size={10} color={colors.fgTertiary} />
+                      <Action
+                        label={part.name}
+                        style={{ paddingHorizontal: 0, minHeight: 18 }}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/library",
+                            params: { collectionId: part.id },
+                          })
+                        }
+                      >
+                        <Copy role="meta" maxFontSizeMultiplier={1.3}>
+                          {part.name}
+                        </Copy>
+                      </Action>
+                    </React.Fragment>
+                  ))}
+                </View>
+              ) : null}
+              <BalancedTitle
+                maxLines={0}
+                style={[webText("title1"), { color: colors.fg }]}
+              >
+                {bookmark.title?.trim() || "Untitled"}
+              </BalancedTitle>
+              <DetailProvenance
+                bookmark={bookmark}
+                domain={siteName}
+                owner={ownsBookmark}
+                onOriginal={handleOpenUrl}
+              />
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <SheetButton
+                label={
+                  ownsBookmark
+                    ? done
+                      ? "Mark as unread"
+                      : "Mark as read"
+                    : "Save to your library"
+                }
+                icon={ownsBookmark ? (done ? RotateCcw : Check) : BookmarkPlus}
+                primary={!ownsBookmark || !done}
+                secondary={ownsBookmark && done}
+                busy={isReadLoading}
+                onPress={() => {
+                  if (ownsBookmark && viewed) controller.done(viewed, !done);
+                  else {
+                    setIsReadLoading(true);
+                    void MobileAPI.saveRecommendation(bookmark.id, user?.id)
+                      .then((saved) => {
+                        if (alive.current)
+                          router.replace(`/bookmark/${saved.id}`);
+                      })
+                      .catch(() => {
+                        if (alive.current)
+                          Alert.alert(
+                            "Link was not saved",
+                            "Check your connection and try again.",
+                          );
+                      })
+                      .finally(() => {
+                        if (alive.current) setIsReadLoading(false);
+                      });
+                  }
+                }}
+              />
+              <SheetButton
+                label="Open original"
+                secondary
+                onPress={handleOpenUrl}
+              />
+              {ownsBookmark ? (
+                <View
+                  style={{
+                    marginLeft: "auto",
+                    marginRight: -8,
+                    flexDirection: "row",
+                    gap: 2,
+                    alignItems: "center",
+                  }}
+                >
+                  <Action
+                    label="Share"
+                    icon={ShareIcon}
+                    onPress={handleShareToggle}
+                    style={{ width: 34, height: 36, paddingHorizontal: 0 }}
+                  />
+                  <Action
+                    label="More actions"
+                    icon={MoreHorizontal}
+                    onPress={() => setMoreOpen(true)}
+                    style={{ width: 34, height: 34, paddingHorizontal: 0 }}
+                  />
+                </View>
+              ) : null}
+            </View>
+            {done && actionState.toast?.message === "Marked done" ? (
+              <View style={{ gap: 8 }}>
+                <Copy>
+                  {isPick
+                    ? doneCount === visiblePicks.length
+                      ? `All ${visiblePicks.length} done`
+                      : `Done · ${doneCount} of ${visiblePicks.length}`
+                    : "Done"}
+                </Copy>
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  {actionState.toast.undo ? (
+                    <Action label="Undo" onPress={actionState.toast.undo}>
+                      Undo
+                    </Action>
+                  ) : null}
+                  {isPick && nextPick ? (
+                    <Action
+                      label="Next pick"
+                      onPress={() => {
+                        controller.navigationAway();
+                        router.replace(`/bookmark/${nextPick.bookmark.id}`);
+                      }}
+                    >
+                      Next pick
+                    </Action>
+                  ) : (
+                    <Action label="Back" onPress={handleBack}>
+                      Back
+                    </Action>
+                  )}
+                </View>
+              </View>
+            ) : null}
+          </View>
+          {reading.error ? <Notice message={reading.error} error /> : null}
+          {ownsBookmark && bookmark.processingStatus === "failed" ? (
+            <BookmarkFailure
+              code={bookmark.processingFailureCode}
+              url={bookmark.sourceUrl}
+              page
+              privateLink={bookmark.isPrivateLink}
+              onPaste={() => setPasteOpen(true)}
+              onRetry={retryProcessing}
+            />
+          ) : null}
+          {!failedPage ? (
+            mode === "read" ? (
+              <View style={{ gap: 24 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <Copy role="meta">Saved full text</Copy>
+                  <Action
+                    label="Back to article"
+                    onPress={() => setMode("article")}
+                  >
+                    Back to article
+                  </Action>
+                </View>
+                <ReadingTools
+                  key={bookmark.id}
+                  id={bookmark.id}
+                  userId={ownsBookmark ? user?.id : undefined}
+                  body={
+                    content?.blocks.map((block) => block.text).join("\n\n") ??
+                    ""
+                  }
+                />
+                {contentLoading ? (
+                  <View accessibilityLabel="Loading full text">
+                    <SkeletonRows />
+                  </View>
+                ) : content?.blocks.length ? (
+                  <>
+                    {content.truncated ? (
+                      <Notice
+                        message="Showing the opening part of this article. Open the original for the complete text."
+                        action="Open original"
+                        onAction={handleOpenUrl}
+                      />
+                    ) : null}
+                    {content.blocks.map((block, index) => (
+                      <Text
+                        key={index}
+                        selectable
+                        accessibilityRole={
+                          block.kind === "heading" ? "header" : undefined
+                        }
+                        style={[
+                          block.kind === "heading"
+                            ? webText("title2")
+                            : detailProse(readingSize),
+                          { color: colors.fg },
+                        ]}
+                      >
+                        {block.kind === "list_item"
+                          ? `• ${block.text}`
+                          : block.text}
+                      </Text>
+                    ))}
+                  </>
+                ) : (
+                  <Notice
+                    message={
+                      contentOffline
+                        ? "Connect to load the full text."
+                        : "Full text isn't available for this save."
+                    }
+                    action="Open original"
+                    onAction={handleOpenUrl}
+                  />
+                )}
+              </View>
+            ) : mode === "original" ? (
+              <View style={{ gap: 16 }}>
+                <Copy>The original page opens in the in-app browser.</Copy>
+                <SheetButton
+                  label={`Open ${siteName}`}
+                  icon={ExternalLink}
+                  onPress={handleOpenUrl}
+                />
+                <Action
+                  label="Back to article"
+                  onPress={() => setMode("article")}
+                >
+                  Back to article
+                </Action>
+              </View>
+            ) : (
+              <>
+                {bookmark.isPrivateLink ? (
+                  <View
+                    style={{
+                      gap: 12,
+                      padding: 14,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      borderRadius: radius.md,
+                      backgroundColor: colors.bgSubtle,
+                    }}
+                  >
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      <Lock size={16} color={colors.warning} />
+                      <View style={{ flex: 1, gap: 8 }}>
+                        <Copy style={{ color: colors.fg }}>
+                          Private link. Cosmic couldn&apos;t read this page, so
+                          there is no brief — but your own words about it are
+                          worth more than one anyway.
+                        </Copy>
+                        <Copy role="meta">
+                          From your description; no article text was fetched.
+                        </Copy>
+                        {bookmark.cosmicBriefSummary ? (
+                          <Copy>{bookmark.cosmicBriefSummary}</Copy>
+                        ) : null}
+                        {ownsBookmark ? (
+                          <Action
+                            label={
+                              bookmark.cosmicSummary
+                                ? "Edit your summary"
+                                : "Write your own"
+                            }
+                            onPress={() => {
+                              setSummaryDraft(bookmark.cosmicSummary ?? "");
+                              setSummaryError("");
+                              setSummaryOpen(true);
+                            }}
+                          >
+                            {bookmark.cosmicSummary
+                              ? "Edit your summary"
+                              : "Write your own"}
+                          </Action>
+                        ) : null}
+                      </View>
+                    </View>
+                  </View>
+                ) : processing && !bookmark.cosmicBriefSummary ? (
+                  <View style={{ gap: 16 }}>
+                    <Notice
+                      message={
+                        content?.source === "pasted"
+                          ? "Cosmic is reading the text you pasted"
+                          : "Cosmic is reading it. You can keep browsing while the brief is prepared."
+                      }
+                    />
+                    <PendingPhases events={events} />
+                  </View>
+                ) : brief || bookmark.cosmicKeyPoints?.length ? (
+                  <View
+                    style={{
+                      padding: 20,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      borderRadius: radius.md,
+                      backgroundColor: colors.bgPanel,
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 10,
+                        marginBottom: 10,
+                      }}
+                    >
+                      <Copy
+                        role="meta"
+                        style={{ fontFamily: webSansFont(600) }}
+                      >
+                        Cosmic brief
+                      </Copy>
+                      <View style={{ flex: 1 }} />
+                      {bookmark.metadata?.readingTime ? (
+                        <Copy role="meta">{`${bookmark.metadata.readingTime} min article`}</Copy>
+                      ) : null}
+                    </View>
+                    {!brief ? (
+                      <Copy>
+                        No brief is available yet. You can still open the
+                        original.
+                      </Copy>
+                    ) : null}
+                    {brief ? (
+                      <Text
+                        selectable
+                        style={[
+                          webText("briefSummary"),
+                          {
+                            color: colors.fgSecondary,
+                            marginBottom: bookmark.cosmicKeyPoints?.length
+                              ? 16
+                              : 0,
+                          },
+                        ]}
+                      >
+                        {brief}
+                      </Text>
+                    ) : null}
+                    {bookmark.cosmicKeyPoints?.length ? (
+                      <>
+                        <Copy
+                          role="meta"
+                          style={{
+                            fontFamily: webSansFont(600), color: colors.fg,
+                            marginBottom: 10,
+                          }}
+                        >
+                          Key points
+                        </Copy>
+                        <View style={{ gap: 11 }}>
+                          {bookmark.cosmicKeyPoints.map((point, index) => (
+                            <View
+                              key={index}
+                              style={{ flexDirection: "row", gap: 11 }}
+                            >
+                              <View
+                                style={{
+                                  width: 5,
+                                  height: 5,
+                                  marginTop: 9,
+                                  borderRadius: radius.pill,
+                                  backgroundColor: colors.fgTertiary,
+                                }}
+                              />
+                              <Text
+                                style={[
+                                  webText("briefKeyPoint"),
+                                  { flex: 1, color: colors.fgSecondary },
+                                ]}
+                              >
+                                {point}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      </>
+                    ) : null}
+                    <View
+                      style={{
+                        marginTop: 16,
+                        paddingTop: 14,
+                        borderTopWidth: 1,
+                        borderColor: colors.border,
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 7,
+                        }}
+                      >
+                        <Favicon
+                          domain={siteName}
+                          uri={bookmark.metadata?.openGraph?.favicon}
+                        />
+                        <Copy
+                          role="meta"
+                          style={{
+                            color: colors.fg,
+                            fontFamily: webSansFont(500),
+                          }}
+                        >
+                          {siteName}
+                        </Copy>
+                      </View>
+                      <View
+                        style={{
+                          width: 3,
+                          height: 3,
+                          borderRadius: radius.pill,
+                          backgroundColor: colors.fgTertiary,
+                        }}
+                      />
+                      <Text
+                        accessibilityLabel={
+                          content
+                            ? content.source === "pasted"
+                              ? `Summarised from the text you pasted · ${siteName}`
+                              : `Summarised from the full article (${content.wordCount.toLocaleString("en-US")} words) · ${siteName}`
+                            : `Source: ${siteName}`
+                        }
+                        style={[webText("meta"), { color: colors.fgSecondary }]}
+                      >
+                        {content?.source === "pasted"
+                          ? "summarised from the text you pasted"
+                          : "summarised from the full article"}
+                      </Text>
+                      {ownsBookmark ? (
+                        <View style={{ marginLeft: "auto" }}>
+                          <Action
+                            label="Regenerate brief"
+                            icon={RotateCw}
+                            iconSize={14}
+                            disabled={retryBusy}
+                            onPress={retryProcessing}
+                          >
+                            Regenerate
+                          </Action>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+                ) : (
+                  <Copy>
+                    No brief is available yet. You can still open the original.
+                  </Copy>
+                )}
+                {bookmark.cosmicSummary ? (
+                  <View style={{ marginTop: 16, gap: 24 }}>
+                    <DetailReader body={bookmark.cosmicSummary} />
+                    {bookmark.cosmicImages?.length ? (
+                      <View style={{ gap: 16 }}>
+                        {bookmark.cosmicImages.map((image, index) => (
+                          <ReaderImage key={index} image={image} />
+                        ))}
+                      </View>
+                    ) : null}
+                    {bookmark.cosmicTags?.length ? (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          flexWrap: "wrap",
+                          gap: 6,
+                        }}
+                      >
+                        {bookmark.cosmicTags.map((tag) => (
+                          <Tag key={tag}>{tag}</Tag>
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
+                ) : processing ? (
+                  <SkeletonRows />
+                ) : null}
+              </>
+            )
+          ) : null}
+          {ownsBookmark && bookmark.userNote ? (
+            <View style={{ gap: 8 }}>
+              <Copy role="meta">Why you saved it</Copy>
+              <Copy>{bookmark.userNote}</Copy>
+              <Action
+                label="Edit note"
+                onPress={() => {
+                  setNoteDraft(bookmark.userNote ?? "");
+                  setNoteOpen(true);
+                }}
+              >
+                Edit note
+              </Action>
+            </View>
+          ) : null}
+        </View>
+        <View
+          style={{
+            width: "100%",
+            maxWidth: 680,
+            alignSelf: "center",
+            borderTopWidth: 1,
+            borderColor: colors.border,
+            paddingTop: 16,
+            gap: 32,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              gap: 2,
+              marginLeft: -8,
+              alignItems: "center",
+            }}
+          >
+            <Action
+              testID="like-button"
+              label={isLiked ? "Unlike" : "Like"}
+              icon={Heart}
+              tone="like"
+              selected={isLiked}
+              disabled={isLikeLoading}
+              onPress={handleLikeToggle}
+            >
+              {likeCount}
+            </Action>
+            <Action
+              label="Comments"
+              icon={MessageCircle}
+              onPress={() =>
+                reading.scroll.current?.scrollToEnd({ animated: true })
+              }
+            >
+              {bookmark.commentCount ?? 0}
+            </Action>
+            {ownsBookmark ? (
+              <Action
+                label="Saved"
+                icon={BookmarkIcon}
+                onPress={() => setMoreOpen(true)}
+              >
+                Saved
+              </Action>
+            ) : null}
+            <Action
+              label="Share save"
+              icon={ShareIcon}
+              onPress={handleShareToggle}
+            />
+          </View>
+          <DetailComments
+            key={`${user?.id ?? ""}:${bookmark.id}`}
+            id={bookmark.id}
+            accountId={user?.id}
+          />
+        </View>
       </ScrollView>
-      {ownsBookmark && (done || !processing) ? <View style={[layout.row, { padding: space.s3, borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border }]}>
-        {done ? <>
-          <Text accessibilityLiveRegion="polite" style={[textStyle("bodySm"), { color: colors.fg, width: "100%" }]}>{isPick ? doneCount === visiblePicks.length ? `All ${visiblePicks.length} done` : `Done · ${doneCount} of ${visiblePicks.length}` : "Done"}</Text>
-          {actionState.toast?.message === "Marked done" && actionState.toast.undo ? <Button title="Undo" onPress={actionState.toast.undo} /> : null}
-          {isPick && nextPick ? <Button title="Next pick" primary onPress={() => { controller.navigationAway(); router.replace(`/bookmark/${nextPick.bookmark.id}`); }} /> : <Button title="Back" onPress={handleBack} />}
-        </> : <>
-          <Button title="Later" icon="time-outline" onPress={() => selectAction("later")} />
-          <Button title="Mark done" primary onPress={() => { if (viewed) controller.done(viewed, true); }} />
-        </>}
-      </View> : null}
-      <Toast message={actionState.toast?.message} undo={done && actionState.toast?.message === "Marked done" ? undefined : actionState.toast?.undo} close={controller.closeToast} />
-      <BookmarkActionSheets key={user?.id ?? "signed-out"} accountId={user?.id} selection={selection} controller={controller} onChange={setSelection} onClose={() => setSelection(undefined)} />
-      <Sheet title="Why you saved it" visible={noteOpen && ownsBookmark} onClose={() => setNoteOpen(false)}>
-        <Text style={[textStyle("bodySm"), { color: colors.fgSecondary }]}>This note is private. It is never added to the public conversation.</Text>
-        <TextInput accessibilityLabel="Why you saved it" multiline value={noteDraft} onChangeText={setNoteDraft} style={[layout.input, { color: colors.fg, borderColor: colors.borderStrong }]} />
-        <Text style={[textStyle("meta"), { color: noteDraft.length > 500 ? colors.danger : colors.fgSecondary }]}>{noteDraft.length} / 500 characters</Text>
-        <Button title="Save note" primary disabled={noteDraft.length > 500} onPress={() => { if (viewed) controller.note(viewed, noteDraft.trim() ? noteDraft : null); setNoteOpen(false); }} />
-        <Button title="Clear note" disabled={!bookmark.userNote} onPress={() => { if (viewed) controller.note(viewed, null); setNoteOpen(false); }} />
+      <Toast
+        message={actionState.toast?.message}
+        undo={
+          done && actionState.toast?.message === "Marked done"
+            ? undefined
+            : actionState.toast?.undo
+        }
+        close={controller.closeToast}
+      />
+      <BookmarkActionSheets
+        key={user?.id ?? "signed-out"}
+        accountId={user?.id}
+        selection={selection}
+        controller={controller}
+        onChange={setSelection}
+        onClose={() => setSelection(undefined)}
+      />
+      <Sheet
+        title="Save actions"
+        visible={moreOpen && ownsBookmark}
+        onClose={() => setMoreOpen(false)}
+      >
+        <Button
+          title={done ? "Mark as unread" : "Mark as read"}
+          onPress={() => {
+            if (viewed) controller.done(viewed, !done);
+            setMoreOpen(false);
+          }}
+        />
+        <Button
+          title={bookmark.userNote ? "Edit note" : "Add a note"}
+          onPress={() => {
+            setMoreOpen(false);
+            setNoteDraft(bookmark.userNote ?? "");
+            setNoteOpen(true);
+          }}
+        />
+        {
+          <Button
+            title="Read saved text"
+            onPress={() => {
+              setMoreOpen(false);
+              setMode("read");
+            }}
+          />
+        }
+        <Button
+          title="Article"
+          onPress={() => {
+            setMoreOpen(false);
+            setMode("article");
+          }}
+        />
+        <Button
+          title="Original"
+          onPress={() => {
+            setMoreOpen(false);
+            setMode("original");
+          }}
+        />
+        <Button
+          title="Later"
+          onPress={() => {
+            setMoreOpen(false);
+            selectAction("later");
+          }}
+        />
+        <Button
+          title="Move to topic"
+          onPress={() => {
+            setMoreOpen(false);
+            selectAction("move");
+          }}
+        />
+        <Button
+          title="Not for me"
+          onPress={() => {
+            if (viewed)
+              controller.reject({ type: "own_save", bookmark: viewed });
+            setMoreOpen(false);
+          }}
+        />
+        <Button title="Delete" busy={deleting} onPress={deleteBookmark} />
+        <Button
+          title="Regenerate brief"
+          busy={retryBusy}
+          onPress={() => {
+            setMoreOpen(false);
+            void retryProcessing();
+          }}
+        />
       </Sheet>
       <Sheet
-        title="Conversation"
-        visible={conversation}
-        onClose={() => setConversation(false)}
+        title="Your own summary"
+        visible={summaryOpen && ownsBookmark && !!bookmark.isPrivateLink}
+        onClose={() => {
+          if (!summaryBusy) setSummaryOpen(false);
+        }}
       >
-        {commentsError ? <Notice message={commentsError} error /> : null}
-        {comments.map((value) => (
-          <View
-            key={value.id}
-            style={[layout.panel, { borderColor: colors.border }]}
-          >
-            <Text style={[textStyle("bodySm"), { color: colors.fg }]}>
-              {value.author?.name || value.author?.handle || "Reader"}
-            </Text>
-            <Text style={[textStyle("body"), { color: colors.fgSecondary }]}>
-              {value.isDeleted ? "Comment removed" : value.body}
-            </Text>
-          </View>
-        ))}
         <TextInput
-          accessibilityLabel="Add a public comment"
-          placeholder="What did this make you think about?"
-          placeholderTextColor={colors.fgTertiary}
+          accessibilityLabel="Your summary"
           multiline
-          value={comment}
-          onChangeText={setComment}
+          editable={!summaryBusy}
+          value={summaryDraft}
+          onChangeText={setSummaryDraft}
           style={[
             layout.input,
             { color: colors.fg, borderColor: colors.borderStrong },
           ]}
         />
-        <Text style={[textStyle("meta"), { color: colors.fgTertiary }]}>
-          Comments are public. Your highlights remain private.
+        {summaryError ? <Notice message={summaryError} error /> : null}
+        <Button
+          title="Save summary"
+          primary
+          busy={summaryBusy}
+          onPress={saveSummary}
+        />
+      </Sheet>
+      <Sheet
+        title="Why you saved it"
+        visible={noteOpen && ownsBookmark}
+        onClose={() => setNoteOpen(false)}
+      >
+        <Text style={[textStyle("bodySm"), { color: colors.fgSecondary }]}>
+          This note is private. It is never added to the public conversation.
+        </Text>
+        <TextInput
+          accessibilityLabel="Why you saved it"
+          multiline
+          value={noteDraft}
+          onChangeText={setNoteDraft}
+          style={[
+            layout.input,
+            { color: colors.fg, borderColor: colors.borderStrong },
+          ]}
+        />
+        <Text
+          style={[
+            textStyle("meta"),
+            {
+              color:
+                noteDraft.length > 500 ? colors.danger : colors.fgSecondary,
+            },
+          ]}
+        >
+          {noteDraft.length} / 500 characters
         </Text>
         <Button
-          title="Post comment"
+          title="Save note"
           primary
-          busy={posting}
-          disabled={!comment.trim()}
-          onPress={async () => {
-            setPosting(true);
-            try {
-              const created = await MobileAPI.comment(
-                bookmark.id,
-                comment.trim(),
-              );
-              setComments((previous) => [...previous, created]);
-              setComment("");
-              setCommentsError("");
-            } catch {
-              setCommentsError("Your comment was not posted. Try again.");
-            } finally {
-              setPosting(false);
-            }
+          disabled={noteDraft.length > 500}
+          onPress={() => {
+            if (viewed)
+              controller.note(viewed, noteDraft.trim() ? noteDraft : null);
+            setNoteOpen(false);
+          }}
+        />
+        <Button
+          title="Clear note"
+          disabled={!bookmark.userNote}
+          onPress={() => {
+            if (viewed) controller.note(viewed, null);
+            setNoteOpen(false);
           }}
         />
       </Sheet>
-      <Sheet title="Paste the article text" visible={pasteOpen && ownsBookmark && !bookmark.isPrivateLink} onClose={() => { ++pasteRequest.current; pasteAbort.current?.abort(); setPasteBusy(false); setPasteOpen(false); }}>
-        <Text style={[textStyle("bodySm"), { color: colors.fgSecondary }]}>Copy the article where you can read it and paste it here. Cosmic writes the brief from this text only.</Text>
-        <TextInput accessibilityLabel="Article text" multiline editable={!pasteBusy} value={pasteText} onChangeText={setPasteText} placeholder="Paste at least a few paragraphs" placeholderTextColor={colors.fgTertiary} style={[textStyle("body"), { color: colors.fg, borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.md, padding: space.s3, minHeight: space.s6 * 4, textAlignVertical: "top" }]} />
-        <Text style={[textStyle("meta"), { color: colors.fgSecondary }]}>{pasteText.length.toLocaleString("en-US")} characters · at least 200</Text>
-        {pasteError ? <Notice message="Change was not saved. Check your connection." error action="Retry" onAction={submitPaste} /> : null}
-        <Button title="Write the brief" primary busy={pasteBusy} disabled={pasteText.length < 200 || pasteText.length > 100000} onPress={submitPaste} />
+      <Sheet
+        title="Paste the article text"
+        visible={pasteOpen && ownsBookmark && !bookmark.isPrivateLink}
+        onClose={() => {
+          ++pasteRequest.current;
+          pasteAbort.current?.abort();
+          setPasteBusy(false);
+          setPasteOpen(false);
+        }}
+      >
+        <Text style={[textStyle("bodySm"), { color: colors.fgSecondary }]}>
+          Copy the article where you can read it and paste it here. Cosmic
+          writes the brief from this text only.
+        </Text>
+        <TextInput
+          accessibilityLabel="Article text"
+          multiline
+          editable={!pasteBusy}
+          value={pasteText}
+          onChangeText={setPasteText}
+          placeholder="Paste at least a few paragraphs"
+          placeholderTextColor={colors.fgTertiary}
+          style={[
+            textStyle("body"),
+            {
+              color: colors.fg,
+              borderColor: colors.border,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderRadius: radius.md,
+              padding: space.s3,
+              minHeight: space.s6 * 4,
+              textAlignVertical: "top",
+            },
+          ]}
+        />
+        <Text style={[textStyle("meta"), { color: colors.fgSecondary }]}>
+          {pasteText.length.toLocaleString("en-US")} characters · at least 200
+        </Text>
+        {pasteError ? (
+          <Notice
+            message="Change was not saved. Check your connection."
+            error
+            action="Retry"
+            onAction={submitPaste}
+          />
+        ) : null}
+        <Button
+          title="Write the brief"
+          primary
+          busy={pasteBusy}
+          disabled={pasteText.length < 200 || pasteText.length > 100000}
+          onPress={submitPaste}
+        />
       </Sheet>
       <Sheet
         title="Share this save"
@@ -884,16 +1604,6 @@ export default function BookmarkDetailScreen() {
           />
         )}
       </Sheet>
-    </Screen>
+    </DetailFrame>
   );
 }
-const styles = StyleSheet.create({
-  like: {
-    flexDirection: "row",
-    minHeight: 44,
-    minWidth: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: space.s1,
-  },
-});

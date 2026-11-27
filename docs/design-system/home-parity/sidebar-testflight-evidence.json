@@ -1,0 +1,69 @@
+{
+  "ipaSHA256": "6ac55d9d97b9f44ce11c20465256141cb4d34b043f1213caea8bf8adda543ebd",
+  "sourceSHA": "a077ea5472b764044bf0acac11b955fa20e3d7d2",
+  "targets": [
+    {
+      "bundle": "com.cosmicdolphin.app",
+      "version": "1.0.0",
+      "build": "24",
+      "minimumOSVersion": "15.1",
+      "signatureVerified": true,
+      "appGroup": [
+        "group.com.cosmicdolphin.app"
+      ],
+      "keychainGroup": [
+        "DVYXX2PWV5.com.cosmicdolphin.shared"
+      ],
+      "getTaskAllow": false,
+      "profileExpiration": "2027-01-22 02:02:31"
+    },
+    {
+      "bundle": "com.cosmicdolphin.app.share-extension",
+      "version": "1.0.0",
+      "build": "24",
+      "minimumOSVersion": "15.1",
+      "signatureVerified": true,
+      "appGroup": [
+        "group.com.cosmicdolphin.app"
+      ],
+      "keychainGroup": [
+        "DVYXX2PWV5.com.cosmicdolphin.shared"
+      ],
+      "getTaskAllow": false,
+      "profileExpiration": "2027-01-22 02:02:31"
+    }
+  ],
+  "exportComplianceFalse": true,
+  "productionAPI": "https://api.cosmic-dolphin.com",
+  "productionIssuer": "https://qsqbcqkpqmkuywunxbut.supabase.co",
+  "serifFontsVerified": 12,
+  "resolvedNativeInfoVerified": {
+    "SharedKeychainAccessGroup": "DVYXX2PWV5.com.cosmicdolphin.shared",
+    "AppGroupIdentifier": "group.com.cosmicdolphin.app"
+  },
+  "evidenceType": "local signed iOS distribution artifact; not physical installation proof",
+  "submission": {
+    "id": "1e78ae1c-5110-46e2-ad12-b5d819872c8e",
+    "status": "FINISHED",
+    "url": "https://expo.dev/accounts/cosmic-dolphin/projects/cosmic-dolphin/submissions/1e78ae1c-5110-46e2-ad12-b5d819872c8e"
+  },
+  "apple": {
+    "appVersion": "1.0.0",
+    "buildNumber": "24",
+    "processingState": "VALID",
+    "internalState": "IN_BETA_TESTING",
+    "externalState": "READY_FOR_BETA_SUBMISSION",
+    "uploadedDate": "2026-11-26T19:33:27-08:00",
+    "expired": false,
+    "ascBuildId": "0520db66-1a62-4252-a08d-c589d282a09b",
+    "ascAppId": "6758127357",
+    "testFlightURL": "https://appstoreconnect.apple.com/apps/6758127357/testflight/ios"
+  },
+  "betaGroup": {
+    "id": "2cec83b6-864f-41ef-9434-652ba953e18c",
+    "name": "Beta",
+    "isInternalGroup": true,
+    "hasAccessToAllBuilds": true
+  },
+  "verifiedAtUTC": "2026-11-27T03:37:39.381665+00:00"
+}

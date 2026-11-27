@@ -1,0 +1,31 @@
+Final mobile typecheck: passed
+Final mobile lint: passed (10 pre-existing warnings)
+$ node scripts/lint-tokens.mjs
+lint:tokens — 90 files checked, no raw values.
+$ node ../../scripts/generate-tokens.mjs --check
+tokens:check — 3 generated file(s) match docs/design-system/tokens.json.
+
+Final mobile Jest:
+PASS lib/__tests__/save-read-when.test.ts
+PASS lib/__tests__/native-splash-build.test.ts
+
+Test Suites: 1 skipped, 39 passed, 39 of 40 total
+Tests:       1 skipped, 307 passed, 308 total
+Snapshots:   0 total
+Time:        24.177 s, estimated 25 s
+Ran all test suites.
+
+Web typecheck: passed
+Token tests:
+✔ web parity palette resolves inherited aliases independently of native overrides (0.36125ms)
+✔ web parity typography preserves fractional tracking and line boxes (0.405834ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 71.906791
+
+Native simulator Debug build: succeeded with IPHONEOS_DEPLOYMENT_TARGET=15.1 build-only override and CODE_SIGN_IDENTITY=-. First failures and their fixes are recorded in tasks.md.

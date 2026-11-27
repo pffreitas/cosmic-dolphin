@@ -54,8 +54,9 @@ const LINKS: Omit<BottomNavLink, "icon">[] = [
   },
 ];
 
-export function BottomNavigation() {
-  const pathname = usePathname();
+export function BottomNavigation({ currentPath }: { currentPath?: string } = {}) {
+  const routerPath = usePathname();
+  const pathname = currentPath ?? routerPath;
   // Both doors are named in lib/chrome-actions.ts, which keeps this bar a
   // leaf: it has no dialog, no rate-limit state and no idea what a valid URL is.
   const openSave = () => openSaveDialog();

@@ -1,0 +1,1179 @@
+{
+  "evidenceType": "iOS simulator + matched illustrative fixture; no physical-device or production-account proof",
+  "sourceParent": "25cb7e6886a548e912c52ec537b835145c45e599",
+  "branch": "feat/mobile-home-web-parity",
+  "sourceFilesSHA256": {
+    "apps/mobile/components/web-home/Sidebar.tsx": "5d2b90a5d9d9ebda46d45e2196bac2c8db1b6d7e400d3835af85eb2387ae09ba",
+    "apps/mobile/components/web-home/sidebar-data.ts": "ad7ea9735425f45b438b045eee20701d257ec9bd52b3abb0c292d9560050feb0",
+    "apps/mobile/components/web-home/PrettyCopy.tsx": "bd80d3bd597be218c0faff5aed60f0d8f21f7517b801f221285cbc46a0824269",
+    "apps/mobile/components/web-home/Chrome.tsx": "449a7dfef3996cdd238e3ea74230e3d9f5af04a442f07344695ba6d06f4d9b85",
+    "apps/mobile/components/web-home/Primitives.tsx": "1910d54da050c00633ecfdc605e61ab5fc2add21c7fb213bb004747bbcb0edd8",
+    "apps/mobile/components/web-home/theme.ts": "7bb07645640d290300a9e1941ed6ba6d28a3d6f5ead54f5b65fb579a6244d587",
+    "apps/mobile/app/(tabs)/library.tsx": "627bc0552e01158d25044112e4fa30996793dff380af8f43b83d8788beb18cc6",
+    "apps/mobile/dev/home-fixture.json": "a72964d45a08b3806032ccb36af2ae301ae2dac2fe72ba788d818ebf6672f1e7",
+    "apps/web/components/shell/sidebar.tsx": "89680a7f2f01b3fa7451526369b55326689c301564deee9aeceb184c1114595b",
+    "apps/web/components/shell/app-shell.tsx": "4e78b34813fac79e62eeb32ca863865e2020f8457b135c00e5b2765feb8e4021",
+    "docs/design-system/tokens.json": "4688adb4cbfa856479046eff62cabe5f6c100cebfc054b7a2693c349e993866d"
+  },
+  "device": {
+    "host": "local",
+    "id": "3C7F9D5E-A343-4DB8-B75F-671CA10AC69A",
+    "name": "iPhone 18 Pro",
+    "runtime": "iOS 27.0",
+    "physical": false,
+    "nativePoints": [
+      402,
+      874
+    ],
+    "captureScale": 1,
+    "deviceScale": 3,
+    "safeAreaCrop": {
+      "top": 62,
+      "bottom": 34
+    }
+  },
+  "web": {
+    "route": "/dev/home?parity=1&nav=populated",
+    "runtime": "Next.js dev; Playwright Chromium",
+    "viewportCSS": [
+      402,
+      778
+    ],
+    "fontReadyVerified": true
+  },
+  "text": {
+    "default": "iOS Large (1.0)",
+    "large": "iOS XXXL (23/17), navigation controls capped at 1.3",
+    "webLarge": "explicit CSS text-scale fixture; not browser Dynamic Type/zoom proof"
+  },
+  "states": [
+    {
+      "theme": "light",
+      "text": "default",
+      "state": "populated",
+      "web": "web-sidebar-populated-light-default.png",
+      "native": "native-sidebar-populated-light-default.png",
+      "nativeOriginal": "native-sidebar-populated-light-default-full.png",
+      "pair": "pair-sidebar-populated-light-default.png"
+    },
+    {
+      "theme": "light",
+      "text": "default",
+      "state": "account-populated",
+      "web": "web-sidebar-account-populated-light-default.png",
+      "native": "native-sidebar-account-populated-light-default.png",
+      "nativeOriginal": "native-sidebar-account-populated-light-default-full.png",
+      "pair": "pair-sidebar-account-populated-light-default.png"
+    },
+    {
+      "theme": "light",
+      "text": "large",
+      "state": "populated",
+      "web": "web-sidebar-populated-light-large.png",
+      "native": "native-sidebar-populated-light-large.png",
+      "nativeOriginal": "native-sidebar-populated-light-large-full.png",
+      "pair": "pair-sidebar-populated-light-large.png"
+    },
+    {
+      "theme": "light",
+      "text": "large",
+      "state": "account-populated",
+      "web": "web-sidebar-account-populated-light-large.png",
+      "native": "native-sidebar-account-populated-light-large.png",
+      "nativeOriginal": "native-sidebar-account-populated-light-large-full.png",
+      "pair": "pair-sidebar-account-populated-light-large.png"
+    },
+    {
+      "theme": "dark",
+      "text": "default",
+      "state": "populated",
+      "web": "web-sidebar-populated-dark-default.png",
+      "native": "native-sidebar-populated-dark-default.png",
+      "nativeOriginal": "native-sidebar-populated-dark-default-full.png",
+      "pair": "pair-sidebar-populated-dark-default.png"
+    },
+    {
+      "theme": "dark",
+      "text": "default",
+      "state": "account-populated",
+      "web": "web-sidebar-account-populated-dark-default.png",
+      "native": "native-sidebar-account-populated-dark-default.png",
+      "nativeOriginal": "native-sidebar-account-populated-dark-default-full.png",
+      "pair": "pair-sidebar-account-populated-dark-default.png"
+    },
+    {
+      "theme": "dark",
+      "text": "large",
+      "state": "populated",
+      "web": "web-sidebar-populated-dark-large.png",
+      "native": "native-sidebar-populated-dark-large.png",
+      "nativeOriginal": "native-sidebar-populated-dark-large-full.png",
+      "pair": "pair-sidebar-populated-dark-large.png"
+    },
+    {
+      "theme": "dark",
+      "text": "large",
+      "state": "account-populated",
+      "web": "web-sidebar-account-populated-dark-large.png",
+      "native": "native-sidebar-account-populated-dark-large.png",
+      "nativeOriginal": "native-sidebar-account-populated-dark-large-full.png",
+      "pair": "pair-sidebar-account-populated-dark-large.png"
+    },
+    {
+      "theme": "light",
+      "text": "default",
+      "state": "empty",
+      "web": "web-sidebar-empty-light-default.png",
+      "native": "native-sidebar-empty-light-default.png",
+      "nativeOriginal": "native-sidebar-empty-light-default-full.png",
+      "pair": "pair-sidebar-empty-light-default.png"
+    },
+    {
+      "theme": "light",
+      "text": "large",
+      "state": "empty",
+      "web": "web-sidebar-empty-light-large.png",
+      "native": "native-sidebar-empty-light-large.png",
+      "nativeOriginal": "native-sidebar-empty-light-large-full.png",
+      "pair": "pair-sidebar-empty-light-large.png"
+    }
+  ],
+  "computedWebBounds": {
+    "empty-light-default": {
+      "theme": "light",
+      "text": "default",
+      "nav": "empty",
+      "viewport": {
+        "width": 402,
+        "height": 778
+      },
+      "drawer": {
+        "x": 0,
+        "y": 0,
+        "width": 288,
+        "height": 778,
+        "top": 0,
+        "right": 288,
+        "bottom": 778,
+        "left": 0
+      },
+      "menu": {
+        "x": 8,
+        "y": 504,
+        "width": 271,
+        "height": 218.5,
+        "top": 504,
+        "right": 279,
+        "bottom": 722.5,
+        "left": 8
+      },
+      "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "rows": [
+        {
+          "label": "Home",
+          "href": "/my/dashboard",
+          "bounds": {
+            "x": 12,
+            "y": 64,
+            "width": 263,
+            "height": 32,
+            "top": 64,
+            "right": 275,
+            "bottom": 96,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Explore",
+          "href": "/explore",
+          "bounds": {
+            "x": 12,
+            "y": 97,
+            "width": 263,
+            "height": 32,
+            "top": 97,
+            "right": 275,
+            "bottom": 129,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Search",
+          "href": "/search",
+          "bounds": {
+            "x": 12,
+            "y": 130,
+            "width": 263,
+            "height": 32,
+            "top": 130,
+            "right": 275,
+            "bottom": 162,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "All saves24",
+          "href": "/my/library",
+          "bounds": {
+            "x": 12,
+            "y": 218,
+            "width": 263,
+            "height": 32,
+            "top": 218,
+            "right": 275,
+            "bottom": 250,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Inbox3",
+          "href": "/my/library?scope=inbox",
+          "bounds": {
+            "x": 12,
+            "y": 251,
+            "width": 263,
+            "height": 32,
+            "top": 251,
+            "right": 275,
+            "bottom": 283,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Read later12",
+          "href": "/my/library?read_status=unread",
+          "bounds": {
+            "x": 12,
+            "y": 284,
+            "width": 263,
+            "height": 32,
+            "top": 284,
+            "right": 275,
+            "bottom": 316,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Archive0",
+          "href": "/my/library?scope=archive",
+          "bounds": {
+            "x": 12,
+            "y": 317,
+            "width": 263,
+            "height": 32,
+            "top": 317,
+            "right": 275,
+            "bottom": 349,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        }
+      ]
+    },
+    "empty-light-large": {
+      "theme": "light",
+      "text": "large",
+      "nav": "empty",
+      "viewport": {
+        "width": 402,
+        "height": 778
+      },
+      "drawer": {
+        "x": 0,
+        "y": 0,
+        "width": 288,
+        "height": 778,
+        "top": 0,
+        "right": 288,
+        "bottom": 778,
+        "left": 0
+      },
+      "menu": {
+        "x": 8,
+        "y": 468,
+        "width": 271,
+        "height": 254.0625,
+        "top": 468,
+        "right": 279,
+        "bottom": 722.0625,
+        "left": 8
+      },
+      "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "rows": [
+        {
+          "label": "Home",
+          "href": "/my/dashboard",
+          "bounds": {
+            "x": 12,
+            "y": 64,
+            "width": 263,
+            "height": 32,
+            "top": 64,
+            "right": 275,
+            "bottom": 96,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Explore",
+          "href": "/explore",
+          "bounds": {
+            "x": 12,
+            "y": 97,
+            "width": 263,
+            "height": 32,
+            "top": 97,
+            "right": 275,
+            "bottom": 129,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Search",
+          "href": "/search",
+          "bounds": {
+            "x": 12,
+            "y": 130,
+            "width": 263,
+            "height": 32,
+            "top": 130,
+            "right": 275,
+            "bottom": 162,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "All saves24",
+          "href": "/my/library",
+          "bounds": {
+            "x": 12,
+            "y": 218,
+            "width": 263,
+            "height": 32,
+            "top": 218,
+            "right": 275,
+            "bottom": 250,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Inbox3",
+          "href": "/my/library?scope=inbox",
+          "bounds": {
+            "x": 12,
+            "y": 251,
+            "width": 263,
+            "height": 32,
+            "top": 251,
+            "right": 275,
+            "bottom": 283,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Read later12",
+          "href": "/my/library?read_status=unread",
+          "bounds": {
+            "x": 12,
+            "y": 284,
+            "width": 263,
+            "height": 32,
+            "top": 284,
+            "right": 275,
+            "bottom": 316,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Archive0",
+          "href": "/my/library?scope=archive",
+          "bounds": {
+            "x": 12,
+            "y": 317,
+            "width": 263,
+            "height": 32,
+            "top": 317,
+            "right": 275,
+            "bottom": 349,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        }
+      ]
+    },
+    "populated-light-default": {
+      "theme": "light",
+      "text": "default",
+      "nav": "populated",
+      "viewport": {
+        "width": 402,
+        "height": 778
+      },
+      "drawer": {
+        "x": 0,
+        "y": 0,
+        "width": 288,
+        "height": 778,
+        "top": 0,
+        "right": 288,
+        "bottom": 778,
+        "left": 0
+      },
+      "menu": {
+        "x": 8,
+        "y": 504,
+        "width": 271,
+        "height": 218.5,
+        "top": 504,
+        "right": 279,
+        "bottom": 722.5,
+        "left": 8
+      },
+      "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "rows": [
+        {
+          "label": "Home",
+          "href": "/my/dashboard",
+          "bounds": {
+            "x": 12,
+            "y": 64,
+            "width": 263,
+            "height": 32,
+            "top": 64,
+            "right": 275,
+            "bottom": 96,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Explore",
+          "href": "/explore",
+          "bounds": {
+            "x": 12,
+            "y": 97,
+            "width": 263,
+            "height": 32,
+            "top": 97,
+            "right": 275,
+            "bottom": 129,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Search",
+          "href": "/search",
+          "bounds": {
+            "x": 12,
+            "y": 130,
+            "width": 263,
+            "height": 32,
+            "top": 130,
+            "right": 275,
+            "bottom": 162,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "All saves24",
+          "href": "/my/library",
+          "bounds": {
+            "x": 12,
+            "y": 218,
+            "width": 263,
+            "height": 32,
+            "top": 218,
+            "right": 275,
+            "bottom": 250,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Inbox3",
+          "href": "/my/library?scope=inbox",
+          "bounds": {
+            "x": 12,
+            "y": 251,
+            "width": 263,
+            "height": 32,
+            "top": 251,
+            "right": 275,
+            "bottom": 283,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Read later12",
+          "href": "/my/library?read_status=unread",
+          "bounds": {
+            "x": 12,
+            "y": 284,
+            "width": 263,
+            "height": 32,
+            "top": 284,
+            "right": 275,
+            "bottom": 316,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Archive0",
+          "href": "/my/library?scope=archive",
+          "bounds": {
+            "x": 12,
+            "y": 317,
+            "width": 263,
+            "height": 32,
+            "top": 317,
+            "right": 275,
+            "bottom": 349,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Design11",
+          "href": "/my/library?collection_id=design",
+          "bounds": {
+            "x": 12,
+            "y": 405,
+            "width": 263,
+            "height": 32,
+            "top": 405,
+            "right": 275,
+            "bottom": 437,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Typography & reading UX7",
+          "href": "/my/library?collection_id=typography",
+          "bounds": {
+            "x": 40,
+            "y": 437,
+            "width": 235,
+            "height": 32,
+            "top": 437,
+            "right": 275,
+            "bottom": 469,
+            "left": 40
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Systems10",
+          "href": "/my/library?collection_id=systems",
+          "bounds": {
+            "x": 12,
+            "y": 470,
+            "width": 263,
+            "height": 32,
+            "top": 470,
+            "right": 275,
+            "bottom": 502,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        }
+      ]
+    },
+    "populated-dark-large": {
+      "theme": "dark",
+      "text": "large",
+      "nav": "populated",
+      "viewport": {
+        "width": 402,
+        "height": 778
+      },
+      "drawer": {
+        "x": 0,
+        "y": 0,
+        "width": 288,
+        "height": 778,
+        "top": 0,
+        "right": 288,
+        "bottom": 778,
+        "left": 0
+      },
+      "menu": {
+        "x": 8,
+        "y": 468,
+        "width": 271,
+        "height": 254.0625,
+        "top": 468,
+        "right": 279,
+        "bottom": 722.0625,
+        "left": 8
+      },
+      "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "rows": [
+        {
+          "label": "Home",
+          "href": "/my/dashboard",
+          "bounds": {
+            "x": 12,
+            "y": 64,
+            "width": 263,
+            "height": 32,
+            "top": 64,
+            "right": 275,
+            "bottom": 96,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Explore",
+          "href": "/explore",
+          "bounds": {
+            "x": 12,
+            "y": 97,
+            "width": 263,
+            "height": 32,
+            "top": 97,
+            "right": 275,
+            "bottom": 129,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Search",
+          "href": "/search",
+          "bounds": {
+            "x": 12,
+            "y": 130,
+            "width": 263,
+            "height": 32,
+            "top": 130,
+            "right": 275,
+            "bottom": 162,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "All saves24",
+          "href": "/my/library",
+          "bounds": {
+            "x": 12,
+            "y": 218,
+            "width": 263,
+            "height": 32,
+            "top": 218,
+            "right": 275,
+            "bottom": 250,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Inbox3",
+          "href": "/my/library?scope=inbox",
+          "bounds": {
+            "x": 12,
+            "y": 251,
+            "width": 263,
+            "height": 32,
+            "top": 251,
+            "right": 275,
+            "bottom": 283,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Read later12",
+          "href": "/my/library?read_status=unread",
+          "bounds": {
+            "x": 12,
+            "y": 284,
+            "width": 263,
+            "height": 32,
+            "top": 284,
+            "right": 275,
+            "bottom": 316,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Archive0",
+          "href": "/my/library?scope=archive",
+          "bounds": {
+            "x": 12,
+            "y": 317,
+            "width": 263,
+            "height": 32,
+            "top": 317,
+            "right": 275,
+            "bottom": 349,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Design11",
+          "href": "/my/library?collection_id=design",
+          "bounds": {
+            "x": 12,
+            "y": 405,
+            "width": 263,
+            "height": 32,
+            "top": 405,
+            "right": 275,
+            "bottom": 437,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Typography & reading UX7",
+          "href": "/my/library?collection_id=typography",
+          "bounds": {
+            "x": 40,
+            "y": 437,
+            "width": 235,
+            "height": 32,
+            "top": 437,
+            "right": 275,
+            "bottom": 469,
+            "left": 40
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Systems10",
+          "href": "/my/library?collection_id=systems",
+          "bounds": {
+            "x": 12,
+            "y": 470,
+            "width": 263,
+            "height": 32,
+            "top": 470,
+            "right": 275,
+            "bottom": 502,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        }
+      ]
+    },
+    "populated-dark-default": {
+      "theme": "dark",
+      "text": "default",
+      "nav": "populated",
+      "viewport": {
+        "width": 402,
+        "height": 778
+      },
+      "drawer": {
+        "x": 0,
+        "y": 0,
+        "width": 288,
+        "height": 778,
+        "top": 0,
+        "right": 288,
+        "bottom": 778,
+        "left": 0
+      },
+      "menu": {
+        "x": 8,
+        "y": 504,
+        "width": 271,
+        "height": 218.5,
+        "top": 504,
+        "right": 279,
+        "bottom": 722.5,
+        "left": 8
+      },
+      "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "rows": [
+        {
+          "label": "Home",
+          "href": "/my/dashboard",
+          "bounds": {
+            "x": 12,
+            "y": 64,
+            "width": 263,
+            "height": 32,
+            "top": 64,
+            "right": 275,
+            "bottom": 96,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Explore",
+          "href": "/explore",
+          "bounds": {
+            "x": 12,
+            "y": 97,
+            "width": 263,
+            "height": 32,
+            "top": 97,
+            "right": 275,
+            "bottom": 129,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Search",
+          "href": "/search",
+          "bounds": {
+            "x": 12,
+            "y": 130,
+            "width": 263,
+            "height": 32,
+            "top": 130,
+            "right": 275,
+            "bottom": 162,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "All saves24",
+          "href": "/my/library",
+          "bounds": {
+            "x": 12,
+            "y": 218,
+            "width": 263,
+            "height": 32,
+            "top": 218,
+            "right": 275,
+            "bottom": 250,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Inbox3",
+          "href": "/my/library?scope=inbox",
+          "bounds": {
+            "x": 12,
+            "y": 251,
+            "width": 263,
+            "height": 32,
+            "top": 251,
+            "right": 275,
+            "bottom": 283,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Read later12",
+          "href": "/my/library?read_status=unread",
+          "bounds": {
+            "x": 12,
+            "y": 284,
+            "width": 263,
+            "height": 32,
+            "top": 284,
+            "right": 275,
+            "bottom": 316,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Archive0",
+          "href": "/my/library?scope=archive",
+          "bounds": {
+            "x": 12,
+            "y": 317,
+            "width": 263,
+            "height": 32,
+            "top": 317,
+            "right": 275,
+            "bottom": 349,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Design11",
+          "href": "/my/library?collection_id=design",
+          "bounds": {
+            "x": 12,
+            "y": 405,
+            "width": 263,
+            "height": 32,
+            "top": 405,
+            "right": 275,
+            "bottom": 437,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Typography & reading UX7",
+          "href": "/my/library?collection_id=typography",
+          "bounds": {
+            "x": 40,
+            "y": 437,
+            "width": 235,
+            "height": 32,
+            "top": 437,
+            "right": 275,
+            "bottom": 469,
+            "left": 40
+          },
+          "fontSize": "13.5px"
+        },
+        {
+          "label": "Systems10",
+          "href": "/my/library?collection_id=systems",
+          "bounds": {
+            "x": 12,
+            "y": 470,
+            "width": 263,
+            "height": 32,
+            "top": 470,
+            "right": 275,
+            "bottom": 502,
+            "left": 12
+          },
+          "fontSize": "13.5px"
+        }
+      ]
+    },
+    "populated-light-large": {
+      "theme": "light",
+      "text": "large",
+      "nav": "populated",
+      "viewport": {
+        "width": 402,
+        "height": 778
+      },
+      "drawer": {
+        "x": 0,
+        "y": 0,
+        "width": 288,
+        "height": 778,
+        "top": 0,
+        "right": 288,
+        "bottom": 778,
+        "left": 0
+      },
+      "menu": {
+        "x": 8,
+        "y": 468,
+        "width": 271,
+        "height": 254.0625,
+        "top": 468,
+        "right": 279,
+        "bottom": 722.0625,
+        "left": 8
+      },
+      "font": "Inter, system-ui, -apple-system, \"Segoe UI\", sans-serif, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "rows": [
+        {
+          "label": "Home",
+          "href": "/my/dashboard",
+          "bounds": {
+            "x": 12,
+            "y": 64,
+            "width": 263,
+            "height": 32,
+            "top": 64,
+            "right": 275,
+            "bottom": 96,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Explore",
+          "href": "/explore",
+          "bounds": {
+            "x": 12,
+            "y": 97,
+            "width": 263,
+            "height": 32,
+            "top": 97,
+            "right": 275,
+            "bottom": 129,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Search",
+          "href": "/search",
+          "bounds": {
+            "x": 12,
+            "y": 130,
+            "width": 263,
+            "height": 32,
+            "top": 130,
+            "right": 275,
+            "bottom": 162,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "All saves24",
+          "href": "/my/library",
+          "bounds": {
+            "x": 12,
+            "y": 218,
+            "width": 263,
+            "height": 32,
+            "top": 218,
+            "right": 275,
+            "bottom": 250,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Inbox3",
+          "href": "/my/library?scope=inbox",
+          "bounds": {
+            "x": 12,
+            "y": 251,
+            "width": 263,
+            "height": 32,
+            "top": 251,
+            "right": 275,
+            "bottom": 283,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Read later12",
+          "href": "/my/library?read_status=unread",
+          "bounds": {
+            "x": 12,
+            "y": 284,
+            "width": 263,
+            "height": 32,
+            "top": 284,
+            "right": 275,
+            "bottom": 316,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Archive0",
+          "href": "/my/library?scope=archive",
+          "bounds": {
+            "x": 12,
+            "y": 317,
+            "width": 263,
+            "height": 32,
+            "top": 317,
+            "right": 275,
+            "bottom": 349,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Design11",
+          "href": "/my/library?collection_id=design",
+          "bounds": {
+            "x": 12,
+            "y": 405,
+            "width": 263,
+            "height": 32,
+            "top": 405,
+            "right": 275,
+            "bottom": 437,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Typography & reading UX7",
+          "href": "/my/library?collection_id=typography",
+          "bounds": {
+            "x": 40,
+            "y": 437,
+            "width": 235,
+            "height": 32,
+            "top": 437,
+            "right": 275,
+            "bottom": 469,
+            "left": 40
+          },
+          "fontSize": "17.55px"
+        },
+        {
+          "label": "Systems10",
+          "href": "/my/library?collection_id=systems",
+          "bounds": {
+            "x": 12,
+            "y": 470,
+            "width": 263,
+            "height": 32,
+            "top": 470,
+            "right": 275,
+            "bottom": 502,
+            "left": 12
+          },
+          "fontSize": "17.55px"
+        }
+      ]
+    }
+  },
+  "fontsSHA256": {
+    "Inter-500.ttf": "8c883f63b2c4157d997319f2c8bc6995ed4357ef371940d31ca159004a4aae63",
+    "Inter-400.ttf": "1b08e7fc267a5c7e1d614100f604b83e7e8a0be241f0f288faa2b3ac93a683ba",
+    "Inter-600.ttf": "e7a1aaf7eda9f2fad4131725fa556265ec75ca7b2d756260173a040363e8d4f7"
+  },
+  "limits": [
+    "Native/Core Text rasterization and fractional rounding differ from browser.",
+    "Only the Home sidebar is visually certified; existing Library/Profile/Search compositions are outside this correction.",
+    "No physical installation, real auth session, or spoken VoiceOver proof."
+  ],
+  "checks": {
+    "mobileTypecheck": "passed",
+    "mobileLint": "passed; 12 warnings, no errors; token checks passed",
+    "mobileJest": {
+      "suitesPassed": 40,
+      "testsPassed": 315,
+      "skipped": 1
+    },
+    "webTypecheck": "passed"
+  },
+  "interactionEvidence": {
+    "transport": "production native provider/navigation/generated client against fictional loopback HTTP, no production/database writes",
+    "requests": "sidebar-flow-requests.json",
+    "verified": [
+      "collection -> Inbox clears previous collection",
+      "Read later query and selected Unread",
+      "Archive scope",
+      "theme light/dark/system",
+      "keyboard dismissal",
+      "profile outside tabs"
+    ],
+    "signOut": "blocked by empty simulator shared-Keychain entitlements; successful sign-out not claimed",
+    "deviceFailure": "simulator-only re-sign launch failed twice; automation stopped; original dev client restored with install only"
+  }
+}

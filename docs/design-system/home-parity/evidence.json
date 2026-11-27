@@ -1,0 +1,361 @@
+{
+  "evidenceKind": "iOS simulator + development fixtures; native interactions use fictional auth and in-memory loopback HTTP",
+  "baseCommit": "671e2781e2f685804bf33bb06422bd1b92b05154",
+  "startingImplementationCommit": "ce03bd3",
+  "branch": "feat/mobile-home-web-parity",
+  "capturedSourceFiles": {
+    "apps/mobile/app/(tabs)/index.tsx": "35f92ff21db5844e44b14ff48a9593f94f967a4eb67ab51711d7f565a3429428",
+    "apps/mobile/app/_layout.tsx": "78dec36fc7e758c00eaa82bd35c8bd0ace4f6488ff686e6657403e6875d87064",
+    "apps/mobile/app/dev/home.tsx": "8c16fa067e6ebd0ee6049a8d2c55b24efcd78d52241ca2d7845367b9e9ba49b6",
+    "apps/mobile/dev/home-fixture.json": "2dd9fb1b01db4fa5cc6408f66c4deca499d235185c795cff04e4e3d53f3f63f7",
+    "apps/mobile/components/CaptureStatus.tsx": "beea01d0612e1e603f08b83171d4ab2444bb8b8138c0fc521bbdc20c6690271a",
+    "apps/mobile/components/web-home/BalancedTitle.tsx": "d1ca7b530a9ac42eb4f82e6152b31dd66fe2640cc5c8571544c740f335cc6da9",
+    "apps/mobile/components/web-home/Chrome.tsx": "11a0b23bef8568f4a9c572e9229508be7a281740b0251e0bba7457148d864b0e",
+    "apps/mobile/components/web-home/Comments.tsx": "2652999909d0fa632b6df4588a2c568f365e6285f6433b425cd2346c0717583a",
+    "apps/mobile/components/web-home/FeedItem.tsx": "d1568342d9b3117646a0fe95ebd6e21477f2756d0bd1a58993782f2cd8ad0c3e",
+    "apps/mobile/components/web-home/Primitives.tsx": "6949914985c79ad51fd8e4fe192409767574bddccf7c4c50f416dfd342928085",
+    "apps/mobile/components/web-home/theme.ts": "7f45fe9c4718db3100321a8a6bf0b3753b6b216ec9a904a50e75c7ed596577e7",
+    "apps/mobile/constants/theme.ts": "b04819b3856ff4137f2cb382559e84032f9cdd1aa2c88f5dbd36410d3cc7aaf0",
+    "apps/mobile/lib/mobile-api.ts": "7dd8538722bd782f2d09418b80eab1051b8e6c423e37dd36c63dd16fd0a8f48b",
+    "apps/mobile/ios/Podfile.lock": "efdc8e71dd942bba3dc11bce55fc30d1fddf7d7a60c8a67f65fa752c0790fb84",
+    "apps/web/app/dev/home/home-states.tsx": "9e27f890dc8e9b2bcef31ec7fa4339990dcddeaf4c0542e0db0f1e31cf030aed",
+    "apps/web/components/feed/home-view.tsx": "72a5d073017ad79ec4b6fd9e1a79db17d5cac0908ff441ea385236704c36aab9",
+    "apps/web/components/feed/feed-item.tsx": "b29a84b4941e6aec89b795a515496b46cb75e275e7b9f6686fd89cc491f07502",
+    "apps/web/components/shell/app-shell.tsx": "4e78b34813fac79e62eeb32ca863865e2020f8457b135c00e5b2765feb8e4021",
+    "apps/web/components/mobile/bottom-nav.tsx": "6bfd2ead4d22fa24938c7f7c175b49cd6d0c7f8edef9d67f69cd9bf132c1161f",
+    "docs/design-system/tokens.json": "4688adb4cbfa856479046eff62cabe5f6c100cebfc054b7a2693c349e993866d"
+  },
+  "fixture": {
+    "path": "apps/mobile/dev/home-fixture.json",
+    "sha256": "2dd9fb1b01db4fa5cc6408f66c4deca499d235185c795cff04e4e3d53f3f63f7",
+    "now": "2026-11-26T23:00:00Z",
+    "computedAt": "2026-11-26T22:56:00Z",
+    "locale": "en-US",
+    "timezone": "America/New_York",
+    "imageState": "No lead image; initial-letter source/actor fallbacks. Approved brand artwork."
+  },
+  "native": {
+    "device": "iPhone 18 Pro",
+    "deviceId": "3C7F9D5E-A343-4DB8-B75F-671CA10AC69A",
+    "host": "T3 local, this MacBook",
+    "physical": false,
+    "os": "iOS 27.0",
+    "macOS": "26.6.2 (25G83)",
+    "Xcode": "27.2 (27B52)",
+    "runtime": "Expo 54.0.31 / React Native 0.81.5 / Hermes / Debug simulator build",
+    "viewportPoints": [
+      402,
+      874
+    ],
+    "backingScale": 3,
+    "captureScale": 1,
+    "safeAreaInsets": {
+      "top": 62,
+      "bottom": 34,
+      "left": 0,
+      "right": 0
+    },
+    "productCrop": {
+      "x": 0,
+      "y": 62,
+      "width": 402,
+      "height": 778
+    },
+    "fonts": {
+      "source": "Source Serif 4, web normal Latin subset, SIL OFL (see LICENSES.txt)",
+      "sourceSha256": "2a24bad466f09b88b8e9cbc488bf774117c912e66374c57bf4716855849143f8",
+      "toolchain": {
+        "fonttools": "4.60.1",
+        "brotli": "1.1.0"
+      },
+      "instances": [
+        {
+          "file": "CosmicReading16.ttf",
+          "weightAxis": 600,
+          "opticalSize": 16,
+          "sha256": "5d20d20dfc31adbac7f4ce14a91e9f84c068b411cc53e95281bc5f8e9f08824c"
+        },
+        {
+          "file": "CosmicReading17.ttf",
+          "weightAxis": 600,
+          "opticalSize": 17,
+          "sha256": "5c7a6b5d64dc7b69db72025a2eba018cda2730c42855c47ca78fdc5af183dead"
+        },
+        {
+          "file": "CosmicReading19.ttf",
+          "weightAxis": 600,
+          "opticalSize": 19,
+          "sha256": "784c08fccc18bd1adc7357df5026fe4cc64677f21c2e2a1161c5425ef777f1cd"
+        },
+        {
+          "file": "CosmicReading20.ttf",
+          "weightAxis": 600,
+          "opticalSize": 20,
+          "sha256": "23a910798a73b5d5f8e45389a314f09327203939365e3b7e54ad565e133c6f90"
+        },
+        {
+          "file": "CosmicReading22.ttf",
+          "weightAxis": 600,
+          "opticalSize": 22,
+          "sha256": "1a0623b38d8321ff82ce688d1c519c69d8ba3d1f1dc9ccf283dc19873ad06746"
+        },
+        {
+          "file": "CosmicReading23.ttf",
+          "weightAxis": 600,
+          "opticalSize": 23,
+          "sha256": "864c000177acf211c8a4f63db16d6b2875a3d2e087ad933cdc373a0265f941d8"
+        },
+        {
+          "file": "CosmicReading26.ttf",
+          "weightAxis": 600,
+          "opticalSize": 26,
+          "sha256": "004ea9fa9d41029f138cef217d004ea9a674dad4d7ea14c4672e9deadfa73ec5"
+        },
+        {
+          "file": "CosmicReading27.ttf",
+          "weightAxis": 600,
+          "opticalSize": 27,
+          "sha256": "d6e0687eadce4ca52ac4b2cc08bd5c7b3d6a914f42440e71103ced4add3ec55e"
+        },
+        {
+          "file": "CosmicReading28.ttf",
+          "weightAxis": 600,
+          "opticalSize": 28,
+          "sha256": "5bf474dcca909ca7fb1c5579db3a611b5b6747e35d45444b5a52080f34f8a1dd"
+        },
+        {
+          "file": "CosmicReading34.ttf",
+          "weightAxis": 600,
+          "opticalSize": 34,
+          "sha256": "56f90bad56274ecd9a73b2b2bf806727a64d89f81b2e15fa35ac3ae5507a83b8"
+        },
+        {
+          "file": "CosmicReading38.ttf",
+          "weightAxis": 600,
+          "opticalSize": 38,
+          "sha256": "09f097df5ba3b8807bacc89e1b18ae6719db124d9d12e1bce94c86beacc1e174"
+        },
+        {
+          "file": "CosmicReading46.ttf",
+          "weightAxis": 600,
+          "opticalSize": 46,
+          "sha256": "94acabebf23b368b0ec10d9691811a165ae7d95e9e86e5596d469b665282a407"
+        }
+      ]
+    },
+    "sansFiles": {
+      "apps/mobile/assets/fonts/Inter-500.ttf": "8c883f63b2c4157d997319f2c8bc6995ed4357ef371940d31ca159004a4aae63",
+      "apps/mobile/assets/fonts/Inter-400.ttf": "1b08e7fc267a5c7e1d614100f604b83e7e8a0be241f0f288faa2b3ac93a683ba",
+      "apps/mobile/assets/fonts/Inter-600.ttf": "e7a1aaf7eda9f2fad4131725fa556265ec75ca7b2d756260173a040363e8d4f7"
+    }
+  },
+  "web": {
+    "route": "/dev/home?parity=1",
+    "renderer": "production HomeView + AppShell + BottomNavigation",
+    "viewportCssPixels": [
+      402,
+      778
+    ],
+    "captureScale": 1,
+    "runtime": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "devicePixelRatio": 1,
+      "fonts": [
+        {
+          "family": "Inter",
+          "weight": "400",
+          "style": "normal"
+        },
+        {
+          "family": "Inter",
+          "weight": "500",
+          "style": "normal"
+        },
+        {
+          "family": "Inter",
+          "weight": "600",
+          "style": "normal"
+        },
+        {
+          "family": "Source Serif 4",
+          "weight": "200 900",
+          "style": "normal"
+        }
+      ],
+      "fontUrls": []
+    },
+    "controlsOmitted": "Only the dev-gallery state strip and Next.js dev indicator; product chrome retained."
+  },
+  "matrix": [
+    {
+      "state": "ready",
+      "scope": "for_you",
+      "theme": "light",
+      "nativeRoute": "/dev/home",
+      "nativeTextCategory": "Large",
+      "nativeTextScale": 1,
+      "webTextScale": 1,
+      "controlScaleCap": 1.3,
+      "web": "web-light-default.png",
+      "native": "native-light-default.png",
+      "pair": "pair-light-default.png"
+    },
+    {
+      "state": "ready",
+      "scope": "for_you",
+      "theme": "light",
+      "nativeRoute": "/dev/home",
+      "nativeTextCategory": "XXXL",
+      "nativeTextScale": 1.3529411764705883,
+      "webTextScale": 1.3529411764705883,
+      "controlScaleCap": 1.3,
+      "web": "web-light-large.png",
+      "native": "native-light-large.png",
+      "pair": "pair-light-large.png"
+    },
+    {
+      "state": "ready",
+      "scope": "for_you",
+      "theme": "dark",
+      "nativeRoute": "/dev/home",
+      "nativeTextCategory": "Large",
+      "nativeTextScale": 1,
+      "webTextScale": 1,
+      "controlScaleCap": 1.3,
+      "web": "web-dark-default.png",
+      "native": "native-dark-default.png",
+      "pair": "pair-dark-default.png"
+    },
+    {
+      "state": "ready",
+      "scope": "for_you",
+      "theme": "dark",
+      "nativeRoute": "/dev/home",
+      "nativeTextCategory": "XXXL",
+      "nativeTextScale": 1.3529411764705883,
+      "webTextScale": 1.3529411764705883,
+      "controlScaleCap": 1.3,
+      "web": "web-dark-large.png",
+      "native": "native-dark-large.png",
+      "pair": "pair-dark-large.png"
+    },
+    {
+      "state": "empty-for-you",
+      "theme": "light",
+      "textScale": 1,
+      "web": "web-empty-for-you.png",
+      "native": "native-empty-for-you.png"
+    },
+    {
+      "state": "empty-following",
+      "theme": "light",
+      "textScale": 1,
+      "web": "web-empty-following.png",
+      "native": "native-empty-following.png"
+    },
+    {
+      "state": "empty-unread",
+      "theme": "light",
+      "textScale": 1,
+      "web": "web-empty-unread.png",
+      "native": "native-empty-unread.png"
+    },
+    {
+      "state": "new-user",
+      "theme": "light",
+      "textScale": 1,
+      "web": "web-new-user.png",
+      "native": "native-new-user.png"
+    },
+    {
+      "state": "full-top",
+      "theme": "light",
+      "textScale": 1,
+      "web": "web-full-top.png",
+      "native": "native-full-top.png"
+    },
+    {
+      "state": "full-digest",
+      "theme": "light",
+      "textScale": 1,
+      "web": "web-full-digest.png",
+      "native": "native-full-digest.png"
+    },
+    {
+      "state": "full-tail",
+      "theme": "light",
+      "textScale": 1,
+      "web": "web-full-tail.png",
+      "native": "native-full-tail.png"
+    }
+  ],
+  "fullGalleryScroll": {
+    "digestWebScrollY": 840,
+    "tailWebScrollY": 1215.3333333333333,
+    "method": "Tail displacement measured from native Built from bounds between the two captures. Initial digest offset leaves native rounding differences visible."
+  },
+  "reviewedLimits": [
+    "Core Text and Chromium antialiasing differ; fractional line-box rounding remains visible.",
+    "Larger optical sizes choose nearest bundled cut, not a continuous native opsz axis.",
+    "UIKit blur differs from CSS backdrop-filter.",
+    "All ready-state themes/text sizes were matched. Extra full-gallery variants were inspected in light/default.",
+    "No physical-device, production-account, release or all-device certification.",
+    "Image-bearing/failed-image variants are outside this same-content fixture; no claim that they were certified.",
+    "Known comment reply/edit/delete/report controls remain out of scope."
+  ],
+  "captureSha256": {
+    "native-new-user-full.png": "144ea5e928ea831c816b9a2d67adf79217c3451197a5c759e1e33011225d67b0",
+    "native-full-digest.png": "36cef4964b960ff4c607363799189557c0f46286311e510be248373016f3ff66",
+    "native-dark-large.png": "bb6892232507167a18e4d73a01de474c7f2e58396559134e4a5da9ae40302365",
+    "native-empty-following-full.png": "769fabcc8e9a24bbfdc16f8df2d22742d72aa848dcb3feeea4325c55675f5bf5",
+    "native-full-tail-full.png": "b82595df1c05a68474e071a8178e2c218cc962c8ec031534e33fb16213082b2b",
+    "flow-continue-reading.png": "81bc2a4cce85d0039d112263dce60a5764d78d62596067ba04de07a2aaf394a1",
+    "web-light-default.png": "005b4b5b7ce150f3144b756b68b29b5f7612a26b8dc91dc7a48add186fb2b7d5",
+    "flow-omnibox-save.png": "1f153267b095214eee3cebbb0ff702ae0ed9e7472839f3ef68f9c002fd2d12a8",
+    "native-dark-default.png": "db5dc3c5065d906787401fb4c6554243bdfdd3923a6effc5c0e96d0e5e8b615d",
+    "flow-empty-following.png": "8fec38f51c20d6f443064ea211a61271ebdf2ef111bfe7ea7bbdc49b57078ec1",
+    "web-full-top.png": "46a56ef2b869a9f7b068bca93bdd8026012ac34fd4ffecc1589596b0507927d2",
+    "native-light-default-full.png": "3c9b60242c8786945470ab27cc9561791f8948425d26e037f6274048c705f077",
+    "native-empty-unread-full.png": "5d12a2e358337e6a4c0c091a442ad4405cf8e6109b9c323af7a78c89e5ee15cb",
+    "native-new-user.png": "1c914014b15f17af6e33b2dfbfcca79c36ff24a7278e4d5ef794141abed11fcf",
+    "pair-dark-large.png": "81e469357b77baa44cc6c31312e390ff1e4de5c6a733fd7d03c221999c03affd",
+    "web-empty-for-you.png": "265634730afd9ea20f5b2dacab71475e11b1e5a18c159b20ffe4707bfbf87ef2",
+    "web-dark-default.png": "8b3f7ddc38390d66ad7111d84e0ddf03b5c9f595b762fcd9aae40343f47147a5",
+    "pair-light-default.png": "2978646b6f971b569318e55966ba77f0b89b4c0081b1cfba96a9984d0a563da1",
+    "pair-full-digest.png": "3693c0f7b526a2e739726c276e0a9abf3334f909090b23716a6583c499781a16",
+    "web-light-large.png": "d101d376cdd799f8a3a58e89111abaf66e31d826dd454d02650736824c2db4ff",
+    "native-light-large-bootstrap.png": "1eeebd49345cc08b1b82069701b1a9968e2931c6965967dd40df8cdf9e0cebeb",
+    "web-full-tail.png": "eee86fd71a596d7483f1846fb70f78c8822a5dddaa61e7c40d97049f742922bd",
+    "pair-full-top.png": "73609a5f34f137c1069ce57b1c3911cb097ecad35ed5b8d3a0d2f9809190c265",
+    "flow-comments-posted.png": "2079b2b237fd408a382a3e802c248f5f75bb8cdfd626775463635b4c334b24fb",
+    "native-full-top-full.png": "b22e44f12372524c34145c2d51084c61461cea17dcd9d6a403c9afa53e8fcc12",
+    "native-empty-for-you-full.png": "ee1ba2b8038bfa72bdc1a3bf7d6b5650670034fbb973510e3a6e8591dec12ccd",
+    "native-full-tail.png": "53c60f0700884cbf776b021c14cb664b937f63be6b389c2421ef69ed328717fb",
+    "native-full-digest-full.png": "9008b5f271d2a85251c8caed3ecad0c1c66f5b026ef884ee1ec949af42d74903",
+    "pair-dark-default.png": "c90cc9351f814cc42e83fa330deeef211c9517dfa817ae1e4aa2c000262f4c15",
+    "pair-full-tail.png": "04c1f3e2fd546d55967498db932e4e0454a2055a0e2cb70cd3b9adfbb905a864",
+    "native-light-default.png": "a1069d04081945830783e6caf322a720c294e4f30b56a01ee07e579b9c61834c",
+    "flow-lead-story.png": "8dd0cf25dfb1e2568feddc292a83d857fb0fcc70bd35227fc1696051465f6858",
+    "native-empty-unread.png": "336c4aaf57353731ef978ea8a14d0f1e52ed6a73f27f18dde5aabf078936b895",
+    "web-dark-large.png": "4c99a7462c9851cc9f887a818c82c9f1a23a06f35c216056f198260fa37e3d13",
+    "web-full-digest.png": "ab5797367203cbea3d09e1996da490710f243e20b9f55507fdeda46d892ab251",
+    "native-dark-large-full.png": "d707798e0e76d57bafd97d02e382e3768c3961c3f91623fee37242d2edb41625",
+    "pair-light-large.png": "26d8bf75e073b2ad1011802ecbb8c7845b42c4c141085a13fb93b8fc9c49150a",
+    "native-full-top.png": "dc693f22d79fa343616f04106fcbb60558465e873b8a01ee3a95f532f4243e9e",
+    "native-light-large.png": "e5c02d70b53617aa736a71ed694276f0f6470635ccf266e91f0ac7e76de2e28f",
+    "web-empty-following.png": "9a8a5df5c8e86f8f9e690cbea81d467516ab5c65edc6375eb329dcb86b98056a",
+    "native-empty-for-you.png": "4467bf74cfb52ac88ca35cacd86b0d8b5d69d4a1f6ba082bf22a420c33d1cc6a",
+    "flow-omnibox-saved.png": "3a34cc882222c28296fd023231bf7101197d61835a3f90bc6fb9f6c5ad66c2f2",
+    "web-new-user.png": "56d5a9de66091a59b2c37a1e57658fb9ff52298d28a2f2d6d5cde1993c48a63d",
+    "native-dark-default-full.png": "d5d4f2b0b817eba47ed5bddaca148b45fc0f61fdbbd0300ac125b8eecabf1b19",
+    "web-initial.png": "594e57922754d69882704183561ba128af733f6bf9ad3eda7b6ab88f9105b26c",
+    "web-empty-unread.png": "fb34c046bae344ffa2e14880d75e805631ab3fe202316486664aaed25ddd7ca9",
+    "flow-comments-keyboard-before.png": "28b49ace6d7b0b4542530eef12580e2aa658a6718522a2dc4b2fdc3ce6223fe5",
+    "native-empty-following.png": "063acc4960ecaa9cb2fa999235e08fdc2e3d431a9b4842c00749293d0283a579",
+    "native-initial.png": "8e7c3bc7da5e458f35292e4cf2ab08d8b1290e43c0cdf4d4b2bb34418589eef5",
+    "flow-comments-empty.png": "7574c5cfc994ccf7f1c33724f02830f5546170fe99b964c08971e9f1466515bd",
+    "flow-comments-keyboard-after.png": "25306260a81a20a2c1770637d31a7459d092757d970d0b9e71a4b8720e636aad",
+    "native-light-large-full.png": "393482a362a5c93e78b9e5b7500225168baa70c02492f5d491f16628ffcca9eb"
+  },
+  "implementationCommit": "c2792c5ec3fce8b52699cef96f3606991f2d39cc"
+}

@@ -14,13 +14,13 @@ export function useReadingProgress(id: string, userId: string | undefined, enabl
   const restored = useRef(false);
   const identity = useRef("");
   const timer = useRef<ReturnType<typeof setTimeout>>();
-  const latest = useRef<{ id: string; key: string; percent: number; offset: number }>();
+  const latest = useRef<{ id: string; key: string; userId: string; percent: number; offset: number }>();
   const flush = () => {
     const value = latest.current;
     latest.current = undefined;
     clearTimeout(timer.current); timer.current = undefined;
     if (!value) return;
-    void MobileAPI.saveProgress(value.id, value.percent, value.offset).catch(() => {
+    void MobileAPI.saveProgress(value.id, value.percent, value.offset, value.userId).catch(() => {
       if (active.current && identity.current === value.key) setError("Reading progress could not be saved.");
     });
   };
@@ -32,7 +32,7 @@ export function useReadingProgress(id: string, userId: string | undefined, enabl
     if (identity.current !== key) { identity.current = key; maximum.current = 0; offset.current = 0; setPercent(0); }
     setError("");
     if (userId && enabled) {
-      void MobileAPI.progress(id).then(progress => {
+      void MobileAPI.progress(id, userId).then(progress => {
         if (!current) return;
         if ((progress?.percent ?? 0) >= maximum.current) offset.current = progress?.scrollOffset ?? 0;
         maximum.current = Math.max(maximum.current, progress?.percent ?? 0);
@@ -59,7 +59,7 @@ export function useReadingProgress(id: string, userId: string | undefined, enabl
     const measured = available > 0 ? Math.max(0, Math.min(100, contentOffset.y / available * 100)) : 0;
     maximum.current = Math.max(maximum.current, measured); setPercent(maximum.current);
     offset.current = contentOffset.y;
-    latest.current = { id, key: identity.current, percent: maximum.current, offset: contentOffset.y };
+    latest.current = { id, userId, key: identity.current, percent: maximum.current, offset: contentOffset.y };
     if (!timer.current) timer.current = setTimeout(() => flushRef.current(), 5000);
   };
   return { scroll, percent, error, onScroll, onContentSizeChange };

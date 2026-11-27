@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * One source of truth, two clients.
+ * One source of truth, two clients and a generated reference stylesheet.
  *
  * `docs/design-system/tokens.json` is the canonical Signal palette. This script
  * compiles it into the two things that actually get imported:
@@ -29,6 +29,7 @@ const REPO_ROOT = resolve(here, "..");
 
 export const TOKENS = resolve(REPO_ROOT, "docs/design-system/tokens.json");
 export const WEB_OUT = resolve(REPO_ROOT, "apps/web/app/tokens.css");
+export const REFERENCE_OUT = resolve(REPO_ROOT, "docs/design-system/tokens.css");
 export const MOBILE_OUT = resolve(REPO_ROOT, "apps/mobile/constants/theme.ts");
 
 /**
@@ -50,7 +51,7 @@ const COLOR_SECTIONS = [
   ],
   [
     "Header capsule",
-    ["nav-glass", "nav-edge", "nav-sheen", "nav-pill", "nav-shadow"],
+    ["nav-glass", "nav-edge", "nav-sheen", "nav-pill", "nav-surface", "nav-shadow"],
   ],
   // The app icon's own night-sky ground. The same in both modes: it belongs
   // to the artwork, not to the theme.
@@ -287,11 +288,9 @@ function renderShadcn(tokens, mode, push) {
 const px = (value) => Number.parseFloat(String(value).replace("px", ""));
 
 /**
- * React Native has no gradients or CSS shadows, so the two tokens whose values
- * are CSS-only (`nav-glass`, `nav-shadow`) and the whole elevation set are left
- * out of the mobile theme rather than translated into something that isn't the
- * same value. Signal's third rule — borders, not elevation — means mobile does
- * not miss them.
+ * CSS-valued gradients/shadows are omitted from numeric native exports.
+ * Parity renderers must translate these effects with platform adapters; their
+ * omission from the serialized theme does not remove them from the reference.
  */
 function mobileColorTokens(tokens) {
   return COLOR_SECTIONS.flatMap(([, names]) => names).filter((name) =>
@@ -299,8 +298,23 @@ function mobileColorTokens(tokens) {
   );
 }
 
+function resolvedPalette(palette, context) {
+  const resolveColor = (name, seen = new Set()) => {
+    if (!Object.hasOwn(palette, name) || seen.has(name)) {
+      throw new Error(`Alias {${name}} is missing or circular in ${context}.`);
+    }
+    const alias = typeof palette[name] === "string" && palette[name].match(ALIAS);
+    return alias ? resolveColor(alias[1], new Set([...seen, name])) : palette[name];
+  };
+  return Object.fromEntries(Object.keys(palette).map(name => [name, resolveColor(name)]));
+}
+
 export function renderMobileTheme(tokens) {
   assertSectionsCover(tokens);
+  const canonical = { ...tokens, color: {
+    light: resolvedPalette(tokens.color.light, "color.light"),
+    dark: resolvedPalette(tokens.color.dark, "color.dark"),
+  } };
   for (const mode of ["light", "dark"]) {
     const unknown = Object.keys(tokens.color.mobile?.[mode] ?? {}).filter(
       name => !Object.hasOwn(tokens.color.light, name),
@@ -313,15 +327,7 @@ export function renderMobileTheme(tokens) {
   } };
 
   for (const mode of ["light", "dark"]) {
-    const palette = tokens.color[mode];
-    const resolveColor = (name, seen = new Set()) => {
-      if (!Object.hasOwn(palette, name) || seen.has(name)) {
-        throw new Error(`Alias {${name}} is missing or circular in color.mobile.${mode}.`);
-      }
-      const alias = typeof palette[name] === "string" && palette[name].match(ALIAS);
-      return alias ? resolveColor(alias[1], new Set([...seen, name])) : palette[name];
-    };
-    tokens.color[mode] = Object.fromEntries(Object.keys(palette).map(name => [name, resolveColor(name)]));
+    tokens.color[mode] = resolvedPalette(tokens.color[mode], `color.mobile.${mode}`);
   }
   const names = mobileColorTokens(tokens);
   const skipped = COLOR_SECTIONS.flatMap(([, n]) => n).filter((n) => !names.includes(n));
@@ -334,14 +340,15 @@ export function renderMobileTheme(tokens) {
   push(" *");
   push(" * GENERATED FILE — do not edit. Every value here comes from");
   push(" * docs/design-system/tokens.json, the same source apps/web/app/tokens.css is");
-  push(" * built from, so the two clients cannot drift.");
+  push(" * built from. Platform differences are explicit overrides, not implicit parity.");
   push(" *");
   push(" *   bun run tokens          regenerate");
   push(" *   bun run tokens:check    fail if this file is stale");
   push(" *");
   push(` * Left out on purpose: ${skipped.join(", ")} and the elevation tokens are CSS`);
-  push(" * gradients and box-shadows, which React Native has no equivalent for. Signal");
-  push(" * frames with borders rather than elevation, so mobile does not need them.");
+  push(" * gradients and box-shadows; native adapters must translate them explicitly.");
+  push(" * webColors/webType/webTypeCompact describe web parity; colors/type retain");
+  push(" * the shipped mobile palette and compatibility type scale.");
   push(" */");
   push("");
 
@@ -361,12 +368,39 @@ export function renderMobileTheme(tokens) {
   push("} as const;");
   push("");
 
+  push("/** Web CSS effects, resolved to literal colors for native boxShadow adapters. */");
+  push("export const webEffects = {");
+  for (const mode of ["light", "dark"]) {
+    push(`  ${mode}: {`);
+    for (const [name, raw] of Object.entries({ ...tokens.elevation.light, ...tokens.elevation[mode] })) {
+      const { value } = resolveAlias(raw, mode, canonical);
+      const effect = value.replace(/var\(--cd-([a-z0-9-]+)\)/g, (_, key) => canonical.color[mode][key]);
+      push(`    ${camel(name)}: ${JSON.stringify(effect)},`);
+    }
+    push("  },");
+  }
+  push("} as const;");
+  push("");
+
   push("export type ColorSchemeName = keyof typeof colors;");
   push("export type ThemeColors = (typeof colors)[ColorSchemeName];");
   push("export type ColorToken = keyof ThemeColors;");
   push("");
 
-  push("/** Shape is meaning: 6 controls, 8 content surfaces, 12 the app frame. */");
+  push("/** Canonical web palette, without mobile Plum overrides. CSS effects need adapters. */");
+  push("export const webColors = {");
+  for (const mode of ["light", "dark"]) {
+    push(`  ${mode}: {`);
+    for (const name of mobileColorTokens(canonical)) {
+      const { value } = resolveAlias(canonical.color[mode][name], mode, canonical);
+      push(`    ${camel(name)}: '${value}',`);
+    }
+    push("  },");
+  }
+  push("} as const;");
+  push("");
+
+  push("/** Shape: 6 compact controls, 8 fields/panels, 12 sheet top corners. */");
   push("export const radius = {");
   for (const [name, value] of Object.entries(tokens.shape.radius)) {
     push(`  ${camel(name.replace(/^r-/, ""))}: ${px(value)},`);
@@ -397,25 +431,41 @@ export function renderMobileTheme(tokens) {
   push(" * `fonts.family[role]`. Serif is content the user evaluates, sans is");
   push(" * everything the user operates; never a serif button, never a sans title.");
   push(" */");
-  push("export const type = {");
-  for (const [role, spec] of Object.entries(tokens.typography.scale)) {
-    const size = px(spec.size);
-    const parts = [
-      `family: '${spec.family}' as FontRole`,
-      `fontSize: ${size}`,
-      `lineHeight: ${Math.round(size * Number(spec.line) * 100) / 100}`,
-      `fontWeight: '${spec.weight}' as const`,
-    ];
-    if (spec.transform) parts.push(`textTransform: '${spec.transform}' as const`);
-    if (spec.tracking) {
-      const em = Number.parseFloat(spec.tracking);
-      parts.push(`letterSpacing: ${Math.round(size * em * 100) / 100}`);
+  const writeType = (name, scale, precision = 6) => {
+    const numeric = value => Number(value.toFixed(precision));
+    push(`export const ${name} = {`);
+    for (const [role, spec] of Object.entries(scale)) {
+      const size = px(spec.size);
+      const parts = [
+        `family: '${spec.family}' as FontRole`,
+        `fontSize: ${size}`,
+        `lineHeight: ${numeric(size * Number(spec.line))}`,
+        `fontWeight: '${spec.weight}' as const`,
+      ];
+      if (spec.transform) parts.push(`textTransform: '${spec.transform}' as const`);
+      if (spec.tracking) {
+        const em = Number.parseFloat(spec.tracking);
+        parts.push(`letterSpacing: ${numeric(size * em)}`);
+      }
+      if (spec.style) parts.push(`fontStyle: '${spec.style}' as const`);
+      push(`  ${camel(role)}: { ${parts.join(", ")} },`);
     }
-    if (spec.style) parts.push(`fontStyle: '${spec.style}' as const`);
-    push(`  ${camel(role)}: { ${parts.join(", ")} },`);
+    push("} as const;");
+    push("");
+  };
+
+  writeType("type", tokens.typography.mobile?.scale ?? tokens.typography.scale, 2);
+  push("/** Web desktop roles. Compact overrides follow; no native screen opts in implicitly. */");
+  writeType("webType", tokens.typography.scale);
+  const compact = tokens.typography.compact?.scale ?? {};
+  for (const role of Object.keys(compact)) {
+    if (!Object.hasOwn(tokens.typography.scale, role)) {
+      throw new Error(`typography.compact.scale has unknown role: ${role}`);
+    }
   }
-  push("} as const;");
-  push("");
+  writeType("webTypeCompact", Object.fromEntries(Object.entries(tokens.typography.scale)
+    .map(([role, spec]) => [role, { ...spec, ...compact[role] }])));
+  push("export type WebTypeRole = keyof typeof webType;");
 
   push("export type TypeRole = keyof typeof type;");
   push("");
@@ -449,6 +499,7 @@ export function build() {
   }
   return [
     [WEB_OUT, renderCss(tokens)],
+    [REFERENCE_OUT, renderCss(tokens)],
     [MOBILE_OUT, renderMobileTheme(tokens)],
   ];
 }

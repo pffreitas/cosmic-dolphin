@@ -1,0 +1,553 @@
+{
+  "runtime": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+  "scale": 1,
+  "fonts": [
+    {
+      "family": "Inter",
+      "weight": "400",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "400",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "400",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "400",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "400",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "400",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "400",
+      "status": "loaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "500",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "500",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "500",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "500",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "500",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "500",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "500",
+      "status": "loaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "600",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "600",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "600",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "600",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "600",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "600",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "600",
+      "status": "loaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "700",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "700",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "700",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "700",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "700",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "700",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter",
+      "weight": "700",
+      "status": "unloaded"
+    },
+    {
+      "family": "Inter Fallback",
+      "weight": "normal",
+      "status": "unloaded"
+    },
+    {
+      "family": "Source Serif 4",
+      "weight": "200 900",
+      "status": "unloaded"
+    },
+    {
+      "family": "Source Serif 4",
+      "weight": "200 900",
+      "status": "unloaded"
+    },
+    {
+      "family": "Source Serif 4",
+      "weight": "200 900",
+      "status": "unloaded"
+    },
+    {
+      "family": "Source Serif 4",
+      "weight": "200 900",
+      "status": "unloaded"
+    },
+    {
+      "family": "Source Serif 4",
+      "weight": "200 900",
+      "status": "unloaded"
+    },
+    {
+      "family": "Source Serif 4",
+      "weight": "200 900",
+      "status": "unloaded"
+    },
+    {
+      "family": "Source Serif 4",
+      "weight": "200 900",
+      "status": "unloaded"
+    },
+    {
+      "family": "Source Serif 4",
+      "weight": "200 900",
+      "status": "unloaded"
+    },
+    {
+      "family": "Source Serif 4",
+      "weight": "200 900",
+      "status": "unloaded"
+    },
+    {
+      "family": "Source Serif 4",
+      "weight": "200 900",
+      "status": "unloaded"
+    },
+    {
+      "family": "Source Serif 4",
+      "weight": "200 900",
+      "status": "unloaded"
+    },
+    {
+      "family": "Source Serif 4",
+      "weight": "200 900",
+      "status": "loaded"
+    },
+    {
+      "family": "Source Serif 4 Fallback",
+      "weight": "normal",
+      "status": "unloaded"
+    },
+    {
+      "family": "__nextjs-Geist",
+      "weight": "400 600",
+      "status": "unloaded"
+    },
+    {
+      "family": "__nextjs-Geist Mono",
+      "weight": "400 600",
+      "status": "unloaded"
+    },
+    {
+      "family": "__nextjs-Geist",
+      "weight": "400 600",
+      "status": "unloaded"
+    },
+    {
+      "family": "__nextjs-Geist Mono",
+      "weight": "400 600",
+      "status": "unloaded"
+    }
+  ],
+  "elements": [
+    {
+      "tag": "NAV",
+      "text": "HomeExploreSearch",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "font": ""
+    },
+    {
+      "tag": "NAV",
+      "text": "LibraryAll saves24Inbox3Read later12Archive0",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "font": ""
+    },
+    {
+      "tag": "NAV",
+      "text": "CollectionsCollections appear here as Cosmic finds grou",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "font": ""
+    },
+    {
+      "tag": "P",
+      "text": "Collections appear here as Cosmic finds groupings worth",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "font": ""
+    },
+    {
+      "tag": "HEADER",
+      "text": "Paste a link to save it, or search your library⌘K",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 402,
+        "height": 56,
+        "top": 0,
+        "right": 402,
+        "bottom": 56,
+        "left": 0
+      },
+      "font": ""
+    },
+    {
+      "tag": "P",
+      "text": "Thursday, November 26",
+      "bounds": {
+        "x": 16,
+        "y": 96,
+        "width": 369.765625,
+        "height": 14,
+        "top": 96,
+        "right": 385.765625,
+        "bottom": 110,
+        "left": 16
+      },
+      "font": ""
+    },
+    {
+      "tag": "H1",
+      "text": "Good evening, Paulo",
+      "bounds": {
+        "x": 16,
+        "y": 116,
+        "width": 369.765625,
+        "height": 31.359375,
+        "top": 116,
+        "right": 385.765625,
+        "bottom": 147.359375,
+        "left": 16
+      },
+      "font": ""
+    },
+    {
+      "tag": "P",
+      "text": "Ranked for what you're likely to finish · updated 4 min",
+      "bounds": {
+        "x": 16,
+        "y": 153.359375,
+        "width": 369.765625,
+        "height": 20.25,
+        "top": 153.359375,
+        "right": 385.765625,
+        "bottom": 173.609375,
+        "left": 16
+      },
+      "font": ""
+    },
+    {
+      "tag": "H2",
+      "text": "Pick up where you left off",
+      "bounds": {
+        "x": 16,
+        "y": 255.609375,
+        "width": 370,
+        "height": 25,
+        "top": 255.609375,
+        "right": 386,
+        "bottom": 280.609375,
+        "left": 16
+      },
+      "font": ""
+    },
+    {
+      "tag": "ARTICLE",
+      "text": "MOMaya OkaforsharedEevery.to2d ago·Why this appearedIt ",
+      "bounds": {
+        "x": 16,
+        "y": 439.984375,
+        "width": 370,
+        "height": 323.71875,
+        "top": 439.984375,
+        "right": 386,
+        "bottom": 763.703125,
+        "left": 16
+      },
+      "font": ""
+    },
+    {
+      "tag": "H2",
+      "text": "The Bottleneck Was Never Retrieval",
+      "bounds": {
+        "x": 16,
+        "y": 507.984375,
+        "width": 370,
+        "height": 62.71875,
+        "top": 507.984375,
+        "right": 386,
+        "bottom": 570.703125,
+        "left": 16
+      },
+      "font": ""
+    },
+    {
+      "tag": "P",
+      "text": "Agents don't fail because they can't find the right doc",
+      "bounds": {
+        "x": 16,
+        "y": 584.703125,
+        "width": 370,
+        "height": 99,
+        "top": 584.703125,
+        "right": 386,
+        "bottom": 683.703125,
+        "left": 16
+      },
+      "font": ""
+    },
+    {
+      "tag": "H2",
+      "text": "More for you",
+      "bounds": {
+        "x": 16,
+        "y": 787.703125,
+        "width": 370,
+        "height": 17,
+        "top": 787.703125,
+        "right": 386,
+        "bottom": 804.703125,
+        "left": 16
+      },
+      "font": ""
+    },
+    {
+      "tag": "ARTICLE",
+      "text": "Sstratechery.comyou saved this5d ago·Why this appearedY",
+      "bounds": {
+        "x": 4,
+        "y": 804.703125,
+        "width": 394,
+        "height": 245.53125,
+        "top": 804.703125,
+        "right": 398,
+        "bottom": 1050.234375,
+        "left": 4
+      },
+      "font": ""
+    },
+    {
+      "tag": "P",
+      "text": "Retrieval quality has a price curve, and most teams are",
+      "bounds": {
+        "x": 16,
+        "y": 917.390625,
+        "width": 370,
+        "height": 41.84375,
+        "top": 917.390625,
+        "right": 386,
+        "bottom": 959.234375,
+        "left": 16
+      },
+      "font": ""
+    },
+    {
+      "tag": "P",
+      "text": "That's everything for now.",
+      "bounds": {
+        "x": 16,
+        "y": 1050.234375,
+        "width": 370,
+        "height": 42.75,
+        "top": 1050.234375,
+        "right": 386,
+        "bottom": 1092.984375,
+        "left": 16
+      },
+      "font": ""
+    },
+    {
+      "tag": "H2",
+      "text": "Your topics this week",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "font": ""
+    },
+    {
+      "tag": "P",
+      "text": "Topics appear once the pipeline has tagged a few saves.",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "font": ""
+    },
+    {
+      "tag": "H2",
+      "text": "People you follow",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "font": ""
+    },
+    {
+      "tag": "P",
+      "text": "You're not following anyone yet. Explore is where you f",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "font": ""
+    },
+    {
+      "tag": "NAV",
+      "text": "HomeLibrarySaveSearchYou",
+      "bounds": {
+        "x": 0,
+        "y": 724,
+        "width": 402,
+        "height": 54,
+        "top": 724,
+        "right": 402,
+        "bottom": 778,
+        "left": 0
+      },
+      "font": ""
+    }
+  ]
+}

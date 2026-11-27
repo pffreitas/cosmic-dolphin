@@ -2,6 +2,7 @@ import React from "react";
 import { act, render, fireEvent, waitFor } from "@testing-library/react-native";
 import { AccessibilityInfo, Alert } from "react-native";
 import BookmarkDetailScreen from "../[id]";
+import { MobileAPI } from "@/lib/mobile-api";
 import { BookmarksAPI } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -10,16 +11,30 @@ import {
   removeCachedBookmark,
 } from "@/lib/bookmark-cache";
 
+jest.mock("@/components/web-bookmark/Frame", () => ({
+  DetailFrame: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "123" }),
   useRouter: () => ({ back: jest.fn() }),
-  useFocusEffect: (effect: () => void) => require("react").useEffect(effect, [effect]),
+  useFocusEffect: (effect: () => void) =>
+    require("react").useEffect(effect, [effect]),
 }));
 
-jest.mock("@/lib/mobile-api", () => ({ MobileAPI: {
-  picks: jest.fn(async () => ({ items: [] })),
-  content: jest.fn(async () => ({ blocks: [], wordCount: 0, source: "extracted" })),
-} }));
+jest.mock("@/lib/mobile-api", () => ({
+  MobileAPI: {
+    bookmark: jest.fn(),
+    progress: jest.fn(async () => null),
+    saveProgress: jest.fn(async () => ({})),
+    picks: jest.fn(async () => ({ items: [] })),
+    comments: jest.fn(async () => ({ comments: [] })),
+    content: jest.fn(async () => ({
+      blocks: [],
+      wordCount: 0,
+      source: "extracted",
+    })),
+  },
+}));
 
 jest.mock("@/lib/api", () => ({
   BookmarksAPI: {
@@ -92,8 +107,24 @@ describe("BookmarkDetailScreen Like Functionality", () => {
     jest.restoreAllMocks();
   });
 
+  it("renders the saved bookmark as the web's continuous brief and rich reader, rather than the Save form or old mode tabs", async () => {
+    (MobileAPI.bookmark as jest.Mock).mockResolvedValue({
+      ...mockBookmark,
+      cosmicBriefSummary: "The short summary",
+      cosmicSummary:
+        "## Article reader sentinel\n\nFull saved article paragraph.",
+    });
+    const app = render(<BookmarkDetailScreen />);
+    await app.findByText("Test Bookmark");
+    expect(app.getByText(/Article reader sentinel/)).toBeTruthy();
+    expect(app.queryAllByRole("tab")).toEqual([]);
+    expect(app.getByRole("button", { name: "Mark as read" })).toBeTruthy();
+    expect(app.queryByText("Move to topic")).toBeNull();
+    expect(app.queryByRole("button", { name: "Mark done" })).toBeNull();
+  });
+
   it("renders like button with correct count", async () => {
-    (BookmarksAPI.findById as jest.Mock).mockResolvedValue(mockBookmark);
+    (MobileAPI.bookmark as jest.Mock).mockResolvedValue(mockBookmark);
 
     const { getByText, getByTestId } = render(<BookmarkDetailScreen />);
 
@@ -104,7 +135,7 @@ describe("BookmarkDetailScreen Like Functionality", () => {
   });
 
   it("caches online bookmark details in the background", async () => {
-    (BookmarksAPI.findById as jest.Mock).mockResolvedValue(mockBookmark);
+    (MobileAPI.bookmark as jest.Mock).mockResolvedValue(mockBookmark);
 
     const { getByText } = render(<BookmarkDetailScreen />);
 
@@ -120,7 +151,7 @@ describe("BookmarkDetailScreen Like Functionality", () => {
       ...mockBookmark,
       title: "Offline Bookmark",
     };
-    (BookmarksAPI.findById as jest.Mock).mockRejectedValue(
+    (MobileAPI.bookmark as jest.Mock).mockRejectedValue(
       new Error("Network error"),
     );
     (getCachedBookmark as jest.Mock).mockResolvedValue(cachedBookmark);
@@ -136,7 +167,7 @@ describe("BookmarkDetailScreen Like Functionality", () => {
     const authError = Object.assign(new Error("HTTP error! status: 401"), {
       status: 401,
     });
-    (BookmarksAPI.findById as jest.Mock).mockRejectedValue(authError);
+    (MobileAPI.bookmark as jest.Mock).mockRejectedValue(authError);
     (getCachedBookmark as jest.Mock).mockResolvedValue({
       ...mockBookmark,
       title: "Offline Bookmark",
@@ -152,7 +183,7 @@ describe("BookmarkDetailScreen Like Functionality", () => {
   });
 
   it("removes cached details when the bookmark no longer exists online", async () => {
-    (BookmarksAPI.findById as jest.Mock).mockResolvedValue(null);
+    (MobileAPI.bookmark as jest.Mock).mockResolvedValue(null);
 
     const { getByText } = render(<BookmarkDetailScreen />);
 
@@ -162,7 +193,7 @@ describe("BookmarkDetailScreen Like Functionality", () => {
   });
 
   it("optimistically increments like count and calls like API", async () => {
-    (BookmarksAPI.findById as jest.Mock).mockResolvedValue(mockBookmark);
+    (MobileAPI.bookmark as jest.Mock).mockResolvedValue(mockBookmark);
     (BookmarksAPI.like as jest.Mock).mockResolvedValue({
       likeCount: 6,
       isLikedByCurrentUser: true,
@@ -178,14 +209,14 @@ describe("BookmarkDetailScreen Like Functionality", () => {
     });
 
     expect(getByText("6")).toBeTruthy();
-    expect(BookmarksAPI.like).toHaveBeenCalledWith("123");
+    expect(BookmarksAPI.like).toHaveBeenCalledWith("123", "user-1");
 
     // Make sure unlike is not called
     expect(BookmarksAPI.unlike).not.toHaveBeenCalled();
   });
 
   it("optimistically decrements like count and calls unlike API when already liked", async () => {
-    (BookmarksAPI.findById as jest.Mock).mockResolvedValue(mockLikedBookmark);
+    (MobileAPI.bookmark as jest.Mock).mockResolvedValue(mockLikedBookmark);
     (BookmarksAPI.unlike as jest.Mock).mockResolvedValue({
       likeCount: 5,
       isLikedByCurrentUser: false,
@@ -201,11 +232,11 @@ describe("BookmarkDetailScreen Like Functionality", () => {
     });
 
     expect(getByText("5")).toBeTruthy();
-    expect(BookmarksAPI.unlike).toHaveBeenCalledWith("123");
+    expect(BookmarksAPI.unlike).toHaveBeenCalledWith("123", "user-1");
   });
 
   it("reverts like state and shows alert when API call fails", async () => {
-    (BookmarksAPI.findById as jest.Mock).mockResolvedValue(mockBookmark);
+    (MobileAPI.bookmark as jest.Mock).mockResolvedValue(mockBookmark);
     (BookmarksAPI.like as jest.Mock).mockRejectedValue(
       new Error("Network error"),
     );
@@ -230,7 +261,7 @@ describe("BookmarkDetailScreen Like Functionality", () => {
     });
   });
   it("requires an explicit publish action before creating a public link", async () => {
-    (BookmarksAPI.findById as jest.Mock).mockResolvedValue(mockBookmark);
+    (MobileAPI.bookmark as jest.Mock).mockResolvedValue(mockBookmark);
     (BookmarksAPI.share as jest.Mock).mockResolvedValue({
       isPublic: true,
       shareUrl: "https://example.com/shared",
@@ -240,7 +271,9 @@ describe("BookmarkDetailScreen Like Functionality", () => {
     fireEvent.press(view.getByLabelText("Share"));
     expect(BookmarksAPI.share).not.toHaveBeenCalled();
     fireEvent.press(view.getByText("Make public & create link"));
-    await waitFor(() => expect(BookmarksAPI.share).toHaveBeenCalledWith("123"));
+    await waitFor(() =>
+      expect(BookmarksAPI.share).toHaveBeenCalledWith("123", "user-1"),
+    );
     expect(view.getByText("Copy public link")).toBeTruthy();
   });
 });

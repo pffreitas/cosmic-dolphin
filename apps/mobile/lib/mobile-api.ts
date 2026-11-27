@@ -24,7 +24,7 @@ import {
 } from "@cosmic-dolphin/api-client";
 import { saveRequest } from "./save-request";
 import { supabase } from "./supabase";
-import { cacheBookmarksInBackground } from "./bookmark-cache";
+import { cacheBookmarksInBackground, removeCachedBookmark } from "./bookmark-cache";
 import type { Bookmark } from "./api";
 
 export async function configuration(expectedUserId?: string) {
@@ -57,6 +57,24 @@ function rememberOwnedBookmark(bookmark: ContractBookmark, userId?: string) {
   return rememberBookmark(bookmark);
 }
 export const MobileAPI = {
+  async bookmark(id: string, userId?: string, signal?: AbortSignal) {
+    if (!userId) throw { response: new Response(null, { status: 401 }) };
+    const result = await new BookmarksApi(
+      await configuration(userId),
+    ).bookmarksFindById({ id }, { signal });
+    if (result.userId !== userId)
+      throw { response: new Response(null, { status: 401 }) };
+    // The generated model normalizes wire metadata (site_name/article_author).
+    // The route caches only after its request/owner epoch is still current.
+    return nativeBookmark(result);
+  },
+  async preview(url: string, signal?: AbortSignal, userId?: string) {
+    return new BookmarksApi(await configuration(userId)).bookmarksPreview({ previewRequest: { url } }, { signal });
+  },
+  async like(id: string, liked: boolean, userId: string) {
+    const client = new BookmarksApi(await configuration(userId));
+    return liked ? client.bookmarksLike({ id }) : client.bookmarksUnlike({ id });
+  },
   async sharedBookmark(slug: string, signal?: AbortSignal) {
     const bookmark = await new SharedBookmarksApi(await configuration()).sharedBookmarksFindBySlug({ slug }, { signal });
     // Public responses never populate an account's private offline cache.
@@ -88,6 +106,13 @@ export const MobileAPI = {
     if (!("bookmark" in result) || !result.bookmark?.id) throw new Error("Expected owner bookmark response");
     return { ...result, bookmark: rememberOwnedBookmark(result.bookmark, userId) };
   },
+  async remove(id: string, userId: string, signal?: AbortSignal) {
+    await new BookmarksApi(await configuration(userId)).bookmarksRemove(
+      { id },
+      { signal },
+    );
+    await removeCachedBookmark(userId, id);
+  },
   async update(id: string, params: UpdateBookmarkRequest, signal?: AbortSignal, userId?: string) {
     const client = new BookmarksApi(await configuration(userId));
     return rememberOwnedBookmark(await saveRequest(requestSignal => client.bookmarksUpdate({ id, updateBookmarkRequest: params }, { signal: requestSignal }), signal), userId);
@@ -96,11 +121,11 @@ export const MobileAPI = {
     const result = await new BookmarksApi(await configuration(userId)).bookmarksGetProcessingTimeline({ id }, { signal });
     return { ...result, bookmark: rememberOwnedBookmark(result.bookmark, userId) };
   },
-  async comments(id: string) {
-    return new CommentsApi(await configuration()).bookmarkCommentsList({ id });
+  async comments(id: string, userId?: string) {
+    return new CommentsApi(await configuration(userId)).bookmarkCommentsList({ id });
   },
-  async comment(id: string, body: string) {
-    return new CommentsApi(await configuration()).bookmarkCommentsCreate({
+  async comment(id: string, body: string, userId?: string) {
+    return new CommentsApi(await configuration(userId)).bookmarkCommentsCreate({
       id,
       createCommentRequest: { body },
     });
@@ -143,6 +168,13 @@ export const MobileAPI = {
   },
   async digest(id: string) {
     return new DigestsApi(await configuration()).digestsGet({ id });
+  },
+  async digestLike(id: string, liked: boolean, userId: string) {
+    const client = new DigestsApi(await configuration(userId));
+    return liked ? client.digestsLike({ id }) : client.digestsUnlike({ id });
+  },
+  async digestShare(id: string, userId: string) {
+    return new DigestsApi(await configuration(userId)).digestsShare({ id });
   },
   async resume() {
     return new ReadingApi(await configuration()).readingContinueReading({
@@ -216,13 +248,20 @@ export const MobileAPI = {
   async removeHighlight(id: string) {
     return new ReadingApi(await configuration()).highlightsRemove({ id });
   },
-  async progress(id: string) {
+  async progress(id: string, userId?: string) {
     return (
-      await new ReadingApi(await configuration()).readingGetProgress({ id })
+      await new ReadingApi(await configuration(userId)).readingGetProgress({
+        id,
+      })
     ).progress;
   },
-  async saveProgress(id: string, percent: number, scrollOffset: number) {
-    return new ReadingApi(await configuration()).readingSaveProgress({
+  async saveProgress(
+    id: string,
+    percent: number,
+    scrollOffset: number,
+    userId?: string,
+  ) {
+    return new ReadingApi(await configuration(userId)).readingSaveProgress({
       id,
       saveReadingProgressRequest: { percent, scrollOffset },
     });

@@ -7,9 +7,12 @@ import { BrandSignature } from '@/components/BrandMark';
 import { renderRouter, screen } from 'expo-router/testing-library';
 import TabLayout from '@/app/(tabs)/_layout';
 import { TopBar, TopBarAction } from '@/components/TopBar';
-import { colors, radius, space } from '@/constants/theme';
+import { colors, webColors, radius, space } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 let mockAppearance: 'light' | 'dark' = 'light';
+jest.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'reader' } }) }));
+jest.mock('@/contexts/CaptureContext', () => ({ useCaptures: () => ({ captures: [], save: jest.fn() }) }));
+jest.mock('@/lib/mobile-api', () => ({ MobileAPI: { collections: jest.fn(async () => []) } }));
 jest.mock('@/contexts/PreferencesContext', () => ({ usePreferences: () => ({ appearance: mockAppearance }) }));
 beforeEach(() => { jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true); });
 afterEach(() => jest.restoreAllMocks());
@@ -85,9 +88,9 @@ it.each(['light', 'dark'] as const)('%s destination labels cap at 1.3x and keep 
   renderRouter({ '(tabs)/_layout': TabLayout, '(tabs)/index': () => null, '(tabs)/capture': () => null, '(tabs)/library': () => null, '(tabs)/profile': () => null, '(tabs)/explore': () => null });
   for (const name of ['Home', 'Save', 'Library']) {
     expect(screen.getByText(name).props.maxFontSizeMultiplier).toBe(1.3);
-    const target = screen.getByLabelText(new RegExp(`^${name}, tab,`));
+    const target = screen.getByLabelText(name);
     fireEvent(target, 'focus');
-    expect(StyleSheet.flatten(target.props.style).outlineColor).toBe(colors[mode].focus);
+    expect(StyleSheet.flatten(target.props.style).outlineColor).toBe(webColors[mode].focus);
     expect(StyleSheet.flatten(target.props.style).outlineWidth).toBe(2);
   }
 });

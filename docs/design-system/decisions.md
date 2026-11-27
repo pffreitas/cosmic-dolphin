@@ -2,7 +2,7 @@
 
 The 20 product decisions the Cosmic Dolphin design system is derived from, captured during the
 design-direction interview. These are the *why* behind every rule in `README.md` and every token in
-`tokens/`. Revisit this file before proposing a change to the system — if a proposal contradicts a
+`tokens.json`. Revisit this file before proposing a change to the system — if a proposal contradicts a
 decision here, the decision has to be reopened first.
 
 | # | Question | Decision |
@@ -27,6 +27,12 @@ decision here, the decision has to be reopened first.
 | 18 | How do comments appear? | **Compact action row plus expandable conversation.** Never a full thread inline in the feed. |
 | 19 | Source trust and provenance? | **Always visible, compact, inspectable.** Source domain, author/profile, saved/shared context, and an expandable "why this appeared". A system pattern, not one-off copy. |
 | 20 | AI processing and loading states? | **Quiet staged progress.** A pasted link becomes a usable pending row immediately, then shows subtle "Extracting", "Summarising", "Filing" steps. No big spinners. |
+
+## Current authority
+
+As of 2026-11-26 the user designated current web as the source of truth for cross-platform
+replication. The interview below is historical rationale, not authority to replace current web
+measurements or behavior. See [parity.md](./parity.md).
 
 ## Revisions
 

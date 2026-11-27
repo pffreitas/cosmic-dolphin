@@ -1,7 +1,9 @@
 # Pages
 
-Route-by-route composition. Patterns are fixed; how a page arranges them is not — this document is
-the intended arrangement, not a cage. Every page must ship all of its listed states.
+Route-by-route composition observed in web at `4c8d362`. Replication preserves these arrangements
+and the reusable [patterns](./patterns.md), including caller overrides. State requirements are not
+proof of state coverage: [inventory](./inventory.md) and the historical audit distinguish implemented
+states from gaps. Native product scope remains in its approved feature spec.
 
 Routes below map to `apps/web/app/`.
 
@@ -19,7 +21,7 @@ now* before the next one is asked.
 **Layout** — app shell; then a single 1100px column, holding, in order:
 
 1. **Edition header** — a 13px/500 `--cd-fg-tertiary` kicker with the reader's date ("Friday, 2
-   October"), a 34px serif greeting by time of day ("Good morning, Paulo"), and one `body-sm` line saying how the
+   October"), a 34px serif greeting (28px at ≤640px) by time of day ("Good morning, Paulo"), and one `body-sm` line saying how the
    scope is ordered plus "updated *n* min ago". The scope segmented control (For you / Following /
    Unread) sits on the right, bottom-aligned. Date, greeting and the updated time are the reader's
    clock, so they render after mount.
@@ -33,7 +35,7 @@ now* before the next one is asked.
 4. **The feed and its rail** — below a hairline, a grid of `minmax(0,720px) 260px`, 40px gap. The
    first ranked bookmark renders as the feed item's `lead` variant; digests stay callouts; every
    other bookmark is a `row`. Infinite scroll with a skeleton row as the sentinel; no pagination
-   controls. Below 900px the rail drops entirely; nothing in it is unique.
+   controls. At ≤900px the rail drops entirely; nothing in it is unique.
 
 **Rail** — Your topics this week (rows of topic · "*n* saves", linking into search) · People you
 follow (up to 5, with weekly save counts).
@@ -88,7 +90,7 @@ reading-progress hairline runs across the top of the viewport, tracking scroll p
 
 1. **Hero** — collection breadcrumb · `title-1` title (44px) · provenance row (domain, author, saved time,
    reading time) · action row (**Mark as read** primary, Open original, Share, overflow).
-2. **Cosmic brief** — an AI callout: summary paragraph, `KEY POINTS` label, dotted key points, and a
+2. **Cosmic brief** — an AI callout: summary paragraph, sentence-case `Key points` label, dotted key points, and a
    `.ai-foot` with the source and a **Regenerate** ghost button.
 3. **Reader** — extracted content in the `reader` role (18px/1.72) on the full 680px column, so the
    brief and the prose share one right edge, with user highlights, pull
@@ -116,9 +118,13 @@ Must render server-side with complete Open Graph tags — this route is how the 
 
 ## Explore · `/explore`
 
-Composition: app shell and a page header ("Explore"), then a topic segmented control, then the same
-feed items ranked for discovery rather than personal usefulness, with a rail of trending
-collections and people to follow. Empty state until the social graph is populated.
+1100px outer column, PageHeader with 24px bottom padding; below, flex layout gap 40 with feed
+max-width 680 and rail (hidden at ≤900). Topic control is inside the feed column. Everything plus
+four leading topics; append an outside selected topic. Feed uses article/video panels with 12px
+gaps; no personalized feedback menu, no cached-ranking updated time, no first-save hero. Discovery
+rail is `components/explore/explore-rail.tsx`; its content is not a generic “trending” promise.
+Initial/next-page error panel keeps the feed, with Retry; empty topic and empty public graph have
+distinct copy; infinite-scroll sentinel uses FeedItemSkeleton. Comment drawer mounts on demand.
 
 ---
 
@@ -128,21 +134,34 @@ A full route as well as a command-palette surface. A page header ("Search"), the
 pinned under the top bar (`sticky top-14`); results as
 library rows with the matched span in `--cd-hl-bg`; filters for collection, tag, read status, and
 date as a segmented control plus popovers. Semantic hits carry a `Related` neutral tag to explain
-why a row without a literal match is present.
+why a row without a literal match is present. Outer width 960. Filter controls are read-status
+segments plus collection/tag/date Selects (not generic popovers). Query input is 48px tall/15px,
+left padding 40 for icon; filter Selects are 32px. The sticky filter area wraps and preserves URL
+state. Result rows are the shared SearchRow composite, including provenance and matched snippets.
+
+An Answer callout appears above results: independent skeleton/streaming lifecycle, all sources
+linked, no answer rendered without sources. The answer uses the whole library while result filters
+narrow rows. Answer failure does not discard results. See patterns.md § Search result and sourced
+answer for its exact typography, cursor and suppression rules.
 
 ---
 
 ## Profile · `/my/profile`
 
-Avatar, name, join date, and counts (saves, collections, followers, following). Tabs for Saves
-(public only), Collections, and Likes. Someone else's profile is the same page with a **Follow**
-primary button.
+Same ProfileView for `/my/profile` and `/u/[handle]`, public data only. Centered width 720,
+section gap 32, bottom padding 32. Header gap 24; 72px avatar, name serif 30px/600 at 1.15 with
+-.022em tracking; metadata 13.5px/1.4. Identity gap 20. Counts: public saves, collections, followers,
+following (15px/600 value, 13px label; gap 6; count-group gap 20).
+Tabs are border-underlined links for public Saves, Collections, Likes, **not** pill segments.
+Saves/Likes reuse LibraryRow; collection rows use 16px serif titles and 14px vertical padding.
+Own profile slots Edit profile/Sign out; another profile slots Follow. Empty copy varies by owner,
+tab and blocked state; do not insert private fields or private saved content into the public model.
 
 ---
 
 ## Landing · `/`
 
-Signed out only. Signed-in readers go straight to Home.
+Signed out only. Signed-in readers go straight to Home. Landing is forced light by ThemeProvider; changing its theme does not overwrite the stored preference for other routes.
 
 “Close the tabs. Keep the ideas.” leads into three chapters built around the same source.
 A Meshy reinterpretation of Earthrise opens the page, with a wide desktop composition and a tighter
@@ -205,4 +224,18 @@ primary pill submit, provider buttons as secondary; a quiet copyright at the foo
 showcase panel on the right on `--cd-bg-subtle` with one aura, holding a Cosmic brief vignette and
 one sentence on what the account is for. `/protected/reset-password` uses the form column alone.
 
-Errors render inline under the offending field via `FormMessage`, never as a page-level banner.
+Errors use the current FormMessage placement in each form. Routes use the shared AuthShell,
+brand and field/button primitives; provider and password-reset behavior remain platform adapters.
+Marketing/auth are not covered by the four `/dev/*` fixtures: validate their actual routes.
+
+## Frame and route state boundaries
+
+`components/app-chrome.tsx` picks signed-in AppShell, signed-out PublicHeader, or bare framing.
+PublicHeader: sticky top/z30, 64px row, max-width 1200, padding 16 horizontal (24 from 640),
+brand left, account buttons right with 8px gap. Brand collapses to a 44px tile below 640.
+Landing owns a separate marketing frame; do not apply app page typography to its sans hero.
+
+The historical audit records no route-level loading boundary on detail/shared/profile and no
+`error.tsx`; verify the current route before promising one. In-component skeletons and errors are
+not equivalent to route bootstrap handling. See inventory for source owners and parity.md for
+matched captures and known limits.

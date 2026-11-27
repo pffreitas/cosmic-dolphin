@@ -1,0 +1,121 @@
+{
+  "source": "Source Serif 4, web Latin subsets, SIL OFL (LICENSES.txt)",
+  "toolchain": {
+    "fonttools": "4.60.1",
+    "brotli": "1.1.0"
+  },
+  "instances": [
+    {
+      "file": "CosmicProse17.ttf",
+      "weightAxis": 400,
+      "opticalSize": 17,
+      "italic": false,
+      "sha256": "b81c733094c8757771bfe3782b668e0437d551a149e3144d7fe393508e09b7d4",
+      "sourceSha256": "2a24bad466f09b88b8e9cbc488bf774117c912e66374c57bf4716855849143f8"
+    },
+    {
+      "file": "CosmicProse23.ttf",
+      "weightAxis": 400,
+      "opticalSize": 23,
+      "italic": false,
+      "sha256": "c066cf1b31ec46b83abdb97adbda6224db80ae0d3831155169ed6433d697d342",
+      "sourceSha256": "2a24bad466f09b88b8e9cbc488bf774117c912e66374c57bf4716855849143f8"
+    },
+    {
+      "file": "CosmicItalic17.ttf",
+      "weightAxis": 400,
+      "opticalSize": 17,
+      "italic": true,
+      "sha256": "1683bfad26945f3c4ed18d93506f520835fd6e9f4d3daadcab6d1b797832c376",
+      "sourceSha256": "011e0ca2bd14c5dff94aa4c61121b8d057b95dbdbb2af621b175fed1059cfd5e"
+    },
+    {
+      "file": "CosmicItalic23.ttf",
+      "weightAxis": 400,
+      "opticalSize": 23,
+      "italic": true,
+      "sha256": "3badf58ec71e82c57fe60cbceea67c81c61a86a42b90a0bf8d7e8c4d77539ab7",
+      "sourceSha256": "011e0ca2bd14c5dff94aa4c61121b8d057b95dbdbb2af621b175fed1059cfd5e"
+    },
+    {
+      "file": "CosmicItalic21.ttf",
+      "weightAxis": 400,
+      "opticalSize": 21,
+      "italic": true,
+      "sha256": "53ddbef91383aff7deca158a5ac1ffd8d8b8f18a9eeed5f912093f8a22861faf",
+      "sourceSha256": "011e0ca2bd14c5dff94aa4c61121b8d057b95dbdbb2af621b175fed1059cfd5e"
+    },
+    {
+      "file": "CosmicItalic28.ttf",
+      "weightAxis": 400,
+      "opticalSize": 28,
+      "italic": true,
+      "sha256": "564c1355ad2babcf6ff2d428a93812307594a5b6459cb5e5f12edee448796d47",
+      "sourceSha256": "011e0ca2bd14c5dff94aa4c61121b8d057b95dbdbb2af621b175fed1059cfd5e"
+    },
+    {
+      "file": "CosmicBoldItalic17.ttf",
+      "weightAxis": 600,
+      "opticalSize": 17,
+      "italic": true,
+      "sha256": "7015c0660d6c16dd3c5e7be193dc35344c20510120cc9973d206f04102c27d91",
+      "sourceSha256": "011e0ca2bd14c5dff94aa4c61121b8d057b95dbdbb2af621b175fed1059cfd5e"
+    },
+    {
+      "file": "CosmicBoldItalic20.ttf",
+      "weightAxis": 600,
+      "opticalSize": 20,
+      "italic": true,
+      "sha256": "b870d58d100c154401cc87e3010d6b98f56cf9003f52953d67c575bd0c707006",
+      "sourceSha256": "011e0ca2bd14c5dff94aa4c61121b8d057b95dbdbb2af621b175fed1059cfd5e"
+    },
+    {
+      "file": "CosmicBoldItalic21.ttf",
+      "weightAxis": 600,
+      "opticalSize": 21,
+      "italic": true,
+      "sha256": "bd9e78fae98b14d30691b74ef224dfcd39f56a794b16af5457754e8e4481b69d",
+      "sourceSha256": "011e0ca2bd14c5dff94aa4c61121b8d057b95dbdbb2af621b175fed1059cfd5e"
+    },
+    {
+      "file": "CosmicBoldItalic23.ttf",
+      "weightAxis": 600,
+      "opticalSize": 23,
+      "italic": true,
+      "sha256": "f5f87b26869eae4cb0d8a5d4a7d13dffb0cb3d9f256ee6b310b9ac4965199ee2",
+      "sourceSha256": "011e0ca2bd14c5dff94aa4c61121b8d057b95dbdbb2af621b175fed1059cfd5e"
+    },
+    {
+      "file": "CosmicBoldItalic26.ttf",
+      "weightAxis": 600,
+      "opticalSize": 26,
+      "italic": true,
+      "sha256": "00debf163429389a54b32ac990504551c83940ffd92cc3dfc83671c1fbf6e3ca",
+      "sourceSha256": "011e0ca2bd14c5dff94aa4c61121b8d057b95dbdbb2af621b175fed1059cfd5e"
+    },
+    {
+      "file": "CosmicBoldItalic27.ttf",
+      "weightAxis": 600,
+      "opticalSize": 27,
+      "italic": true,
+      "sha256": "7e6c5a870c63dc9c85ac77c50caba740e7fcc13b9cbcf560a347bb861341b681",
+      "sourceSha256": "011e0ca2bd14c5dff94aa4c61121b8d057b95dbdbb2af621b175fed1059cfd5e"
+    },
+    {
+      "file": "CosmicBoldItalic28.ttf",
+      "weightAxis": 600,
+      "opticalSize": 28,
+      "italic": true,
+      "sha256": "82e157c4e3cad7593c3b34db7584d8b4f87e588d9d0c6b13ab9dba69599658f9",
+      "sourceSha256": "011e0ca2bd14c5dff94aa4c61121b8d057b95dbdbb2af621b175fed1059cfd5e"
+    },
+    {
+      "file": "CosmicBoldItalic35.ttf",
+      "weightAxis": 600,
+      "opticalSize": 35,
+      "italic": true,
+      "sha256": "d10f044d286b16f7c586bf6adaa65cc7cbfe59833aee293344a177ce4e36ba86",
+      "sourceSha256": "011e0ca2bd14c5dff94aa4c61121b8d057b95dbdbb2af621b175fed1059cfd5e"
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "now": "2026-11-27T12:00:00Z",
+  "bookmark": {
+    "id": "frontier-fixture",
+    "userId": "fixture-reader",
+    "title": "Frontier engineering",
+    "sourceUrl": "https://kiro.dev/blog/frontier-engineering/",
+    "createdAt": "2026-11-22T12:00:00Z",
+    "updatedAt": "2026-11-27T12:00:00Z",
+    "processingStatus": "completed",
+    "isPrivateLink": false,
+    "isPublic": true,
+    "likeCount": 0,
+    "commentCount": 0,
+    "isLikedByCurrentUser": false,
+    "metadata": {
+      "readingTime": 3,
+      "openGraph": {
+        "description": "Software development is dividing into those who simply upgrade their tools and those who fundamentally change how they work with AI agents. This guide reveals the disciplined practice of ‘frontier engineering’ — where you become an architect directing autonomous agents that write, test, and iterate code for hours. It’s not a quick fix; it requires weeks of investment but unlocks dramatic productivity gains and the ability to tackle previously out-of-scope work. If you’re using AI assistants but not shipping faster, this shows what to change."
+      }
+    },
+    "cosmicBriefSummary": "Software development is dividing into those who simply upgrade their tools and those who fundamentally change how they work with AI agents. This guide reveals the disciplined practice of ‘frontier engineering’ — where you become an architect directing autonomous agents that write, test, and iterate code for hours. It’s not a quick fix; it requires weeks of investment but unlocks dramatic productivity gains and the ability to tackle previously out-of-scope work. If you’re using AI assistants but not shipping faster, this shows what to change.",
+    "cosmicKeyPoints": [
+      "The developer’s role has evolved from directly building software to building the agent setups and environments that build the software.",
+      "Achieving massive productivity gains requires a significant upfront engineering investment, including learning new patterns and files.",
+      "Frontier engineering is a highly disciplined practice that requires one’s own attention, context-switching between multiple agents.",
+      "Once the initial intuition is developed, the compounding gains allow developers to take on work that was previously out of scope, such as unfamiliar codebases."
+    ],
+    "cosmicSummary": "## Frontier Engineering: Transitioning to Autonomous AI Agent Workflows\n\nSoftware development is undergoing a fundamental paradigm shift where developers transition from directly working on features to architecting and managing autonomous AI agents. This disciplined practice requires upfront engineering, investment in an initial understanding, trial and intuition building, ultimately leading to unprecedented, compounding productivity gains.\n\n## Key Points\n\n- The developer’s role has evolved from directly building software to building the agent setups and environments that build the software.\n\n- Achieving massive productivity gains requires a significant upfront engineering investment, including learning new patterns and files.\n\n- Frontier engineering is a highly disciplined practice that requires one’s own attention, context-switching between multiple agents.\n\n- Once the initial intuition is developed, the compounding gains allow developers to take on work that was previously out of scope, such as unfamiliar codebases.\n\n## Takeaways\n\n- **Expect an initial slowdown.** Transitioning to an agent-driven workflow requires weeks of investment; this is not an immediate productivity boost.\n- **Efficiency is not the same as lower attention.** AI agents demand context engineering and orchestration, beyond simply writing code.\n- **Automation is the ultimate skill.** The primary challenge shifts from manual work to managing the ecosystem of agents.\n\n## Practical Applications\n\n1. **Refactor for agent consumption.** Organize a codebase into documented steering files so agents have the feedback loops and clear boundaries they need to operate autonomously.\n2. **Design workflows for parallel delegation.** Break complex software features into smaller, well-scoped, independent tasks that can be assigned to multiple agents simultaneously.\n3. **Execute deferred engineering initiatives.** Use newly unlocked productivity to tackle architecture, documentation and testing that were previously outside the available time.\n\n## Follow-up Links\n\n- [Engineering workflow guide](https://example.com/workflow)\n- [The principles of frontier engineering](https://example.com/principles)\n\n## The Ten Principles of Frontier Engineering\n\n1. **You are the architect, not the typist.** Focus on high-level design and system structure rather than individual lines of code.\n2. **Maximize agent time, minimize your involvement.** Let AI do the heavy lifting of execution while you focus on strategy.\n3. **Build your codebase for agents.** Structure code, tests and documentation so agents can easily parse and modify it.\n4. **Give agents a fast feedback loop.** Ensure agents can quickly run tests and see the results of their code.\n5. **Execution is cheap. Direction is everything.** Value strategic decisions and context provided over raw execution output.\n6. **Treat code as disposable.** Be willing to throw away and rewrite code if it is faster than debugging agent-generated logic.\n7. **Hold AI output to human standards.** Do not accept subpar code just because it was generated by AI.\n8. **Trust the boundaries, not the agent.** Rely on well-defined system constraints, rules and checks rather than hoping the agent understands.\n9. **Use agents for everything.** Apply AI agents to documentation, testing, deployment scripts and other engineering tasks.\n10. **Continuously tune your agent setup.** Refine prompts, instructions, steering files and workflows as capabilities evolve.\n\n## The Paradigm Shift in Developer Workflow\n\n| Aspect | Traditional AI Coding Assistant | Frontier Engineering |\n| --- | --- | --- |\n| Developer role | Typist / code reviewer | Architect / agent manager |\n| Primary task | Writing and editing code directly | Building the setup that builds the code |\n| Execution | Human-driven, AI-assisted | AI-driven, human-directed |\n| Feedback loop | Manual testing and debugging | Automated, fast, agent-driven iteration |\n| Time horizon | Immediate, short-term gains | Upfront investment for long-term compounding gains |\n| Scope of work | Assigned features and bug fixes | Out-of-scope features, refactors, tooling |\n\n> A useful workflow keeps the latest intent, the feedback loop and the boundaries clear.\n\n```typescript\nconst result = await agent.run(task);\nawait verify(result);\n```\n",
+    "cosmicTags": [
+      "ai agents",
+      "developer-tools",
+      "productivity",
+      "vibe-coding",
+      "software-engineering"
+    ],
+    "collectionId": "software",
+    "collectionPath": [
+      {
+        "id": "technology",
+        "name": "Technology"
+      },
+      {
+        "id": "ai",
+        "name": "AI"
+      },
+      {
+        "id": "software",
+        "name": "Software Engineering"
+      }
+    ]
+  }
+}

@@ -1,0 +1,321 @@
+{
+  "firstRun": [
+    {
+      "method": "POST",
+      "path": "/api/v1/share-keys",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/share-keys",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/share-keys",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/share-keys",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks/continue-reading",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks/counts",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks/feed",
+      "scope": "for_you",
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/share-keys",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/collections",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks",
+      "scope": "all",
+      "readStatus": "all",
+      "collectionId": "typography"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks/continue-reading",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks/counts",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks/feed",
+      "scope": "for_you",
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/collections",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/collections",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks",
+      "scope": "inbox",
+      "readStatus": "all",
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks",
+      "scope": "inbox",
+      "readStatus": "all",
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks/continue-reading",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks/counts",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks/feed",
+      "scope": "for_you",
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks",
+      "scope": "inbox",
+      "readStatus": "all",
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/collections",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks",
+      "scope": "all",
+      "readStatus": "unread",
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks/continue-reading",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks/counts",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks/feed",
+      "scope": "for_you",
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/collections",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks",
+      "scope": "archive",
+      "readStatus": "all",
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks",
+      "scope": "archive",
+      "readStatus": "all",
+      "collectionId": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/share-keys",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/share-keys",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks/continue-reading",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks/counts",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/share-keys",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks/feed",
+      "scope": "for_you",
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/collections",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/profile",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/users/reader/saves",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    }
+  ],
+  "afterProfileFixtureCorrection": [
+    {
+      "method": "GET",
+      "path": "/api/v1/profile",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/users/reader/saves",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks/continue-reading",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks/counts",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookmarks/feed",
+      "scope": "for_you",
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/collections",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/share-keys",
+      "scope": null,
+      "readStatus": null,
+      "collectionId": null
+    }
+  ]
+}
