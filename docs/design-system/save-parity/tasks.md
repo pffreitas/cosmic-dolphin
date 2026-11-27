@@ -1,6 +1,7 @@
 # Native Save web parity · 2026-11-27
 
 - Outcome: **Save-a-link form delivered in iOS 1.0.0 (25), available in the existing internal TestFlight Beta group**. Signed app/extension verified; submission FINISHED; Apple VALID / IN_BETA_TESTING / unexpired; actual Beta membership confirmed. Final Save render/omnibox/duplicate simulator rechecks passed; unchanged mobile code retains 40 suites / 324 tests, 1 skipped.
+- Current shared binary: **iOS 1.0.0 (26)** includes this form and corrected saved detail. [Current binary receipt](../bookmark-detail-parity/testflight-evidence.json); this record retains the original form implementation/build-25 proof.
 - Next gate: physical/signed-session and spoken accessibility acceptance of build 25, including modal focus and existing sign-out/share-extension capabilities. No remaining binary-delivery gate.
 - Owner: this MacBook T3 thread completed delivery; next acceptance belongs to device QA/user. Blocker: none for delivery. Evidence limits remain explicit below.
 - Starting state: clean `feat/mobile-home-web-parity` at `bba8850a56a5900d1ea3cffda5cb2afa83cc38e0`, matching fetched origin. Base `origin/main` remains `671e2781e2f685804bf33bb06422bd1b92b05154`.

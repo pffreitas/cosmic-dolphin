@@ -1,8 +1,8 @@
 # Saved bookmark detail parity · 2026-11-27
 
-- Outcome: **actual saved bookmark detail migrated; corrected TestFlight delivery pending**. Continuous web composition, generated owner data, rich Markdown and account-bound progress are implemented. Two default simulator/web pairs were reviewed before final corrections; final whole-page/large-text/flow acceptance remains open. Build 25 migrated the create form, not this route.
-- Next gate: build/upload the corrected production binary and verify Apple + existing Beta membership; then final simulator/physical acceptance when device control is available.
-- Owner: this MacBook T3 thread for binary delivery; device QA for remaining acceptance. Blocker: T3 launch warned confirmation status unreadable; `alert get` and its advised `--debug` retry both returned `ALERT_NOT_FOUND` (2026-11-27 15:57 UTC). Device interaction stopped under the T3 rule. No renewed composition/release permission is required for this correction.
+- Outcome: **saved bookmark detail migrated and delivered in iOS 1.0.0 (26), available in the existing internal TestFlight Beta group**. Source `ff57248c`; production build + submission FINISHED; Apple VALID / IN_BETA_TESTING / unexpired; actual Beta membership verified. 338 tests pass. Final simulator/physical parity acceptance remains open.
+- Next gate: render the final source in default and larger Dynamic Type, verify the full reader/table/code/images/comments and real simulator flows; then physical signed-session/spoken accessibility acceptance. No remaining binary-delivery gate.
+- Owner: this MacBook T3 thread completed code/binary delivery; device QA/user owns remaining acceptance. Blocker: none for delivery. T3's advised `alert get` and `--debug` retry both returned `ALERT_NOT_FOUND` (2026-11-27 15:57 UTC), so device interaction stopped. No need to re-ask composition or release permission for this correction.
 - Starting state: clean pushed `feat/mobile-home-web-parity` at `fa3ddba7d8514a9677ccafe1850c4f9665ab3e65`. Original base `671e278`; fetched main is now `65bcf07a` (worker-only change). Inspect current source rather than assuming the older head remains current.
 - Scope correction: “bookmark save page” means **saved bookmark detail**, not the create form. Correct web order is hero/breadcrumb/provenance/actions → Cosmic brief → rich reader/images/tags → social row → inline comments. Topic button, Brief/Read/Original tabs and the persistent Later/Mark done footer are not the reference composition.
 - Preserve native genuine full-text access, highlights, note/filing/reading actions and account fences. Keep known reply/edit/delete/report controls out of scope. Semantic web tokens only; maintain the native project in place.
@@ -50,3 +50,15 @@ Production remote build number was 25 before this correction. Local EAS 27.11.0 
 ## Final code gate · 2026-11-27
 
 `bun install` completed without dependency changes. Mobile `tsc --noEmit`, lint (100 token-scanned files; 12 existing warnings, no errors), full Jest (**42 passed suites, 338 passed tests; 1 skipped suite/test**) and tokens:test (11 passed) succeeded. Web typecheck passed. No timeout changes or production data edits. Remaining device checks above are not waived or labelled complete.
+
+## Production artifact · 2026-11-27
+
+Source [ff57248c](https://github.com/pffreitas/cosmic-dolphin/commit/ff57248c88fbd4927720186499de302daaa331a7) is pushed. Local EAS production build finished, incrementing 25→26; 44 archived source/dependency/font files match the candidate and actual environment files were excluded. Both host and ShareExtension are 1.0.0 (26), iOS minimum 15.1, strict signed verification passed, Store profiles unexpired through 2027-01-22, get-task-allow false, group/keychain configuration correct. All 29 custom serif font hashes and production API/issuer were verified; fictional loopback configuration excluded.
+
+IPA SHA-256: `60177e90ffd3a59b88db5b41008fc114bb31db86a5d91628fd7a4c8d23774aba`. [Submission 97868c5d](https://expo.dev/accounts/cosmic-dolphin/projects/cosmic-dolphin/submissions/97868c5d-a1cd-4a22-96df-06e0eba760b0) scheduled once with auto TestFlight setup disabled. Submission FINISHED at 2026-11-27T17:10:53.892Z. Apple VALID / IN_BETA_TESTING / unexpired and actual internal Beta assignment are now verified; no repeated build or enlarged audience. Private raw receipts: `~/.cache/cosmic-dolphin-releases/bookmark-detail-20261127T170213Z`; [sanitized receipt](testflight-evidence.json). Shared Git ignorecase remains true; no shared Docker changes.
+
+## Final TestFlight receipt · 2026-11-27
+
+**iOS 1.0.0 (26) is available** in existing internal **Beta** (`2cec83b6-864f-41ef-9434-652ba953e18c`, all builds). Apple build `8330d335-029d-42fd-942d-efe62c8dab11`: VALID, IN_BETA_TESTING, unexpired. External state READY_FOR_BETA_SUBMISSION is not external approval. No group/tester expansion, PR, merge, backend deploy or public App Store release.
+
+[Apple TestFlight](https://appstoreconnect.apple.com/apps/6758127357/testflight/ios) · [submission](https://expo.dev/accounts/cosmic-dolphin/projects/cosmic-dolphin/submissions/97868c5d-a1cd-4a22-96df-06e0eba760b0) · [signed/Apple receipt](testflight-evidence.json). Code source remains pushed `ff57248c88fbd4927720186499de302daaa331a7`; later documentation does not change that artifact. Build 25 is historical Save-form delivery and the reported wrong-detail diagnosis; install 26 for this correction. Remaining device/physical gates above remain explicit.

@@ -1,0 +1,86 @@
+{
+  "ipaSHA256": "60177e90ffd3a59b88db5b41008fc114bb31db86a5d91628fd7a4c8d23774aba",
+  "sourceSHA": "ff57248c88fbd4927720186499de302daaa331a7",
+  "targets": [
+    {
+      "bundle": "com.cosmicdolphin.app",
+      "version": "1.0.0",
+      "build": "26",
+      "minimumOSVersion": "15.1",
+      "signatureVerified": true,
+      "appGroup": [
+        "group.com.cosmicdolphin.app"
+      ],
+      "keychainGroup": [
+        "DVYXX2PWV5.com.cosmicdolphin.shared"
+      ],
+      "getTaskAllow": false,
+      "profileExpiration": "2027-01-22 02:02:31"
+    },
+    {
+      "bundle": "com.cosmicdolphin.app.share-extension",
+      "version": "1.0.0",
+      "build": "26",
+      "minimumOSVersion": "15.1",
+      "signatureVerified": true,
+      "appGroup": [
+        "group.com.cosmicdolphin.app"
+      ],
+      "keychainGroup": [
+        "DVYXX2PWV5.com.cosmicdolphin.shared"
+      ],
+      "getTaskAllow": false,
+      "profileExpiration": "2027-01-22 02:02:31"
+    }
+  ],
+  "exportComplianceFalse": true,
+  "productionAPI": "https://api.cosmic-dolphin.com",
+  "productionIssuer": "https://qsqbcqkpqmkuywunxbut.supabase.co",
+  "fixtureEnvironmentExcluded": true,
+  "serifFontsVerified": 29,
+  "branch": "feat/mobile-home-web-parity",
+  "distribution": "STORE",
+  "productionBuild": "FINISHED",
+  "submission": "FINISHED",
+  "appleProcessing": "VALID",
+  "betaMembership": "VERIFIED",
+  "backend": {
+    "runId": 46023483758,
+    "head": "65bcf07afbe3d7a60bb2ddfe47caa3bd631454e6",
+    "conclusion": "success",
+    "deployPerformedByThisCorrection": false,
+    "linuxProofReusedFrom": "430ecb2f8cccaffc7d1074e5b9de9d15daa32bf8"
+  },
+  "nativeQA": {
+    "defaultStagePairs": "reviewed before final corrections",
+    "finalNativeRenders": "pending",
+    "largerDynamicType": "pending",
+    "realSimulatorFlows": "pending",
+    "blocker": "T3 ALERT_NOT_FOUND after advised --debug retry; device interaction stopped",
+    "physicalOrSpokenAccessibilityProof": false
+  },
+  "PRorMerge": false,
+  "audienceExpansion": false,
+  "submissionId": "97868c5d-a1cd-4a22-96df-06e0eba760b0",
+  "submissionUrl": "https://expo.dev/accounts/cosmic-dolphin/projects/cosmic-dolphin/submissions/97868c5d-a1cd-4a22-96df-06e0eba760b0",
+  "submissionCompletedAt": "2026-11-27T17:10:53.892Z",
+  "appleBuild": {
+    "id": "8330d335-029d-42fd-942d-efe62c8dab11",
+    "appVersion": "1.0.0",
+    "buildNumber": "26",
+    "processingState": "VALID",
+    "internalState": "IN_BETA_TESTING",
+    "externalState": "READY_FOR_BETA_SUBMISSION",
+    "uploadedDate": "2026-11-27T09:11:47-08:00",
+    "expired": false
+  },
+  "betaGroup": {
+    "id": "2cec83b6-864f-41ef-9434-652ba953e18c",
+    "name": "Beta",
+    "isInternalGroup": true,
+    "hasAccessToAllBuilds": true
+  },
+  "testFlightUrl": "https://appstoreconnect.apple.com/apps/6758127357/testflight/ios",
+  "verifiedAt": "2026-11-27T17:16:27.025615+00:00",
+  "observedAt": "2026-11-27T17:14:28.874337+00:00"
+}
