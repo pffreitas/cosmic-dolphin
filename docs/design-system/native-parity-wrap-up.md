@@ -53,8 +53,9 @@ or close another agent's claim. Acquire a fresh task-owned claim for the remaini
 
 Fresh frozen-lockfile installation and the complete `bun run apispec` pipeline passed.
 Mobile typecheck/lint passed (12 existing warnings); Jest passed **42 suites / 338 tests**
-with 1 skipped suite/test. Token-generation tests passed **11/11**. Mobile source remains
-byte-identical to signed build 26's `ff57248c`; the native production build/signature proof
+with 1 skipped suite/test. Token-generation tests passed **11/11**. Mobile application,
+dependency and font source remain unchanged from signed build 26's `ff57248c`; subsequent
+regression-harness changes do not change the signed artifact. The native build/signature proof
 is retained in the release receipt rather than issuing a redundant binary for documentation.
 
 Web lint, typecheck and production build passed. The first full Vitest run failed 2 contrast
@@ -64,6 +65,22 @@ image extremes in both themes; no palette or product UI change was required. Kee
 run in history rather than describing every integration check as passing on its first attempt.
 The repeated web lint/typecheck/production build and full Vitest gate passed: **22 files /
 417 tests**. PR-triggered CI remains the merge gate.
+
+The first Mobile PR gate on `5fc4ed47` failed its cold-root Save test at the existing 5-second
+limit: [run 46047237485](https://github.com/pffreitas/cosmic-dolphin/actions/runs/46047237485),
+41 suites / 337 tests passed, 1 failed, 1 skipped. A fresh-cache local baseline passed in
+2.7 seconds; instrumentation measured about 993ms of first Save imports and 290ms of first
+Home imports inside the timed interaction. This was Jest dependency transformation work,
+which a compiled native bundle does not perform on navigation. A diagnostic-only 2.5-second
+run passed in 2.3 seconds; it is not a Linux reproduction or a committed timeout change.
+
+The harness now loads the **real** route modules during suite initialization and awaits
+the actual reader owner through RootLayout/providers before interacting. Auth/provider/queue
+and transport state still start cold; durable persistence, double-submit, held/lost ACK,
+navigation, restart and exactly-once assertions remain intact. No timeout or production
+behavior changed. The focused fresh-cache 30-test run passed; its first integration took
+1.0 second. Repeated mobile lint/typecheck and the full fresh-cache run passed **42 suites /
+338 tests**, 1 skipped. Current-head PR CI must pass before merge.
 
 ## Cleanup boundaries and preservation
 

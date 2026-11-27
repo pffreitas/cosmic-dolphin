@@ -52,13 +52,21 @@ jest.mock("expo-router", () => {
     const [path, setPath] = React.useState(mockPath);
     mockNavigate = (next: string) => { mockPath = next; setPath(next); };
     if (path.startsWith("/(auth)")) return React.createElement(require("react-native").Text, {}, "Sign in");
-    const Screen = path === "/save" ? require("../save").default : require("../(tabs)/index").default;
+    const Screen = path === "/save" ? mockRouteScreens.save : mockRouteScreens.home;
     return <Screen />;
   }
   Stack.Screen = function StackScreen() { return null; };
   return { Stack, useLocalSearchParams: () => mockSaveParams, useNavigation: () => ({ navigate: (path: string) => mockNavigate("/" + path) }), useRouter: () => router, usePathname: () => mockPath,
     useSegments: () => [mockPath.startsWith("/(auth)") ? "(auth)" : "(tabs)"], useFocusEffect: (effect: any) => React.useEffect(effect, [effect]) };
 });
+
+// These are the real screens, not renderer mocks. Native bundles are already
+// compiled; move Jest's first dependency transforms outside timed interactions.
+// Providers, navigation, queue state and transport still start cold per test.
+const mockRouteScreens = {
+  save: require("../save").default,
+  home: require("../(tabs)/index").default,
+};
 
 let requests: { body: any; authorization: string }[];
 let bookmarks: Map<string, any>;
@@ -114,8 +122,8 @@ beforeEach(async () => {
 
 it("cold root Save writes durably, shows Home pending, and replays a lost acknowledgement exactly once", async () => {
   const app = render(<RootLayout />);
-  // Flush asynchronous auth bootstrap and its cold screen imports before the field-query timer starts.
-  await act(async () => {});
+  // Await the actual owner visible through the root/provider boundary.
+  await waitFor(() => expect(mockCaptureViews.at(-1)?.owner).toBe("reader"));
   fireEvent.changeText(await app.findByLabelText("Link"), "https://example.com/idea");
   fireEvent.press(app.getByRole("button", { name: "Save" }));
   fireEvent.press(app.getByRole("button", { name: "Save" }));
