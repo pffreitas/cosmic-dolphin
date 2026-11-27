@@ -139,7 +139,16 @@ export interface BookmarkMetadata {
     userProvidedTitle?: string;
     enrichedAt?: string;
   };
+  /**
+   * Internal, never sent to clients. Who chose the title: `owner` after a title
+   * edit or a title supplied with the save, `pipeline` while it is still the
+   * pipeline's to replace. Rows saved before this existed have none and keep
+   * their title.
+   */
+  titleOrigin?: TitleOrigin;
 }
+
+export type TitleOrigin = "pipeline" | "owner";
 
 export interface BookmarkImage {
   url: string;

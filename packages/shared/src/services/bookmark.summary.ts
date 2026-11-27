@@ -6,6 +6,7 @@ import { z } from "zod";
 export const SUMMARY_SCHEMA = z.object({
   contentStatus: z.enum(["ok", "unusable"]),
   unusableReason: z.enum(["paywall", "consent", "error_page", "empty", "other"]).nullable(),
+  title: z.string(),
   brief: z.string(),
   overview: z.string(),
   keyPoints: z.array(z.string()),
@@ -15,6 +16,7 @@ export const SUMMARY_SCHEMA = z.object({
 export const BRIEF_ONLY_SCHEMA = SUMMARY_SCHEMA.pick({
   contentStatus: true,
   unusableReason: true,
+  title: true,
   brief: true,
   keyPoints: true,
 });

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, jest } from "@jest/globals
 import { BookmarkProcessorServiceImpl, BookmarkNotFoundError } from "../../services/bookmark.processor.service";
 import { SUMMARY_SCHEMA, BRIEF_ONLY_SCHEMA, clampText, normaliseKeyPoints, renderSummaryMarkdown } from "../../services/bookmark.summary";
 import { BOOKMARK_MODEL_IDS, summaryProviderOptions } from "../../services/bookmark.model-ids";
-import { budgetText, MAX_MODEL_CONTENT_CHARS } from "../../services/chunking.service";
+import { budgetText, ChunkingServiceImpl, MAX_MODEL_CONTENT_CHARS } from "../../services/chunking.service";
 import { NoObjectGeneratedError } from "ai";
 import { BookmarkService } from "../../services/bookmark.service";
 import { ContentChunkRepository } from "../../repositories/content-chunk.repository";
@@ -58,6 +58,8 @@ describe("BookmarkProcessorService", () => {
       putContentByOwner: jest.fn(),
       startReprocess: jest.fn(),
       ensureScrapedContent: jest.fn(),
+      replacePipelineTitle: jest.fn<any>().mockResolvedValue(true),
+      downgradeLinkedSource: jest.fn(),
       countLibrary: jest.fn(),
       update: jest.fn(),
       updateProcessingStatus: jest.fn(),
@@ -86,7 +88,7 @@ describe("BookmarkProcessorService", () => {
       const fields = input.schema.shape
         ? Object.keys(input.schema.shape).sort().join(",")
         : Object.keys(input.schema.jsonSchema.properties).sort().join(",");
-      if (fields === "brief,contentStatus,keyPoints,overview,sections,unusableReason") {
+      if (fields === "brief,contentStatus,keyPoints,overview,sections,title,unusableReason") {
         return {
           contentStatus: "ok",
           unusableReason: null,
@@ -96,7 +98,7 @@ describe("BookmarkProcessorService", () => {
           sections: [],
         };
       }
-      if (fields === "brief,contentStatus,keyPoints,unusableReason") {
+      if (fields === "brief,contentStatus,keyPoints,title,unusableReason") {
         return {
           contentStatus: "ok",
           unusableReason: null,
@@ -1932,7 +1934,7 @@ describe("BookmarkProcessorService", () => {
 
   it("T9 restricts both summary schemas to the five unusable reasons", () => {
     for (const schema of [SUMMARY_SCHEMA, BRIEF_ONLY_SCHEMA]) {
-      const base = { contentStatus: "unusable", unusableReason: "cookie wall", brief: "", overview: "", keyPoints: [], sections: [] };
+      const base = { contentStatus: "unusable", unusableReason: "cookie wall", title: "", brief: "", overview: "", keyPoints: [], sections: [] };
       expect(schema.safeParse(base).success).toBe(false);
       for (const reason of ["paywall", "consent", "error_page", "empty", "other"]) expect(schema.safeParse({ ...base, unusableReason: reason }).success).toBe(true);
       expect(schema.safeParse({ ...base, contentStatus: "ok", unusableReason: null }).success).toBe(true);
@@ -2557,6 +2559,7 @@ describe("BookmarkProcessorService", () => {
       const summary = renderSummaryMarkdown({
         contentStatus: "ok",
         unusableReason: null,
+        title: "",
         brief: "Brief",
         overview: "",
         keyPoints: [],
@@ -2569,6 +2572,7 @@ describe("BookmarkProcessorService", () => {
       const summary = renderSummaryMarkdown({
         contentStatus: "ok",
         unusableReason: null,
+        title: "",
         brief: "Short brief",
         overview: "Overview.",
         keyPoints: ["First finding"],
@@ -2593,4 +2597,158 @@ describe("BookmarkProcessorService", () => {
       expect(result.text).toContain("content elided");
     });
   });
+
+  describe("X link-posts and titles", () => {
+    const X = "X (formerly Twitter)";
+    const post = "<blockquote>\n<p><strong>Ann</strong> @ann · <time>2026-11-22</time></p>\n<p>This essay misreads the data.</p>\n</blockquote>";
+    const linkedRow = (status: "complete" | "unreadable"): ScrapedUrlContents => ({
+      ...testScrapedContent,
+      title: "Tweet by Ann (@ann)",
+      content: status === "complete" ? `${post}\n<article>\n<h1>On bottlenecks</h1><p>Every queue hides a constraint.</p>\n</article>` : post,
+      metadata: {
+        openGraph: { site_name: X },
+        extraction: { status: "complete", provider: "fxtwitter", linked: { url: "https://essay.example.org/a", status, title: "On bottlenecks" } },
+      },
+    });
+    const xBookmark = (): Bookmark => ({ ...testBookmark, title: "Ann / Status / 1", metadata: { openGraph: { site_name: X } } });
+    let summaries: any[];
+    let respond: (input: any, index: number) => any;
+    let processor: BookmarkProcessorServiceImpl;
+
+    beforeEach(() => {
+      summaries = [];
+      const original = mockAI.generateObjectWithUsage.getMockImplementation()!;
+      (mockAI.generateObjectWithUsage as jest.Mock<any>).mockImplementation(async (input: any) => {
+        if (input.schema.shape && "contentStatus" in input.schema.shape) {
+          summaries.push(input);
+          return { value: respond(input, summaries.length - 1), usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 } };
+        }
+        return original(input);
+      });
+      mockAI.newSession.mockResolvedValue({ sessionID: "test-session-id", refID: testBookmark.id });
+      mockBookmarkService.updateProcessingStatus.mockImplementation(async () => xBookmark());
+      mockBookmarkService.update.mockImplementation(async () => xBookmark());
+      processor = new BookmarkProcessorServiceImpl(
+        mockBookmarkService, mockContentChunkRepository, mockCollectionRepository, mockAI,
+        mockBookmarkProcessingRepository, new ChunkingServiceImpl(), mockEmbeddingService,
+      );
+    });
+
+    const ok = (title: string) => ({
+      contentStatus: "ok", unusableReason: null, title, brief: "Ann disputes the essay's reading of the data.",
+      overview: "The essay argues queues hide constraints.", keyPoints: ["Ann says the data is misread", "The essay names queue constraints"], sections: [],
+    });
+    const unusable = { contentStatus: "unusable", unusableReason: "paywall", title: "", brief: "", overview: "", keyPoints: [], sections: [] };
+    const summaryTurns = () => mockBookmarkProcessingRepository.updateEvent.mock.calls
+      .map(([, data]) => data as any)
+      .filter((data) => data.metadata?.kind);
+
+    it("summarises a readable follow as a link-post under the article title", async () => {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(xBookmark());
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(linkedRow("complete"));
+      respond = () => ok("A model title");
+
+      await processor.process(testBookmark.id, testBookmark.userId);
+
+      expect(summaries).toHaveLength(1);
+      expect(summaries[0].prompt).toContain("Kind: link_post");
+      expect(summaries[0].prompt).toContain('Linked title: "On bottlenecks"');
+      // The structured source, JSON-escaped inside the content boundary.
+      expect(summaries[0].prompt).toContain("\\u003e This essay misreads the data.");
+      expect(summaries[0].prompt).toContain("# On bottlenecks");
+      expect(summaryTurns()[0].metadata).toMatchObject({ kind: "link_post", linkedUrl: "https://essay.example.org/a", linkedStatus: "used", contentStatus: "ok" });
+      expect(mockBookmarkService.replacePipelineTitle).toHaveBeenCalledWith(expect.anything(), "On bottlenecks");
+      // Filing and indexing read the title the run just chose.
+      expect(mockBookmarkService.update.mock.calls.at(-1)![1].searchDocument).toMatch(/^On bottlenecks\n/);
+      expect(mockBookmarkService.downgradeLinkedSource).not.toHaveBeenCalled();
+    });
+
+    it("persists the post-only row before summarising the post when the linked page is a teaser", async () => {
+      const order: string[] = [];
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(xBookmark());
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(linkedRow("complete"));
+      mockBookmarkService.downgradeLinkedSource.mockImplementation(async () => {
+        order.push("downgrade");
+        return linkedRow("unreadable");
+      });
+      respond = (_input, index) => {
+        order.push(`turn ${index + 1}`);
+        return index === 0 ? unusable : ok("Ann disputes an essay on queues");
+      };
+
+      await processor.process(testBookmark.id, testBookmark.userId);
+
+      expect(order).toEqual(["turn 1", "downgrade", "turn 2"]);
+      expect(summaries[1].prompt).toContain("Kind: tweet");
+      expect(summaries[1].prompt).toContain('"essay.example.org", which was not read: it returned a paywall');
+      expect(summaries[1].prompt).not.toContain("Every queue hides a constraint");
+      expect(summaryTurns().map((turn) => [turn.metadata.kind, turn.metadata.linkedStatus, turn.metadata.contentStatus]))
+        .toEqual([["link_post", "used", "unusable"], ["tweet", "unreadable", "ok"]]);
+      expect(mockBookmarkService.replacePipelineTitle).toHaveBeenCalledWith(expect.anything(), "Ann disputes an essay on queues");
+      expect(mockBookmarkService.updateProcessingStatus).toHaveBeenLastCalledWith(testBookmark.id, "completed");
+      const patch = mockBookmarkService.update.mock.calls.at(-1)![1];
+      expect(patch.cosmicBriefSummary).toBe("Ann disputes the essay's reading of the data.");
+    });
+
+    it("fails the save only when the post-only turn is unusable too", async () => {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(xBookmark());
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(linkedRow("complete"));
+      mockBookmarkService.downgradeLinkedSource.mockResolvedValue(linkedRow("unreadable"));
+      respond = () => unusable;
+
+      await processor.process(testBookmark.id, testBookmark.userId);
+
+      expect(summaries.map((input) => /Kind: (\w+)/.exec(input.prompt)![1])).toEqual(["link_post", "tweet"]);
+      expect(mockBookmarkService.updateProcessingStatus).toHaveBeenLastCalledWith(testBookmark.id, "failed", "Unusable source");
+    });
+
+    it("leaves no article overview after a scoped brief-only retry on the downgraded row", async () => {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue({ ...xBookmark(), cosmicSummary: "Article overview" });
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(linkedRow("complete"));
+      mockBookmarkService.downgradeLinkedSource.mockResolvedValue(linkedRow("unreadable"));
+      respond = (input, index) => {
+        if (index === 0) return unusable;
+        if ("overview" in input.schema.shape) throw new NoObjectGeneratedError({ message: "incomplete", text: "{}", response: {} as any, usage: {} as any, finishReason: "length" });
+        return { contentStatus: "ok", unusableReason: null, title: "Post title", brief: "Post-only brief.", keyPoints: [] };
+      };
+
+      await processor.process(testBookmark.id, testBookmark.userId, { phase: "summarise", resume: true });
+
+      expect(mockBookmarkService.downgradeLinkedSource).toHaveBeenCalledTimes(1);
+      const patch = mockBookmarkService.update.mock.calls.at(-1)![1];
+      expect(patch).not.toHaveProperty("cosmicSummary");
+      expect(patch.cosmicBriefSummary).toBe("Post-only brief.");
+      expect(patch.searchDocument).not.toContain("Article overview");
+    });
+
+    it.each([
+      ["the model's title for a plain post", "Graham: predict as if AIs think", "Graham: predict as if AIs think"],
+      ["the post's title when the model gives none", "   ", "Tweet by Ann (@ann)"],
+    ])("uses %s", async (_name, modelTitle, expected) => {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(xBookmark());
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue({ ...testScrapedContent, title: "Tweet by Ann (@ann)", content: "Ann (@ann) · 2026-11-22\n\nAssume they think.", metadata: { openGraph: { site_name: X }, extraction: { status: "complete", provider: "fxtwitter" } } });
+      respond = () => ok(modelTitle);
+
+      await processor.process(testBookmark.id, testBookmark.userId);
+
+      expect(summaries[0].prompt).toContain("Kind: tweet");
+      expect(summaries[0].prompt).toContain("Title: Tweet by Ann (@ann)");
+      expect(mockBookmarkService.replacePipelineTitle).toHaveBeenCalledWith(expect.anything(), expected);
+    });
+
+    it("never replaces an article's page title with the model's", async () => {
+      mockBookmarkService.findByIdAndUser.mockResolvedValue(testBookmark);
+      mockBookmarkService.ensureScrapedContent.mockResolvedValue(testScrapedContent);
+      mockBookmarkService.updateProcessingStatus.mockResolvedValue(testBookmark);
+      mockBookmarkService.update.mockResolvedValue(testBookmark);
+      respond = () => ok("A catchier model title");
+
+      await processor.process(testBookmark.id, testBookmark.userId);
+
+      expect(mockBookmarkService.replacePipelineTitle).not.toHaveBeenCalled();
+      expect(summaryTurns()[0].metadata).toMatchObject({ kind: "article" });
+      expect(summaryTurns()[0].metadata).not.toHaveProperty("linkedUrl");
+    });
+  });
+
 });

@@ -7,7 +7,7 @@ import {
   BookmarkUpdate,
   NewScrapedUrlContent,
 } from "../database/schema";
-import { BookmarkProcessingPhase, ScrapedUrlContents } from "../types";
+import { BookmarkMetadata, BookmarkProcessingPhase, ScrapedUrlContents } from "../types";
 import { PgmqRepositoryImpl } from "./pgmq.repository";
 import { QueueService, QueueServiceImpl } from "../services/queue.service";
 import { startOfUtcDay } from "../services/processing-budget.service";
@@ -209,7 +209,10 @@ export interface BookmarkRepository {
    * `WHERE title IS NOT DISTINCT FROM provisional` is the rule, as a predicate
    * on the write: an owner who retitles while the first fetch is in flight
    * changed the title away from the placeholder this call read, so the write
-   * matches nothing. Returns `false` when it was refused; that is not an error.
+   * matches nothing. The title must also still be the pipeline's
+   * (`metadata.titleOrigin = 'pipeline'`): an owner's title, even one equal to
+   * the placeholder, and a legacy row with no recorded origin are never
+   * replaced. Returns `false` when it was refused; that is not an error.
    * `quick_access` is derived from the title, so it moves with it or not at all.
    */
   replaceProvisionalTitle(
@@ -217,6 +220,18 @@ export interface BookmarkRepository {
     provisionalTitle: string | null,
     title: string,
     quickAccess: string
+  ): Promise<boolean>;
+  /**
+   * Keep only the post of an X row whose linked page proved unreadable, in one
+   * transaction: the post-only body, links and `linked.status: unreadable` on
+   * the content row, the public reading counts, cleared summary fields and
+   * search text on the bookmark, and no chunks. Guarded on the linked status
+   * still being `complete`; `false` when another run already did it.
+   */
+  downgradeLinkedSource(
+    contentId: string,
+    bookmarkId: string,
+    postOnly: { content: string; links: Array<{ url: string; text: string }>; wordCount: number; readingTime: number }
   ): Promise<boolean>;
   /**
    * File a bookmark from the pipeline.
@@ -424,7 +439,9 @@ export class BookmarkRepositoryImpl
   }
 
   async updateOwned(id: string, userId: string, data: BookmarkUpdate): Promise<Bookmark> {
-    return this.db.updateTable("bookmarks").set({ ...data, updated_at: new Date() }).where("id", "=", id).where("user_id", "=", userId).returningAll().executeTakeFirstOrThrow();
+    // An owner's title, even one equal to the current title, is theirs from now on.
+    const titleOrigin = data.title === undefined ? {} : { metadata: sql<any>`coalesce(metadata, '{}'::jsonb) || '{"titleOrigin":"owner"}'::jsonb` };
+    return this.db.updateTable("bookmarks").set({ ...data, ...titleOrigin, updated_at: new Date() }).where("id", "=", id).where("user_id", "=", userId).returningAll().executeTakeFirstOrThrow();
   }
 
   async mergeCapture(id: string, userId: string, note?: string, laterUntil?: Date | null): Promise<Bookmark> {
@@ -745,6 +762,12 @@ export class BookmarkRepositoryImpl
         );
       }
 
+      if (updateData.metadata !== undefined && updateData.metadata !== null) {
+        // Merge atomically: whatever the writer read, the stored title origin stands.
+        const { titleOrigin: _ignored, ...metadata } = updateData.metadata as BookmarkMetadata;
+        updateData.metadata = sql<any>`${JSON.stringify(metadata)}::jsonb || jsonb_strip_nulls(jsonb_build_object('titleOrigin', metadata->'titleOrigin'))`;
+      }
+
       const write = (db: Kysely<Database>) =>
         db
           .updateTable("bookmarks")
@@ -776,11 +799,52 @@ export class BookmarkRepositoryImpl
         .set({ title, quick_access: quickAccess })
         .where("id", "=", id)
         .where("title", "is not distinct from", provisionalTitle)
+        .where(sql<string>`metadata->>'titleOrigin'`, "=", "pipeline")
         .returning("id")
         .executeTakeFirst();
 
       return result !== undefined;
     }, "replaceProvisionalTitle");
+  }
+
+  async downgradeLinkedSource(
+    contentId: string,
+    bookmarkId: string,
+    postOnly: { content: string; links: Array<{ url: string; text: string }>; wordCount: number; readingTime: number }
+  ): Promise<boolean> {
+    return this.executeQuery(
+      () =>
+        this.db.transaction().execute(async (transaction) => {
+          const downgraded = await transaction
+            .updateTable("scraped_url_contents")
+            .set({
+              content: postOnly.content,
+              links: JSON.stringify(postOnly.links),
+              metadata: sql<any>`jsonb_set(metadata, '{extraction,linked,status}', '"unreadable"')`,
+              updated_at: new Date(),
+            })
+            .where("id", "=", contentId)
+            .where(sql<string>`metadata #>> '{extraction,linked,status}'`, "=", "complete")
+            .returning("id")
+            .executeTakeFirst();
+          if (!downgraded) return false;
+          await transaction
+            .updateTable("bookmarks")
+            .set({
+              metadata: sql<any>`coalesce(metadata, '{}'::jsonb) || ${JSON.stringify({ wordCount: postOnly.wordCount, readingTime: postOnly.readingTime })}::jsonb`,
+              cosmic_summary: "",
+              cosmic_brief_summary: "",
+              cosmic_key_points: JSON.stringify([]) as any,
+              search_document: null,
+              updated_at: new Date(),
+            })
+            .where("id", "=", bookmarkId)
+            .execute();
+          await transaction.deleteFrom("content_chunks").where("scraped_content_id", "=", contentId).execute();
+          return true;
+        }),
+      "downgradeLinkedSource"
+    );
   }
 
   async markRead(id: string, userId: string): Promise<Bookmark | null> {
