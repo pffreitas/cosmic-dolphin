@@ -50,14 +50,16 @@ const EXCLUDED_HOSTS = [
 export function eligibleLinks(expanded: string[]): string[] {
   const eligible = new Set<string>();
   for (const raw of expanded) {
-    const normalized = normalizeUrl(raw).url;
     let url: URL;
     try {
-      url = new URL(normalized);
+      url = new URL(normalizeUrl(raw).url);
     } catch {
       continue;
     }
-    const host = url.hostname.toLowerCase();
+    // "x.com." is x.com: drop the terminal DNS dot before matching and deduplicating.
+    url.hostname = url.hostname.toLowerCase().replace(/\.$/, "");
+    const normalized = normalizeUrl(url.href).url;
+    const host = url.hostname;
     if (EXCLUDED_HOSTS.some((pattern) => pattern.test(host))) continue;
     if (/\.pdf$/i.test(url.pathname)) continue;
     eligible.add(normalized);

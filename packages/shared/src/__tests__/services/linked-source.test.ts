@@ -37,6 +37,8 @@ describe("linked source host rules", () => {
     "http://api.localhost/",
     "http://intranet/",
     "http://metadata./",
+    "http://localhost./",
+    "http://api.localhost./",
   ])("rejects %s", (url) => {
     expect(() => assertFollowableUrl(new URL(url))).toThrow(RejectedHostError);
   });
@@ -63,6 +65,18 @@ describe("eligible links", () => {
         "https://youtu.be/1",
         "https://m.youtube.com/watch?v=2",
         "https://arxiv.org/pdf/2401.00001.PDF",
+        "https://blog.example.com/post",
+      ]),
+    ).toEqual(["https://blog.example.com/post"]);
+  });
+
+  it("applies the exclusions and deduplication to a host with a trailing dot", () => {
+    expect(
+      eligibleLinks([
+        "https://x.com./a/status/1",
+        "https://youtube.com./watch?v=1",
+        "https://t.co./abc",
+        "https://blog.example.com./post",
         "https://blog.example.com/post",
       ]),
     ).toEqual(["https://blog.example.com/post"]);
