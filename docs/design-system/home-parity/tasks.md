@@ -1,8 +1,8 @@
 # Native Home web parity · 2026-11-26
 
-- Outcome: native iOS Home rendered and compared on this MacBook; parity fixes and matched evidence complete. Final mobile typecheck/lint/Jest and token gates passed. Delivery commit/push is the current gate.
-- Next gate: commit and push this follow-up to `feat/mobile-home-web-parity`. No PR, merge or release authorized.
-- Owner: this MacBook T3 thread. Blocker: none for the requested simulator scope.
+- Outcome: native iOS Home rendered, compared and hardened on this MacBook. Implementation/evidence pushed in `c2792c5ec3fce8b52699cef96f3606991f2d39cc`; final mobile typecheck/lint/Jest, web typecheck and token gates passed.
+- Next gate: user review of the matched screenshot pairs and documented adapter limits. No PR, merge or release authorized.
+- Owner: user review; this MacBook T3 thread completed the authorized implementation. Blocker: none for the requested simulator scope.
 - Starting state on MacBook: clean `ios-home-web-parity` at `671e2781e2f685804bf33bb06422bd1b92b05154`. Fetched origin and switched to `feat/mobile-home-web-parity` at `ce03bd3` (remote head, base `origin/main` at `671e278`). Preserved environment/hooks; none were edited.
 - Scope: user explicitly approved web Home composition and controls. Current web wins. Evidence is simulator + illustrative fixtures/local HTTP transport, not physical-device or production-account proof.
 - Remaining limits: UIKit blur and Core Text antialiasing/fractional rounding remain platform adapters; larger serif optical sizes use the nearest bundled cut. Known reply/edit/delete/report controls stay out of scope. Other phone/tablet widths, accessibility categories and physical hardware were not certified by this pass.
@@ -70,6 +70,11 @@ These use production native Home/provider/navigation/generated-client boundaries
 - The keyboard-covered comments screenshot is `flow-comments-keyboard-before.png`; the fixed, keyboard-present screen is `flow-comments-keyboard-after.png`.
 - Expanded gallery regression: digest long-press Open handler was lost during the visual rewrite. The existing regression failed; restored the handler, preserved its assertions and reran the two affected suites (43 tests passed) before the final full gate.
 - Visual fixes were made after simulator reproduction, not test-first. Existing behavioral assertions/timeouts were preserved.
+
+### Delivery
+
+- Branch `feat/mobile-home-web-parity` pushed and remote verified at implementation commit `c2792c5e`. The following documentation-only commit records this delivered state.
+- Simulator remains on the dev Home fixture, restored to light/default text size. Task-owned Metro (8081), web dev server (3001) and local fixture service (5537) remain available for inspection. Verification browser sessions were closed.
 
 ### Final verification
 
