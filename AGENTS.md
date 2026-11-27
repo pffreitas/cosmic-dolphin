@@ -12,6 +12,7 @@ Turborepo monorepo using **Bun** as the package manager and runtime. Four apps (
 - Preserve existing uncommitted work, environment files and agent hooks. Record the branch, base SHA and starting state before edits. Read the current remote state when resuming delivery.
 - Follow the user's latest scope and standing authorization. Do not ask again for an already-authorized implementation, merge or release step. A task-specific beta exception stays with that task; it is not a permanent waiver for future releases.
 - Keep the current outcome, next gate, owner and blocker near the top of the task record. Preserve the detailed history separately. A handoff should not require reading thousands of lines or recovering `/tmp` files to learn the release state.
+- For native web-parity continuations, read [the continuation guide](docs/design-system/native-parity-handoff.md), then the active feature task record. Keep per-surface render proof and binary-release state separate from earlier source-only history.
 - For backend deployment or TestFlight, read [the release runbook](docs/runbooks/backend-and-testflight-release.md). The [Save + Today's 5 retrospective](docs/retrospectives/2026-11-12-save-and-todays-5.md) explains the failures behind this guidance.
 
 ## Commands

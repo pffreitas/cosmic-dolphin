@@ -9,6 +9,9 @@ Start with [cross-platform parity](./parity.md), then foundations, components an
 [The source inventory](./inventory.md) identifies the reusable implementation behind every family.
 [The reconciliation record](./reconciliation/tasks.md) records scope and verification.
 
+For continued native implementation, start with [the native parity handoff](native-parity-handoff.md).
+It maps reusable components, build/fixture commands and the separate Home/Save proof and release gates.
+
 Product behaviour lives next door in [`docs/functional-spec/`](../functional-spec/) and the approved mobile feature spec. Visual contracts do not replace behavioral and permission requirements.
 
 ## Mobile scope and token overrides
@@ -88,4 +91,5 @@ explored and not adopted. They are kept as a record of the exploration and are r
 switcher in the prototype. Do not import them, and do not treat anything in the prototype's Ember or
 Graphite modes as guidance.
 
-Native rendered work and its current gates: [Home parity](home-parity/tasks.md), [Save parity](save-parity/tasks.md).
+Native rendered work and its current gates: [Home parity](home-parity/tasks.md),
+[Save parity](save-parity/tasks.md), [Save fixture/resume recipe](save-parity/README.md).

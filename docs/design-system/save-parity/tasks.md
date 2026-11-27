@@ -6,6 +6,7 @@
 - Starting state: clean `feat/mobile-home-web-parity` at `bba8850a56a5900d1ea3cffda5cb2afa83cc38e0`, matching fetched origin. Base `origin/main` remains `671e2781e2f685804bf33bb06422bd1b92b05154`.
 - Scope: user requested web → mobile Save migration using the Home approach. Current production `NewBookmarkButton`, `PrivateLinkDialog`, Dialog/Input/Textarea/Button and shared tokens are visual authority. Preserve native durable capture, clipboard privacy and optional note/read-later confirmation from FR-4/FR-5 of the approved mobile reading spec.
 - Evidence labels: simulator + dev fixtures/fictional loopback HTTP transport. No physical-device, production-account or signed share-extension session proof is implied.
+- Resume: [native component/build handoff](../native-parity-handoff.md) and [Save fixture commands and outstanding recheck](README.md). These are durable recipes; no prior terminal session or `/tmp` capture script is required.
 
 ## Contract and history
 

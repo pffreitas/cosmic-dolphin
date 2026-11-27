@@ -10,7 +10,11 @@ reference for a subsequent native implementation, not authorization to replace i
 
 “Pixel perfect” means matched visible geometry, colors, content, imagery and typography at a
 specified viewport, theme, font and text scale. A shared token file is necessary but insufficient.
-This change is source-reconciled; **no matched native implementation or screenshot diff is claimed**.
+The original 2026-11-26 reconciliation was source-only. Subsequent native implementations and
+matched evidence are tracked per feature in [Home parity](home-parity/tasks.md) and
+[Save parity](save-parity/tasks.md), with their remaining gates and proof limits. Start at
+[the native continuation guide](native-parity-handoff.md) when building on those implementations;
+the reconciliation itself is not blanket native or physical-device certification.
 
 ## Reuse boundaries
 

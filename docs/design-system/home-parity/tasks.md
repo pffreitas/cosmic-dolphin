@@ -3,6 +3,7 @@
 - Outcome: **Home sidebar correction delivered in iOS 1.0.0 (24), available in the existing internal TestFlight Beta group**. Signed artifact verified; submission FINISHED; Apple VALID / IN_BETA_TESTING / unexpired; actual group membership confirmed. Ten matched sidebar screenshot pairs and passing mobile checks are committed.
 - Next gate: physical-device/signed-session acceptance of build 24, including successful sign-out and spoken accessibility. No remaining binary-delivery gate.
 - Owner: this MacBook T3 thread completed delivery; next acceptance belongs to device QA/user. Blocker: none for delivery. Simulator sign-out capability/launch limitations are retained below.
+- Continuation: [native parity handoff](../native-parity-handoff.md). This record owns the released Home/sidebar scope; the branch subsequently adds [Save migration](../save-parity/tasks.md), which is not in build 24. Read its separate next gate before continuing Save or preparing another binary.
 - Starting state on MacBook: clean `ios-home-web-parity` at `671e2781e2f685804bf33bb06422bd1b92b05154`. Fetched origin and switched to `feat/mobile-home-web-parity` at `ce03bd3` (remote head, base `origin/main` at `671e278`). Preserved environment/hooks; none were edited.
 - Scope: user explicitly approved web Home composition and controls. Current web wins. Evidence is simulator + illustrative fixtures/local HTTP transport, not physical-device or production-account proof.
 - Remaining limits: UIKit blur and Core Text antialiasing/fractional rounding remain platform adapters; larger serif optical sizes use the nearest bundled cut. Known reply/edit/delete/report controls stay out of scope. Other phone/tablet widths, accessibility categories and physical hardware were not certified by this pass.
@@ -137,11 +138,11 @@ These use production native Home/provider/navigation/generated-client boundaries
 
 Original Linux starting record: main at `4c8d362f18b8e495a6ffe33d103f77c32554dda6`, design-system reconciliation initially uncommitted. This predates the two pushed commits and the MacBook continuation. The user's explicit web-composition decision supersedes the original scope assumption.
 
-## Evidence
+## Earlier Linux evidence · superseded by MacBook proof above
 
 Web development server started on 3001. /dev/home uses production HomeView and AppShell. Native device access returned disabled; do not claim simulator/physical proof. Existing mobile uses three tabs, black header, topic chips, Today's 5 and capped tail; web uses omnibox shell, edition header, scope control, resume strip, lead + rows and five compact navigation cells.
 
-## 2026-11-27 resume
+## Earlier 2026-11-27 continuation · before the MacBook native build
 
 - Comments action opens a native comment sheet over the feed (web CommentDrawer behavior: fetched only when opened, owner-bound requests, count heading, "Add a comment", edited marker). Web's reply, edit, delete and report controls are not ported. Native bookmark detail does not have them either.
 - Added test: opens comments, posts as owner, refetches, closes in place (`apps/mobile/app/__tests__/home-edition.test.tsx`).
