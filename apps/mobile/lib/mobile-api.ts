@@ -148,6 +148,13 @@ export const MobileAPI = {
   async digest(id: string) {
     return new DigestsApi(await configuration()).digestsGet({ id });
   },
+  async digestLike(id: string, liked: boolean, userId: string) {
+    const client = new DigestsApi(await configuration(userId));
+    return liked ? client.digestsLike({ id }) : client.digestsUnlike({ id });
+  },
+  async digestShare(id: string, userId: string) {
+    return new DigestsApi(await configuration(userId)).digestsShare({ id });
+  },
   async resume() {
     return new ReadingApi(await configuration()).readingContinueReading({
       limit: 3,

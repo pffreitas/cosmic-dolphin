@@ -4,13 +4,15 @@ Requires a web dev/build output; selects its normal Latin Source Serif 4 subset.
 """
 import hashlib
 import json
+from io import BytesIO
 from pathlib import Path
 from fontTools.ttLib import TTFont
 from fontTools.varLib.instancer import instantiateVariableFont
 
 root = Path(__file__).resolve().parent.parent
 candidates = []
-for path in (root / "apps/web/.next/static/media").glob("*.woff2"):
+for path in [*(root / "apps/web/.next/static/media").glob("*.woff2"),
+             *(root / "apps/web/.next/dev/static/media").glob("*.woff2")]:
     font = TTFont(path)
     if font["name"].getDebugName(1) == "Source Serif 4" and not font["head"].macStyle & 2:
         cmap = font.getBestCmap()
@@ -22,7 +24,9 @@ if not candidates:
 source = min(candidates, key=lambda p: p.stat().st_size)
 out = root / "apps/mobile/assets/fonts"
 records = []
-for size in (17, 19, 20, 28, 34):
+# Include the cuts used at iOS XXXL (23/17 scaling). Font size itself stays
+# native-scalable; these files supply the corresponding optical shapes.
+for size in (16, 17, 19, 20, 22, 23, 26, 27, 28, 34, 38, 46):
     font = TTFont(source)
     font = instantiateVariableFont(font, {"wght": 600, "opsz": size}, inplace=True)
     family = f"CosmicReading{size}"
@@ -38,7 +42,22 @@ for size in (17, 19, 20, 28, 34):
     font["OS/2"].fsSelection |= 1 << 6
     font["head"].macStyle &= ~1
     path = out / f"{family}.ttf"
-    font.save(path)
+    font.recalcTimestamp = False
+    buffer = BytesIO()
+    font.save(buffer)
+    candidate = TTFont(BytesIO(buffer.getvalue()))
+    unchanged = False
+    if path.exists():
+        previous = TTFont(path)
+        # Compare compiled glyph/metrics/name tables; ignore only timestamps
+        # and the checksum that incorporates them, preserving unchanged cuts.
+        ignored = {"checkSumAdjustment", "created", "modified"}
+        head = lambda f: {k: v for k, v in f["head"].__dict__.items() if k not in ignored}
+        unchanged = head(candidate) == head(previous) and all(
+            candidate.getTableData(key) == previous.getTableData(key)
+            for key in candidate.keys() if key not in ("GlyphOrder", "head"))
+    if not unchanged:
+        path.write_bytes(buffer.getvalue())
     records.append({"file": path.name, "weightAxis": 600, "opticalSize": size,
                     "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
 (out / "web-home-fonts.json").write_text(json.dumps({

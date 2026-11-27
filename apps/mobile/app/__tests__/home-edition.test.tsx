@@ -12,7 +12,7 @@ jest.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "read
 jest.mock("@/contexts/PreferencesContext", () => ({ usePreferences: () => ({ appearance: "light" }) }));
 jest.mock("@/contexts/CaptureContext", () => ({ useCaptures: () => ({ captures: [], save: mockSave, confirm: jest.fn(), acknowledge: mockAcknowledge, revision: 0, drain: jest.fn(async () => {}) }) }));
 jest.mock("@/lib/mobile-api", () => ({ nativeBookmark: (value: unknown) => value, MobileAPI: {
-  feed: jest.fn(), picks: jest.fn(), counts: jest.fn(), resume: jest.fn(), collections: jest.fn(), like: jest.fn(), saveRecommendation: jest.fn(), comments: jest.fn(), comment: jest.fn(),
+  feed: jest.fn(), picks: jest.fn(), counts: jest.fn(), resume: jest.fn(), collections: jest.fn(), like: jest.fn(), saveRecommendation: jest.fn(), comments: jest.fn(), comment: jest.fn(), digestLike: jest.fn(), digestShare: jest.fn(),
 } }));
 const bookmark = (id: string, overrides: Partial<Bookmark> = {}): Bookmark => ({ id, userId: "reader", title: `Article ${id}`, sourceUrl: `https://${id}.example/article`, createdAt: new Date(), updatedAt: new Date(), processingStatus: "completed", cosmicBriefSummary: `Summary ${id}`, metadata: { readingTime: 5 }, ...overrides } as Bookmark);
 const item = (id: string, overrides: Partial<FeedItem> = {}): FeedItem => ({ type: "own_save", bookmark: bookmark(id), ...overrides });
@@ -148,4 +148,22 @@ it("opens comments over the feed on request, posts as the owner and closes in pl
   fireEvent.press(screen.getAllByRole("button", { name: "Close comments" })[0]);
   await waitFor(() => expect(screen.queryByText("First thought")).toBeNull());
   expect(screen.queryByText("Bookmark destination")).toBeNull();
+});
+
+it("keeps digest reactions owner-bound and acknowledges sharing before Saved", async () => {
+  const digest = { id: "digest", title: "Across your saves", summary: "A sourced connection.", keyPoints: [], sources: [], coherence: 0.8, createdAt: new Date(), likeCount: 6, isLikedByCurrentUser: false, isPublic: false };
+  (MobileAPI.feed as jest.Mock).mockResolvedValue({ items: [{ type: "digest", digest }], computedAt: new Date() });
+  (MobileAPI.digestLike as jest.Mock).mockRejectedValue(new Error("offline"));
+  let acknowledge!: (value: unknown) => void;
+  (MobileAPI.digestShare as jest.Mock).mockImplementation(() => new Promise(resolve => { acknowledge = resolve; }));
+  home(); await screen.findByText("Across your saves");
+  fireEvent.press(screen.getByRole("button", { name: "Like on Across your saves" }));
+  await screen.findByText("Couldn't update that like.");
+  expect(MobileAPI.digestLike).toHaveBeenCalledWith("digest", true, "reader");
+  expect(within(screen.getByRole("button", { name: "Like on Across your saves" })).getByText("6")).toBeTruthy();
+  fireEvent.press(screen.getByRole("button", { name: "Save digest" }));
+  await waitFor(() => expect(MobileAPI.digestShare).toHaveBeenCalledWith("digest", "reader"));
+  expect(screen.queryByRole("button", { name: "Saved" })).toBeNull();
+  await act(async () => acknowledge({ isPublic: true, shareUrl: "https://example.invalid/digest" }));
+  expect(screen.getByRole("button", { name: "Saved" }).props.accessibilityState.disabled).toBe(true);
 });

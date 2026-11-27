@@ -51,7 +51,7 @@ const COLOR_SECTIONS = [
   ],
   [
     "Header capsule",
-    ["nav-glass", "nav-edge", "nav-sheen", "nav-pill", "nav-shadow"],
+    ["nav-glass", "nav-edge", "nav-sheen", "nav-pill", "nav-surface", "nav-shadow"],
   ],
   // The app icon's own night-sky ground. The same in both modes: it belongs
   // to the artwork, not to the theme.

@@ -50,7 +50,7 @@ export function HomeToolbar({ onError }: { onError: (message: string) => void })
   return <>
     <View style={{ height: 56, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, borderBottomWidth: 1, borderColor: colors.border, backgroundColor: colors.bg, zIndex: 30 }}>
       <Action label="Open navigation" icon={PanelLeft} onPress={() => setMenu(true)} style={{ width: 34, height: 34 }} />
-      <BrandMark size={32} />
+      <View style={{ width: 32, height: 32 }}><BrandMark size={32} /><View pointerEvents="none" style={{ position: "absolute", inset: 0, borderWidth: 1, borderColor: colors.brandEdge, borderRadius: radius.md }} /></View>
       <View style={{ flex: 1, position: "relative" }}>
         <View style={{ height: 36, borderRadius: radius.md, borderWidth: 1, borderColor: focused ? colors.accent : colors.border, backgroundColor: focused ? colors.bgPanel : colors.bgSubtle, outlineWidth: focused ? 2 : 0, outlineColor: colors.focus, outlineOffset: 2, flexDirection: "row", alignItems: "center", paddingLeft: 12, paddingRight: 4, gap: 10 }}>
           {capture ? <Link2 size={16} strokeWidth={1.8} color={colors.accent} /> : <Search size={16} strokeWidth={1.8} color={colors.fgTertiary} />}
@@ -100,7 +100,7 @@ export function HomeTabBar() {
     { label: "Search", icon: Search, onPress: () => DeviceEventEmitter.emit(FOCUS_HOME_SEARCH) },
     { label: "You", icon: User, onPress: () => rootNavigation.navigate("profile" as never) },
   ];
-  return <BlurView intensity={20} tint={scheme === "dark" ? "dark" : "light"} style={{ borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.bgPanel, paddingBottom: insets.bottom }}>
+  return <BlurView intensity={20} tint={scheme === "dark" ? "dark" : "light"} style={{ position: "absolute", bottom: 0, left: 0, right: 0, borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.navSurface, paddingBottom: insets.bottom }}>
     <View style={{ width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 8, paddingVertical: 4, gap: 4, flexDirection: "row" }}>
       {items.map(({ label, icon: Icon, onPress, active }) => <Pressable key={label} accessibilityRole={label === "Save" || label === "Search" ? "button" : "tab"} accessibilityLabel={label} accessibilityState={{ selected: !!active }} onFocus={() => setFocused(label)} onBlur={() => setFocused(undefined)} onPress={onPress}
         style={{ flex: 1, outlineWidth: focused === label ? 2 : 0, outlineColor: colors.focus, outlineOffset: 2, minHeight: 44, paddingVertical: 6, paddingHorizontal: 4, gap: 4, alignItems: "center", justifyContent: "center", borderRadius: radius.md, backgroundColor: active ? colors.accentSoft : "transparent" }}>

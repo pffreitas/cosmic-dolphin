@@ -220,11 +220,18 @@ export default function RootLayout() {
     InterSemibold: require("../assets/fonts/Inter-600.ttf"),
     SourceSerif: require("../assets/fonts/SourceSerif4-400.ttf"),
     SourceSerifSemibold: require("../assets/fonts/SourceSerif4-600.ttf"),
+    CosmicReading16: require("../assets/fonts/CosmicReading16.ttf"),
     CosmicReading17: require("../assets/fonts/CosmicReading17.ttf"),
     CosmicReading19: require("../assets/fonts/CosmicReading19.ttf"),
     CosmicReading20: require("../assets/fonts/CosmicReading20.ttf"),
+    CosmicReading23: require("../assets/fonts/CosmicReading23.ttf"),
+    CosmicReading22: require("../assets/fonts/CosmicReading22.ttf"),
+    CosmicReading26: require("../assets/fonts/CosmicReading26.ttf"),
+    CosmicReading27: require("../assets/fonts/CosmicReading27.ttf"),
     CosmicReading28: require("../assets/fonts/CosmicReading28.ttf"),
     CosmicReading34: require("../assets/fonts/CosmicReading34.ttf"),
+    CosmicReading38: require("../assets/fonts/CosmicReading38.ttf"),
+    CosmicReading46: require("../assets/fonts/CosmicReading46.ttf"),
 
   });
 

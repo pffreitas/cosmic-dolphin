@@ -1,0 +1,911 @@
+{
+  "success": true,
+  "data": {
+    "nodes": [
+      {
+        "index": 0,
+        "type": "Application",
+        "role": "UIApplication",
+        "label": "Cosmic Dolphin",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 402,
+          "height": 874
+        },
+        "enabled": true,
+        "depth": 0,
+        "pid": 28694,
+        "hittable": false,
+        "ref": "e1",
+        "kind": "application"
+      },
+      {
+        "index": 1,
+        "parentIndex": 0,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Open navigation",
+        "rect": {
+          "x": 12,
+          "y": 72.6666669845581,
+          "width": 34,
+          "height": 34
+        },
+        "enabled": true,
+        "depth": 1,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e2",
+        "kind": "button"
+      },
+      {
+        "index": 2,
+        "parentIndex": 0,
+        "type": "TextField",
+        "role": "RCTUITextField",
+        "subrole": "UITextField",
+        "label": "Paste a link to save it, or search your library",
+        "value": "Paste a link or search",
+        "placeholder": "Paste a link or search",
+        "rect": {
+          "x": 133,
+          "y": 72.6666669845581,
+          "width": 252,
+          "height": 34
+        },
+        "enabled": true,
+        "depth": 1,
+        "password": false,
+        "editable": true,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e3",
+        "kind": "text-field"
+      },
+      {
+        "index": 3,
+        "parentIndex": 0,
+        "type": "ScrollView",
+        "role": "RCTEnhancedScrollView",
+        "subrole": "UIScrollView",
+        "rect": {
+          "x": 0,
+          "y": 118,
+          "width": 402,
+          "height": 694
+        },
+        "enabled": true,
+        "depth": 1,
+        "pid": 28694,
+        "hittable": true,
+        "hiddenContentBelow": true,
+        "ref": "e4",
+        "kind": "scroll-area"
+      },
+      {
+        "index": 4,
+        "parentIndex": 3,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "Thursday, November 26",
+        "rect": {
+          "x": 16,
+          "y": 158,
+          "width": 370,
+          "height": 14
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e5",
+        "kind": "text"
+      },
+      {
+        "index": 5,
+        "parentIndex": 3,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "Good evening, Paulo",
+        "rect": {
+          "x": 16,
+          "y": 181,
+          "width": 370,
+          "height": 31.666671752929688
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e6",
+        "kind": "text"
+      },
+      {
+        "index": 6,
+        "parentIndex": 3,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "Ranked for what you're likely to finish · updated 4 min ago",
+        "rect": {
+          "x": 16,
+          "y": 215.66666793823242,
+          "width": 370,
+          "height": 20.333328247070312
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e7",
+        "kind": "text"
+      },
+      {
+        "index": 7,
+        "parentIndex": 3,
+        "type": "Other",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Feed scope",
+        "rect": {
+          "x": 16,
+          "y": 252,
+          "width": 227.3333282470703,
+          "height": 38
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e8",
+        "kind": "other"
+      },
+      {
+        "index": 8,
+        "parentIndex": 3,
+        "type": "Other",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "For you",
+        "value": "radio button, checked",
+        "rect": {
+          "x": 19,
+          "y": 255,
+          "width": 68.66666412353516,
+          "height": 32
+        },
+        "enabled": true,
+        "depth": 2,
+        "iosValueSemantics": {
+          "source": "react-native-ios-value-heuristic",
+          "encoding": "en",
+          "role": "radio",
+          "checked": true
+        },
+        "checked": true,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e9",
+        "kind": "other"
+      },
+      {
+        "index": 9,
+        "parentIndex": 3,
+        "type": "Other",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Following",
+        "value": "radio button, unchecked",
+        "rect": {
+          "x": 89.66666412353516,
+          "y": 255,
+          "width": 81.00000762939453,
+          "height": 32
+        },
+        "enabled": true,
+        "depth": 2,
+        "iosValueSemantics": {
+          "source": "react-native-ios-value-heuristic",
+          "encoding": "en",
+          "role": "radio",
+          "checked": false
+        },
+        "checked": false,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e10",
+        "kind": "other"
+      },
+      {
+        "index": 10,
+        "parentIndex": 3,
+        "type": "Other",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Unread",
+        "value": "radio button, unchecked",
+        "rect": {
+          "x": 172.6666717529297,
+          "y": 255,
+          "width": 67.66665649414062,
+          "height": 32
+        },
+        "enabled": true,
+        "depth": 2,
+        "iosValueSemantics": {
+          "source": "react-native-ios-value-heuristic",
+          "encoding": "en",
+          "role": "radio",
+          "checked": false
+        },
+        "checked": false,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e11",
+        "kind": "other"
+      },
+      {
+        "index": 11,
+        "parentIndex": 3,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "Pick up where you left off",
+        "rect": {
+          "x": 16,
+          "y": 318,
+          "width": 370,
+          "height": 13
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e12",
+        "kind": "text"
+      },
+      {
+        "index": 12,
+        "parentIndex": 3,
+        "type": "ScrollView",
+        "role": "RCTEnhancedScrollView",
+        "subrole": "UIScrollView",
+        "rect": {
+          "x": 0,
+          "y": 343,
+          "width": 402,
+          "height": 102.66666666666663
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "hiddenContentBelow": true,
+        "ref": "e13",
+        "kind": "scroll-area"
+      },
+      {
+        "index": 13,
+        "parentIndex": 12,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Continue reading: What agents forget, and when",
+        "rect": {
+          "x": 33,
+          "y": 358,
+          "width": 254.66665649414062,
+          "height": 23
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e14",
+        "kind": "button"
+      },
+      {
+        "index": 14,
+        "parentIndex": 12,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Continue reading: A short history of retrieval-augmented generation",
+        "rect": {
+          "x": 333.6666564941406,
+          "y": 358,
+          "width": 68.33334350585938,
+          "height": 46
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 28694,
+        "hittable": false,
+        "ref": "e15",
+        "kind": "button"
+      },
+      {
+        "index": 15,
+        "parentIndex": 12,
+        "type": "Other",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "value": "64%",
+        "rect": {
+          "x": 33,
+          "y": 422.33333349227905,
+          "width": 189.3333282470703,
+          "height": 4
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e16",
+        "kind": "other"
+      },
+      {
+        "index": 16,
+        "parentIndex": 12,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "4 min left",
+        "rect": {
+          "x": 232,
+          "y": 418,
+          "width": 55.333343505859375,
+          "height": 12.666656494140625
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e17",
+        "kind": "text"
+      },
+      {
+        "index": 17,
+        "parentIndex": 12,
+        "type": "Other",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "value": "22%",
+        "rect": {
+          "x": 333.6666564941406,
+          "y": 422.33333349227905,
+          "width": 68.33334350585938,
+          "height": 4
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 28694,
+        "hittable": false,
+        "ref": "e18",
+        "kind": "other"
+      },
+      {
+        "index": 18,
+        "parentIndex": 3,
+        "type": "Other",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "identifier": "feed-card-bk_8f2a",
+        "rect": {
+          "x": 16,
+          "y": 502.6666564941406,
+          "width": 370,
+          "height": 309.3333435058594
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e19",
+        "kind": "other"
+      },
+      {
+        "index": 19,
+        "parentIndex": 3,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Maya Okafor",
+        "rect": {
+          "x": 16,
+          "y": 504.6666564941406,
+          "width": 105.33333587646484,
+          "height": 22.000030517578125
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e20",
+        "kind": "button"
+      },
+      {
+        "index": 20,
+        "parentIndex": 19,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "MO",
+        "rect": {
+          "x": 19.333333253860474,
+          "y": 509.9999899864197,
+          "width": 15.333333969116211,
+          "height": 11
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e21",
+        "kind": "text"
+      },
+      {
+        "index": 21,
+        "parentIndex": 3,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "More actions for The Bottleneck Was Never Retrieval",
+        "rect": {
+          "x": 352,
+          "y": 498.6666564941406,
+          "width": 34,
+          "height": 34.000030517578125
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e22",
+        "kind": "button"
+      },
+      {
+        "index": 22,
+        "parentIndex": 3,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "shared",
+        "rect": {
+          "x": 138.33333587646484,
+          "y": 506.9999897480011,
+          "width": 40.66667175292969,
+          "height": 17.666656494140625
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e23",
+        "kind": "text"
+      },
+      {
+        "index": 23,
+        "parentIndex": 3,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "E",
+        "rect": {
+          "x": 201,
+          "y": 509.9999897480011,
+          "width": 5.6666717529296875,
+          "height": 12.000030517578125
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e24",
+        "kind": "text"
+      },
+      {
+        "index": 24,
+        "parentIndex": 3,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "every.to",
+        "rect": {
+          "x": 219,
+          "y": 506.9999897480011,
+          "width": 48.666656494140625,
+          "height": 17.666656494140625
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e25",
+        "kind": "text"
+      },
+      {
+        "index": 25,
+        "parentIndex": 3,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "2d ago",
+        "rect": {
+          "x": 284.6666564941406,
+          "y": 506.9999897480011,
+          "width": 41,
+          "height": 17.666656494140625
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e26",
+        "kind": "text"
+      },
+      {
+        "index": 26,
+        "parentIndex": 3,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Why this appeared",
+        "rect": {
+          "x": 16,
+          "y": 532.6666564941406,
+          "width": 370,
+          "height": 24
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e27",
+        "kind": "button"
+      },
+      {
+        "index": 27,
+        "parentIndex": 3,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Open The Bottleneck Was Never Retrieval",
+        "rect": {
+          "x": 16,
+          "y": 570.6666564941406,
+          "width": 370,
+          "height": 63
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e28",
+        "kind": "button"
+      },
+      {
+        "index": 28,
+        "parentIndex": 3,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "Agents don't fail because they can't find the right document — they fail because they can't remember what they already tried. A case for episodic memory over bigger context windows.",
+        "rect": {
+          "x": 16,
+          "y": 647.6666564941406,
+          "width": 370,
+          "height": 99
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e29",
+        "kind": "text"
+      },
+      {
+        "index": 29,
+        "parentIndex": 3,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Like on The Bottleneck Was Never Retrieval",
+        "rect": {
+          "x": 8,
+          "y": 764.6666564941406,
+          "width": 61.333335876464844,
+          "height": 32
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e30",
+        "kind": "button"
+      },
+      {
+        "index": 30,
+        "parentIndex": 3,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Comments on The Bottleneck Was Never Retrieval",
+        "rect": {
+          "x": 71.33333206176758,
+          "y": 764.6666564941406,
+          "width": 53.33332824707031,
+          "height": 32
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e31",
+        "kind": "button"
+      },
+      {
+        "index": 31,
+        "parentIndex": 3,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Save",
+        "rect": {
+          "x": 126.66666412353516,
+          "y": 764.6666564941406,
+          "width": 66.33333587646484,
+          "height": 32
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e32",
+        "kind": "button"
+      },
+      {
+        "index": 32,
+        "parentIndex": 3,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Share on The Bottleneck Was Never Retrieval",
+        "rect": {
+          "x": 195,
+          "y": 764.6666564941406,
+          "width": 31,
+          "height": 32
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e33",
+        "kind": "button"
+      },
+      {
+        "index": 33,
+        "parentIndex": 3,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "agent memory",
+        "rect": {
+          "x": 26,
+          "y": 809.6666564941406,
+          "width": 83.33333587646484,
+          "height": 2.333343505859375
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e34",
+        "kind": "text"
+      },
+      {
+        "index": 34,
+        "parentIndex": 3,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "retrieval",
+        "rect": {
+          "x": 135.33333587646484,
+          "y": 809.6666564941406,
+          "width": 47,
+          "height": 2.333343505859375
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e35",
+        "kind": "text"
+      },
+      {
+        "index": 35,
+        "parentIndex": 3,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "9 min read",
+        "rect": {
+          "x": 198.3333282470703,
+          "y": 809.3333230018616,
+          "width": 63.00001525878906,
+          "height": 2.6666769981384277
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e36",
+        "kind": "text"
+      },
+      {
+        "index": 36,
+        "parentIndex": 0,
+        "type": "Other",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Home",
+        "rect": {
+          "x": 8,
+          "y": 791,
+          "width": 74,
+          "height": 45
+        },
+        "enabled": true,
+        "selected": true,
+        "depth": 1,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e37",
+        "kind": "other"
+      },
+      {
+        "index": 37,
+        "parentIndex": 0,
+        "type": "Other",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Library",
+        "rect": {
+          "x": 86,
+          "y": 791,
+          "width": 74,
+          "height": 45
+        },
+        "enabled": true,
+        "depth": 1,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e38",
+        "kind": "other"
+      },
+      {
+        "index": 38,
+        "parentIndex": 0,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Save",
+        "rect": {
+          "x": 164,
+          "y": 791,
+          "width": 74,
+          "height": 45
+        },
+        "enabled": true,
+        "depth": 1,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e39",
+        "kind": "button"
+      },
+      {
+        "index": 39,
+        "parentIndex": 0,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Search",
+        "rect": {
+          "x": 242,
+          "y": 791,
+          "width": 74,
+          "height": 45
+        },
+        "enabled": true,
+        "depth": 1,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e40",
+        "kind": "button"
+      },
+      {
+        "index": 40,
+        "parentIndex": 0,
+        "type": "Other",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "You",
+        "rect": {
+          "x": 320,
+          "y": 791,
+          "width": 74,
+          "height": 45
+        },
+        "enabled": true,
+        "depth": 1,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e41",
+        "kind": "other"
+      },
+      {
+        "index": 41,
+        "parentIndex": 0,
+        "type": "Toolbar",
+        "role": "_UIFloatingBarContainerView",
+        "label": "Toolbar",
+        "identifier": "Toolbar",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 402,
+          "height": 874
+        },
+        "enabled": true,
+        "depth": 1,
+        "pid": 28694,
+        "hittable": true,
+        "ref": "e42",
+        "kind": "toolbar"
+      }
+    ],
+    "truncated": false,
+    "appName": "com.cosmicdolphin.app",
+    "appBundleId": "com.cosmicdolphin.app",
+    "visibility": {
+      "partial": true,
+      "visibleNodeCount": 42,
+      "totalNodeCount": 42,
+      "reasons": [
+        "scroll-hidden-below"
+      ]
+    },
+    "viewport": {
+      "width": 402,
+      "height": 874
+    },
+    "presentedSurface": "absent",
+    "snapshotQualityNotes": [
+      {
+        "code": "regular-geometry-clipped",
+        "clippedNodeCount": 9,
+        "droppedNodeCount": 37
+      }
+    ],
+    "snapshotDiagnostics": {
+      "stats": {
+        "count": 163,
+        "p50Ms": 76,
+        "p95Ms": 118,
+        "maxMs": 2967,
+        "slowThresholdMs": 1500,
+        "platform": "ios",
+        "backends": {
+          "xctest": 163
+        }
+      }
+    },
+    "refsGeneration": 809460
+  }
+}

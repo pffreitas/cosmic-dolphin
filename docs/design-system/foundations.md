@@ -378,3 +378,13 @@ bar override is removed on blur, even when its tab stays mounted.
 
 These additive semantic roles are generated for both clients by the shared
 schema, but are consumed only by mobile Home. Existing web roles are unchanged.
+
+### Native Home navigation surface
+
+`nav-surface` records web's compact navigation ground (`bg-panel` at 95% opacity)
+for the native BlurView adapter. The bar overlays scrolling content; its bottom
+safe-area padding is a platform addition. Web retains its existing CSS treatment.
+
+`typography.scale.saving` records the current web SavingRow title: Source Serif 4
+600, 16px, 1.35 line height and -.006em tracking. It is separate from the 17px
+continue-reading title. Native bundles its optical cut as well as larger cuts.

@@ -3,5 +3,5 @@ import type { FeedItem, ContinueReadingItem, BookmarkLibraryCounts } from "@cosm
 /** Development gallery data only. Production never mounts this provider. */
 export const HomeFeedFixtureContext = createContext<{
   items: FeedItem[]; resume: ContinueReadingItem[]; counts: BookmarkLibraryCounts;
-  computedAt: Date; readerName: string; loading?: boolean;
+  computedAt: Date; readerName: string; loading?: boolean; now?: Date;
 } | undefined>(undefined);

@@ -1,0 +1,1129 @@
+{
+  "success": true,
+  "data": {
+    "nodes": [
+      {
+        "index": 0,
+        "type": "Application",
+        "role": "UIApplication",
+        "label": "Cosmic Dolphin",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 402,
+          "height": 874
+        },
+        "enabled": true,
+        "depth": 0,
+        "pid": 65560,
+        "hittable": false,
+        "ref": "e1",
+        "kind": "application"
+      },
+      {
+        "index": 1,
+        "parentIndex": 0,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Open navigation",
+        "rect": {
+          "x": 12,
+          "y": 72.6666669845581,
+          "width": 34,
+          "height": 34
+        },
+        "enabled": true,
+        "depth": 1,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e2",
+        "kind": "button"
+      },
+      {
+        "index": 2,
+        "parentIndex": 0,
+        "type": "TextField",
+        "role": "RCTUITextField",
+        "subrole": "UITextField",
+        "label": "Paste a link to save it, or search your library",
+        "value": "Paste a link or search",
+        "placeholder": "Paste a link or search",
+        "rect": {
+          "x": 133,
+          "y": 72.6666669845581,
+          "width": 252,
+          "height": 34
+        },
+        "enabled": true,
+        "depth": 1,
+        "password": false,
+        "editable": true,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e3",
+        "kind": "text-field"
+      },
+      {
+        "index": 3,
+        "parentIndex": 0,
+        "type": "ScrollView",
+        "role": "RCTEnhancedScrollView",
+        "subrole": "UIScrollView",
+        "rect": {
+          "x": 0,
+          "y": 118,
+          "width": 402,
+          "height": 694
+        },
+        "enabled": true,
+        "depth": 1,
+        "pid": 65560,
+        "hittable": true,
+        "hiddenContentAbove": true,
+        "ref": "e4",
+        "kind": "scroll-area"
+      },
+      {
+        "index": 4,
+        "parentIndex": 3,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "Built from",
+        "rect": {
+          "x": 37,
+          "y": 130.99998982747388,
+          "width": 57,
+          "height": 17.666748046875
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e5",
+        "kind": "text"
+      },
+      {
+        "index": 5,
+        "parentIndex": 3,
+        "type": "Link",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "E, every.to",
+        "rect": {
+          "x": 101,
+          "y": 130.99998982747388,
+          "width": 71.66667175292969,
+          "height": 17.666748046875
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e6",
+        "kind": "link"
+      },
+      {
+        "index": 6,
+        "parentIndex": 3,
+        "type": "Link",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "A, arxiv.org",
+        "rect": {
+          "x": 189.6666717529297,
+          "y": 130.99998982747388,
+          "width": 75.66667175292969,
+          "height": 17.666748046875
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e7",
+        "kind": "link"
+      },
+      {
+        "index": 7,
+        "parentIndex": 6,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "A",
+        "rect": {
+          "x": 194.33333826065063,
+          "y": 133.99998982747388,
+          "width": 6.6666717529296875,
+          "height": 12
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e8",
+        "kind": "text"
+      },
+      {
+        "index": 8,
+        "parentIndex": 3,
+        "type": "Link",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "S, stratechery.com",
+        "rect": {
+          "x": 47,
+          "y": 155.66665585835767,
+          "width": 121,
+          "height": 17.6666259765625
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e9",
+        "kind": "link"
+      },
+      {
+        "index": 9,
+        "parentIndex": 8,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "S",
+        "rect": {
+          "x": 52,
+          "y": 158.66665585835767,
+          "width": 6,
+          "height": 12
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e10",
+        "kind": "text"
+      },
+      {
+        "index": 10,
+        "parentIndex": 3,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "+1 more",
+        "rect": {
+          "x": 185,
+          "y": 155.66665585835767,
+          "width": 47.33332824707031,
+          "height": 17.6666259765625
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e11",
+        "kind": "text"
+      },
+      {
+        "index": 11,
+        "parentIndex": 3,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Like on Four of your saves are circling the same argument",
+        "rect": {
+          "x": 29,
+          "y": 185.33332570393873,
+          "width": 45.333335876464844,
+          "height": 32
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e12",
+        "kind": "button"
+      },
+      {
+        "index": 12,
+        "parentIndex": 3,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Comments on Four of your saves are circling the same argument",
+        "rect": {
+          "x": 76.33333206176758,
+          "y": 185.33332570393873,
+          "width": 31,
+          "height": 32
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e13",
+        "kind": "button"
+      },
+      {
+        "index": 13,
+        "parentIndex": 3,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Save digest",
+        "rect": {
+          "x": 109.33333587646484,
+          "y": 185.33332570393873,
+          "width": 106.66666412353516,
+          "height": 32
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e14",
+        "kind": "button"
+      },
+      {
+        "index": 14,
+        "parentIndex": 3,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Share on Four of your saves are circling the same argument",
+        "rect": {
+          "x": 218,
+          "y": 185.33332570393873,
+          "width": 31,
+          "height": 32
+        },
+        "enabled": false,
+        "depth": 2,
+        "pid": 65560,
+        "hittable": false,
+        "ref": "e15",
+        "kind": "button"
+      },
+      {
+        "index": 15,
+        "parentIndex": 3,
+        "type": "Other",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "identifier": "swipe-card-bk_3e77",
+        "rect": {
+          "x": 16,
+          "y": 254.33333333333326,
+          "width": 370,
+          "height": 246
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e16",
+        "kind": "other"
+      },
+      {
+        "index": 16,
+        "parentIndex": 15,
+        "type": "Other",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "identifier": "feed-card-bk_3e77",
+        "rect": {
+          "x": 4,
+          "y": 254.33333333333326,
+          "width": 394,
+          "height": 246
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e17",
+        "kind": "other"
+      },
+      {
+        "index": 17,
+        "parentIndex": 15,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "More actions for The cost of a perfect index",
+        "rect": {
+          "x": 352,
+          "y": 270.33333333333326,
+          "width": 34,
+          "height": 34
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e18",
+        "kind": "button"
+      },
+      {
+        "index": 18,
+        "parentIndex": 15,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "S",
+        "rect": {
+          "x": 21,
+          "y": 281.6666668256123,
+          "width": 6,
+          "height": 12
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e19",
+        "kind": "text"
+      },
+      {
+        "index": 19,
+        "parentIndex": 15,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "stratechery.com",
+        "rect": {
+          "x": 39,
+          "y": 278.6666668256123,
+          "width": 98,
+          "height": 17.6666259765625
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e20",
+        "kind": "text"
+      },
+      {
+        "index": 20,
+        "parentIndex": 15,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "you saved this",
+        "rect": {
+          "x": 154,
+          "y": 278.6666668256123,
+          "width": 85,
+          "height": 17.6666259765625
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e21",
+        "kind": "text"
+      },
+      {
+        "index": 21,
+        "parentIndex": 15,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "5d ago",
+        "rect": {
+          "x": 256,
+          "y": 278.6666668256123,
+          "width": 41,
+          "height": 17.6666259765625
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e22",
+        "kind": "text"
+      },
+      {
+        "index": 22,
+        "parentIndex": 15,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Why this appeared",
+        "rect": {
+          "x": 16,
+          "y": 304.33333333333326,
+          "width": 370,
+          "height": 24
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e23",
+        "kind": "button"
+      },
+      {
+        "index": 23,
+        "parentIndex": 15,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Open The cost of a perfect index",
+        "rect": {
+          "x": 16,
+          "y": 336.33333333333326,
+          "width": 370,
+          "height": 25
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e24",
+        "kind": "button"
+      },
+      {
+        "index": 24,
+        "parentIndex": 15,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "Retrieval quality has a price curve, and most teams are buying the flat part of it.",
+        "rect": {
+          "x": 16,
+          "y": 367.33333333333326,
+          "width": 370,
+          "height": 42
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e25",
+        "kind": "text"
+      },
+      {
+        "index": 25,
+        "parentIndex": 15,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Like on The cost of a perfect index",
+        "rect": {
+          "x": 8,
+          "y": 417.33333333333326,
+          "width": 31,
+          "height": 32
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e26",
+        "kind": "button"
+      },
+      {
+        "index": 26,
+        "parentIndex": 15,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Comments on The cost of a perfect index",
+        "rect": {
+          "x": 41,
+          "y": 417.33333333333326,
+          "width": 31,
+          "height": 32
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e27",
+        "kind": "button"
+      },
+      {
+        "index": 27,
+        "parentIndex": 15,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "In your library",
+        "rect": {
+          "x": 74,
+          "y": 417.33333333333326,
+          "width": 119.66667175292969,
+          "height": 32
+        },
+        "enabled": false,
+        "selected": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": false,
+        "ref": "e28",
+        "kind": "button"
+      },
+      {
+        "index": 28,
+        "parentIndex": 15,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Share on The cost of a perfect index",
+        "rect": {
+          "x": 195.6666717529297,
+          "y": 417.33333333333326,
+          "width": 31,
+          "height": 32
+        },
+        "enabled": false,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": false,
+        "ref": "e29",
+        "kind": "button"
+      },
+      {
+        "index": 29,
+        "parentIndex": 15,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "retrieval",
+        "rect": {
+          "x": 26,
+          "y": 462.33333333333326,
+          "width": 47,
+          "height": 12
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e30",
+        "kind": "text"
+      },
+      {
+        "index": 30,
+        "parentIndex": 15,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "cost",
+        "rect": {
+          "x": 99,
+          "y": 462.33333333333326,
+          "width": 25,
+          "height": 12
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e31",
+        "kind": "text"
+      },
+      {
+        "index": 31,
+        "parentIndex": 15,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "11 min read",
+        "rect": {
+          "x": 140,
+          "y": 461.9999998410542,
+          "width": 65.33332824707031,
+          "height": 12.666748046875
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e32",
+        "kind": "text"
+      },
+      {
+        "index": 32,
+        "parentIndex": 3,
+        "type": "Other",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "identifier": "swipe-card-bk_5ad3",
+        "rect": {
+          "x": 16,
+          "y": 500.33333333333326,
+          "width": 370,
+          "height": 235
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e33",
+        "kind": "other"
+      },
+      {
+        "index": 33,
+        "parentIndex": 32,
+        "type": "Other",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "identifier": "feed-card-bk_5ad3",
+        "rect": {
+          "x": 4,
+          "y": 500.33333333333326,
+          "width": 394,
+          "height": 235
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e34",
+        "kind": "other"
+      },
+      {
+        "index": 34,
+        "parentIndex": 32,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "More actions for Q3 retrieval eval — internal writeup",
+        "rect": {
+          "x": 352,
+          "y": 516.3333333333333,
+          "width": 34,
+          "height": 34
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e35",
+        "kind": "button"
+      },
+      {
+        "index": 35,
+        "parentIndex": 32,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "N",
+        "rect": {
+          "x": 20.333333492279053,
+          "y": 527.6666668256123,
+          "width": 7,
+          "height": 12
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e36",
+        "kind": "text"
+      },
+      {
+        "index": 36,
+        "parentIndex": 32,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "notion.so",
+        "rect": {
+          "x": 39,
+          "y": 524.6666668256123,
+          "width": 55.666664123535156,
+          "height": 17.6666259765625
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e37",
+        "kind": "text"
+      },
+      {
+        "index": 37,
+        "parentIndex": 32,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "you saved this",
+        "rect": {
+          "x": 111.66666412353516,
+          "y": 524.6666668256123,
+          "width": 85.00000762939453,
+          "height": 17.6666259765625
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e38",
+        "kind": "text"
+      },
+      {
+        "index": 38,
+        "parentIndex": 32,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "4d ago",
+        "rect": {
+          "x": 213.6666717529297,
+          "y": 524.6666668256123,
+          "width": 41.666656494140625,
+          "height": 17.6666259765625
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e39",
+        "kind": "text"
+      },
+      {
+        "index": 39,
+        "parentIndex": 32,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Why this appeared",
+        "rect": {
+          "x": 16,
+          "y": 550.3333333333333,
+          "width": 370,
+          "height": 24
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e40",
+        "kind": "button"
+      },
+      {
+        "index": 40,
+        "parentIndex": 32,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Open Q3 retrieval eval — internal writeup",
+        "rect": {
+          "x": 16,
+          "y": 582.3333333333333,
+          "width": 370,
+          "height": 25
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e41",
+        "kind": "button"
+      },
+      {
+        "index": 41,
+        "parentIndex": 32,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "Private link. Cosmic couldn't read this page, so your own title and notes are shown instead.",
+        "rect": {
+          "x": 51,
+          "y": 624.3333333333333,
+          "width": 322,
+          "height": 39
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e42",
+        "kind": "text"
+      },
+      {
+        "index": 42,
+        "parentIndex": 32,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Like on Q3 retrieval eval — internal writeup",
+        "rect": {
+          "x": 8,
+          "y": 682.3333333333333,
+          "width": 31,
+          "height": 32
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e43",
+        "kind": "button"
+      },
+      {
+        "index": 43,
+        "parentIndex": 32,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Comments on Q3 retrieval eval — internal writeup",
+        "rect": {
+          "x": 41,
+          "y": 682.3333333333333,
+          "width": 31,
+          "height": 32
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e44",
+        "kind": "button"
+      },
+      {
+        "index": 44,
+        "parentIndex": 32,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "In your library",
+        "rect": {
+          "x": 74,
+          "y": 682.3333333333333,
+          "width": 119.66667175292969,
+          "height": 32
+        },
+        "enabled": false,
+        "selected": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": false,
+        "ref": "e45",
+        "kind": "button"
+      },
+      {
+        "index": 45,
+        "parentIndex": 32,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Share on Q3 retrieval eval — internal writeup",
+        "rect": {
+          "x": 195.6666717529297,
+          "y": 682.3333333333333,
+          "width": 31,
+          "height": 32
+        },
+        "enabled": false,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": false,
+        "ref": "e46",
+        "kind": "button"
+      },
+      {
+        "index": 46,
+        "parentIndex": 32,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "evaluation",
+        "rect": {
+          "x": 316.6666564941406,
+          "y": 692.3333333333333,
+          "width": 59.333343505859375,
+          "height": 12
+        },
+        "enabled": true,
+        "depth": 3,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e47",
+        "kind": "text"
+      },
+      {
+        "index": 47,
+        "parentIndex": 3,
+        "type": "StaticText",
+        "role": "RCTParagraphComponentView",
+        "subrole": "UIView",
+        "label": "That's everything for now.",
+        "rect": {
+          "x": 16,
+          "y": 735.3333333333333,
+          "width": 370,
+          "height": 41.6666259765625
+        },
+        "enabled": true,
+        "depth": 2,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e48",
+        "kind": "text"
+      },
+      {
+        "index": 48,
+        "parentIndex": 0,
+        "type": "Other",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Home",
+        "rect": {
+          "x": 8,
+          "y": 791,
+          "width": 74,
+          "height": 45
+        },
+        "enabled": true,
+        "selected": true,
+        "depth": 1,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e49",
+        "kind": "other"
+      },
+      {
+        "index": 49,
+        "parentIndex": 0,
+        "type": "Other",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Library",
+        "rect": {
+          "x": 86,
+          "y": 791,
+          "width": 74,
+          "height": 45
+        },
+        "enabled": true,
+        "depth": 1,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e50",
+        "kind": "other"
+      },
+      {
+        "index": 50,
+        "parentIndex": 0,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Save",
+        "rect": {
+          "x": 164,
+          "y": 791,
+          "width": 74,
+          "height": 45
+        },
+        "enabled": true,
+        "depth": 1,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e51",
+        "kind": "button"
+      },
+      {
+        "index": 51,
+        "parentIndex": 0,
+        "type": "Button",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "Search",
+        "rect": {
+          "x": 242,
+          "y": 791,
+          "width": 74,
+          "height": 45
+        },
+        "enabled": true,
+        "depth": 1,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e52",
+        "kind": "button"
+      },
+      {
+        "index": 52,
+        "parentIndex": 0,
+        "type": "Other",
+        "role": "RCTViewComponentView",
+        "subrole": "UIView",
+        "label": "You",
+        "rect": {
+          "x": 320,
+          "y": 791,
+          "width": 74,
+          "height": 45
+        },
+        "enabled": true,
+        "depth": 1,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e53",
+        "kind": "other"
+      },
+      {
+        "index": 53,
+        "parentIndex": 0,
+        "type": "Toolbar",
+        "role": "_UIFloatingBarContainerView",
+        "label": "Toolbar",
+        "identifier": "Toolbar",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 402,
+          "height": 874
+        },
+        "enabled": true,
+        "depth": 1,
+        "pid": 65560,
+        "hittable": true,
+        "ref": "e54",
+        "kind": "toolbar"
+      }
+    ],
+    "truncated": false,
+    "appName": "com.cosmicdolphin.app",
+    "appBundleId": "com.cosmicdolphin.app",
+    "visibility": {
+      "partial": true,
+      "visibleNodeCount": 54,
+      "totalNodeCount": 54,
+      "reasons": [
+        "scroll-hidden-above"
+      ]
+    },
+    "viewport": {
+      "width": 402,
+      "height": 874
+    },
+    "presentedSurface": "absent",
+    "snapshotQualityNotes": [
+      {
+        "code": "regular-geometry-clipped",
+        "clippedNodeCount": 4,
+        "droppedNodeCount": 91
+      }
+    ],
+    "snapshotDiagnostics": {
+      "stats": {
+        "count": 160,
+        "p50Ms": 76,
+        "p95Ms": 118,
+        "maxMs": 2967,
+        "slowThresholdMs": 1500,
+        "platform": "ios",
+        "backends": {
+          "xctest": 160
+        }
+      }
+    },
+    "refsGeneration": 809458
+  }
+}

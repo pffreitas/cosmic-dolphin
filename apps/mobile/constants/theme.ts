@@ -70,6 +70,7 @@ export const colors = {
     navEdge: 'rgba(255,255,255,.9)',
     navSheen: 'rgba(255,255,255,.85)',
     navPill: 'rgba(255,255,255,.96)',
+    navSurface: 'rgba(255,255,255,.95)',
     /* Brand artwork */
     brandGround: '#010317',
   },
@@ -128,6 +129,7 @@ export const colors = {
     navEdge: 'rgba(255,255,255,.13)',
     navSheen: 'rgba(255,255,255,.15)',
     navPill: 'rgba(255,255,255,.11)',
+    navSurface: 'rgba(26,24,22,.95)',
     /* Brand artwork */
     brandGround: '#010317',
   },
@@ -201,6 +203,7 @@ export const webColors = {
     navEdge: 'rgba(255,255,255,.9)',
     navSheen: 'rgba(255,255,255,.85)',
     navPill: 'rgba(255,255,255,.96)',
+    navSurface: 'rgba(255,255,255,.95)',
     brandGround: '#010317',
   },
   dark: {
@@ -249,6 +252,7 @@ export const webColors = {
     navEdge: 'rgba(255,255,255,.13)',
     navSheen: 'rgba(255,255,255,.15)',
     navPill: 'rgba(255,255,255,.11)',
+    navSurface: 'rgba(26,24,22,.95)',
     brandGround: '#010317',
   },
 } as const;
@@ -318,6 +322,7 @@ export const webType = {
   section: { family: 'sans' as FontRole, fontSize: 13, lineHeight: 13, fontWeight: '600' as const },
   label: { family: 'sans' as FontRole, fontSize: 11.5, lineHeight: 14.95, fontWeight: '600' as const },
   quote: { family: 'serif' as FontRole, fontSize: 21, lineHeight: 32.55, fontWeight: '400' as const, letterSpacing: -0.126, fontStyle: 'italic' as const },
+  saving: { family: 'serif' as FontRole, fontSize: 16, lineHeight: 21.6, fontWeight: '600' as const, letterSpacing: -0.096 },
 } as const;
 
 export const webTypeCompact = {
@@ -336,6 +341,7 @@ export const webTypeCompact = {
   section: { family: 'sans' as FontRole, fontSize: 13, lineHeight: 13, fontWeight: '600' as const },
   label: { family: 'sans' as FontRole, fontSize: 11.5, lineHeight: 14.95, fontWeight: '600' as const },
   quote: { family: 'serif' as FontRole, fontSize: 21, lineHeight: 32.55, fontWeight: '400' as const, letterSpacing: -0.126, fontStyle: 'italic' as const },
+  saving: { family: 'serif' as FontRole, fontSize: 16, lineHeight: 21.6, fontWeight: '600' as const, letterSpacing: -0.096 },
 } as const;
 
 export type WebTypeRole = keyof typeof webType;

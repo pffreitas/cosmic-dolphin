@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { HomeFeedFixtureContext } from "@/hooks/HomeFeedFixtureContext";
 import { FlatList, Platform, RefreshControl, ScrollView, StatusBar, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import type { ContinueReadingItem, FeedItem, FeedScope } from "@cosmic-dolphin/api-client";
-import { Link2, FileText, FolderTree } from "lucide-react-native";
+import { Inbox, Link2, FileText, FolderTree } from "lucide-react-native";
 import { radius } from "@/constants/theme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCaptures } from "@/contexts/CaptureContext";
@@ -35,7 +36,9 @@ function HomeEdition() {
   const [commentsFor, setCommentsFor] = useState<FeedItem>();
   const [selection, setSelection] = useState<ActionSheet>();
   const [error, setError] = useState<string>();
-  const [now, setNow] = useState(() => new Date());
+  const fixture = useContext(HomeFeedFixtureContext);
+  const [clock, setNow] = useState(() => new Date());
+  const now = __DEV__ && fixture?.now ? fixture.now : clock;
   const list = useRef<FlatList<FeedItem>>(null);
   const { drain, changeError, captures } = useCaptures();
   useEffect(() => { const timer = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(timer); }, []);
@@ -66,7 +69,7 @@ function HomeEdition() {
   return <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1, backgroundColor: colors.bg }}>
     <HomeToolbar onError={setError} />
     <FlatList ref={list} data={entries} keyExtractor={item => item.bookmark ? `bookmark:${item.bookmark.id}` : `digest:${item.digest?.id}`}
-      style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 40, paddingBottom: 112, backgroundColor: colors.bg }}
+      style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: firstRun ? 48 : 40, paddingBottom: 112, backgroundColor: colors.bg }}
       refreshControl={<RefreshControl refreshing={feed.refreshing && !feed.loading} onRefresh={refresh} tintColor={colors.accent} />}
       onEndReached={() => { if (!feed.error) void feed.loadMore(); }} onEndReachedThreshold={0.5}
       ListHeaderComponent={<>
@@ -74,9 +77,9 @@ function HomeEdition() {
           {feed.offline ? <InlineNotice message="You're offline. These are the items already loaded. Nothing new arrives, and likes and saves wait until you're back." /> : null}
           <View style={{ gap: 16, alignItems: "flex-start" }}>
             <View style={{ gap: 6, width: "100%" }}>
-              <Copy style={{ fontFamily: "InterMedium", fontSize: 13, lineHeight: 14, minHeight: 14, color: colors.fgTertiary }}>{new Intl.DateTimeFormat(undefined, { weekday: "long", day: "numeric", month: "long" }).format(now)}</Copy>
+              <Copy style={{ fontFamily: "InterMedium", fontSize: 13, lineHeight: 13, minHeight: 14, color: colors.fgTertiary }}>{new Intl.DateTimeFormat(undefined, { weekday: "long", day: "numeric", month: "long" }).format(now)}</Copy>
               <Text accessibilityRole="header" style={[webText("edition"), { color: colors.fg }]}>{greeting(now, readerName)}</Text>
-              <Copy style={{ fontSize: 13.5, lineHeight: 20.25 }}>{scopeCopy(scope)}{updatedAt(feed.computedAt, now) ? ` · ${updatedAt(feed.computedAt, now)}` : ""}</Copy>
+              <Copy style={{ fontSize: 13.5, lineHeight: 20.25 }}>{scopeCopy(scope)}{updatedAt(feed.computedAt, now) ? ` · ${updatedAt(feed.computedAt, now)}`.replaceAll(" ", "\u00a0") : ""}</Copy>
             </View>
             <Segmented value={scope} options={HOME_SCOPES} onChange={openScope} />
           </View>
@@ -134,8 +137,9 @@ function ScopeEmpty({ scope, onReset }: { scope: FeedScope; onReset: () => void 
   const title = scope === "following" ? "Nobody you follow has shared anything yet." : scope === "unread" ? "You're caught up." : "Nothing ranked for you right now.";
   const description = scope === "following" ? "Following shows public saves from the people you follow. Explore is where you find them." : scope === "unread" ? "Unread is every save you haven't opened, newest first. Read ones stay in your library." : "For you mixes your unread saves, the people you follow, and this week's digests. Save something and it appears here.";
   return <View style={{ paddingHorizontal: 24, paddingVertical: 48, backgroundColor: colors.bgSubtle, borderRadius: radius.md, gap: 12, alignItems: "center" }}>
-    <Copy role="title3" style={{ color: colors.fg, textAlign: "center" }}>{title}</Copy><Copy style={{ textAlign: "center" }}>{description}</Copy>
-    {scope === "following" ? <Action label="Find people on Explore" onPress={() => router.push("/explore")}>Find people on Explore</Action> : scope === "unread" ? <Action label="Back to For you" onPress={onReset}>Back to For you</Action> : null}
+    <Inbox size={20} strokeWidth={1.7} color={colors.fgTertiary} />
+    <View style={{ gap: 6 }}><Copy role="title3" style={{ color: colors.fg, textAlign: "center" }}>{title}</Copy><Copy style={{ textAlign: "center" }}>{description}</Copy></View>
+    {scope !== "for_you" ? <View style={{ paddingTop: 4 }}><Action primary label={scope === "following" ? "Find people on Explore" : "Back to For you"} onPress={scope === "following" ? () => router.push("/explore") : onReset}>{scope === "following" ? "Find people on Explore" : "Back to For you"}</Action></View> : null}
   </View>;
 }
 function FirstSave() {
@@ -162,7 +166,7 @@ function FirstSave() {
         <Copy role="body" style={{ lineHeight: 24 }}>Paste a URL and it is yours in a second — summarised, tagged and filed while you carry on. Home fills in as you save.</Copy></View>
       <View style={{ flexDirection: "row", gap: 8 }}><TextInput accessibilityLabel="Link to save" placeholder="https://" placeholderTextColor={colors.fgTertiary} value={url} onChangeText={text => { setUrl(text); setInvalid(false); }} onSubmitEditing={() => { void submit(); }} autoCapitalize="none" keyboardType="url" returnKeyType="go"
         style={{ flex: 1, minWidth: 0, height: 40, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderRadius: radius.md, backgroundColor: colors.bgPanel, borderColor: invalid ? colors.danger : colors.borderStrong, fontFamily: "Inter", fontSize: 14, color: colors.fg }} />
-        <Action label="Save link" primary onPress={() => { void submit(); }} style={{ paddingHorizontal: 24, minHeight: 40 }}>Save link</Action></View>
+        <Action label="Save link" primary onPress={() => { void submit(); }} style={{ paddingHorizontal: 24, minHeight: 40 }}><Copy maxFontSizeMultiplier={1.3} style={{ fontFamily: "InterMedium", fontSize: 14, lineHeight: 14, color: colors.accentFg }}>Save link</Copy></Action></View>
       {invalid || error ? <Copy role="meta" style={{ color: colors.danger }}>{error || "That doesn't look like a link. It needs a domain, like example.com/article."}</Copy> : null}
       <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }}><Copy role="meta" style={{ color: colors.fgTertiary }}>Try one of these</Copy>
         {["every.to", "stratechery.com", "arxiv.org"].map(source => <Action key={source} label={source} onPress={() => setUrl(`https://${source}`)} style={{ borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.bgSubtle, paddingHorizontal: 12 }}>{source}</Action>)}
@@ -171,7 +175,7 @@ function FirstSave() {
     <View accessibilityLabel="What happens when you save" style={{ borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.bgSubtle, overflow: "hidden" }}>
       {steps.map(({ Icon, title, body }, index) => <View key={title} style={{ flexDirection: "row", gap: 16, paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: index === 2 ? 0 : 1, borderColor: colors.border }}>
         <View style={{ width: 32, height: 32, alignItems: "center", justifyContent: "center", borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.bgPanel }}><Icon size={16} strokeWidth={1.7} color={colors.accent} /></View>
-        <View style={{ flex: 1, gap: 2 }}><Copy style={{ fontFamily: "InterSemibold", color: colors.fg }}>{index + 1}. {title}</Copy><Copy style={{ fontSize: 13, lineHeight: 19.5 }}>{body}</Copy></View>
+        <View style={{ flex: 1, gap: 2 }}><Copy style={{ fontFamily: "InterSemibold", lineHeight: 20.25, color: colors.fg }}><Text style={{ color: colors.fgTertiary }}>{index + 1}.</Text> {title}</Copy><Copy style={{ fontSize: 13, lineHeight: 19.5 }}>{body}</Copy></View>
       </View>)}
     </View>
   </View>;

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Pressable, ScrollView, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 import type { Comment, FeedItem } from "@cosmic-dolphin/api-client";
@@ -41,12 +41,12 @@ export function HomeComments({ item, onClose, offline }: { item: FeedItem; onClo
     finally { if (alive.current) setPosting(false); }
   };
   return <Modal visible transparent animationType="none" onRequestClose={onClose}>
-    <View style={{ flex: 1, justifyContent: "flex-end" }}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, justifyContent: "flex-end" }}>
       <Pressable onPress={onClose} accessibilityLabel="Close comments" style={{ position: "absolute", height: "100%", width: "100%", backgroundColor: colors.overlay }} />
       <SafeAreaView edges={["bottom"]} style={{ maxHeight: "90%", padding: 24, gap: 16, backgroundColor: colors.bgPanel, borderWidth: 1, borderColor: colors.border, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg }}>
         <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}><Copy role="title2" style={{ flex: 1, color: colors.fg }}>{heading}</Copy><Action label="Close comments" icon={X} onPress={onClose} /></View>
         <Copy lines={2}>{item.bookmark?.title}</Copy>
-        <ScrollView contentContainerStyle={{ gap: 0 }}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 0 }}>
           {loading ? <Copy>Loading comments…</Copy> : !error && !comments.length ? <Copy>No comments yet.</Copy> : null}
           {comments.map(comment => <View key={comment.id} style={{ paddingVertical: 14, marginLeft: comment.parentId ? 44 : 0, gap: 6, borderBottomWidth: 1, borderColor: colors.border }}>
             {comment.isDeleted ? <Copy style={{ fontStyle: "italic", color: colors.fgTertiary }}>Comment deleted</Copy> : <><View style={{ flexDirection: "row", gap: 8 }}><Copy style={{ fontFamily: "InterMedium", color: colors.fg }}>{comment.author?.name ?? comment.author?.handle}</Copy><Copy role="meta">{relativeTime(comment.createdAt)}{comment.isEdited ? " · edited" : ""}</Copy></View><Copy>{comment.body}</Copy></>}
@@ -58,6 +58,6 @@ export function HomeComments({ item, onClose, offline }: { item: FeedItem; onClo
           <Action label="Post comment" primary disabled={posting || !body.trim()} onPress={() => { void post(); }}>Post comment</Action>
         </>}
       </SafeAreaView>
-    </View>
+    </KeyboardAvoidingView>
   </Modal>;
 }

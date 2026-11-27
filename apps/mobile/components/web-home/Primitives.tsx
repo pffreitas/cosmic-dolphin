@@ -6,11 +6,12 @@ import { useControlFocus } from "@/hooks/useControlFocus";
 import { useWebTheme, webText } from "./theme";
 
 /** Same visible geometry as web; invisible hit slop supplies native touch targets. */
-export function Action({ label, icon: Icon, children, onPress, selected, disabled, primary, style }: {
+export function Action({ label, icon: Icon, children, onPress, selected, disabled, primary, style, tone }: {
   label: string; icon?: LucideIcon; children?: React.ReactNode; onPress?: () => void;
-  selected?: boolean; disabled?: boolean; primary?: boolean; style?: ViewStyle;
+  selected?: boolean; disabled?: boolean; primary?: boolean; style?: ViewStyle; tone?: "like";
 }) {
   const { colors } = useWebTheme();
+  const foreground = primary ? colors.accentFg : selected && tone === "like" ? colors.like : colors.fgSecondary;
   const { focusStyle, ...focusEvents } = useControlFocus();
   return <Pressable {...focusEvents} accessibilityRole="button" accessibilityLabel={label}
     accessibilityState={{ disabled: disabled || !onPress, ...(selected === undefined ? {} : { selected }) }}
@@ -19,8 +20,8 @@ export function Action({ label, icon: Icon, children, onPress, selected, disable
       flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
       borderRadius: primary ? radius.pill : radius.sm,
       backgroundColor: primary ? colors.accent : pressed ? colors.bgInset : "transparent" }, focusStyle, { outlineColor: colors.focus }, style]}>
-    {Icon ? <Icon size={15} strokeWidth={1.7} color={primary ? colors.accentFg : colors.fgSecondary} /> : null}
-    {typeof children === "string" || typeof children === "number" ? <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: "InterMedium", fontSize: 12.5, lineHeight: 12.5, color: primary ? colors.accentFg : colors.fgSecondary }}>{children}</Text> : children}
+    {Icon ? <Icon size={15} strokeWidth={1.7} color={foreground} fill={selected && tone === "like" ? foreground : "none"} /> : null}
+    {typeof children === "string" || typeof children === "number" ? <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: "InterMedium", fontSize: 12.5, lineHeight: 12.5, fontVariant: ["tabular-nums"], color: foreground }}>{children}</Text> : children}
   </Pressable>;
 }
 export function Segmented<T extends string>({ value, options, onChange }: { value: T; options: { value: T; label: string }[]; onChange: (value: T) => void }) {

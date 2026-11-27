@@ -1,6 +1,10 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
+import { AppShell } from "@/components/shell/app-shell";
+import { BottomNavigation } from "@/components/mobile/bottom-nav";
+import comparison from "../../../../mobile/dev/home-fixture.json";
 import { FeedScope } from "@cosmic-dolphin/api-client";
 
 import { DevShell } from "@/app/dev/dev-shell";
@@ -241,6 +245,29 @@ const STATES: { value: StateKey; label: string }[] = [
  */
 export function HomeStates() {
   const [state, setState] = React.useState<StateKey>("populated");
+  const params = useSearchParams();
+  if (params.get("parity") === "1") {
+    const empty = params.get("state") === "empty";
+    const newUser = params.get("state") === "new-user";
+    const scope = params.get("scope") === "following" ? FeedScope.Following : params.get("scope") === "unread" ? FeedScope.Unread : FeedScope.ForYou;
+    const entries: FeedEntry[] = params.get("state") === "full" ? ENTRIES.map(entry => entry.kind === "digest" ? { ...entry, keyPoints: comparison.fullItems.find(item => item.digest)?.digest?.keyPoints.map(point => ({ text: point.text })) ?? [] } : entry) : comparison.items.map(item => article({
+      bookmarkId: item.bookmark.id, title: item.bookmark.title, summary: item.bookmark.cosmicBriefSummary,
+      domain: new URL(item.bookmark.sourceUrl).hostname, tags: item.bookmark.cosmicTags,
+      readingTime: `${item.bookmark.metadata.readingTime} min`, savedAt: item.type === "own_save" ? "5d ago" : "2d ago",
+      own: item.type === "own_save", saved: item.type === "own_save", action: item.type === "own_save" ? "you saved this" : "shared",
+      actor: item.actor ? { ...item.actor, href: `/u/${item.actor.handle}` } : undefined,
+      rankingReason: item.rankingReason, likeCount: item.bookmark.likeCount ?? 0, commentCount: item.bookmark.commentCount ?? 0,
+      shareUrl: item.bookmark.shareSlug ? `https://cosmicdolphin.app/s/${item.bookmark.shareSlug}` : undefined,
+    }));
+    const rail = { ...EMPTY_RAIL, continueReading: comparison.resume.map(item => ({
+      bookmarkId: item.bookmark.id, href: `/bookmarks/${item.bookmark.id}`, title: item.bookmark.title,
+      percent: item.progress.percent, timeLeft: `${Math.max(1, Math.ceil(item.bookmark.metadata.readingTime * (1 - item.progress.percent / 100)))} min left`,
+    })) };
+    return <><AppShell currentPath="/my/dashboard" collections={[]} counts={comparison.counts} user={{ name: comparison.readerName, email: "reader@example.invalid", href: "/my/profile" }}>
+      <HomeView scope={scope} entries={empty || newUser ? [] : entries} rail={empty || newUser ? EMPTY_RAIL : rail} readerName={comparison.readerName}
+        computedAt={new Date(comparison.computedAt)} newUser={newUser} offline />
+    </AppShell><BottomNavigation currentPath="/my/dashboard" /></>;
+  }
 
   return (
     <DevShell

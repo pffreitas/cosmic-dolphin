@@ -15,6 +15,7 @@ import { domainFor } from "./web-home/data";
 import { useWebTheme } from "./web-home/theme";
 import { radius } from "@/constants/theme";
 import { PendingPhases } from "./PendingPhases";
+import { webText } from "./web-home/theme";
 function CaptureRow({ capture, onCompleted, failedActions, appearance }: { appearance?: "web"; capture: Capture; onCompleted?: () => void; failedActions?: (bookmark: ContractBookmark) => FeedCardActions }) {
   const { retry, remove, updateBookmark } = useCaptures();
   const { colors } = useTheme();
@@ -47,9 +48,12 @@ function CaptureRow({ capture, onCompleted, failedActions, appearance }: { appea
     const title = capture.bookmark?.title || capture.entry.title || capture.entry.url;
     const active = [...events].reverse().find(event => event.kind === "phase" && (event.status === "running" || event.status === "failed"));
     const label = active?.phase === "summarise" ? "Summarising…" : active?.phase === "extract" ? "Extracting content…" : active?.phase === "tag" ? "Tagging…" : active?.phase === "file" ? "Filing into a collection…" : "Saving…";
-    return <View accessibilityLiveRegion="polite" style={{ borderWidth: 1, borderRadius: radius.md, borderColor: webColors.border, backgroundColor: webColors.bgSubtle, paddingHorizontal: 16, paddingVertical: 12, gap: 9 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}><Favicon domain={domainFor(capture.entry.url)} /><Pressable disabled={!capture.bookmark} accessibilityRole="button" accessibilityLabel={`Open ${title}`} accessibilityHint={filingPath || capture.bookmark?.collectionPath?.map(part => part.name).join(" › ")} onPress={() => router.push(`/bookmark/${capture.bookmark!.id}`)} style={{ flex: 1 }}><Copy role="title3" lines={1} style={{ color: webColors.fg }}>{title}</Copy></Pressable><Copy role="meta" style={{ color: webColors.fgTertiary }}>just now</Copy></View>
-      <Copy role="meta">{capture.status === "failed" ? "Couldn't save this link" : capture.status === "queued" ? "Saved on this phone. Cosmic reads it when you open the app." : processing ? label : capture.alreadySaved ? "Already in your Library" : "Saved privately to your Library"}</Copy>
+    return <View accessibilityLiveRegion="polite" style={{ borderWidth: 1, borderRadius: radius.md, borderColor: webColors.border, backgroundColor: webColors.bgSubtle, paddingHorizontal: 16, paddingVertical: 12, gap: 10 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}><Favicon domain={domainFor(capture.entry.url)} /><Pressable disabled={!capture.bookmark} accessibilityRole="button" accessibilityLabel={`Open ${title}`} accessibilityHint={filingPath || capture.bookmark?.collectionPath?.map(part => part.name).join(" › ")} onPress={() => router.push(`/bookmark/${capture.bookmark!.id}`)} style={{ flex: 1 }}><Text numberOfLines={1} style={[webText("saving"), { color: webColors.fg }]}>{title}</Text></Pressable><Copy role="meta" style={{ color: webColors.fgTertiary }}>just now</Copy></View>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
+        {processing ? <View style={{ width: 14, height: 14, borderWidth: 1.5, borderColor: webColors.accent, borderRightColor: "transparent", borderRadius: radius.pill }} /> : null}
+        <Copy role="meta" style={processing ? { color: webColors.fg } : undefined}>{capture.status === "failed" ? "Couldn't save this link" : capture.status === "queued" ? "Saved on this phone. Cosmic reads it when you open the app." : processing ? label : capture.alreadySaved ? "Already in your Library" : "Saved privately to your Library"}</Copy>
+      </View>
       {capture.status === "failed" ? <View style={{ flexDirection: "row", gap: 8 }}>
         {capture.entry.failure !== "rejected" ? <Action label="Retry" onPress={() => retry(capture.id)}>Retry</Action> : null}
         <Action label="Remove" onPress={() => remove(capture.id)}>Remove</Action>

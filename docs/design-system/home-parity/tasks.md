@@ -1,10 +1,87 @@
 # Native Home web parity · 2026-11-26
 
-- Outcome: implementation committed on `feat/mobile-home-web-parity`; JS gates green on 2026-11-27. Not rendered on a device yet.
-- Next gate: rendered simulator comparison against web /dev/home, after a native rebuild that links react-native-svg (Podfile.lock has no RNSVG; `pod install` must run on macOS).
-- Owner: continuing on the MacBook T3 environment (device access available). Branch `feat/mobile-home-web-parity`. Blocker on the Linux host was disabled T3 agent device access, so no simulator, fixture-device or physical proof exists yet.
-- Baseline: main @ 4c8d362f18b8e495a6ffe33d103f77c32554dda6, with preceding design-system reconciliation uncommitted. Preserve that work and all untracked user studies/specs/screenshots.
-- Scope assumption: signed-in Home (/my/dashboard), not marketing landing. Asked asynchronously whether composition should replace Today's 5; after opportunity for response, proceeding with the user's stated web-parity goal. No backend changes, native prebuild, release or unrelated screen redesign.
+- Outcome: native iOS Home rendered and compared on this MacBook; parity fixes and matched evidence complete. Final mobile typecheck/lint/Jest and token gates passed. Delivery commit/push is the current gate.
+- Next gate: commit and push this follow-up to `feat/mobile-home-web-parity`. No PR, merge or release authorized.
+- Owner: this MacBook T3 thread. Blocker: none for the requested simulator scope.
+- Starting state on MacBook: clean `ios-home-web-parity` at `671e2781e2f685804bf33bb06422bd1b92b05154`. Fetched origin and switched to `feat/mobile-home-web-parity` at `ce03bd3` (remote head, base `origin/main` at `671e278`). Preserved environment/hooks; none were edited.
+- Scope: user explicitly approved web Home composition and controls. Current web wins. Evidence is simulator + illustrative fixtures/local HTTP transport, not physical-device or production-account proof.
+- Remaining limits: UIKit blur and Core Text antialiasing/fractional rounding remain platform adapters; larger serif optical sizes use the nearest bundled cut. Known reply/edit/delete/report controls stay out of scope. Other phone/tablet widths, accessibility categories and physical hardware were not certified by this pass.
+
+## MacBook result · 2026-11-26 local / 2026-11-27 UTC
+
+### Native build
+
+- `bun install` completed; API client workspace build also completed. No lockfile churn from installation.
+- `pod install` linked RNSVG **15.12.1**. Commit includes Podfile.lock and the required RNSVG resource bundle references in the maintained Xcode project. No native prebuild.
+- Xcode **27.2 (27B52)**, iOS 27.0 iPhone 18 Pro simulator, T3 local device `3C7F9D5E-A343-4DB8-B75F-671CA10AC69A`. Device interaction used this thread's pinned agent-device command throughout.
+- First build failed: Xcode rejected resource-bundle deployment targets 12.4/13.4 in RNSVG/RNCAsyncStorage. Build-only `IPHONEOS_DEPLOYMENT_TARGET=15.1` override succeeded. No deployment target policy change committed.
+- Unsigned simulator build rendered but produced SecureStore entitlement errors. Rebuilt with simulator ad-hoc signing (`CODE_SIGN_IDENTITY=-`), installed and ran successfully; auth persisted and native SecureStore worked. This is simulator signing evidence, not distribution capability proof.
+
+### Changes from rendered comparison
+
+- Shared illustrative JSON now drives both `/dev/home` fixtures. Web `?parity=1` uses HomeView, AppShell and the actual root-owned BottomNavigation, with the dev state strip omitted. Production appearance is unchanged.
+- Native balanced-title adapter measures the loaded glyphs to reproduce web `text-wrap: balance`; no title-specific manual breaks. Core Text baseline offsets preserve surrounding line boxes.
+- Added optical cuts 16/22/23/26/27/38/46 for larger Dynamic Type; default cuts remain byte-identical. Tracking now scales explicitly on iOS. Count controls use tabular numerals.
+- Attribution separators travel with their following segment; the update timestamp stays whole at larger text sizes.
+- Full gallery: pending row uses the web 16pt saving role and compact active marker; digest matches its label/title/summary/points/source-overflow/social composition, preserves long-press Open, and uses existing owner-bound generated digest endpoints for reactions/sharing. Private rows retain the lock beside the title and warning note.
+- Home tab bar overlays scrolling content on a generated `nav-surface` token (web bg-panel at 95% opacity). The logo has web's edge stroke.
+- Empty scopes include web's Inbox icon, grouped copy and primary recovery action. First-save hero, control type and spacing were aligned against its rendered web wrapper.
+- Comments sheet now avoids the keyboard. Reproduced before changing code: keyboard covered the sheet and Post. After: typed, posted, refetched and closed in place with keyboard present.
+
+### Evidence and comparison
+
+See [capture metadata](evidence.json). All product pairs are **402 × 778 logical pixels/points**. Native originals are 402 × 874 points at 1x (simulator backing scale 3x); crop removes only top 62pt and bottom 34pt OS safe areas. Web uses 402 × 778 CSS viewport at 1x. No product bounds are shifted or rescaled for the default comparison.
+
+Dates/greeting/update time frozen at `2026-11-26T23:00:00Z` / four minutes earlier. Same titles, summaries, ranking reasons, identity fallbacks and resume progress/times; fixtures carry no lead image. Brand artwork and Lucide icons were inspected. Source inventory/font hashes are recorded in metadata and the font manifest.
+
+| State | Matched files | Result |
+| --- | --- | --- |
+| Light, default iOS Large (1.0) | `web-light-default.png` / `native-light-default.png` | Same headline/summary line breaks, ordered anatomy, gutters, controls and card bounds; fractional native rounding remains. |
+| Dark, default | `web-dark-default.png` / `native-dark-default.png` | Same palette, border/identity treatment and hierarchy. |
+| Light, iOS XXXL (23/17) | `web-light-large.png` / `native-light-large.png` | Same wrapping with scaled tracking, optical cuts and grouped timestamps. |
+| Dark, iOS XXXL | `web-dark-large.png` / `native-dark-large.png` | Same geometry/wrapping as light translation. |
+| Empty For you / Following / Unread | `web-empty-*.png` / `native-empty-*.png` | Same ground, icon, title/body wrapping and recovery control; scopes remain usable. |
+| Full gallery · pending / digest / private | `pair-full-top.png`, `pair-full-digest.png`, `pair-full-tail.png` | Same production web/native variants; digest and tail use recorded scroll offsets. |
+| First-save hero | `web-new-user.png` / `native-new-user.png` | Same hierarchy, wrapper spacing, URL field and explanatory steps. |
+
+`pair-*.png` shows **web left, native right**. Larger web captures are a documented CSS text-scale fixture (23/17; operable controls capped at 1.3), not browser zoom or browser Dynamic Type proof. UIKit blur is not CSS blur; antialiasing is reviewed separately from geometry. No global pixel-diff tolerance was used to excuse layout errors.
+
+### Simulator interactions
+
+These use production native Home/provider/navigation/generated-client boundaries, against `local-service.mjs` (fictional Supabase auth + in-memory loopback HTTP, no real backend/database writes). HTTP receipts: `flow-requests-first-run.json`, `flow-requests.json`, `flow-requests-final.json`.
+
+- Signed in through the native form; switched For you → Following → Unread and back. Requests contain distinct scope values and returned different feed items.
+- Continue reading opened the unified Read view and restored **64%**. Lead story used `/bookmarks/shared/bk_8f2a`, not the owner's detail route.
+- Comments fetched only on opening; typed and posted while keyboard stayed visible; heading became `1 comment`, field cleared, list refetched, close returned to the retained feed position.
+- Omnibox URL showed Save, cleared on submit, entered the real durable capture provider and reached HTTP POST. Corrected harness response and Retry acknowledged `Saved privately to your Library`.
+- Pulled the native list down; a new feed/resume/count fetch returned empty data. Verified all scope-specific empty copy, and Unread's Back to For you action.
+- `flow-*.png` files are simulator interaction evidence. They are not matched web captures or real-user usage evidence.
+
+### Failures retained
+
+- T3 preview failed twice with “The browser is not producing screenshot frames.” Followed its restore advice once, then used the Playwright skill/CLI for the web reference. T3 device access remained in use.
+- Initial web render failed because runtime env was absent. Started both apps with loopback fixture env values; no environment file edited.
+- Metro could not resolve a JSON fixture outside its app watch roots; moved the shared fixture into `apps/mobile/dev` and imported it from web. This is data only, no cross-platform renderer import.
+- T3 refs expired after keyboard/state changes; refreshed snapshots. A secure-field fill hit the visibility toggle before focus; refocused the visible field. Synthesized scroll did not move the list; followed the tool's raw-drag advice. No tool-dispatched action alone was treated as behavioral proof.
+- Harness initially omitted the progress envelope (reader showed 0%) and the create response's required `message` (capture entered Retry). Fixed the harness to match generated contracts and repeated both paths; production auth/API code was not relaxed.
+- React Native emitted `Sending onAnimatedValueUpdate with no listeners registered` during restarts/transition cleanup. The LogBox-contaminated larger-text frame was rejected and recaptured after a settled relaunch; no production warning filter was added.
+- Light/XXXL bootstrap capture had not settled its safe-area/header bounds. Replaced it after asserting the toolbar y≈72.67pt and date y=158pt/height≈17.67pt; the failed frame is `native-light-large-bootstrap.png`.
+- Hot-reload/startup frames were rejected as final captures. Initial rendering is retained as `native-initial.png` / `web-initial.png`; the native initial image contains the unsigned Keychain error overlay.
+- The keyboard-covered comments screenshot is `flow-comments-keyboard-before.png`; the fixed, keyboard-present screen is `flow-comments-keyboard-after.png`.
+- Expanded gallery regression: digest long-press Open handler was lost during the visual rewrite. The existing regression failed; restored the handler, preserved its assertions and reran the two affected suites (43 tests passed) before the final full gate.
+- Visual fixes were made after simulator reproduction, not test-first. Existing behavioral assertions/timeouts were preserved.
+
+### Final verification
+
+- Mobile `tsc --noEmit`: pass.
+- Mobile lint: pass, including lint:tokens and tokens:check; ten pre-existing warnings.
+- Full mobile Jest: **39 suites, 307 tests passed, 1 skipped** after final tracking change.
+- `bun run tokens:test`: **11 passed**. Web `tsc --noEmit`: pass.
+- Native Debug simulator build: pass with documented build-only deployment target override and ad-hoc signing. Share extension, entitlements and test targets preserved.
+
+## Earlier history
+
+Original Linux starting record: main at `4c8d362f18b8e495a6ffe33d103f77c32554dda6`, design-system reconciliation initially uncommitted. This predates the two pushed commits and the MacBook continuation. The user's explicit web-composition decision supersedes the original scope assumption.
 
 ## Evidence
 

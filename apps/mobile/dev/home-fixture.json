@@ -1,0 +1,293 @@
+{
+  "now": "2026-11-26T23:00:00Z",
+  "computedAt": "2026-11-26T22:56:00Z",
+  "readerName": "Paulo Freitas",
+  "items": [
+    {
+      "type": "followed_save",
+      "bookmark": {
+        "id": "bk_8f2a",
+        "userId": "fixture-reader",
+        "title": "The Bottleneck Was Never Retrieval",
+        "sourceUrl": "https://every.to",
+        "createdAt": "2026-11-24T23:00:00Z",
+        "updatedAt": "2026-11-26T23:00:00Z",
+        "cosmicBriefSummary": "Agents don't fail because they can't find the right document — they fail because they can't remember what they already tried. A case for episodic memory over bigger context windows.",
+        "cosmicTags": [
+          "agent memory",
+          "retrieval"
+        ],
+        "processingStatus": "completed",
+        "metadata": {
+          "readingTime": 9
+        },
+        "cosmicKeyPoints": [
+          "Remember what you tried before widening the context window."
+        ],
+        "likeCount": 128,
+        "commentCount": 14,
+        "shareSlug": "bk_8f2a"
+      },
+      "actor": {
+        "id": "maya",
+        "handle": "maya",
+        "name": "Maya Okafor"
+      },
+      "rankingReason": "It lines up with the agent memory links you've been finishing, and you finish most of what you save from every.to."
+    },
+    {
+      "type": "own_save",
+      "bookmark": {
+        "id": "bk_3e77",
+        "userId": "fixture-reader",
+        "title": "The cost of a perfect index",
+        "sourceUrl": "https://stratechery.com",
+        "createdAt": "2026-11-21T23:00:00Z",
+        "updatedAt": "2026-11-26T23:00:00Z",
+        "cosmicBriefSummary": "Retrieval quality has a price curve, and most teams are buying the flat part of it.",
+        "cosmicTags": [
+          "retrieval",
+          "cost"
+        ],
+        "processingStatus": "completed",
+        "metadata": {
+          "readingTime": 11
+        },
+        "cosmicKeyPoints": [
+          "Remember what you tried before widening the context window."
+        ]
+      },
+      "rankingReason": "You saved it 5 days ago and haven't opened it yet."
+    }
+  ],
+  "resume": [
+    {
+      "bookmark": {
+        "id": "bk_1",
+        "userId": "fixture-reader",
+        "title": "What agents forget, and when",
+        "sourceUrl": "https://every.to",
+        "createdAt": "2026-11-24T23:00:00Z",
+        "updatedAt": "2026-11-26T23:00:00Z",
+        "cosmicBriefSummary": "",
+        "cosmicTags": [],
+        "processingStatus": "completed",
+        "metadata": {
+          "readingTime": 11
+        },
+        "cosmicKeyPoints": [
+          "Remember what you tried before widening the context window."
+        ]
+      },
+      "progress": {
+        "bookmarkId": "bk_1",
+        "percent": 64,
+        "updatedAt": "2026-11-26T23:00:00Z"
+      }
+    },
+    {
+      "bookmark": {
+        "id": "bk_2",
+        "userId": "fixture-reader",
+        "title": "A short history of retrieval-augmented generation",
+        "sourceUrl": "https://arxiv.org",
+        "createdAt": "2026-11-24T23:00:00Z",
+        "updatedAt": "2026-11-26T23:00:00Z",
+        "cosmicBriefSummary": "",
+        "cosmicTags": [],
+        "processingStatus": "completed",
+        "metadata": {
+          "readingTime": 18
+        },
+        "cosmicKeyPoints": [
+          "Remember what you tried before widening the context window."
+        ]
+      },
+      "progress": {
+        "bookmarkId": "bk_2",
+        "percent": 22,
+        "updatedAt": "2026-11-26T23:00:00Z"
+      }
+    },
+    {
+      "bookmark": {
+        "id": "bk_3",
+        "userId": "fixture-reader",
+        "title": "Typography for long-form reading on screens",
+        "sourceUrl": "https://example.com",
+        "createdAt": "2026-11-24T23:00:00Z",
+        "updatedAt": "2026-11-26T23:00:00Z",
+        "cosmicBriefSummary": "",
+        "cosmicTags": [],
+        "processingStatus": "completed",
+        "metadata": {
+          "readingTime": 9
+        },
+        "cosmicKeyPoints": [
+          "Remember what you tried before widening the context window."
+        ]
+      },
+      "progress": {
+        "bookmarkId": "bk_3",
+        "percent": 91,
+        "updatedAt": "2026-11-26T23:00:00Z"
+      }
+    }
+  ],
+  "counts": {
+    "all": 24,
+    "unread": 12,
+    "archived": 0,
+    "inbox": 3,
+    "collections": []
+  },
+  "fullItems": [
+    {
+      "type": "pending",
+      "bookmark": {
+        "id": "bk_91ff",
+        "userId": "fixture-reader",
+        "title": "Episodic Memory for Long-Horizon Tool-Using Agents",
+        "sourceUrl": "https://arxiv.org",
+        "createdAt": "2026-11-26T23:00:00Z",
+        "updatedAt": "2026-11-26T23:00:00Z",
+        "cosmicBriefSummary": "",
+        "cosmicTags": [],
+        "processingStatus": "processing",
+        "metadata": {
+          "readingTime": 11
+        },
+        "cosmicKeyPoints": [
+          "Remember what you tried before widening the context window."
+        ]
+      }
+    },
+    {
+      "type": "followed_save",
+      "bookmark": {
+        "id": "bk_8f2a",
+        "userId": "fixture-reader",
+        "title": "The Bottleneck Was Never Retrieval",
+        "sourceUrl": "https://every.to",
+        "createdAt": "2026-11-24T23:00:00Z",
+        "updatedAt": "2026-11-26T23:00:00Z",
+        "cosmicBriefSummary": "Agents don't fail because they can't find the right document — they fail because they can't remember what they already tried. A case for episodic memory over bigger context windows.",
+        "cosmicTags": [
+          "agent memory",
+          "retrieval"
+        ],
+        "processingStatus": "completed",
+        "metadata": {
+          "readingTime": 9
+        },
+        "cosmicKeyPoints": [
+          "Remember what you tried before widening the context window."
+        ],
+        "likeCount": 128,
+        "commentCount": 14,
+        "shareSlug": "bk_8f2a"
+      },
+      "actor": {
+        "id": "maya",
+        "handle": "maya",
+        "name": "Maya Okafor"
+      },
+      "rankingReason": "It lines up with the agent memory links you've been finishing, and you finish most of what you save from every.to."
+    },
+    {
+      "type": "digest",
+      "digest": {
+        "id": "dg_44a1",
+        "title": "Four of your saves are circling the same argument",
+        "summary": "You've been collecting pieces that all push back on scale-first agent design. Two of them contradict each other on evaluation.",
+        "keyPoints": [
+          {
+            "text": "Memory beats context. Three sources argue that episodic state, not window size, is the limiting factor.",
+            "sourceBookmarkIds": [
+              "bk_8f2a"
+            ]
+          },
+          {
+            "text": "Evaluation is unresolved. Chen proposes trajectory-level scoring; Okafor calls it unfalsifiable.",
+            "sourceBookmarkIds": [
+              "bk_3e77"
+            ]
+          }
+        ],
+        "sources": [
+          {
+            "bookmarkId": "bk_8f2a",
+            "domain": "every.to",
+            "url": "https://every.to"
+          },
+          {
+            "bookmarkId": "bk_91ff",
+            "domain": "arxiv.org",
+            "url": "https://arxiv.org"
+          },
+          {
+            "bookmarkId": "bk_3e77",
+            "domain": "stratechery.com",
+            "url": "https://stratechery.com"
+          },
+          {
+            "bookmarkId": "bk_1d4c",
+            "domain": "youtube.com",
+            "url": "https://youtube.com"
+          }
+        ],
+        "coherence": 0.8,
+        "createdAt": "2026-11-26T23:00:00Z",
+        "likeCount": 6,
+        "isLikedByCurrentUser": false,
+        "isPublic": false
+      },
+      "rankingReason": "You saved 4 links that turned out to be about the same thing, so this pulls them together."
+    },
+    {
+      "type": "own_save",
+      "bookmark": {
+        "id": "bk_3e77",
+        "userId": "fixture-reader",
+        "title": "The cost of a perfect index",
+        "sourceUrl": "https://stratechery.com",
+        "createdAt": "2026-11-21T23:00:00Z",
+        "updatedAt": "2026-11-26T23:00:00Z",
+        "cosmicBriefSummary": "Retrieval quality has a price curve, and most teams are buying the flat part of it.",
+        "cosmicTags": [
+          "retrieval",
+          "cost"
+        ],
+        "processingStatus": "completed",
+        "metadata": {
+          "readingTime": 11
+        },
+        "cosmicKeyPoints": [
+          "Remember what you tried before widening the context window."
+        ]
+      },
+      "rankingReason": "You saved it 5 days ago and haven't opened it yet."
+    },
+    {
+      "type": "own_save",
+      "bookmark": {
+        "id": "bk_5ad3",
+        "userId": "fixture-reader",
+        "title": "Q3 retrieval eval — internal writeup",
+        "sourceUrl": "https://notion.so",
+        "createdAt": "2026-11-22T23:00:00Z",
+        "updatedAt": "2026-11-26T23:00:00Z",
+        "cosmicBriefSummary": "",
+        "cosmicTags": [
+          "evaluation"
+        ],
+        "processingStatus": "completed",
+        "cosmicKeyPoints": [
+          "Remember what you tried before widening the context window."
+        ],
+        "isPrivateLink": true
+      },
+      "rankingReason": "You saved it 4 days ago and haven't opened it yet."
+    }
+  ]
+}

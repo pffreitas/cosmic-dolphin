@@ -7,6 +7,12 @@
   },
   "instances": [
     {
+      "file": "CosmicReading16.ttf",
+      "weightAxis": 600,
+      "opticalSize": 16,
+      "sha256": "5d20d20dfc31adbac7f4ce14a91e9f84c068b411cc53e95281bc5f8e9f08824c"
+    },
+    {
       "file": "CosmicReading17.ttf",
       "weightAxis": 600,
       "opticalSize": 17,
@@ -25,6 +31,30 @@
       "sha256": "23a910798a73b5d5f8e45389a314f09327203939365e3b7e54ad565e133c6f90"
     },
     {
+      "file": "CosmicReading22.ttf",
+      "weightAxis": 600,
+      "opticalSize": 22,
+      "sha256": "1a0623b38d8321ff82ce688d1c519c69d8ba3d1f1dc9ccf283dc19873ad06746"
+    },
+    {
+      "file": "CosmicReading23.ttf",
+      "weightAxis": 600,
+      "opticalSize": 23,
+      "sha256": "864c000177acf211c8a4f63db16d6b2875a3d2e087ad933cdc373a0265f941d8"
+    },
+    {
+      "file": "CosmicReading26.ttf",
+      "weightAxis": 600,
+      "opticalSize": 26,
+      "sha256": "004ea9fa9d41029f138cef217d004ea9a674dad4d7ea14c4672e9deadfa73ec5"
+    },
+    {
+      "file": "CosmicReading27.ttf",
+      "weightAxis": 600,
+      "opticalSize": 27,
+      "sha256": "d6e0687eadce4ca52ac4b2cc08bd5c7b3d6a914f42440e71103ced4add3ec55e"
+    },
+    {
       "file": "CosmicReading28.ttf",
       "weightAxis": 600,
       "opticalSize": 28,
@@ -35,6 +65,18 @@
       "weightAxis": 600,
       "opticalSize": 34,
       "sha256": "56f90bad56274ecd9a73b2b2bf806727a64d89f81b2e15fa35ac3ae5507a83b8"
+    },
+    {
+      "file": "CosmicReading38.ttf",
+      "weightAxis": 600,
+      "opticalSize": 38,
+      "sha256": "09f097df5ba3b8807bacc89e1b18ae6719db124d9d12e1bce94c86beacc1e174"
+    },
+    {
+      "file": "CosmicReading46.ttf",
+      "weightAxis": 600,
+      "opticalSize": 46,
+      "sha256": "94acabebf23b368b0ec10d9691811a165ae7d95e9e86e5596d469b665282a407"
     }
   ]
 }
