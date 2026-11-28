@@ -1,0 +1,37 @@
+{
+  "startingSHA": "0837ab7c74ee101dc526fb085707343cdcbade35",
+  "startingBranch": "main",
+  "preservedPreExistingWork": [
+    "docs/design-system/starfield-header/tasks.md",
+    "docs/design-system/starfield-header/release-evidence.json"
+  ],
+  "tokens": {
+    "light": {
+      "fill": "rgba(37,34,31,.95)",
+      "ink": "#FDFBFA",
+      "pressed": "#3E3B37",
+      "minSurfaceContrast": 12.12,
+      "minIconContrast": 13.27
+    },
+    "dark": {
+      "fill": "rgba(234,231,228,.95)",
+      "ink": "#181613",
+      "pressed": "#D4D0CC",
+      "minSurfaceContrast": 11.69,
+      "minIconContrast": 13.1
+    }
+  },
+  "checks": {
+    "nativeTests": 340,
+    "webTests": 421,
+    "tokenTests": 11,
+    "nativeTypecheck": "pass",
+    "webTypecheck": "pass",
+    "nativeLint": "pass, 12 existing warnings",
+    "webLint": "pass, 111 existing warnings",
+    "webBuild": "pass"
+  },
+  "visualProof": "native iPhone17Pro current Metro JS/assets in existing Debug host; local mobile-web fixture light/dark",
+  "signedArtifact": "pending",
+  "production": "pending"
+}

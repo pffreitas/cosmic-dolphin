@@ -1,10 +1,12 @@
 # Star-field mobile header · 2026-11-27
 
-**Current outcome:** masthead bottom corners rounded; reading surface top edge straight in native/mobile web.
-**Active gate:** local checks pass; production web and signed iOS delivery authorized and in progress.
-**Next gate / owner:** commit/push exact candidate, verify web deployment, build/submit iOS to existing internal Beta / release agent.
-**Blocker:** none. Source starts clean on `main` at `04cb68dc4b345d50912a20da4cfdcafb3bc4be82`;
-remote main still matches after a fresh fetch. The floating navigation remains the bottom-left control.
+**Current outcome:** source `0837ab7c` pushed; production web ACTIVE; iOS 1.0.0 (28) available in the existing internal TestFlight Beta group.
+**Active gate:** production delivery complete, exact source/artifact/Apple membership verified.
+**Next gate / owner:** physical signed-session and spoken-accessibility acceptance remain separate / device QA or user.
+**Blocker:** none for this release. Automatic cloud previews remain blocked by EAS credits until December 1;
+the verified local production iOS build succeeded. Starting clean base was
+`04cb68dc4b345d50912a20da4cfdcafb3bc4be82`; no incoming remote changes at delivery.
+The floating navigation remains the bottom-left control. Final sanitized receipt: [release-evidence.json](release-evidence.json).
 
 ## User scope
 
@@ -60,7 +62,7 @@ the current design contract. The alpha-mask assets were task-owned and are no lo
   for the affected routes and recaptured. The first web full test failed token-coverage assertions;
   registered the new inks and translucent-fill compositions, without weakening contrast thresholds.
 - The full-opacity sky has a semantic dark loading fallback. The page is opaque at its boundary;
-  only its bottom corners are clipped, without clipping header popovers or the floating control.
+  only the masthead’s bottom corners are clipped, without clipping header popovers or the floating control.
 
 The latest user grant is “Let’s go with that. Implement it and push to prod.” This authorizes
 source delivery and production web plus a signed iOS release to the existing internal TestFlight
@@ -87,3 +89,34 @@ verified backend deployment. Latest automatic mobile preview logs still report e
 Free-plan credits until December 1. Use the tested local EAS 27.11.0 production build path with
 existing signing/submission credentials; verify exact IPA before one upload. Simulator renders
 remain distinct from signed physical/session/spoken-accessibility acceptance.
+
+### Release progress
+
+Approved source `0837ab7c74ee101dc526fb085707343cdcbade35` is pushed on `main`.
+[Web run 46101261545](https://github.com/pffreitas/cosmic-dolphin/actions/runs/46101261545)
+succeeded; deployment `1038fbdb-c12c-4d32-b0bf-93536378f613` is ACTIVE with that exact image tag.
+Live `/images/header-starfield.webp` returns 200 and matches source SHA-256
+`bc96545416577de450b05b71761d54dd185bdd0701257cee32d867434383b6c6`; served CSS contains
+the masthead token/selector. Native local archive source matches, app/extension 1.0.0 (28),
+signatures/profiles/shared entitlements/production API/issuer/29 serif assets and starfield bytes verified.
+IPA SHA-256 `d07e86bad81cfa7c07e145d68a2ae9f28b18ba2e5cc7f44e9971f8213ed6deda`.
+[Submission 042e59f0](https://expo.dev/accounts/cosmic-dolphin/projects/cosmic-dolphin/submissions/042e59f0-c18d-4150-a87c-4c1c4323400b)
+was scheduled once, without auto TestFlight group setup, and FINISHED at 03:10:30Z on November 28.
+First Apple read still shows 27 newest; processing/group availability of 28 remain pending.
+Automatic iOS/Android preview jobs failed on exhausted cloud credits; mobile quality passed.
+Existing production backend is healthy; no backend/contract changes or redeployment required.
+EAS temporary signing credentials were cleaned up. CLI casing preflight briefly altered shared
+ignorecase despite the process override; restored its prior true value immediately after packaging.
+Private raw receipts and signed artifact are retained under the task-owned release cache.
+
+### Final availability
+
+Apple processed iOS **1.0.0 (28)**: VALID, IN_BETA_TESTING, unexpired. Build
+`e8eaf14d-0b68-45f6-8101-2fcbf5eb3709` is present in the actual existing internal **Beta** group
+`2cec83b6-864f-41ef-9434-652ba953e18c`, verified after the successful single upload.
+[Apple TestFlight](https://appstoreconnect.apple.com/apps/6758127357/testflight/ios).
+No group/tester expansion, external beta review, public App Store rollout, duplicate upload or
+backend redeployment. Web and native release states are complete; signed physical/session/spoken
+accessibility acceptance remains separately open. Task-owned local build workspace removed;
+IPA, inspection scripts and restricted raw receipts retained in the release cache. Final receipt
+and task-record completion are local documentation; production source remains the pushed `0837ab7c`.

@@ -383,9 +383,11 @@ schema, but are consumed only by mobile Home. Existing web roles are unchanged.
 
 ### Native Home navigation surface
 
-`nav-surface` records web's compact navigation ground (`bg-panel` at 95% opacity)
-for the native BlurView adapter. The bar overlays scrolling content; its bottom
-safe-area padding is a platform addition. Web retains its existing CSS treatment.
+`nav-surface` records the floating menu's contrasting ground (`accent` at 95% opacity):
+dark ink in light mode and light stone in dark mode. Both clients use `accent-fg` for the
+hamburger and `accent-hover` for hover/pressed fill. The button clears 3:1 against all page
+grounds, with its glyph above 4.5:1 across black/white content extremes. Native BlurView and
+web backdrop blur retain the previous navigation material; bottom/left safe-area gaps remain.
 
 `typography.scale.saving` records the current web SavingRow title: Source Serif 4
 600, 16px, 1.35 line height and -.006em tracking. It is separate from the 17px

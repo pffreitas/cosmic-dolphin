@@ -16,7 +16,7 @@ import { useWebTheme } from "./theme";
 
 type Props = { counts?: BookmarkLibraryCounts | null; homeActive?: boolean };
 
-/** One compact navigation door, with the former bar's material and OS insets. */
+/** One compact navigation door, with a contrasting fill and OS insets. */
 export function FloatingNavigation(props: Props) {
   const { user } = useAuth();
   return <NavigationControl key={user?.id ?? "signed-out"} {...props} />;
@@ -59,8 +59,8 @@ function NavigationControl({ counts, homeActive = true }: Props) {
       <BlurView intensity={20} tint={scheme === "dark" ? "dark" : "light"} style={{ borderRadius: radius.pill, overflow: "hidden" }}>
         <Pressable ref={navButton} {...focusEvents} accessibilityRole="button" accessibilityLabel="Open navigation" accessibilityState={{ expanded: menu }}
           onPress={() => { Keyboard.dismiss(); setMenu(true); }}
-          style={({ pressed }) => ({ width: space.s7, height: space.s7, alignItems: "center", justifyContent: "center", borderRadius: radius.pill, backgroundColor: pressed ? colors.bgPanel : colors.navSurface })}>
-          <Menu size={20} strokeWidth={1.8} color={colors.fgSecondary} />
+          style={({ pressed }) => ({ width: space.s7, height: space.s7, alignItems: "center", justifyContent: "center", borderRadius: radius.pill, backgroundColor: pressed ? colors.accentHover : colors.navSurface })}>
+          <Menu size={20} strokeWidth={1.8} color={colors.accentFg} />
         </Pressable>
       </BlurView>
     </View>

@@ -1,0 +1,107 @@
+{
+  "ipaSHA256": "d07e86bad81cfa7c07e145d68a2ae9f28b18ba2e5cc7f44e9971f8213ed6deda",
+  "sourceSHA": "0837ab7c74ee101dc526fb085707343cdcbade35",
+  "targets": [
+    {
+      "bundle": "com.cosmicdolphin.app",
+      "version": "1.0.0",
+      "build": "28",
+      "minimumOSVersion": "15.1",
+      "signatureVerified": true,
+      "appGroup": [
+        "group.com.cosmicdolphin.app"
+      ],
+      "keychainGroup": [
+        "DVYXX2PWV5.com.cosmicdolphin.shared"
+      ],
+      "getTaskAllow": false,
+      "profileExpiration": "2027-01-22 02:02:31"
+    },
+    {
+      "bundle": "com.cosmicdolphin.app.share-extension",
+      "version": "1.0.0",
+      "build": "28",
+      "minimumOSVersion": "15.1",
+      "signatureVerified": true,
+      "appGroup": [
+        "group.com.cosmicdolphin.app"
+      ],
+      "keychainGroup": [
+        "DVYXX2PWV5.com.cosmicdolphin.shared"
+      ],
+      "getTaskAllow": false,
+      "profileExpiration": "2027-01-22 02:02:31"
+    }
+  ],
+  "exportComplianceFalse": true,
+  "productionAPI": "https://api.cosmic-dolphin.com",
+  "productionIssuer": "https://qsqbcqkpqmkuywunxbut.supabase.co",
+  "fixtureEnvironmentExcluded": true,
+  "serifFontsVerified": 29,
+  "starfieldAssetSHA256": "bc96545416577de450b05b71761d54dd185bdd0701257cee32d867434383b6c6",
+  "starfieldAssetVerified": true,
+  "sourceBranch": "main",
+  "sourcePushed": true,
+  "productionBuild": "FINISHED",
+  "distribution": "STORE",
+  "submissionId": "042e59f0-c18d-4150-a87c-4c1c4323400b",
+  "submission": "FINISHED",
+  "submissionCompletedAt": "2026-11-28T03:10:30.180Z",
+  "appleProcessing": "VALID",
+  "betaMembership": "VERIFIED",
+  "web": {
+    "workflowId": 46101261545,
+    "conclusion": "success",
+    "deploymentId": "1038fbdb-c12c-4d32-b0bf-93536378f613",
+    "phase": "ACTIVE",
+    "imageTag": "0837ab7c74ee101dc526fb085707343cdcbade35",
+    "assetHTTPProof": {
+      "assetURL": "https://cosmic-dolphin.com/images/header-starfield.webp",
+      "httpStatus": 200,
+      "assetSHA256": "bc96545416577de450b05b71761d54dd185bdd0701257cee32d867434383b6c6",
+      "matchesSource": true,
+      "stylesheets": 3,
+      "starfieldSelector": true,
+      "mastheadToken": true
+    }
+  },
+  "mobilePreview": {
+    "workflowId": 46101261513,
+    "quality": "success",
+    "ios": "failure",
+    "android": "failure",
+    "reason": "EAS Free-plan cloud credits exhausted until December 1; local production iOS succeeds"
+  },
+  "nativeQA": {
+    "simulatorJSAssets": "verified light/dark before commit",
+    "signedArtifact": "verified",
+    "physicalSessionAndSpokenAccessibility": false
+  },
+  "audienceExpansion": false,
+  "recordedAt": "2026-11-28T03:11:52.617881+00:00",
+  "appleBuild": {
+    "id": "e8eaf14d-0b68-45f6-8101-2fcbf5eb3709",
+    "appVersion": "1.0.0",
+    "buildNumber": "28",
+    "processingState": "VALID",
+    "internalState": "IN_BETA_TESTING",
+    "externalState": "READY_FOR_BETA_SUBMISSION",
+    "uploadedDate": "2026-11-27T19:11:23-08:00",
+    "expired": false
+  },
+  "betaGroup": {
+    "id": "2cec83b6-864f-41ef-9434-652ba953e18c",
+    "name": "Beta",
+    "isInternalGroup": true,
+    "hasAccessToAllBuilds": true
+  },
+  "testFlightURL": "https://appstoreconnect.apple.com/apps/6758127357/testflight/ios",
+  "submissionURL": "https://expo.dev/accounts/cosmic-dolphin/projects/cosmic-dolphin/submissions/042e59f0-c18d-4150-a87c-4c1c4323400b",
+  "verifiedAt": "2026-11-28T03:14:39.479145+00:00",
+  "cleanup": {
+    "buildWorkspaceRemoved": true,
+    "temporarySigningCredentialsRemoved": true,
+    "sharedGitIgnorecaseRestored": true,
+    "existingEnvironmentAndHooksPreserved": true
+  }
+}

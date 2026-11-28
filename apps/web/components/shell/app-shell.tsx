@@ -109,7 +109,7 @@ export function AppShell({
                     "lg:hidden",
                     "max-md:fixed max-md:bottom-[calc(env(safe-area-inset-bottom)+var(--cd-space-4))] max-md:left-[calc(env(safe-area-inset-left)+var(--cd-space-4))] max-md:z-40",
                     "max-md:size-12 max-md:rounded-pill max-md:border-0 max-md:bg-[color:var(--cd-nav-surface)] max-md:backdrop-blur-[10px]",
-                    "max-md:shadow-floating-nav max-md:hover:bg-bg-panel",
+                    "max-md:text-accent-fg max-md:shadow-floating-nav max-md:hover:bg-accent-hover max-md:hover:text-accent-fg max-md:active:bg-accent-hover",
                   )}
                 >
                   <Menu aria-hidden="true" className="!size-5 md:hidden" />

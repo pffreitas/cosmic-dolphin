@@ -274,8 +274,9 @@ changes announce once through `aria-live="polite"`.
 Source: `components/shell/app-shell.tsx` and native `components/web-home/FloatingNavigation.tsx`.
 Below 768px on web, and on native Home, Library, Explore and saved detail, a 48 × 48 circular
 hamburger control floats 16px from the left and bottom safe-area edges. It uses the previous
-navigation bar's `nav-surface` (panel at 95% opacity), 10px web backdrop blur / native BlurView,
-20px icon at stroke 1.8, secondary foreground and `shadow-floating-nav`. The focus ring stays
+navigation bar's 95% opacity with a contrasting `nav-surface` (ink in light mode, light stone
+in dark), 10px web backdrop blur / native BlurView, 20px icon at stroke 1.8, `accent-fg` and
+`shadow-floating-nav`. Hover/press uses `accent-hover` with the same icon ink. The focus ring stays
 outside the circular clip. Content remains scrollable behind it; existing trailing padding keeps
 last-row actions reachable. Tablets retain the top menu and desktop retains the sidebar.
 

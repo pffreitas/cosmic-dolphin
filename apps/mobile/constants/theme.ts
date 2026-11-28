@@ -78,7 +78,7 @@ export const colors = {
     navEdge: 'rgba(255,255,255,.9)',
     navSheen: 'rgba(255,255,255,.85)',
     navPill: 'rgba(255,255,255,.96)',
-    navSurface: 'rgba(255,255,255,.95)',
+    navSurface: 'rgba(37,34,31,.95)',
     /* Brand artwork */
     brandGround: '#010317',
   },
@@ -145,7 +145,7 @@ export const colors = {
     navEdge: 'rgba(255,255,255,.13)',
     navSheen: 'rgba(255,255,255,.15)',
     navPill: 'rgba(255,255,255,.11)',
-    navSurface: 'rgba(26,24,22,.95)',
+    navSurface: 'rgba(234,231,228,.95)',
     /* Brand artwork */
     brandGround: '#010317',
   },
@@ -228,7 +228,7 @@ export const webColors = {
     navEdge: 'rgba(255,255,255,.9)',
     navSheen: 'rgba(255,255,255,.85)',
     navPill: 'rgba(255,255,255,.96)',
-    navSurface: 'rgba(255,255,255,.95)',
+    navSurface: 'rgba(37,34,31,.95)',
     brandGround: '#010317',
   },
   dark: {
@@ -284,7 +284,7 @@ export const webColors = {
     navEdge: 'rgba(255,255,255,.13)',
     navSheen: 'rgba(255,255,255,.15)',
     navPill: 'rgba(255,255,255,.11)',
-    navSurface: 'rgba(26,24,22,.95)',
+    navSurface: 'rgba(234,231,228,.95)',
     brandGround: '#010317',
   },
 } as const;

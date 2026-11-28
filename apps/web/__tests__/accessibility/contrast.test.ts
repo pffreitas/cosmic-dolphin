@@ -279,15 +279,15 @@ for (const mode of MODES) {
 }
 
 // Compact navigation floats over scrolling content, including images. Measure
-// its actual 95% panel fill over both app grounds and black/white image extremes;
-// measuring the opaque panel alone would miss the translucency. Active labels
-// sit on accent-soft and are already covered by TEXT/NON_TEXT above.
+// its actual 95% accent fill over app grounds and black/white image extremes.
+// The hamburger uses accent-fg; hover/pressed uses accent-hover, already covered
+// above. Its offset focus ring sits on the page, covered by NON_TEXT.focus.
 for (const mode of MODES) {
   describe(`compact navigation material · ${mode}`, () => {
     const palette = TOKENS.color[mode];
     const grounds = ["bg", "bg-subtle", "bg-panel", "bg-inset", "#000000", "#FFFFFF"];
     for (const ground of grounds) {
-      for (const [ink, min] of [["fg", 4.5], ["fg-secondary", 4.5], ["focus", 3]] as const) {
+      for (const [ink, min] of [["accent-fg", 4.5]] as const) {
         it(`${ink} on nav-surface over ${ground} clears ${min}:1`, () => {
           const fill = palette["nav-surface"].match(/^rgba\((\d+),(\d+),(\d+),([\d.]+)\)$/);
           expect(fill, "nav-surface must be a measurable rgba fill").toBeTruthy();
@@ -299,6 +299,11 @@ for (const mode of MODES) {
               .toString(16).padStart(2, "0");
           }).join("");
           expect(contrast(palette[ink], `#${blended}`)).toBeGreaterThanOrEqual(min);
+          if (!ground.startsWith("#")) {
+            // The floating control itself must stand out against the page,
+            // independently of its shadow or the glyph's internal contrast.
+            expect(contrast(`#${blended}`, beneath)).toBeGreaterThanOrEqual(3);
+          }
         });
       }
     }
