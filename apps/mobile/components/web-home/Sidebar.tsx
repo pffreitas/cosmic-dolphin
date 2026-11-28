@@ -23,6 +23,7 @@ import {
   Inbox,
   Layers,
   LogOut,
+  Plus,
   Search,
   UserRound,
   X,
@@ -62,7 +63,7 @@ export function HomeSidebar({
   homeActive?: boolean;
   onClose: () => void;
   onDestination: (
-    destination: "/" | "/explore" | "/search" | "/profile",
+    destination: "/" | "/explore" | "/search" | "/profile" | "/save",
   ) => void;
   onLibrary: (query: SidebarLibraryQuery) => void;
 }) {
@@ -258,6 +259,11 @@ function SidebarContent({
             label="Search"
             icon={Search}
             onPress={() => onDestination("/search")}
+          />
+          <SidebarRow
+            label="Save a link"
+            icon={Plus}
+            onPress={() => onDestination("/save")}
           />
         </View>
         <View style={{ gap: 4 }}>

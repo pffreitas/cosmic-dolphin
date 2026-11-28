@@ -13,6 +13,7 @@ import ProfileRedirect from "../(tabs)/profile";
 import TabLayout from "../(tabs)/_layout";
 import HomeScreen from "../(tabs)/index";
 import { useHomeFeed } from "@/hooks/useHomeFeed";
+import { FloatingNavigation } from "@/components/web-home/FloatingNavigation";
 
 jest.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ user: { id: "reader", email: "reader@example.com" }, signOut: jest.fn(async () => {}) }),
@@ -55,21 +56,23 @@ it("changes the server feed scope through the web Home control", async () => {
 });
 
 // Router and tab primitives are real; auth/preferences/data are test boundaries.
-it("offers web Home navigation and opens Save over the current Library", async () => {
+it("uses the floating drawer to navigate and opens Save over the current Library", async () => {
   const route = renderRouter({
     "(tabs)/_layout": TabLayout,
-    "(tabs)/index": () => <Text>Home destination</Text>,
+    "(tabs)/index": () => <><Text>Home destination</Text><FloatingNavigation /></>,
     "(tabs)/capture": () => <Text>Capture destination</Text>,
     "(tabs)/library": () => <Text>Library destination</Text>,
     "(tabs)/profile": () => <Text>Profile destination</Text>,
     "(tabs)/explore": () => <Text>Explore destination</Text>,
     save: () => <Text>Save modal</Text>,
   }, { initialUrl: "/" });
-  expect(screen.getAllByRole("tab").map(tab => tab.props.accessibilityLabel)).toEqual(["Home", "Library", "You"]);
+  expect(screen.queryAllByRole("tab")).toHaveLength(0);
+  fireEvent.press(screen.getByRole("button", { name: "Open navigation" }));
   expect(screen.getByRole("button", { name: "Search" })).toBeTruthy();
-  fireEvent.press(screen.getByRole("tab", { name: "Library" }));
+  fireEvent.press(screen.getByRole("button", { name: "All saves" }));
   expect(await screen.findByText("Library destination")).toBeTruthy();
-  fireEvent.press(screen.getByLabelText(/^Save, tab,/));
+  fireEvent.press(screen.getByRole("button", { name: "Open navigation" }));
+  fireEvent.press(screen.getByRole("button", { name: "Save a link" }));
   expect(await screen.findByText("Save modal")).toBeTruthy();
   expect(route.getPathname()).toBe("/save");
 });
@@ -117,7 +120,8 @@ it("returns to the prior Library after confirming an existing Save modal", async
     profile: () => <Text>Real profile destination</Text>,
     save: SaveScreen,
   }, { initialUrl: "/(tabs)/library" });
-  fireEvent.press(screen.getByLabelText(/^Save, tab,/));
+  fireEvent.press(screen.getByRole("button", { name: "Open navigation" }));
+  fireEvent.press(screen.getByRole("button", { name: "Save a link" }));
   fireEvent.changeText(screen.getByLabelText("Link"), "https://example.com/reading");
   fireEvent.press(screen.getByRole("button", { name: "Save" }));
   fireEvent.press(await screen.findByRole("button", { name: "Done" }));

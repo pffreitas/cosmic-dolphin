@@ -115,6 +115,7 @@
   --cd-shadow-capsule: var(--cd-nav-shadow);
   --cd-shadow-popover: 0 12px 32px -12px rgba(28, 22, 16, 0.2), 0 2px 6px -3px rgba(28, 22, 16, 0.1);
   --cd-shadow-dialog: 0 24px 60px -20px rgba(28, 22, 16, 0.32);
+  --cd-shadow-floating-nav: 0 4px 14px -2px rgba(28, 22, 16, 0.16), 0 1px 4px 0 rgba(28, 22, 16, 0.06);
   --cd-shadow-segment: 0 1px 2px 0 rgba(0,0,0,.05);
 }
 
@@ -192,6 +193,7 @@
 
   --cd-shadow-popover: 0 12px 32px -12px rgba(0, 0, 0, 0.7), 0 2px 6px -3px rgba(0, 0, 0, 0.5);
   --cd-shadow-dialog: 0 24px 60px -20px rgba(0, 0, 0, 0.8);
+  --cd-shadow-floating-nav: 0 4px 14px -2px rgba(0, 0, 0, 0.4), 0 1px 4px 0 rgba(0, 0, 0, 0.2);
   --cd-shadow-segment: inset 0 0 0 1px var(--cd-border-strong);
 }
 

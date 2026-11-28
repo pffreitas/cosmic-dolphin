@@ -14,6 +14,7 @@ import {
   Inbox,
   Layers,
   LogOut,
+  Plus,
   Search,
   UserRound,
   type LucideIcon,
@@ -38,6 +39,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { focusRing } from "@/components/ui/focus-ring";
+import { Button } from "@/components/ui/button";
 import { parseLibraryView } from "@/components/bookmark/library/params";
 import {
   buildLibraryTree,
@@ -77,6 +79,8 @@ export interface SidebarProps {
   counts: BookmarkLibraryCounts | null;
   /** Called after any navigation — the mobile sheet closes itself with it. */
   onNavigate?: () => void;
+  /** Compact drawer action; opens the existing capture dialog after closing. */
+  onSave?: () => void;
   /** Overrides the router's path. The dev galleries use it to show a route. */
   currentPath?: string;
   className?: string;
@@ -122,6 +126,7 @@ export function Sidebar({
   collections,
   counts,
   onNavigate,
+  onSave,
   currentPath,
   className,
 }: SidebarProps) {
@@ -149,6 +154,14 @@ export function Sidebar({
                 </SidebarLink>
               </li>
             ))}
+            {onSave ? (
+              <li className="md:hidden">
+                <Button variant="ghost" onClick={onSave} className="min-h-11 w-full justify-start px-2 text-[13.5px]">
+                  <Plus aria-hidden="true" />
+                  Save a link
+                </Button>
+              </li>
+            ) : null}
           </ul>
         </nav>
 

@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/shell/app-shell";
-import { BottomNavigation } from "@/components/mobile/bottom-nav";
 import comparison from "../../../../mobile/dev/home-fixture.json";
 import { FeedScope } from "@cosmic-dolphin/api-client";
 
@@ -266,7 +265,7 @@ export function HomeStates() {
     return <><AppShell currentPath="/my/dashboard" collections={params.get("nav") === "populated" ? comparison.navigation.collections : []} counts={params.get("nav") === "populated" ? comparison.navigation.counts : comparison.counts} user={{ name: comparison.readerName, email: comparison.navigation.email, href: "/my/profile" }}>
       <HomeView scope={scope} entries={empty || newUser ? [] : entries} rail={empty || newUser ? EMPTY_RAIL : rail} readerName={comparison.readerName}
         computedAt={new Date(comparison.computedAt)} newUser={newUser} offline />
-    </AppShell><BottomNavigation currentPath="/my/dashboard" /></>;
+    </AppShell></>;
   }
 
   return (

@@ -3,7 +3,6 @@ import { Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { HomeFeedFixtureContext } from "@/hooks/HomeFeedFixtureContext";
 import HomeScreen from "../(tabs)/index";
-import { HomeTabBar } from "@/components/web-home/Chrome";
 import { FeedItemFromJSON, type Bookmark, type ContinueReadingItem, type FeedItem } from "@cosmic-dolphin/api-client";
 import data from "../../dev/home-fixture.json";
 
@@ -20,5 +19,5 @@ export default function HomeGallery() {
   const fixture = { collections: nav === "populated" ? data.navigation.collections : [], readerEmail: data.navigation.email, items: empty ? [] : state === "full" ? data.fullItems.map(FeedItemFromJSON) : items, resume: empty ? [] : resume,
     computedAt: new Date(data.computedAt), now: new Date(data.now), readerName: data.readerName,
     counts: state === "new-user" ? { ...data.counts, all: 0, unread: 0 } : nav === "populated" ? data.navigation.counts : data.counts, loading: state === "loading" };
-  return <HomeFeedFixtureContext.Provider value={fixture}><View style={{ flex: 1 }}><HomeScreen key={state ?? "populated"} /><HomeTabBar /></View></HomeFeedFixtureContext.Provider>;
+  return <HomeFeedFixtureContext.Provider value={fixture}><View style={{ flex: 1 }}><HomeScreen key={state ?? "populated"} /></View></HomeFeedFixtureContext.Provider>;
 }

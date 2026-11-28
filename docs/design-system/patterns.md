@@ -72,8 +72,9 @@ takes `--cd-bg-panel`, an `--cd-accent` border and the focus ring.
   palette with the typed text carried over.
 
 **Responsive** — below 1024px the sidebar becomes a left sheet (288px, capped at 85vw below 640px) behind a menu button at the
-top bar's left edge; any navigation closes it. Below 768px the bottom tab bar (Home, Library, Save,
-Search, You) takes over primary navigation, and the sheet remains the way into collections.
+top bar's left edge; any navigation closes it. Below 768px the menu trigger moves to a floating
+hamburger button at the bottom left. The same sheet holds destinations, Library, collections,
+account and Save a link; there is no bottom tab bar (November 27 navigation revision).
 
 **Frames** — `components/app-chrome.tsx` picks the frame by route. Signed in: the app shell.
 Signed out on a public route (`/s/[slug]`, `/u/[handle]`): `components/shell/public-header.tsx`, a
@@ -264,13 +265,17 @@ changes announce once through `aria-live="polite"`.
 
 ## Compact navigation and page insets
 
-Source: `components/mobile/bottom-nav.tsx`, `components/shell/app-shell.tsx` (this is responsive
-web, not the current Expo navigation). Below 768px: fixed z40 panel/95% with 10px backdrop blur,
-top border, safe-area bottom padding. Inner max-width 640, horizontal padding 8, vertical 4,
-gap 4. Five equal cells: Home, Library, Save, Search, You. Cell minimum height 44, padding 6 vertical /
-4 horizontal, icon-label gap 4; sans 11px/500 line 1, icons 18px stroke 1.8. Active links use
-accent-soft/accent, inactive secondary. Save opens the shared capture dialog; Search scrolls to top
-and focuses the omnibox (not a route link). You links to own profile. Actions have no active tab state.
+Source: `components/shell/app-shell.tsx` and native `components/web-home/FloatingNavigation.tsx`.
+Below 768px on web, and on native Home, Library, Explore and saved detail, a 48 × 48 circular
+hamburger control floats 16px from the left and bottom safe-area edges. It uses the previous
+navigation bar's `nav-surface` (panel at 95% opacity), 10px web backdrop blur / native BlurView,
+20px icon at stroke 1.8, secondary foreground and `shadow-floating-nav`. The focus ring stays
+outside the circular clip. Content remains scrollable behind it; existing trailing padding keeps
+last-row actions reachable. Tablets retain the top menu and desktop retains the sidebar.
+
+The button opens the existing left navigation sheet. Home, Library filters/collections, Search,
+Explore and the account menu retain their destinations. Save a link opens the existing capture
+dialog/sheet after closing navigation; it does not create a second capture controller.
 
 Main shell: padding 16 horizontal / 24 top; from 640 horizontal 24; from 768 top 32; from 1024
 horizontal 40. Bottom padding 112 below 768, 80 above. Topbar height 56; desktop sidebar 256;

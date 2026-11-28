@@ -10,7 +10,6 @@ import { GlobalKeyboardShortcuts } from "@/components/global-keyboard-shortcuts"
 import { AppChrome } from "@/components/app-chrome";
 import NewBookmarkButton from "@/components/bookmark/new-bookmark";
 import { ToastProvider } from "@/components/ui/toast";
-import { BottomNavigation } from "@/components/mobile/bottom-nav";
 import { createClient } from "@/utils/supabase/server";
 import { BookmarksAPI, CollectionsAPI } from "@/lib/api/bookmarks";
 import { HandleClaimPrompt } from "@/components/social/handle-claim-prompt";
@@ -144,14 +143,11 @@ export default async function RootLayout({
                     {children}
                   </AppChrome>
 
-                  {/* Home, Library, Save, Search, You — touch only. */}
-                  {isLoggedIn && <BottomNavigation />}
-
                   <HandleClaimPrompt isLoggedIn={isLoggedIn} />
 
                   {/*
                     The Save a link dialog, without a trigger of its own: the
-                    omnibox saves directly, and the tab bar's Save and the
+                    omnibox saves directly, and the navigation drawer's Save and the
                     omnibox's *Behind a login* open it (lib/chrome-actions.ts).
                   */}
                   {isLoggedIn && <NewBookmarkButton showTrigger={false} />}

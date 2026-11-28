@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
-import { PanelLeft } from "lucide-react";
+import { Menu, PanelLeft } from "lucide-react";
 import type {
   BookmarkLibraryCounts,
   Collection,
@@ -20,6 +20,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { focusRing } from "@/components/ui/focus-ring";
+import { openSaveDialog } from "@/lib/chrome-actions";
 
 import { LibraryDndProvider } from "./library-dnd";
 import { Sidebar, type ShellUser } from "./sidebar";
@@ -40,9 +41,8 @@ import { Sidebar, type ShellUser } from "./sidebar";
  * thing — the omnibox, which saves a pasted link and searches anything else —
  * so the product's primary action is in the same spot on every route.
  *
- * Below 1024px the sidebar becomes a sheet behind the top bar's menu button.
- * Below 768px the bottom tab bar (rendered by the root layout) takes over
- * primary navigation, and the sheet remains the way into collections.
+ * Below 1024px the sidebar becomes a sheet. On phones its trigger floats at
+ * the bottom left; tablets keep the trigger in the top bar.
  */
 export interface AppShellProps {
   user?: ShellUser;
@@ -65,6 +65,7 @@ export function AppShell({
 }: AppShellProps) {
   const pathname = usePathname();
   const [navOpen, setNavOpen] = React.useState(false);
+  const saveAfterClose = React.useRef(false);
 
   // A navigation always closes the sheet, including one made by the browser's
   // back button rather than by a click inside it. Adjusted during render, not
@@ -102,20 +103,36 @@ export function AppShell({
                   variant="ghost"
                   size="icon"
                   aria-label="Open navigation"
-                  className="lg:hidden"
+                  className={cn(
+                    "lg:hidden",
+                    "max-md:fixed max-md:bottom-[calc(env(safe-area-inset-bottom)+var(--cd-space-4))] max-md:left-[calc(env(safe-area-inset-left)+var(--cd-space-4))] max-md:z-40",
+                    "max-md:size-12 max-md:rounded-pill max-md:border-0 max-md:bg-[color:var(--cd-nav-surface)] max-md:backdrop-blur-[10px]",
+                    "max-md:shadow-floating-nav max-md:hover:bg-bg-panel",
+                  )}
                 >
-                  <PanelLeft aria-hidden="true" />
+                  <Menu aria-hidden="true" className="!size-5 md:hidden" />
+                  <PanelLeft aria-hidden="true" className="hidden md:block" />
                 </Button>
               </SheetTrigger>
               <SheetContent
                 side="left"
                 className="flex w-[288px] max-w-[85vw] flex-col gap-0 bg-bg-subtle p-0 sm:max-w-[288px]"
+                onCloseAutoFocus={(event) => {
+                  if (!saveAfterClose.current) return;
+                  event.preventDefault();
+                  saveAfterClose.current = false;
+                  openSaveDialog();
+                }}
               >
                 <SheetTitle className="sr-only">Navigation</SheetTitle>
                 <SheetDescription className="sr-only">
                   Destinations, your library and collections, and your account.
                 </SheetDescription>
-                <Sidebar {...sidebarProps} onNavigate={() => setNavOpen(false)} />
+                <Sidebar
+                  {...sidebarProps}
+                  onNavigate={() => setNavOpen(false)}
+                  onSave={() => { saveAfterClose.current = true; setNavOpen(false); }}
+                />
               </SheetContent>
             </Sheet>
 

@@ -141,12 +141,14 @@ export const webEffects = {
     shadowCapsule: "0 10px 26px -14px rgba(28,22,16,.32), 0 2px 6px -3px rgba(28,22,16,.12)",
     shadowPopover: "0 12px 32px -12px rgba(28, 22, 16, 0.2), 0 2px 6px -3px rgba(28, 22, 16, 0.1)",
     shadowDialog: "0 24px 60px -20px rgba(28, 22, 16, 0.32)",
+    shadowFloatingNav: "0 4px 14px -2px rgba(28, 22, 16, 0.16), 0 1px 4px 0 rgba(28, 22, 16, 0.06)",
     shadowSegment: "0 1px 2px 0 rgba(0,0,0,.05)",
   },
   dark: {
     shadowCapsule: "0 12px 30px -16px rgba(0,0,0,.85)",
     shadowPopover: "0 12px 32px -12px rgba(0, 0, 0, 0.7), 0 2px 6px -3px rgba(0, 0, 0, 0.5)",
     shadowDialog: "0 24px 60px -20px rgba(0, 0, 0, 0.8)",
+    shadowFloatingNav: "0 4px 14px -2px rgba(0, 0, 0, 0.4), 0 1px 4px 0 rgba(0, 0, 0, 0.2)",
     shadowSegment: "inset 0 0 0 1px #423F3C",
   },
 } as const;

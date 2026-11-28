@@ -124,6 +124,9 @@ const config = {
         lg: "var(--cd-radius-lg)",
         pill: "var(--cd-radius-pill)",
       },
+      boxShadow: {
+        "floating-nav": "var(--cd-shadow-floating-nav)",
+      },
       keyframes: {
         // Skeleton shimmer. Named for the component so it cannot collide with
         // the legacy `.shimmer` keyframes still in globals.css.

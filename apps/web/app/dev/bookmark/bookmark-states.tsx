@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/shell/app-shell";
-import { BottomNavigation } from "@/components/mobile/bottom-nav";
 import { toDetailModel } from "@/components/bookmark/detail/detail-data";
 import type { Bookmark } from "@cosmic-dolphin/api-client";
 import comparison from "../../../../mobile/dev/bookmark-fixture.json";
@@ -313,7 +312,7 @@ export function BookmarkStates() {
 
   if (params.get("parity") === "1") {
     const bookmark = { ...comparison.bookmark, createdAt: new Date(comparison.bookmark.createdAt), updatedAt: new Date(comparison.bookmark.updatedAt) } as Bookmark;
-    return <AppShell currentPath="/bookmarks/frontier-fixture" collections={[]} counts={null}><BookmarkDetail model={toDetailModel(bookmark,{mode:"owner",now:new Date(comparison.now)})} services={services} offline/><BottomNavigation currentPath="/bookmarks/frontier-fixture"/></AppShell>;
+    return <AppShell currentPath="/bookmarks/frontier-fixture" collections={[]} counts={null}><BookmarkDetail model={toDetailModel(bookmark,{mode:"owner",now:new Date(comparison.now)})} services={services} offline/></AppShell>;
   }
 
   return (

@@ -16,6 +16,7 @@ import { CaptureFailureToast } from "@/components/CaptureFailureToast";
 import { BookmarkActionSheets, type ActionSheet } from "@/components/BookmarkActionSheets";
 import { Toast } from "@/components/Toast";
 import { HomeComments } from "@/components/web-home/Comments";
+import { FloatingNavigation } from "@/components/web-home/FloatingNavigation";
 import { HomeToolbar } from "@/components/web-home/Chrome";
 import { Action, Copy, Segmented } from "@/components/web-home/Primitives";
 import { NativeFeedItem } from "@/components/web-home/FeedItem";
@@ -67,7 +68,7 @@ function HomeEdition() {
   const entries = feed.loading ? [] : edition.rest;
   const openScope = (next: FeedScope) => { setCommentsFor(undefined); setSelection(undefined); setError(undefined); setScope(next); list.current?.scrollToOffset({ offset: 0, animated: false }); };
   return <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-    <HomeToolbar onError={setError} counts={feed.counts ?? null} />
+    <HomeToolbar onError={setError} />
     <FlatList ref={list} data={entries} keyExtractor={item => item.bookmark ? `bookmark:${item.bookmark.id}` : `digest:${item.digest?.id}`}
       style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: firstRun ? 48 : 40, paddingBottom: 112, backgroundColor: colors.bg }}
       refreshControl={<RefreshControl refreshing={feed.refreshing && !feed.loading} onRefresh={refresh} tintColor={colors.accent} />}
@@ -100,6 +101,7 @@ function HomeEdition() {
         {feed.more ? <HomeSkeleton /> : !feed.loading && !firstRun && !feed.hasMore && !feed.error && (edition.lead || entries.length) ? <Copy role="meta" style={{ paddingTop: 24, color: colors.fgTertiary }}>{"That's everything for now."}</Copy> : null}
       </View>} />
     {commentsFor?.bookmark ? <HomeComments key={commentsFor.bookmark.id} item={commentsFor} offline={feed.offline} onClose={() => setCommentsFor(undefined)} /> : null}
+    <FloatingNavigation counts={feed.counts ?? null} />
     <CaptureFailureToast message={changeError} />
     <Toast message={actionState.toast?.message} undo={actionState.toast?.undo} close={controller.closeToast} />
     <BookmarkActionSheets selection={selection} accountId={user?.id} controller={controller} onChange={setSelection} onClose={() => setSelection(undefined)} />

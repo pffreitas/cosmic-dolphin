@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 let mockAppearance: 'light' | 'dark' = 'light';
 jest.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'reader' } }) }));
 jest.mock('@/contexts/CaptureContext', () => ({ useCaptures: () => ({ captures: [], save: jest.fn() }) }));
-jest.mock('@/lib/mobile-api', () => ({ MobileAPI: { collections: jest.fn(async () => []) } }));
+jest.mock('@/lib/mobile-api', () => ({ MobileAPI: { collections: jest.fn(async () => []), counts: jest.fn(async () => null) } }));
 jest.mock('@/contexts/PreferencesContext', () => ({ usePreferences: () => ({ appearance: mockAppearance }) }));
 beforeEach(() => { jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true); });
 afterEach(() => jest.restoreAllMocks());
@@ -83,12 +83,21 @@ it.each(['light', 'dark'] as const)('%s filter, scope and icon controls expose v
   }
 });
 
-it.each(['light', 'dark'] as const)('%s destination labels cap at 1.3x and keep visible keyboard focus', mode => {
+it.each(['light', 'dark'] as const)('%s floating navigation keeps visible focus and drawer labels cap at 1.3x', mode => {
   mockAppearance = mode;
-  renderRouter({ '(tabs)/_layout': TabLayout, '(tabs)/index': () => null, '(tabs)/capture': () => null, '(tabs)/library': () => null, '(tabs)/profile': () => null, '(tabs)/explore': () => null });
-  for (const name of ['Home', 'Save', 'Library']) {
+  renderRouter({ '(tabs)/_layout': TabLayout, '(tabs)/index': () => null, '(tabs)/capture': () => null, '(tabs)/library': () => null, '(tabs)/profile': () => null, '(tabs)/explore': () => null }, { initialUrl: '/library' });
+  const trigger = screen.getByRole('button', { name: 'Open navigation' });
+  expect(StyleSheet.flatten(trigger.props.style).width).toBeGreaterThanOrEqual(44);
+  expect(StyleSheet.flatten(trigger.props.style).height).toBeGreaterThanOrEqual(44);
+  fireEvent(trigger, 'focus');
+  expect(screen.UNSAFE_getAllByType(View).some(node => {
+    const style = StyleSheet.flatten(node.props.style);
+    return style?.outlineColor === webColors[mode].focus && style?.outlineWidth === 2;
+  })).toBe(true);
+  fireEvent.press(trigger);
+  for (const name of ['Home', 'Save a link', 'All saves']) {
     expect(screen.getByText(name).props.maxFontSizeMultiplier).toBe(1.3);
-    const target = screen.getByLabelText(name);
+    const target = screen.getByRole('button', { name });
     fireEvent(target, 'focus');
     expect(StyleSheet.flatten(target.props.style).outlineColor).toBe(webColors[mode].focus);
     expect(StyleSheet.flatten(target.props.style).outlineWidth).toBe(2);

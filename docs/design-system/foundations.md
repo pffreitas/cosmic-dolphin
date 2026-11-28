@@ -252,6 +252,7 @@ Borders do the work. Shadows are reserved for surfaces that genuinely float:
 | `--cd-shadow-segment` | Selected segmented control: web small shadow in light, inset border-strong in dark; exported as `webEffects[scheme].shadowSegment` for native. |
 | `--cd-shadow-popover` | Popovers, dropdowns, the command palette, toasts. |
 | `--cd-shadow-dialog` | Modal dialogs and sheets. |
+| `--cd-shadow-floating-nav` | Bottom-left mobile menu: gentle offset/blur shadow in both themes, also exported through native `webEffects`. |
 
 Nothing in a feed, list, or rail may cast a shadow, on hover or otherwise. These live under
 `elevation` in `tokens.json`; `shadow-capsule` is written as the alias `{nav-shadow}`, which the

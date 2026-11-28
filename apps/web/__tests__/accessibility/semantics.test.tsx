@@ -113,7 +113,6 @@ vi.mock("@/components/providers/command-dialog-provider", () => ({
 
 import { Sidebar } from "@/components/shell/sidebar";
 import { Brandmark } from "@/components/brand/logo";
-import { BottomNavigation } from "@/components/mobile/bottom-nav";
 import { FeedItem, FeedItemSkeleton } from "@/components/feed/feed-item";
 import { LibraryList, LibraryRow } from "@/components/bookmark/library-row";
 import { ActionRow } from "@/components/social/action-row";
@@ -261,19 +260,17 @@ describe("nav marks where you are", () => {
     expect(html).not.toContain("AI filed");
   });
 
-  it("does the same in the mobile tab bar", () => {
+  it("keeps destinations and saving reachable in the compact drawer", () => {
     pathname.current = "/my/dashboard";
-    const html = render(<BottomNavigation />);
+    const html = render(<Sidebar {...SIDEBAR_DATA} onSave={() => {}} />);
     expect(html).toContain("<nav");
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
+    expect(html).toContain("Save a link");
   });
 
-  it("gives the tab bar 44px touch targets", () => {
-    // foundations.md § Accessibility: 32px on pointer, 44px on touch. The bar
-    // is the only touch-first surface in `apps/web`, so it is the only place
-    // the larger floor applies — and it is declared, not inferred from padding.
+  it("gives the compact drawer Save action a 44px touch target", () => {
     pathname.current = "/my/dashboard";
-    expect(render(<BottomNavigation />)).toContain("min-h-[44px]");
+    expect(render(<Sidebar {...SIDEBAR_DATA} onSave={() => {}} />)).toContain("min-h-11");
   });
 });
 
