@@ -1,13 +1,12 @@
 import React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
-import { colors, radius, space } from "@/constants/theme";
+import { space } from "@/constants/theme";
 import { textStyle } from "@/constants/fonts";
 import { useTheme } from "@/hooks/useTheme";
 
-const brand = colors.light; // Brand colors are identical in both themes.
 const artwork = require("@/assets/images/brand-mark.png");
 
-/** A compact symbol on the same Plum shadow backing as the full signature. */
+/** The transparent v0 symbol for compact placements. */
 export function BrandMark({
   size = 36,
   title,
@@ -17,7 +16,7 @@ export function BrandMark({
 }) {
   return (
     <Image
-      source={require("@/assets/images/brand-tile.png")}
+      source={artwork}
       style={{ width: size, height: size }}
       resizeMode="contain"
       accessible={Boolean(title)}
@@ -26,7 +25,7 @@ export function BrandMark({
   );
 }
 
-/** A single, accessible brand capsule; the wordmark is live, scalable Inter. */
+/** A single accessible signature with a scalable wordmark. */
 export function BrandSignature({
   size = 36,
   heading = false,
@@ -39,20 +38,11 @@ export function BrandSignature({
   const { colors } = useTheme();
   return (
     <View
-      style={[styles.signature, appearance === "home" ? { backgroundColor: colors.homeHeaderBg } : styles.capsule]}
+      style={styles.signature}
       accessible
       accessibilityRole={heading ? "header" : "image"}
       accessibilityLabel="Cosmic Dolphin"
     >
-      {appearance !== "home" ? <Image
-        source={require("@/assets/images/brand-gradient.png")}
-        resizeMode="stretch"
-        style={[
-          StyleSheet.absoluteFillObject,
-          { width: "100%", height: "100%" },
-        ]}
-        accessible={false}
-      /> : null}
       <Image
         source={artwork}
         style={{ width: size, height: size }}
@@ -60,7 +50,7 @@ export function BrandSignature({
         accessible={false}
       />
       <Text
-        style={[textStyle("bodySm"), styles.name, appearance === "home" && { color: colors.homeHeaderFg }]}
+        style={[textStyle("bodySm"), styles.name, { color: appearance === "home" ? colors.homeHeaderFg : colors.fg }]}
         numberOfLines={appearance === "home" ? undefined : 1}
         maxFontSizeMultiplier={appearance === "home" ? 1.3 : undefined}
         accessible={false}
@@ -81,18 +71,8 @@ const styles = StyleSheet.create({
     gap: space.s1,
     paddingVertical: space.s1,
   },
-  capsule: {
-    paddingLeft: space.s1,
-    paddingRight: space.s3,
-    borderWidth: 1,
-    borderRadius: radius.pill,
-    borderColor: brand.brandEdge,
-    backgroundColor: brand.brandBlack,
-    overflow: "hidden",
-  },
   name: {
     flexShrink: 1,
-    color: brand.brandFg,
     fontFamily: "InterSemibold",
   },
 });

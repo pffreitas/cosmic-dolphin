@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cosmic Dolphin launcher icons</title>
+<style>
+body{margin:0;font:15px/1.5 system-ui;color:var(--foreground,inherit)}
+main{padding:12px}
+h1{font-size:22px;margin:0 0 16px}
+.grid{display:flex;flex-wrap:wrap;gap:18px}
+figure{display:grid;justify-items:center;gap:14px;margin:0;padding:18px;width:162px;background:var(--card,#25212b);border-radius:var(--radius,14px)}
+figcaption{text-align:center}
+.samples{display:flex;align-items:end;gap:13px}
+.icon{width:80px;height:80px;position:relative;overflow:hidden;border-radius:23%}
+.icon.small{width:40px;height:40px}
+.icon img{width:100%;height:100%;display:block}
+.adaptive{border-radius:50%;background:#160d1b}
+.adaptive img{position:absolute;inset:-25%;width:150%;height:150%}
+.tint{background:#d9cded}
+.tint::after{content:"";position:absolute;inset:-25%;background:#3e2d52;mask:url('../../../apps/mobile/assets/images/adaptive-icon-monochrome.png') center/100% 100%}
+</style>
+<main><h1>Cosmic Dolphin launcher icons</h1><div class="grid">
+<figure><div class="samples"><div class="icon"><img src="../../../apps/mobile/assets/images/icon.png" alt=""></div><div class="icon small"><img src="../../../apps/mobile/assets/images/icon.png" alt=""></div></div><figcaption>iOS · 80 and 40 px</figcaption></figure>
+<figure><div class="samples"><div class="icon adaptive"><img src="../../../apps/mobile/assets/images/adaptive-icon-background.png" alt=""><img src="../../../apps/mobile/assets/images/adaptive-icon.png" alt=""></div><div class="icon adaptive small"><img src="../../../apps/mobile/assets/images/adaptive-icon-background.png" alt=""><img src="../../../apps/mobile/assets/images/adaptive-icon.png" alt=""></div></div><figcaption>Android · circular mask</figcaption></figure>
+<figure><div class="samples"><div class="icon adaptive tint"></div><div class="icon adaptive tint small"></div></div><figcaption>Android · sample tint</figcaption></figure>
+</div></main>
+</html>

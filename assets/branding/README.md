@@ -29,9 +29,9 @@ surface follows system appearance before app preferences can load.
 Web headers, sidebar, auth/reset screens, and footer share `Brandmark`. Narrow
 public headers switch to a 44px compact tile; compact logged-in toolbars and
 marketing marks use `LogoMark`. Both retain accessible names and focus rings.
-Mobile top bars and sign-in/sign-up use `BrandSignature`; `BrandMark` is the
-compact tile. Mobile uses bundled gradient pixels, so no extra native gradient
-dependency or network image is needed. User font scaling remains enabled.
+Mobile top bars and sign-in/sign-up use `BrandSignature`. Home and the sidebar use the same transparent artwork through `BrandMark`.
+Those placements and the native launcher use the approved Gargantua v0 mark.
+The app bundles the artwork locally and keeps the wordmark scalable.
 
 Open `preview.html` for production placement assets in both themes. The
 `*-study.html` files retain earlier interactive design explorations.
@@ -39,11 +39,7 @@ Open `preview.html` for production placement assets in both themes. The
 ## Regenerate
 
 From the repository root: `bun run tokens`, then `bun run brand:generate`.
-The generator uses Sharp from the existing mobile dependencies and the bundled
-Inter font. It synchronizes Expo input assets, the committed Android density
-resources, iOS asset catalogs, and web branding/favicon assets.
+The generator uses Sharp from the mobile workspace and the bundled Inter font. It also calls the native launch and launcher generators. The mobile launcher now uses Gargantua v0 from the identity kit. See the [mask and size proof](../../docs/design-system/splash/launcher-icons.html).
 
 Native launcher and splash changes require a new native build/install and are
-not delivered by an OTA update. The existing Android full-screen overlay is
-preserved; keep that customization if regenerating native projects. iOS device
-appearance needs a native device/simulator check on macOS.
+not delivered by an OTA update. Check native launcher appearance on a device or simulator after rebuilding.

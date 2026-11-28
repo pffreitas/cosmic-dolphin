@@ -47,7 +47,7 @@ export function HomeToolbar({ onError, counts = null, homeActive = true }: { onE
   return <>
     <View style={{ height: 56, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, borderBottomWidth: 1, borderColor: colors.border, backgroundColor: colors.bg, zIndex: 30 }}>
       <Action label="Open navigation" icon={PanelLeft} iconSize={16} controlRef={navButton} onPress={() => { input.current?.blur(); setMenu(true); }} style={{ width: 34, height: 34 }} />
-      <View style={{ width: 32, height: 32 }}><BrandMark size={32} /><View pointerEvents="none" style={{ position: "absolute", inset: 0, borderWidth: 1, borderColor: colors.brandEdge, borderRadius: radius.md }} /></View>
+      <BrandMark size={32} />
       <View style={{ flex: 1, position: "relative" }}>
         <View style={{ height: 36, borderRadius: radius.md, borderWidth: 1, borderColor: focused ? colors.accent : colors.border, backgroundColor: focused ? colors.bgPanel : colors.bgSubtle, outlineWidth: focused ? 2 : 0, outlineColor: colors.focus, outlineOffset: 2, flexDirection: "row", alignItems: "center", paddingLeft: 12, paddingRight: 4, gap: 10 }}>
           {capture ? <Link2 size={16} strokeWidth={1.8} color={colors.accent} /> : <Search size={16} strokeWidth={1.8} color={colors.fgTertiary} />}

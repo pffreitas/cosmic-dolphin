@@ -53,12 +53,8 @@ await save(path.join(brand,'gradient-background.png'),iconBackground);
 await save(path.join(brand,'brand-style.json'),JSON.stringify({name:'Plum shadow',angle:125,locations:[0,.48,1],colors:[palette['brand-plum'],palette['brand-mid'],palette['brand-black']],edge:palette['brand-edge'],foreground},null,2)+'\n');
 await save(path.join(brand,'header-capsule.png'),header);
 await save(path.join(brand,'splash-plaque.png'),plaque);
-await save(path.join(mobile,'assets/images/brand-tile.png'),tile);
 await save(path.join(mobile,'assets/images/brand-gradient.png'),await sharp(gradient(1024,256)).removeAlpha().png().toBuffer());
-await save(path.join(mobile,'assets/images/brand-mark.png'),await mark(192));
-await save(path.join(mobile,'assets/images/adaptive-icon-background.png'),iconBackground);
 await save(path.join(brand,'adaptive-background.png'),iconBackground);
-await save(path.join(mobile,'assets/images/icon.png'),icon);
 await save(path.join(mobile,'assets/images/splash-brand.png'),plaque);
 await save(path.join(web,'public/brand/header-capsule.png'),header);
 await save(path.join(web,'public/brand/tile.png'),tile);
@@ -68,9 +64,7 @@ for(const size of [128,256]) {
   for(const theme of ['light','dark']) await save(path.join(web,`public/brand/mark-${theme}-${size}.webp`),image);
 }
 for(const theme of ['light','dark']) {
-  await save(path.join(mobile,`assets/images/brand-mark-${theme}.png`),await mark(192));
   await save(path.join(brand,`icon-${theme}.png`),icon);
-  await save(path.join(mobile,`assets/images/icon-${theme}.png`),icon);
   await save(path.join(brand,`header-${theme}.png`),header);
   await save(path.join(web,`public/brand/header-${theme}.png`),header);
   await save(path.join(brand,`splash-brand-${theme}.png`),plaque);
@@ -79,32 +73,12 @@ for(const theme of ['light','dark']) {
   await save(path.join(brand,`splash-${theme}.png`),splash);
   await save(path.join(mobile,`assets/images/splash-${theme}.png`),splash);
   if(theme==='light') await save(path.join(mobile,'assets/images/splash.png'),splash);
-  const ios=path.join(mobile,'ios/CosmicDolphin/Images.xcassets');
-  await save(path.join(ios,`AppIcon.appiconset/${theme==='light'?'App-Icon-1024x1024@1x':'App-Icon-dark'}.png`),icon);
-  for(const scale of [1,2,3]) {
-    const filename=`${theme==='light'?'image':'image-dark'}${scale===1?'':`@${scale}x`}.png`;
-    await save(path.join(ios,'SplashScreenLegacy.imageset',filename),await sharp(splash).resize(430*scale,932*scale).png().toBuffer());
-  }
-  await save(path.join(mobile,`android/app/src/main/res/drawable${theme==='dark'?'-night':''}-nodpi/splashscreen_full.png`),splash);
 }
 const adaptive=await canvas(1024,1024,[{input:await mark(620),left:202,top:202}]);
-await save(path.join(mobile,'assets/images/adaptive-icon.png'),adaptive);
 await save(path.join(brand,'adaptive-foreground.png'),adaptive);
-for(const [density,scale] of Object.entries({mdpi:1,hdpi:1.5,xhdpi:2,xxhdpi:3,xxxhdpi:4})) {
-  const directory=path.join(mobile,`android/app/src/main/res/mipmap-${density}`);
-  await sharp(adaptive).resize(Math.round(108*scale)).webp({lossless:true}).toFile(path.join(directory,'ic_launcher_foreground.webp'));
-  await sharp(iconBackground).resize(Math.round(108*scale)).webp({lossless:true}).toFile(path.join(directory,'ic_launcher_background.webp'));
-  for(const filename of ['ic_launcher.webp','ic_launcher_round.webp']) {
-    const size=Math.round(48*scale);let image=sharp(icon).resize(size);
-    if(filename.includes('round')) image=image.composite([{input:Buffer.from(`<svg width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${size/2}" fill="white"/></svg>`),blend:'dest-in'}]);
-    await image.webp({lossless:true}).toFile(path.join(directory,filename));
-  }
-  const size=Math.round(288*scale);
-  const platformSplash=await canvas(size,size,[{input:await sharp(tile).resize(Math.round(size*.62)).png().toBuffer(),gravity:'centre'}]);
-  for(const theme of ['light','dark']) await save(path.join(mobile,`android/app/src/main/res/drawable-${theme==='dark'?'night-':''}${density}/splashscreen_logo.png`),platformSplash);
-}
+await import('../apps/mobile/scripts/generate-launcher-icons.mjs');
+await import('../apps/mobile/scripts/generate-launch-art.mjs');
 const faviconImage=await sharp(icon).resize(64).png().toBuffer();
-await save(path.join(mobile,'assets/images/favicon.png'),faviconImage);
 await save(path.join(brand,'favicon.png'),faviconImage);
 await sharp(icon).resize(180).png().toFile(path.join(web,'app/apple-icon.png'));
 const favicon=(await sharp(icon).resize(64).png().toBuffer()).toString('base64');

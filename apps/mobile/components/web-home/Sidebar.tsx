@@ -1,3 +1,4 @@
+import { BrandMark } from "@/components/BrandMark";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -104,7 +105,6 @@ function SidebarContent({
     useControlFocus();
   const { focusStyle: accountFocusStyle, ...accountFocusEvents } =
     useControlFocus();
-  const [brandBounds, setBrandBounds] = useState({ width: 0, height: 0 });
   const [imageFailed, setImageFailed] = useState(false);
   const slide = useRef(new Animated.Value(reducedMotion ? 0 : -288)).current;
   useEffect(() => {
@@ -189,9 +189,6 @@ function SidebarContent({
       >
         <Pressable
           {...brandFocusEvents}
-          onLayout={({ nativeEvent: { layout } }) =>
-            setBrandBounds({ width: layout.width, height: layout.height })
-          }
           accessibilityRole="button"
           accessibilityLabel="Cosmic Dolphin home"
           onPress={() => onDestination("/")}
@@ -202,37 +199,14 @@ function SidebarContent({
               flexDirection: "row",
               alignItems: "center",
               gap: 8,
-              paddingLeft: 4,
-              paddingRight: 12,
               paddingVertical: 4,
-              borderWidth: 1,
-              borderColor: colors.brandEdge,
-              borderRadius: radius.pill,
-              overflow: "hidden",
-              backgroundColor: colors.brandBlack,
               maxWidth: "100%",
             },
             brandFocusStyle,
             { outlineColor: colors.focus },
           ]}
         >
-          <Image
-            accessible={false}
-            source={require("@/assets/images/brand-gradient.png")}
-            resizeMode="stretch"
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: brandBounds.width,
-              height: brandBounds.height,
-            }}
-          />
-          <Image
-            accessible={false}
-            source={require("@/assets/images/brand-mark.png")}
-            style={{ width: 40, height: 40 }}
-          />
+          <BrandMark size={40} />
           <Copy
             role="label"
             maxFontSizeMultiplier={1.3}
@@ -241,7 +215,7 @@ function SidebarContent({
               fontSize: 15,
               lineHeight: 15,
               letterSpacing: -0.225 * Math.min(PixelRatio.getFontScale(), 1.3),
-              color: colors.brandFg,
+              color: colors.fg,
             }}
           >
             Cosmic Dolphin
