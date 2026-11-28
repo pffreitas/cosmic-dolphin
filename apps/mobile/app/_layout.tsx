@@ -4,15 +4,17 @@ import {
   ThemeProvider,
   type Theme,
 } from "@react-navigation/native";
+import { isRunningInExpoGo } from "expo";
 import { useFonts } from "expo-font";
 import { Stack, useRouter, useSegments, usePathname } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "react-native-reanimated";
 import { ShareIntentProvider, useShareIntentContext } from "expo-share-intent";
 import { View, ActivityIndicator, Platform } from "react-native";
 
+import { LaunchSplash } from "@/components/LaunchSplash";
 import { radius } from "@/constants/theme";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useTheme } from "@/hooks/useTheme";
@@ -23,10 +25,11 @@ import { extractSharedUrl } from "@/lib/shareIntent";
 import { androidShares, type AndroidShare } from "@/modules/share-queue";
 import { saveQueue } from "@/lib/save-queue";
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+// The React splash takes over only after it has a frame to display.
+void SplashScreen.preventAutoHideAsync().catch(() => {});
+if (!isRunningInExpoGo()) SplashScreen.setOptions({ duration: 0, fade: false });
 
-function RootLayoutNav() {
+function RootLayoutNav({ onReady, launchVisible }: { onReady: () => void; launchVisible: boolean }) {
   const { scheme, colors } = useTheme();
   const reduceMotion = useReducedMotion();
   const router = useRouter();
@@ -63,6 +66,8 @@ function RootLayoutNav() {
   const [nativeReady, setNativeReady] = useState(!bridge);
   const [persisting, setPersisting] = useState(false);
   const openingShare = useRef(false);
+  const [navigationLaidOut, setNavigationLaidOut] = useState(false);
+  const waitingForShare = Platform.OS === "android" && !bridge && hasShareIntent && !consuming.current;
 
   // Capture before resolving/auth-routing. Consume this delivery only after the
   // durable write; clearing the OS intent allows a later same-URL share.
@@ -112,7 +117,11 @@ function RootLayoutNav() {
   useEffect(() => { if (!hasShareIntent) consuming.current = false; }, [hasShareIntent]);
 
   useEffect(() => {
-    if (devGallery || isLoading || persisting || !nativeReady) return;
+    if (!devGallery && (isLoading || persisting || !nativeReady || waitingForShare)) return;
+    if (devGallery) {
+      if (navigationLaidOut) onReady();
+      return;
+    }
     if (arrival && (session || arrival.noUrl || arrival.error || arrival.queued)) {
       setPublicResult(!!(arrival.noUrl || arrival.error || arrival.queued));
       openingShare.current = true;
@@ -123,13 +132,20 @@ function RootLayoutNav() {
     // Expo commits navigation asynchronously. Keep the auth effect from
     // overriding a result route while its durable arrival is opening.
     if (openingShare.current) {
-      if (pathname === "/share") openingShare.current = false;
+      if (pathname !== "/share") return;
+      openingShare.current = false;
+      if (navigationLaidOut) onReady();
       return;
     }
     const inAuthGroup = segments[0] === "(auth)";
-    if (!session && !inAuthGroup && !(pathname === "/share" && publicResult)) router.replace("/(auth)/sign-in");
-    else if (session && inAuthGroup && !arrival) router.replace("/(tabs)");
-  }, [session, segments, isLoading, persisting, arrival, pathname, publicResult, nativeReady, router, devGallery]);
+    if (!session && !inAuthGroup && !(pathname === "/share" && publicResult)) {
+      router.replace("/(auth)/sign-in");
+    } else if (session && inAuthGroup && !arrival) {
+      router.replace("/(tabs)");
+    } else if (navigationLaidOut) {
+      onReady();
+    }
+  }, [session, segments, isLoading, persisting, arrival, pathname, publicResult, nativeReady, router, devGallery, waitingForShare, navigationLaidOut, onReady]);
 
   // Log any errors with share intent
   useEffect(() => {
@@ -142,11 +158,13 @@ function RootLayoutNav() {
   if (isLoading && !devGallery) {
     return (
       <>
-        <StatusBar
-          style={statusBarStyle}
-          backgroundColor={colors.bg}
-          translucent={false}
-        />
+        {!launchVisible && (
+          <StatusBar
+            style={statusBarStyle}
+            backgroundColor={colors.bg}
+            translucent={false}
+          />
+        )}
         <View
           style={{
             flex: 1,
@@ -163,12 +181,14 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={navigationTheme}>
-      <>
-        <StatusBar
-          style={statusBarStyle}
-          backgroundColor={colors.bg}
-          translucent={false}
-        />
+      <View style={{ flex: 1 }} onLayout={() => setNavigationLaidOut(true)}>
+        {!launchVisible && (
+          <StatusBar
+            style={statusBarStyle}
+            backgroundColor={colors.bg}
+            translucent={false}
+          />
+        )}
         <Stack screenOptions={{ headerShown: false, animation: reduceMotion ? "none" : "default" }}>
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -208,13 +228,13 @@ function RootLayoutNav() {
           <Stack.Screen name="settings" options={{ headerShown: false }} />
           <Stack.Screen name="+not-found" />
         </Stack>
-      </>
+      </View>
     </ThemeProvider>
   );
 }
 
 export default function RootLayout() {
-  const [loaded] = useFonts({
+  const [loaded, fontError] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
     Inter: require("../assets/fonts/Inter-400.ttf"),
     InterMedium: require("../assets/fonts/Inter-500.ttf"),
@@ -253,30 +273,25 @@ export default function RootLayout() {
 
   });
 
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
+  const [ready, setReady] = useState(false);
+  const [splashFinished, setSplashFinished] = useState(false);
+  const onReady = useCallback(() => setReady(true), []);
+  const onSplashFinished = useCallback(() => setSplashFinished(true), []);
 
   return (
-    <AuthProvider>
-      <PreferencesProvider>
-        <ShareIntentProvider
-          options={{
-            debug: false,
-            resetOnBackground: true,
-          }}
-        >
-          <CaptureProvider>
-            <RootLayoutNav />
-          </CaptureProvider>
-        </ShareIntentProvider>
-      </PreferencesProvider>
-    </AuthProvider>
+    <View style={{ flex: 1 }}>
+      {(loaded || fontError) && (
+        <AuthProvider>
+          <PreferencesProvider>
+            <ShareIntentProvider options={{ debug: false, resetOnBackground: true }}>
+              <CaptureProvider>
+                <RootLayoutNav onReady={onReady} launchVisible={!splashFinished} />
+              </CaptureProvider>
+            </ShareIntentProvider>
+          </PreferencesProvider>
+        </AuthProvider>
+      )}
+      {!splashFinished && <LaunchSplash ready={ready} onFinished={onSplashFinished} />}
+    </View>
   );
 }

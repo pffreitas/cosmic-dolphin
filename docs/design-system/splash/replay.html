@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cosmic Dolphin launch preview</title>
+<style>
+body{margin:0}main{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:24px;padding:12px}
+.phone{height:610px;max-width:100%;width:286px;overflow:hidden;position:relative;border-radius:29px;background:#160d1b;isolation:isolate}
+.home,.splash{position:absolute;inset:0}.home{background:white;object-fit:cover;object-position:top;width:100%;height:100%}
+.splash{display:grid;place-items:center;cursor:default}
+.sky{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55}.space{position:absolute;inset:0;background:#160d1b}
+.mark{position:relative;width:105px;height:auto}
+.controls{width:min(25ch,100%);font:15px/1.5 system-ui;color:var(--foreground,inherit)}
+.controls h1{font-size:21px;line-height:1.15;margin:0 0 12px}.controls p{margin:0 0 16px}
+button{font:600 14px system-ui;color:var(--foreground,#fff);background:var(--card,#24172d);padding:10px 17px;border:1px solid var(--border,#7b6389);border-radius:999px;cursor:pointer}
+.play .space{animation:sky-exit 640ms 480ms linear both}
+.play .mark{animation:approach 640ms 480ms linear both}
+@keyframes sky-exit{0%,70%{opacity:1}100%{opacity:0}}
+@keyframes approach{0%{transform:scale(1);opacity:1}24%{transform:scale(1.25)}46%{transform:scale(2.8)}70%{transform:scale(10.14);opacity:1}94%{opacity:0}100%{transform:scale(14.70);opacity:0}}
+@keyframes quiet-exit{to{opacity:0}}
+@media(prefers-reduced-motion:reduce){.play .space,.play .mark{animation:quiet-exit 150ms 480ms ease-out both}}
+</style></head><body><main>
+<div class="phone" id="phone">
+<img class="home" src="../home-parity/native-light-default-full.png" alt="">
+<div class="splash"><div class="space"><img class="sky" src="../../../apps/mobile/assets/images/launch/milky-way.webp" alt=""></div><img class="mark" src="../../../apps/mobile/assets/images/launch/mark@3x.png" alt="Cosmic Dolphin"></div>
+</div>
+<div class="controls"><h1>Milky Way launch</h1><p>The mark grows until its opening fills most of the screen, then Home comes into view.</p><button id="replay">Play transition</button></div>
+</main><script>
+const phone=document.getElementById("phone");
+const replay=document.getElementById("replay");
+
+replay.addEventListener("click",()=>{phone.classList.remove("play");void phone.offsetWidth;phone.classList.add("play");replay.textContent="Replay transition";});
+</script></body></html>

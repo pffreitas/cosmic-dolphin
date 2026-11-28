@@ -8,19 +8,16 @@
     "scheme": "cosmicdolphin",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/splash-brand-light.png",
+      "image": "./assets/images/launch/mark@3x.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF",
-      "dark": {
-        "image": "./assets/images/splash-brand-dark.png",
-        "backgroundColor": "#12100E"
-      }
+      "backgroundColor": "#160D1B"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.cosmicdolphin.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIStatusBarStyle": "UIStatusBarStyleLightContent"
       },
       "icon": {
         "light": "./assets/images/icon-light.png",
@@ -58,14 +55,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-brand-light.png",
-          "imageWidth": 260,
+          "image": "./assets/images/launch/mark@3x.png",
           "resizeMode": "contain",
-          "backgroundColor": "#FFFFFF",
-          "dark": {
-            "image": "./assets/images/splash-brand-dark.png",
-            "backgroundColor": "#12100E"
-          }
+          "backgroundColor": "#160D1B",
+          "imageWidth": 144
         }
       ],
       [

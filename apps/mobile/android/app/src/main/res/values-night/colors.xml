@@ -1,7 +1,7 @@
 <resources>
-  <color name="splashscreen_background">#12100E</color>
-  <color name="splashscreen_statusbar_color">#12100E</color>
-  <color name="splashscreen_navigationbar_color">#12100E</color>
+  <color name="splashscreen_background">#160D1B</color>
+  <color name="app_statusbar_color">#12100E</color>
+  <color name="app_navigationbar_color">#12100E</color>
   <color name="iconBackground">#050509</color>
   <color name="colorPrimaryDark">#00021f</color>
 </resources>
