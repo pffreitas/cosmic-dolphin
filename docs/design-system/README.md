@@ -14,6 +14,8 @@ It maps reusable components, build/fixture commands and the separate Home, Save-
 
 Product behaviour lives next door in [`docs/functional-spec/`](../functional-spec/) and the approved mobile feature spec. Visual contracts do not replace behavioral and permission requirements.
 
+The [Cosmic Dolphin identity standards](./logo-study/surface-guide.pdf) specify the approved flat Gargantua v0 mark. The [HTML edition](./logo-study/surface-guide.html) includes actual-size specimens. The [client kit](./logo-study/Cosmic-Dolphin-v0-Identity-Kit.zip) includes the guide and production artwork.
+
 ## Mobile scope and token overrides
 
 For shipped mobile behavior and the approved Plum direction, read [Save + Today's 5](../specs/mobile-reading-app/2026-11-09-save-and-todays-5.md) before older mobile prototypes. Its scope supersedes their exploratory screen/ranking/capture behavior. This directory's Signal guidance is the web reference and the shared semantic-token foundation.
