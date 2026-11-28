@@ -16,6 +16,14 @@
 
 export const colors = {
   light: {
+    /* Star-field header */
+    skyBg: '#080710',
+    skyFg: '#F5F3FA',
+    skyMuted: '#C4C0D0',
+    skyFieldBg: 'rgba(18,16,27,.86)',
+    skyFieldActiveBg: '#201D2A',
+    skyFieldBorder: '#625B75',
+    skyFieldBorderActive: '#C4C0D0',
     /* Mobile Home header (opt-in) */
     homeHeaderBg: '#000000',
     homeHeaderFg: '#FFFFFF',
@@ -75,6 +83,14 @@ export const colors = {
     brandGround: '#010317',
   },
   dark: {
+    /* Star-field header */
+    skyBg: '#080710',
+    skyFg: '#F5F3FA',
+    skyMuted: '#C4C0D0',
+    skyFieldBg: 'rgba(18,16,27,.86)',
+    skyFieldActiveBg: '#201D2A',
+    skyFieldBorder: '#625B75',
+    skyFieldBorderActive: '#C4C0D0',
     /* Mobile Home header (opt-in) */
     homeHeaderBg: '#000000',
     homeHeaderFg: '#FFFFFF',
@@ -160,6 +176,13 @@ export type ColorToken = keyof ThemeColors;
 /** Canonical web palette, without mobile Plum overrides. CSS effects need adapters. */
 export const webColors = {
   light: {
+    skyBg: '#080710',
+    skyFg: '#F5F3FA',
+    skyMuted: '#C4C0D0',
+    skyFieldBg: 'rgba(18,16,27,.86)',
+    skyFieldActiveBg: '#201D2A',
+    skyFieldBorder: '#625B75',
+    skyFieldBorderActive: '#C4C0D0',
     homeHeaderBg: '#000000',
     homeHeaderFg: '#FFFFFF',
     homeHeaderFocus: '#FFFFFF',
@@ -209,6 +232,13 @@ export const webColors = {
     brandGround: '#010317',
   },
   dark: {
+    skyBg: '#080710',
+    skyFg: '#F5F3FA',
+    skyMuted: '#C4C0D0',
+    skyFieldBg: 'rgba(18,16,27,.86)',
+    skyFieldActiveBg: '#201D2A',
+    skyFieldBorder: '#625B75',
+    skyFieldBorderActive: '#C4C0D0',
     homeHeaderBg: '#000000',
     homeHeaderFg: '#FFFFFF',
     homeHeaderFocus: '#FFFFFF',
@@ -267,6 +297,7 @@ export const radius = {
   lg: 12,
   brand: 7,
   pill: 999,
+  masthead: 24,
 } as const;
 
 /** 4px base scale. Lay groups out with `gap`, never stacked margins. */

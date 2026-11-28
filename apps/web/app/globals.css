@@ -170,3 +170,29 @@
 .safe-area-pr {
   padding-right: env(safe-area-inset-right);
 }
+
+/* An opaque photographic masthead above the crisp compact reading surface. */
+@media (max-width: 767px) {
+  .starfield-header-background {
+    background-color: var(--cd-sky-bg);
+    background-image: url('/images/header-starfield.webp');
+    background-size: cover;
+    background-position: center top;
+  }
+
+  .starfield-header-controls {
+    --cd-bg: var(--cd-sky-bg);
+    --cd-bg-subtle: var(--cd-sky-field-bg);
+    --cd-bg-panel: var(--cd-sky-field-active-bg);
+    --cd-bg-inset: var(--cd-sky-field-active-bg);
+    --cd-fg: var(--cd-sky-fg);
+    --cd-fg-secondary: var(--cd-sky-muted);
+    --cd-fg-tertiary: var(--cd-sky-muted);
+    --cd-border: var(--cd-sky-field-border);
+    --cd-border-strong: var(--cd-sky-field-border-active);
+    --cd-focus: var(--cd-sky-fg);
+    --cd-accent: var(--cd-sky-fg);
+    --cd-accent-fg: var(--cd-sky-bg);
+    --cd-accent-hover: var(--cd-sky-muted);
+  }
+}

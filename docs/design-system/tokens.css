@@ -23,6 +23,7 @@
   --cd-radius-lg: 12px;
   --cd-radius-brand: 7px;
   --cd-radius-pill: 999px;
+  --cd-radius-masthead: 24px;
 
   /* -------- Space (4px base) -------- */
   --cd-space-1: 4px;
@@ -41,6 +42,15 @@
   --cd-duration: 220ms;
 
   /* -------- Colour · light -------- */
+  /* Star-field header */
+  --cd-sky-bg: #080710;
+  --cd-sky-fg: #F5F3FA;
+  --cd-sky-muted: #C4C0D0;
+  --cd-sky-field-bg: rgba(18,16,27,.86);
+  --cd-sky-field-active-bg: #201D2A;
+  --cd-sky-field-border: #625B75;
+  --cd-sky-field-border-active: #C4C0D0;
+
   /* Mobile Home header (opt-in) */
   --cd-home-header-bg: #000000;
   --cd-home-header-fg: #FFFFFF;
@@ -121,6 +131,15 @@
 
 .dark {
   /* -------- Colour · dark -------- */
+  /* Star-field header */
+  --cd-sky-bg: #080710;
+  --cd-sky-fg: #F5F3FA;
+  --cd-sky-muted: #C4C0D0;
+  --cd-sky-field-bg: rgba(18,16,27,.86);
+  --cd-sky-field-active-bg: #201D2A;
+  --cd-sky-field-border: #625B75;
+  --cd-sky-field-border-active: #C4C0D0;
+
   /* Mobile Home header (opt-in) */
   --cd-home-header-bg: #000000;
   --cd-home-header-fg: #FFFFFF;

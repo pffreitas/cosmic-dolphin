@@ -90,8 +90,10 @@ export default function LibraryScreen() {
   return (
     <Screen
       title="Library"
+      appearance="starfield"
       actions={
         <TopBarAction
+          appearance="starfield"
           icon="search-outline"
           label="Search Library"
           onPress={() => router.push("/search")}

@@ -7,6 +7,7 @@ import { textStyle } from "@/constants/fonts";
 import { radius, space } from "@/constants/theme";
 import { useControlFocus } from "@/hooks/useControlFocus";
 import { PRESSED_OPACITY, useTheme } from "@/hooks/useTheme";
+import { StarfieldHeaderBackground } from "@/components/web-home/StarfieldHeaderBackground";
 
 export const TOP_BAR_HEIGHT = 52;
 
@@ -30,32 +31,35 @@ export function TopBar({
   onBack?: () => void;
   actions?: ReactNode;
   bordered?: boolean;
-  appearance?: "home";
+  appearance?: "home" | "starfield";
 }) {
   const { colors } = useTheme();
+  const sky = appearance === "starfield";
 
   return (
     <View
       style={[
         styles.bar,
         {
-          backgroundColor: appearance === "home" ? colors.homeHeaderBg : colors.bg,
-          minHeight:
+          backgroundColor: sky ? "transparent" : appearance === "home" ? colors.homeHeaderBg : colors.bg,
+          zIndex: sky ? 30 : undefined,
+          minHeight: sky ? 72 :
             title === "Cosmic Dolphin" && subtitle
               ? TOP_BAR_HEIGHT + space.s5
               : TOP_BAR_HEIGHT,
           borderBottomColor: appearance === "home" ? colors.homeHeaderBg : bordered ? colors.border : "transparent",
-          borderBottomWidth: bordered ? StyleSheet.hairlineWidth : 0,
+          borderBottomWidth: sky ? 0 : bordered ? StyleSheet.hairlineWidth : 0,
         },
       ]}
     >
+      {sky ? <StarfieldHeaderBackground /> : null}
       <View style={styles.leading}>
         {onBack ? (
           <TopBarAction icon="chevron-back" label="Go back" onPress={onBack} appearance={appearance} />
         ) : null}
         {title === "Cosmic Dolphin" ? (
           <View style={styles.brandTitles}>
-            <BrandSignature size={32} heading appearance={appearance} />
+            <BrandSignature size={32} heading appearance={sky ? "home" : appearance} />
             {subtitle ? (
               <Text
                 style={[textStyle("meta"), { color: colors.fgTertiary }]}
@@ -68,7 +72,7 @@ export function TopBar({
         ) : (
           <View style={styles.titles}>
             <Text
-              style={[textStyle("body"), styles.title, { color: colors.fg }]}
+              style={[textStyle("body"), styles.title, { color: sky ? colors.skyFg : colors.fg }]}
               maxFontSizeMultiplier={1.3}
               accessibilityRole="header"
             >
@@ -107,7 +111,7 @@ export function TopBarAction({
   onPress: () => void;
   tint?: string;
   avatar?: { uri?: string; initial: string };
-  appearance?: "home";
+  appearance?: "home" | "starfield";
 }) {
   const { colors } = useTheme();
   const { focusStyle, ...focusEvents } = useControlFocus();
@@ -123,7 +127,8 @@ export function TopBarAction({
         styles.action,
         focusStyle,
         appearance === "home" && { outlineColor: colors.homeHeaderFocus },
-        { backgroundColor: pressed ? appearance === "home" ? colors.homeHeaderPressed : colors.bgInset : "transparent" },
+        appearance === "starfield" && { outlineColor: colors.skyFg },
+        { backgroundColor: pressed ? appearance === "starfield" ? colors.skyFieldActiveBg : appearance === "home" ? colors.homeHeaderPressed : colors.bgInset : "transparent" },
       ]}
     >
       {avatar ? (
@@ -131,7 +136,7 @@ export function TopBarAction({
           <View style={[styles.avatar, { backgroundColor: appearance === "home" ? colors.homeHeaderFg : colors.accent }]}>
             <Text maxFontSizeMultiplier={1.3} style={[textStyle("label"), { color: appearance === "home" ? colors.homeHeaderBg : colors.accentFg }]}>{avatar.initial}</Text>
           </View>
-      ) : <Ionicons name={icon} size={20} color={tint ?? (appearance === "home" ? colors.homeHeaderFg : colors.fgSecondary)} />}
+      ) : <Ionicons name={icon} size={20} color={tint ?? (appearance === "starfield" ? colors.skyFg : appearance === "home" ? colors.homeHeaderFg : colors.fgSecondary)} />}
     </Pressable>
   );
 }

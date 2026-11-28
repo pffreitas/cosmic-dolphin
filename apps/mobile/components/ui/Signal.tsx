@@ -31,7 +31,7 @@ export function Screen({
   title: string;
   onBack?: () => void;
   actions?: React.ReactNode;
-  appearance?: "home";
+  appearance?: "home" | "starfield";
 }) {
   const { colors } = useTheme();
   return (

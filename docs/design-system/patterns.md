@@ -49,7 +49,13 @@ not a folder, and never takes a drop.
 Counts and collections are read on the server in `app/layout.tsx` and fail soft — dashes and an
 empty tree, never a broken page. `router.refresh()` after a Library write re-reads them.
 
-**Top bar** — 56px, `--cd-bg`, 1px `--cd-border` below, sticky. It carries exactly one thing: the
+**Top bar** — 56px from 768px, sticky, `--cd-bg` with a 1px `--cd-border` below.
+Below 768px the compact masthead is 72px, dark, with a subdued Meshy star-field plate.
+The masthead has 24px bottom corners (`--cd-radius-masthead`);
+the opaque reading surface below has a straight top edge;
+there is no gray fade band. The omnibox uses scoped `sky-*` inks and translucent dark fill.
+The floating menu remains independently themed. Native Home/Library/saved detail share this
+composition, including their top safe area and light status-bar symbols. It carries exactly one thing: the
 omnibox, on the content's centre axis (`grid-cols-[1fr_minmax(0,600px)_1fr]`). Page-level controls
 belong to the page's own header, never here.
 

@@ -81,6 +81,10 @@ type Pairs = Record<string, string[]>;
  * names where, so a pair can be removed when its surface is.
  */
 const TEXT: Pairs = {
+  // Star-field toolbar: controls/hints on the dark sky and focused field.
+  "sky-fg": ["sky-bg", "sky-field-active-bg"],
+  "sky-muted": ["sky-bg", "sky-field-active-bg"],
+  "sky-bg": ["sky-fg", "sky-muted"],
   // Mobile Home's live wordmark and unselected topic labels; topic presses
   // retain white text on the pressed ground (Signal.tsx, BrandMark.tsx).
   "home-header-fg": ["home-header-bg", "home-header-pressed"],
@@ -126,6 +130,8 @@ const TEXT: Pairs = {
  * ring, a filled CTA, the AI dot, the heart, the pipeline phase markers.
  */
 const NON_TEXT: Pairs = {
+  "sky-fg": ["sky-bg", "sky-field-active-bg"],
+  "sky-field-border-active": ["sky-bg", "sky-field-active-bg"],
   // Mobile Home's Search glyph at rest/pressed, and selected topic/profile
   // fills against the black header (TopBar.tsx, Signal.tsx).
   "home-header-fg": ["home-header-bg", "home-header-pressed"],
@@ -155,6 +161,9 @@ const NON_TEXT: Pairs = {
  * a token in neither list fails the suite.
  */
 const NOT_CONTRAST_BEARING: Record<string, string> = {
+  "sky-field-bg": "translucent input ground — composited contrast measured below",
+  "sky-field-active-bg": "ground — focused input and hint panel",
+  "sky-field-border": "decorative input boundary — input has its own label/glyph; focus uses sky-fg",
   // Grounds. They are the second half of every pair above.
   bg: "ground",
   "bg-subtle": "ground",
@@ -246,6 +255,28 @@ describe("header material", () => {
     expect(glass).not.toMatch(/rgba|hsla|transparent|#[0-9a-f]{8}\b|\//i);
   });
 });
+
+// Star-field controls sit on an 86% dark fill over a photographic plate. Test
+// black/white extremes so stars and mask transparency cannot defeat legibility.
+for (const mode of MODES) {
+  describe(`star-field toolbar material · ${mode}`, () => {
+    const palette = TOKENS.color[mode];
+    for (const ground of ["#000000", "#FFFFFF"]) {
+      for (const ink of ["sky-fg", "sky-muted"]) {
+        it(`${ink} on sky-field-bg over ${ground} clears 4.5:1`, () => {
+          const fill = palette["sky-field-bg"].match(/^rgba\((\d+),(\d+),(\d+),([\d.]+)\)$/);
+          expect(fill).toBeTruthy();
+          const alpha = Number(fill![4]);
+          const blended = [0, 1, 2].map(index => {
+            const beneath = parseInt(ground.slice(1 + index * 2, 3 + index * 2), 16);
+            return Math.round(Number(fill![index + 1]) * alpha + beneath * (1 - alpha)).toString(16).padStart(2, "0");
+          }).join("");
+          expect(contrast(palette[ink], `#${blended}`)).toBeGreaterThanOrEqual(4.5);
+        });
+      }
+    }
+  });
+}
 
 // Compact navigation floats over scrolling content, including images. Measure
 // its actual 95% panel fill over both app grounds and black/white image extremes;

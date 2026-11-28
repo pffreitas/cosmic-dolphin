@@ -36,7 +36,8 @@ function RootLayoutNav({ onReady, launchVisible }: { onReady: () => void; launch
   const pathname = usePathname();
   const devGallery = __DEV__ && pathname === "/dev/home";
   const { session, isLoading } = useAuth();
-  const statusBarStyle = scheme === "dark" ? "light" : "dark";
+  const skyHeader = pathname === "/" || pathname === "/library" || pathname === "/dev/home" || pathname.startsWith("/bookmark/");
+  const statusBarStyle = skyHeader || scheme === "dark" ? "light" : "dark";
 
   // React Navigation's own theme, fed from Signal so screen transitions and
   // native chrome do not flash a colour the palette does not contain.

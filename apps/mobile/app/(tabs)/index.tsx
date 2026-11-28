@@ -30,7 +30,7 @@ export default function HomeScreen() {
 }
 function HomeEdition() {
   const { user } = useAuth();
-  const { colors, scheme } = useWebTheme();
+  const { colors } = useWebTheme();
   const [scope, setScope] = useState<FeedScope>("for_you");
   const feed = useHomeFeed(scope, { edition: true });
   const { controller, state: actionState } = useBookmarkActions(user?.id);
@@ -45,9 +45,9 @@ function HomeEdition() {
   useEffect(() => { const timer = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(timer); }, []);
   useFocusEffect(useCallback(() => {
     if (Platform.OS === "web") return;
-    const entry = StatusBar.pushStackEntry({ barStyle: scheme === "dark" ? "light-content" : "dark-content", backgroundColor: colors.bg, translucent: false });
+    const entry = StatusBar.pushStackEntry({ barStyle: "light-content", backgroundColor: colors.skyBg, translucent: false });
     return () => StatusBar.popStackEntry(entry);
-  }, [scheme, colors.bg]));
+  }, [colors.skyBg]));
   useEffect(() => {
     if (feed.serverRead) controller.synchronize(feed.serverRead.bookmarks, feed.serverRead.sequence);
   }, [controller, feed.serverRead]);

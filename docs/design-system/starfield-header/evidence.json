@@ -1,0 +1,39 @@
+{
+  "base": "04cb68dc4b345d50912a20da4cfdcafb3bc4be82",
+  "branch": "main",
+  "sourceHashes": {
+    "apps/mobile/components/web-home/StarfieldHeaderBackground.tsx": "7a92f0a61da40de1d13c0db883fd5c0a04298ba026ee4bf0cdc30194ef45fbc6",
+    "apps/mobile/components/web-home/Chrome.tsx": "08b63c1d5ec0734875dcd3b0534767b556f3fc01456802d1094430c120bd0bd9",
+    "apps/mobile/components/web-home/theme.ts": "0d4d0c7e91829edc430c440d8ff40f350eb7217b67d7712b464860b0b699d378",
+    "apps/mobile/components/TopBar.tsx": "40132f132408ae169baa6b54308e8e9a92c56cf42d14a54bc96665dc5448f618",
+    "apps/mobile/app/_layout.tsx": "34623e6927904dfbb11449acb568d30644bbfef15479571c64e0f380edb2c256",
+    "apps/mobile/app/(tabs)/library.tsx": "b1578ab6f51a51cb4c707e8b602666c891b9dbbc38c907b84aa6f41fc9483b3d",
+    "apps/web/components/shell/starfield-header.tsx": "9e0eb471a3e8ed153a5c4427599ee04939667f1b84dee26ca3a6f39b9a930846",
+    "apps/web/components/shell/app-shell.tsx": "f2eaa03945962edd0beb305c503c099c3adcc0beb41696de03f7a3f35445a051",
+    "apps/web/app/globals.css": "2166f5ff6622b74dd2e0d93148811e9d8299d7798374967f95829a7fa16cb611",
+    "docs/design-system/tokens.json": "95f141c62d5382d3a2fcd7a7e11cf7b0b8867a5766ac26ad78e94c12571ada98",
+    "scripts/generate-header-starfield.py": "96880413f8a1eb566b77d1fe08891080325c73372c1d5ea190c3c4abb6a3db1e",
+    "apps/mobile/components/web-bookmark/Frame.tsx": "b3e271b7726f5e563e1e952ceb26617c3326861bb2d250bbb195209e684346ea",
+    "apps/mobile/app/(tabs)/index.tsx": "4fc5c3dbdebbd55a2b98c50da682570888a39f667b286a1996949afa8d311611",
+    "apps/mobile/components/ui/Signal.tsx": "e2828ec81fec88666a2a5948d3551791f7c20d7b285a574d85332dea3c53f503"
+  },
+  "meshyTask": "01a22004-10f2-719d-9e6f-563cd5d93fe2",
+  "consumedCredits": 9,
+  "artifacts": "assets/header-starfield/manifest.json",
+  "evidenceKind": "iOS simulator current JS/assets in existing Debug host + local mobile-web fixtures",
+  "checks": {
+    "nativeTests": 340,
+    "webTests": 445,
+    "tokenTests": 11,
+    "typecheck": "pass on both",
+    "lint": "pass with pre-existing warnings",
+    "webBuild": "pass after header-corner inversion"
+  },
+  "nativeBuild": "No new signed binary generated",
+  "deployment": "not requested",
+  "cleanup": "Task-owned servers/browser stopped; device appearance light and claim closed; no shutdown",
+  "currentDesign": "Opaque 72px star-field masthead with semantic 24px bottom corners; reading surface top edge is straight",
+  "supersededDesign": "Fade rejected in light theme; rounded-body proposal replaced by explicit user corner inversion; captures under history/",
+  "nativeRenderer": "React Native Image; existing Debug host with current Metro JavaScript/assets",
+  "additionalMeshyCredits": 0
+}

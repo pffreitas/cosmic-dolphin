@@ -1,19 +1,27 @@
 import React, { useEffect, useRef, useState } from "react";
-import { DeviceEventEmitter, TextInput, View } from "react-native";
+import { DeviceEventEmitter, StatusBar, TextInput, View } from "react-native";
 import { Search, Link2 } from "lucide-react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { radius } from "@/constants/theme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCaptures } from "@/contexts/CaptureContext";
 import { captureUrl } from "./data";
 import { BrandMark } from "@/components/BrandMark";
 import { Action, Copy } from "./Primitives";
-import { useWebTheme } from "./theme";
+import { StarfieldHeaderTheme, useWebTheme } from "./theme";
+import { StarfieldHeaderBackground } from "./StarfieldHeaderBackground";
 
 export const FOCUS_HOME_SEARCH = "cosmic:focus-home-omnibox";
 
 export function HomeToolbar({ onError }: { onError: (message: string) => void }) {
+  return <StarfieldHeaderTheme.Provider value><ToolbarControls onError={onError} /></StarfieldHeaderTheme.Provider>;
+}
+function ToolbarControls({ onError }: { onError: (message: string) => void }) {
   const { colors } = useWebTheme();
+  useFocusEffect(React.useCallback(() => {
+    const entry = StatusBar.pushStackEntry({ barStyle: "light-content", backgroundColor: colors.skyBg, translucent: false });
+    return () => StatusBar.popStackEntry(entry);
+  }, [colors.skyBg]));
   const { user } = useAuth();
   const router = useRouter();
   const { save } = useCaptures();
@@ -34,7 +42,8 @@ export function HomeToolbar({ onError }: { onError: (message: string) => void })
     catch { if (alive.current) { setValue(text); setLimited("Couldn't save this link. Try again."); onError("Couldn't save this link."); } }
   };
   return <>
-    <View style={{ height: 56, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, borderBottomWidth: 1, borderColor: colors.border, backgroundColor: colors.bg, zIndex: 30 }}>
+    <View style={{ height: 72, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, zIndex: 30 }}>
+      <StarfieldHeaderBackground />
       <BrandMark size={32} />
       <View style={{ flex: 1, position: "relative" }}>
         <View style={{ height: 36, borderRadius: radius.md, borderWidth: 1, borderColor: focused ? colors.accent : colors.border, backgroundColor: focused ? colors.bgPanel : colors.bgSubtle, outlineWidth: focused ? 2 : 0, outlineColor: colors.focus, outlineOffset: 2, flexDirection: "row", alignItems: "center", paddingLeft: 12, paddingRight: 4, gap: 10 }}>

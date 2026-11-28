@@ -225,6 +225,7 @@ The reading column is 680px, which at the 18px `reader` size is the same ~70 cha
 | `--cd-radius-sm` | 6px | Secondary/ghost buttons, tooltip, Library thumbnails. |
 | `--cd-radius-md` | 8px | Fields, cards, feed panels/thumbnails, callouts, dialogs, popovers. |
 | `--cd-radius-lg` | 12px | Compact dialog top corners, grouped first-save panel. Callouts use md, not lg. |
+| `--cd-radius-masthead` | 24px | Bottom corners of the compact star-field header. |
 | `--cd-radius-brand` | 7px | The landing logo lockup. Nothing else. |
 | `--cd-radius-pill` | 999px | Tags, avatars, segmented filters, the primary CTA. |
 
@@ -393,3 +394,25 @@ continue-reading title. Native bundles its optical cut as well as larger cuts.
 ### Saved-detail typography exports
 
 The saved-detail adaptation exports production web roles through canonical tokens: `readerHeading` (26/32.5, serif 600, −0.015em), `readerSubheading` (20/27, serif 600, −0.01em), `briefSummary` (14.5/23.2, sans 400) and `briefKeyPoint` (14/21.7, sans 400). The native reader uses frozen regular/italic/bold-italic optical instances; its code uses the current Apple monospace fallback. See [saved-detail tasks](bookmark-detail-parity/tasks.md) for source and remaining device proof. These exports preserve current web appearance.
+
+## Star-field compact masthead · November 27, 2026
+
+The compact header is a 72px dark masthead using the existing Meshy-generated photographic
+plate (`nano-banana-pro`, task `01a22004-10f2-719d-9e6f-563cd5d93fe2`). The masthead has
+24px bottom corners (`radius.masthead` / `--cd-radius-masthead`). The reading surface has a
+straight top edge and is fully opaque white in light mode or the normal page ground in dark. No shadow or feathered
+fade separates navigation from reading. The star field remains restrained behind the controls.
+
+`color.*.sky-*` defines semantic inks, input ground and boundaries in both themes.
+`sky-fg` and `sky-muted` clear 4.5:1 on the sky/focused input; the translucent resting input
+is measured composited over black/white extremes. Focus uses `sky-fg`. Only the decorative sky plate is clipped; header hints escape
+the masthead; the floating navigation control keeps the page theme.
+
+Native Home, Library and saved detail use the same masthead/reading-surface composition.
+The sky includes the top safe area, with light status-bar symbols. Web uses this below 768px;
+tablet/desktop chrome retains its current composition.
+
+Source, prompt and paid-generation receipt live in `assets/header-starfield`. Regenerate the
+byte-identical native/web plate with `python3 scripts/generate-header-starfield.py` (Pillow).
+The earlier alpha-mask proposal was rejected by the user for its muddy light-theme boundary;
+its screenshots remain under `docs/design-system/starfield-header/history` as diagnostics.

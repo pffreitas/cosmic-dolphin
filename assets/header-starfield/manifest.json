@@ -1,0 +1,13 @@
+{
+  "source": "assets/header-starfield/starfield-source.png",
+  "sourceSha256": "e264ed0e42b29c69b5fcb4927a5e1fca49d594fbf67c8d28e0a38e54826c7d26",
+  "size": [
+    1600,
+    480
+  ],
+  "composition": "opaque dark masthead with semantic 24px bottom corners; flat reading surface",
+  "outputs": {
+    "apps/mobile/assets/images/header-starfield.webp": "bc96545416577de450b05b71761d54dd185bdd0701257cee32d867434383b6c6",
+    "apps/web/public/images/header-starfield.webp": "bc96545416577de450b05b71761d54dd185bdd0701257cee32d867434383b6c6"
+  }
+}

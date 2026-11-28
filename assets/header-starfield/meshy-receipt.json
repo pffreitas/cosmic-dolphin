@@ -1,0 +1,21 @@
+{
+  "task_id": "01a22004-10f2-719d-9e6f-563cd5d93fe2",
+  "resource": "text-to-image",
+  "status": "SUCCEEDED",
+  "progress": 100,
+  "created_at": 1795833467364,
+  "started_at": 1795833467379,
+  "finished_at": 1795833489321,
+  "consumed_credits": 9,
+  "provider": "Meshy",
+  "cliVersion": "0.4.0",
+  "aiModel": "nano-banana-pro",
+  "aspectRatio": "16:9",
+  "operationId": "cosmic-dolphin-starfield-header-20261127",
+  "promptFile": "assets/header-starfield/prompt.txt",
+  "sourceFile": "assets/header-starfield/starfield-source.png",
+  "pricingSource": "https://docs.meshy.ai/en/api/pricing",
+  "estimatedCredits": 9,
+  "balanceBefore": 826,
+  "localPayloadFailure": "Missing payload file rejected before HTTP; no paid resubmission"
+}

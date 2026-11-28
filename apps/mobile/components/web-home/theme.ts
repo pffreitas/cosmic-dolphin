@@ -1,5 +1,6 @@
 import detailInstances from "@/assets/fonts/web-detail-fonts.json";
 import serifInstances from "@/assets/fonts/web-home-fonts.json";
+import { createContext, useContext } from "react";
 import {
   PixelRatio,
   Platform,
@@ -13,11 +14,31 @@ import { useTheme } from "@/hooks/useTheme";
 const serifCuts = serifInstances.instances.map(
   (instance) => instance.opticalSize,
 );
+/** Only toolbar controls inherit the dark sky palette; the floating menu stays independent. */
+export const StarfieldHeaderTheme = createContext(false);
 
 export function useWebTheme() {
   const { scheme } = useTheme();
+  const header = useContext(StarfieldHeaderTheme);
   useWindowDimensions(); // Re-select optical cuts when Dynamic Type changes.
-  return { scheme, colors: webColors[scheme] };
+  const base = webColors[scheme];
+  const colors = header ? {
+    ...base,
+    bg: base.skyBg,
+    bgSubtle: base.skyFieldBg,
+    bgPanel: base.skyFieldActiveBg,
+    bgInset: base.skyFieldActiveBg,
+    fg: base.skyFg,
+    fgSecondary: base.skyMuted,
+    fgTertiary: base.skyMuted,
+    border: base.skyFieldBorder,
+    borderStrong: base.skyFieldBorderActive,
+    focus: base.skyFg,
+    accent: base.skyFg,
+    accentFg: base.skyBg,
+    accentHover: base.skyMuted,
+  } : base;
+  return { scheme, colors };
 }
 /** Exact bundled Inter weights used by web navigation/control adapters. */
 export const webSansFont = (weight: 400 | 500 | 600 = 400) =>

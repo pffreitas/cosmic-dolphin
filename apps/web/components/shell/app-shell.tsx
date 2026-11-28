@@ -24,6 +24,7 @@ import { openSaveDialog } from "@/lib/chrome-actions";
 
 import { LibraryDndProvider } from "./library-dnd";
 import { Sidebar, type ShellUser } from "./sidebar";
+import { StarfieldHeaderBackground } from "./starfield-header";
 
 /**
  * The signed-in app frame — docs/design-system/patterns.md § App shell.
@@ -94,9 +95,10 @@ export function AppShell({
           <header
             className={cn(
               "sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2",
-              "border-b border-line bg-bg px-3 sm:px-4 lg:grid lg:grid-cols-[1fr_minmax(0,600px)_1fr] lg:px-10",
+              "border-b border-line bg-bg px-3 sm:px-4 lg:grid lg:grid-cols-[1fr_minmax(0,600px)_1fr] lg:px-10 max-md:h-[72px] max-md:isolate max-md:rounded-b-[var(--cd-radius-masthead)] max-md:border-0 max-md:bg-[color:var(--cd-sky-bg)]",
             )}
           >
+            <StarfieldHeaderBackground />
             <Sheet open={navOpen} onOpenChange={setNavOpen}>
               <SheetTrigger asChild>
                 <Button
@@ -140,14 +142,14 @@ export function AppShell({
 
             {/* The omnibox sits on the content's centre axis on desktop. */}
             <div className="min-w-0 flex-1 sm:ml-2 lg:col-start-2 lg:ml-0">
-              <HeaderOmnibox />
+              <HeaderOmnibox className="starfield-header-controls" />
             </div>
           </header>
 
           <main
             id="main"
             tabIndex={-1}
-            className="flex-1 px-4 pb-20 pt-6 outline-none sm:px-6 md:pt-8 lg:px-10 max-md:pb-28"
+            className="flex-1 px-4 pb-20 pt-6 outline-none sm:px-6 md:pt-8 lg:px-10 max-md:bg-bg max-md:pb-28"
           >
             {banner}
             {children}
