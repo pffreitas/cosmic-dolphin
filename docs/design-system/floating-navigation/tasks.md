@@ -1,10 +1,10 @@
 # Floating mobile navigation · 2026-11-27
 
-**Current outcome:** complete locally in native and mobile web; final checks pass.
-**Next gate / owner:** commit and synchronize `main` with `origin/main` / current agent,
-authorized by the user on November 27.
-**Blocker:** none. Implementation and render verification are complete. Rendered simulator
-evidence is separate from physical/session QA; TestFlight distribution remains separately scoped.
+**Current outcome:** implemented, committed and pushed to `origin/main` at source
+`5098b62a0e28b1d79013f863e39b3675fb548c1d`; integrated checks pass.
+**Next gate / owner:** any separately requested distribution or device QA / user.
+**Blocker:** none for source delivery. Deployment workflow results and TestFlight availability
+have not been verified by this task. Rendered simulator evidence remains separate from physical/session QA.
 
 ## Approved scope and starting state
 
@@ -78,5 +78,18 @@ web waits for the drawer's close-focus event before opening the existing capture
 ## Remote delivery · 2026-11-27
 
 The user explicitly requested committing, pulling and pushing this change to the remote.
-Fetched `origin` before committing and checked main ancestry; no source edits occurred after
-the passing native/web gates. Remote synchronization is the active delivery step.
+Fetched `origin`, which had four new branding/splash commits through `6ec291b6`. Created the
+navigation commit and ran `git pull --rebase origin main`. Resolved one toolbar conflict by
+retaining the new transparent brand mark while removing the top menu control; the sidebar's
+new branding and revised tests merged cleanly. The rebased feature commit is `5098b62a`.
+
+After integration: 43 native suites / 340 tests pass (one skipped), native typecheck passes,
+lint has no errors and 12 existing warnings, and token generation is current. Web source and
+token definitions are byte-identical to the earlier passing web gate. Pushed `main` and verified
+that the live remote head is `5098b62a0e28b1d79013f863e39b3675fb548c1d`.
+
+The committed native captures and simulator build precede these upstream branding changes;
+their original hashes remain in `evidence.json`. They prove the navigation layout/material at
+that source, not a post-integration native render or signed binary. Integrated source hashes
+and check results are recorded separately. Source delivery does not certify an automatic
+deployment or Apple processing. This documentation receipt is committed after the feature push.
